@@ -1,7 +1,95 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=65.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
 [project]
-name="agi-hpc"
-version="0.1.0"
-description="Embodied AGI HPC project"
+name = "agi-hpc"
+version = "0.1.0"
+description = "Embodied, safety-aware AGI architecture for HPC deployments"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "Andrew Bond", email = "andrew.bond@sjsu.edu" }
+]
+
+dependencies = [
+    "pydantic>=2.3.0",
+    "pyyaml>=6.0",
+    "grpcio>=1.60",
+    "grpcio-tools>=1.60",
+    "protobuf>=4.25",
+    "numpy>=1.26",
+    "absl-py>=2.0",
+    "prometheus-client>=0.20",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.4.0",
+    "black>=24.2.0",
+    "mypy>=1.10.0",
+    "pre-commit>=3.6.0",
+]
+
+ci = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.4.0",
+    "black>=24.2.0",
+    "mypy>=1.10.0",
+    "coverage>=7.5.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+extend-select = ["E", "F", "W", "I", "B", "C90"]
+ignore = ["E203", "W503"]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+
+[tool.black]
+line-length = 88
+target-version = ["py310", "py311", "py312"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+strict = false
+warn_unused_ignores = true
+pretty = true
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+addopts = "--disable-warnings --maxfail=1 -q"
+
+[tool.coverage.run]
+source = ["src/agi"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+
+[[tool.pre-commit.repos]]
+repo = "https://github.com/charliermarsh/ruff-pre-commit"
+rev = "v0.4.0"
+hooks = [{ id = "ruff" }]
+
+[[tool.pre-commit.repos]]
+repo = "https://github.com/psf/black"
+rev = "24.2.0"
+hooks = [{ id = "black" }]
+
+[[tool.pre-commit.repos]]
+repo = "https://github.com/pre-commit/mirrors-mypy"
+rev = "v1.10.0"
+hooks = [{ id = "mypy" }]
+
