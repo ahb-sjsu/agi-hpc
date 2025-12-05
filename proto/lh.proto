@@ -1,0 +1,4 @@
+syntax = "proto3";
+package agi.lh.v1;
+message PlanRequest { string goal = 1; }
+message PlanResponse { string plan = 1; }
