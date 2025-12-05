@@ -1,4 +1,6 @@
 __pycache__/
 *.pyc
 .venv/
-"src/agi_hpc.egg-info/" 
+src/agi_hpc.egg-info/
+src/*.egg-info/
+*.egg-info/
