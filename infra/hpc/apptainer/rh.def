@@ -1,1 +1,29 @@
-# TODO Apptainer
+Bootstrap: docker
+From: ubuntu:22.04
+
+%labels
+    subsystem RightHemisphere
+    role PerceptionControl
+
+%post
+    apt-get update && \
+    apt-get install -y python3 python3-pip python3-dev \
+                       build-essential git curl \
+                       libzmq3-dev protobuf-compiler \
+                       libopencv-dev ffmpeg libsm6 libxext6 \
+                       libssl-dev && \
+    python3 -m pip install --upgrade pip
+
+    pip install -e /opt/agi-hpc
+
+%files
+    ../../../src /opt/agi-hpc/src
+    ../../../pyproject.toml /opt/agi-hpc/
+    ../../../README.md /opt/agi-hpc/
+
+%environment
+    export PYTHONPATH=/opt/agi-hpc/src
+    export RH_SERVICE_PORT=50052
+
+%runscript
+    exec python3 -m agi_hpc.services.right_hemisphere

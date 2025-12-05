@@ -2,28 +2,27 @@ Bootstrap: docker
 From: ubuntu:22.04
 
 %labels
-    subsystem LeftHemisphere
-    role PlanningReasoning
+    subsystem MemorySemantic
+    role VectorDB
 
 %post
     apt-get update && \
     apt-get install -y python3 python3-pip python3-dev \
                        build-essential git curl \
-                       libzmq3-dev protobuf-compiler \
-                       libssl-dev && \
+                       libzmq3-dev protobuf-compiler && \
     python3 -m pip install --upgrade pip
 
-    # Install AGI-HPC python package
+    # Memory deps (FAISS CPU)
+    pip install faiss-cpu qdrant-client
+
     pip install -e /opt/agi-hpc
 
 %files
     ../../../src /opt/agi-hpc/src
     ../../../pyproject.toml /opt/agi-hpc/
-    ../../../README.md /opt/agi-hpc/
 
 %environment
     export PYTHONPATH=/opt/agi-hpc/src
-    export LH_SERVICE_PORT=50051
 
 %runscript
-    exec python3 -m agi_hpc.services.left_hemisphere
+    exec python3 -m agi_hpc.services.semantic_memory
