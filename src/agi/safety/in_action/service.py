@@ -1,4 +1,3 @@
-
 """
 In-Action Safety Service.
 
@@ -23,6 +22,7 @@ from agi.safety.rules.engine import SafetyRuleEngine, SafetyVerdict
 try:
     import agi.proto_gen.safety_pb2 as safety_pb2
     import agi.proto_gen.safety_pb2_grpc as safety_pb2_grpc
+
     HAVE_PROTO = True
 except ImportError:  # pragma: no cover
     safety_pb2 = None
@@ -49,11 +49,14 @@ class InActionSafetyService:
         summary = self._step_to_summary(request)
         verdict: SafetyVerdict = self.engine.check_step(summary)
 
-        self.fabric.publish("safety.in_action.check", {
-            "decision": verdict.decision,
-            "risk_score": verdict.risk_score,
-            "reasons": verdict.reasons,
-        })
+        self.fabric.publish(
+            "safety.in_action.check",
+            {
+                "decision": verdict.decision,
+                "risk_score": verdict.risk_score,
+                "reasons": verdict.reasons,
+            },
+        )
 
         resp = safety_pb2.InActionResponse()  # type: ignore
         resp.decision = verdict.decision
@@ -85,6 +88,7 @@ class InActionSafetyService:
 
 def main():
     InActionSafetyService().run()
+
 
 if __name__ == "__main__":
     main()

@@ -1,4 +1,3 @@
-\
 """
 Safe YAML config loader for AGI-HPC services.
 """
@@ -8,8 +7,10 @@ from typing import Any, Dict
 import yaml
 import os
 
+
 class ConfigError(Exception):
     pass
+
 
 @dataclass
 class ServiceConfig:
@@ -18,6 +19,7 @@ class ServiceConfig:
     event_uri: str
     metrics_port: int
     extra: Dict[str, Any]
+
 
 def load_config(path: str) -> ServiceConfig:
     if not os.path.exists(path):

@@ -1,4 +1,3 @@
-
 """
 Metacognition Service for AGI-HPC.
 
@@ -21,8 +20,9 @@ from agi.core.api.grpc_server import GRPCServer
 from agi.proto_gen.meta_pb2 import MetaReviewResponse, MetaReviewRequest
 from agi.proto_gen.meta_pb2_grpc import (
     MetacognitionServiceServicer,
-    add_MetacognitionServiceServicer_to_server
+    add_MetacognitionServiceServicer_to_server,
 )
+
 
 class MetacognitionEngine:
     """
@@ -77,16 +77,17 @@ class MetacognitionServicer(MetacognitionServiceServicer):
         confidence, issues, decision = self.engine.evaluate(request)
 
         # Publish meta event
-        self.fabric.publish("meta.review", {
-            "confidence": confidence,
-            "issues": list(issues),
-            "decision": int(decision),
-        })
+        self.fabric.publish(
+            "meta.review",
+            {
+                "confidence": confidence,
+                "issues": list(issues),
+                "decision": int(decision),
+            },
+        )
 
         return MetaReviewResponse(
-            confidence=confidence,
-            issues=issues,
-            decision=decision
+            confidence=confidence, issues=issues, decision=decision
         )
 
 
@@ -99,9 +100,7 @@ class MetaService:
 
     def run(self):
         servicer = MetacognitionServicer(self.engine, self.fabric)
-        add_MetacognitionServiceServicer_to_server(
-            servicer, self.grpc_server.server
-        )
+        add_MetacognitionServiceServicer_to_server(servicer, self.grpc_server.server)
 
         print("[META] Metacognition service running...")
         self.grpc_server.start()

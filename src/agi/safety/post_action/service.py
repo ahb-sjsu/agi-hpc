@@ -1,4 +1,3 @@
-
 """
 Post-Action Safety Service.
 
@@ -24,6 +23,7 @@ from agi.safety.rules.engine import SafetyRuleEngine, SafetyVerdict
 try:
     import agi.proto_gen.safety_pb2 as safety_pb2
     import agi.proto_gen.safety_pb2_grpc as safety_pb2_grpc
+
     HAVE_PROTO = True
 except ImportError:  # pragma: no cover
     safety_pb2 = None
@@ -50,11 +50,14 @@ class PostActionSafetyService:
         summary = self._outcome_to_summary(request)
         verdict: SafetyVerdict = self.engine.assess_outcome(summary)
 
-        self.fabric.publish("safety.post_action.analyze", {
-            "decision": verdict.decision,
-            "risk_score": verdict.risk_score,
-            "reasons": verdict.reasons,
-        })
+        self.fabric.publish(
+            "safety.post_action.analyze",
+            {
+                "decision": verdict.decision,
+                "risk_score": verdict.risk_score,
+                "reasons": verdict.reasons,
+            },
+        )
 
         resp = safety_pb2.PostActionResponse()  # type: ignore
         resp.decision = verdict.decision
@@ -64,7 +67,9 @@ class PostActionSafetyService:
 
     def run(self):
         if not HAVE_PROTO:
-            print("[SAFETY-POST] WARNING: safety_pb2_grpc not available. gRPC not wired.")
+            print(
+                "[SAFETY-POST] WARNING: safety_pb2_grpc not available. gRPC not wired."
+            )
             self.grpc.start()
             self.grpc.wait()
             return
@@ -86,6 +91,7 @@ class PostActionSafetyService:
 
 def main():
     PostActionSafetyService().run()
+
 
 if __name__ == "__main__":
     main()

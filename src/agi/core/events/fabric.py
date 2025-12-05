@@ -1,4 +1,3 @@
-\
 """
 Event fabric stub.
 
@@ -8,6 +7,7 @@ Later replace with UCX/ZeroMQ-based transport for inter-node communication.
 
 from typing import Callable, Dict, List
 import threading
+
 
 class EventFabric:
     def __init__(self):

@@ -1,4 +1,3 @@
-
 """
 Procedural Memory Service (AGI-HPC)
 
@@ -17,13 +16,17 @@ from agi.core.events.fabric import EventFabric
 from agi.core.api.grpc_server import GRPCServer
 
 from agi.proto_gen.memory_pb2 import (
-    Skill, SkillGetResponse, SkillGetRequest,
-    SkillSearchResponse, SkillSearchRequest,
+    Skill,
+    SkillGetResponse,
+    SkillGetRequest,
+    SkillSearchResponse,
+    SkillSearchRequest,
 )
 from agi.proto_gen.memory_pb2_grpc import (
     ProceduralServiceServicer,
-    add_ProceduralServiceServicer_to_server
+    add_ProceduralServiceServicer_to_server,
 )
+
 
 class SkillCatalog:
     def __init__(self):
@@ -38,6 +41,7 @@ class SkillCatalog:
     def search(self, tags):
         # TODO: real filtering
         return [s for s in self.skills.values() if True]
+
 
 class ProceduralMemServicer(ProceduralServiceServicer):
     def __init__(self, catalog: SkillCatalog, fabric: EventFabric):
@@ -60,6 +64,7 @@ class ProceduralMemServicer(ProceduralServiceServicer):
     #     self.catalog.put(request.skill)
     #     return Empty()
 
+
 class ProceduralMemoryService:
     def __init__(self, config_path="configs/memory_config.yaml"):
         self.config = load_config(config_path)
@@ -74,8 +79,10 @@ class ProceduralMemoryService:
         self.grpc.start()
         self.grpc.wait()
 
+
 def main():
     ProceduralMemoryService().run()
+
 
 if __name__ == "__main__":
     main()

@@ -1,4 +1,3 @@
-
 """
 Semantic Memory Service (AGI-HPC)
 
@@ -17,15 +16,20 @@ from agi.core.events.fabric import EventFabric
 from agi.core.api.grpc_server import GRPCServer
 
 from agi.proto_gen.memory_pb2 import (
-    SemanticWriteResponse, SemanticQueryResponse, SemanticHit, SemanticEntry
+    SemanticWriteResponse,
+    SemanticQueryResponse,
+    SemanticHit,
+    SemanticEntry,
 )
 from agi.proto_gen.memory_pb2_grpc import (
     SemanticServiceServicer,
-    add_SemanticServiceServicer_to_server
+    add_SemanticServiceServicer_to_server,
 )
+
 
 class InMemoryVectorStore:
     """A tiny placeholder vector DB implementation."""
+
     def __init__(self):
         self.entries: Dict[str, SemanticEntry] = {}
 
@@ -43,6 +47,7 @@ class InMemoryVectorStore:
             results.append(SemanticHit(entry=e, score=1.0))
         return results
 
+
 class SemanticMemServicer(SemanticServiceServicer):
     def __init__(self, store: InMemoryVectorStore, fabric: EventFabric):
         self.store = store
@@ -50,14 +55,13 @@ class SemanticMemServicer(SemanticServiceServicer):
 
     def Write(self, request, context):
         self.store.write(request.entries)
-        self.fabric.publish("memory.semantic.write", {
-            "count": len(request.entries)
-        })
+        self.fabric.publish("memory.semantic.write", {"count": len(request.entries)})
         return SemanticWriteResponse(ids=[e.id for e in request.entries])
 
     def Query(self, request, context):
         hits = self.store.query(request.query_embedding, request.top_k)
         return SemanticQueryResponse(hits=hits)
+
 
 class SemanticMemoryService:
     def __init__(self, config_path="configs/memory_config.yaml"):
@@ -73,8 +77,10 @@ class SemanticMemoryService:
         self.grpc.start()
         self.grpc.wait()
 
+
 def main():
     SemanticMemoryService().run()
+
 
 if __name__ == "__main__":
     main()

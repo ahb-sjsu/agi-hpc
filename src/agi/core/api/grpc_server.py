@@ -1,10 +1,10 @@
-\
 """
 Reusable gRPC server utilities for AGI-HPC services.
 """
 
 import grpc
 from concurrent import futures
+
 
 class GRPCServer:
     def __init__(self, port: int):

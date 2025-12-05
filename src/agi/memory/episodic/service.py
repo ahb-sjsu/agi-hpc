@@ -1,4 +1,3 @@
-
 """
 Episodic Memory Service (AGI-HPC)
 
@@ -20,15 +19,19 @@ from agi.core.events.fabric import EventFabric
 from agi.core.api.grpc_server import GRPCServer
 
 from agi.proto_gen.memory_pb2 import (
-    EpisodicAppendResponse, EpisodicQueryResponse, EpisodicEvent
+    EpisodicAppendResponse,
+    EpisodicQueryResponse,
+    EpisodicEvent,
 )
 from agi.proto_gen.memory_pb2_grpc import (
     EpisodicServiceServicer,
-    add_EpisodicServiceServicer_to_server
+    add_EpisodicServiceServicer_to_server,
 )
+
 
 class AppendOnlyLog:
     """Simple append-only JSONL-based store for episodic events."""
+
     def __init__(self, root: Path):
         self.root = root
         self.root.mkdir(parents=True, exist_ok=True)
@@ -38,14 +41,19 @@ class AppendOnlyLog:
         fname = self.root / f"events_{ts}.jsonl"
         with fname.open("w", encoding="utf8") as f:
             for e in events:
-                f.write(json.dumps({
-                    "episode_id": e.episode_id,
-                    "step_index": e.step_index,
-                    "event_type": e.event_type,
-                    "timestamp_ms": e.timestamp_ms,
-                    "payload": e.payload_uri,
-                    "tags": dict(e.tags),
-                }) + "\n")
+                f.write(
+                    json.dumps(
+                        {
+                            "episode_id": e.episode_id,
+                            "step_index": e.step_index,
+                            "event_type": e.event_type,
+                            "timestamp_ms": e.timestamp_ms,
+                            "payload": e.payload_uri,
+                            "tags": dict(e.tags),
+                        }
+                    )
+                    + "\n"
+                )
 
     def query_all(self):
         results = []
@@ -55,6 +63,7 @@ class AppendOnlyLog:
                     results.append(json.loads(line))
         return results
 
+
 class EpisodicMemServicer(EpisodicServiceServicer):
     def __init__(self, log: AppendOnlyLog, fabric: EventFabric):
         self.log = log
@@ -62,9 +71,7 @@ class EpisodicMemServicer(EpisodicServiceServicer):
 
     def Append(self, request, context):
         self.log.append(request.events)
-        self.fabric.publish("memory.episodic.append", {
-            "count": len(request.events)
-        })
+        self.fabric.publish("memory.episodic.append", {"count": len(request.events)})
         return EpisodicAppendResponse()
 
     def Query(self, request, context):
@@ -73,15 +80,18 @@ class EpisodicMemServicer(EpisodicServiceServicer):
         # Convert dict -> EpisodicEvent
         events = []
         for r in raw[: request.limit or 1000]:
-            events.append(EpisodicEvent(
-                episode_id=r["episode_id"],
-                step_index=r["step_index"],
-                event_type=r["event_type"],
-                timestamp_ms=r["timestamp_ms"],
-                payload_uri=r["payload"],
-                tags=r["tags"],
-            ))
+            events.append(
+                EpisodicEvent(
+                    episode_id=r["episode_id"],
+                    step_index=r["step_index"],
+                    event_type=r["event_type"],
+                    timestamp_ms=r["timestamp_ms"],
+                    payload_uri=r["payload"],
+                    tags=r["tags"],
+                )
+            )
         return EpisodicQueryResponse(events=events)
+
 
 class EpisodicMemoryService:
     def __init__(self, config_path="configs/memory_config.yaml"):
@@ -97,8 +107,10 @@ class EpisodicMemoryService:
         self.grpc.start()
         self.grpc.wait()
 
+
 def main():
     EpisodicMemoryService().run()
+
 
 if __name__ == "__main__":
     main()

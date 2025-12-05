@@ -1,4 +1,3 @@
-
 """
 Pre-Action Safety Service.
 
@@ -26,6 +25,7 @@ from agi.safety.rules.engine import SafetyRuleEngine, SafetyVerdict
 try:
     import agi.proto_gen.safety_pb2 as safety_pb2
     import agi.proto_gen.safety_pb2_grpc as safety_pb2_grpc
+
     HAVE_PROTO = True
 except ImportError:  # pragma: no cover
     safety_pb2 = None
@@ -54,11 +54,14 @@ class PreActionSafetyService:
         verdict: SafetyVerdict = self.engine.check_plan(summary)
 
         # Emit event
-        self.fabric.publish("safety.pre_action.check", {
-            "decision": verdict.decision,
-            "risk_score": verdict.risk_score,
-            "reasons": verdict.reasons,
-        })
+        self.fabric.publish(
+            "safety.pre_action.check",
+            {
+                "decision": verdict.decision,
+                "risk_score": verdict.risk_score,
+                "reasons": verdict.reasons,
+            },
+        )
 
         # Map back into proto
         resp = safety_pb2.PreActionResponse()  # type: ignore
@@ -69,7 +72,9 @@ class PreActionSafetyService:
 
     def run(self):
         if not HAVE_PROTO:
-            print("[SAFETY-PRE] WARNING: safety_pb2_grpc not available. gRPC not wired.")
+            print(
+                "[SAFETY-PRE] WARNING: safety_pb2_grpc not available. gRPC not wired."
+            )
             self.grpc.start()
             self.grpc.wait()
             return
@@ -92,6 +97,7 @@ class PreActionSafetyService:
 
 def main():
     PreActionSafetyService().run()
+
 
 if __name__ == "__main__":
     main()

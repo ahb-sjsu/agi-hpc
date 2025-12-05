@@ -1,4 +1,3 @@
-
 """
 Safety Rule Engine for AGI-HPC.
 
@@ -11,12 +10,15 @@ This is the central place where safety policies are:
 from dataclasses import dataclass
 from typing import List, Dict, Any
 
+
 @dataclass
 class SafetyVerdict:
     """Result of a safety check."""
-    decision: str          # "ALLOW", "BLOCK", "REVISE"
-    risk_score: float      # 0.0 (no risk) → 1.0 (max risk)
-    reasons: List[str]     # human-readable explanations
+
+    decision: str  # "ALLOW", "BLOCK", "REVISE"
+    risk_score: float  # 0.0 (no risk) → 1.0 (max risk)
+    reasons: List[str]  # human-readable explanations
+
 
 class SafetyRuleEngine:
     def __init__(self, config: Any):
