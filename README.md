@@ -23,136 +23,124 @@ This repository provides the **full scaffolding and automation tools** necessary
 
 Below is a high-level diagram of the full AGI-HPC multi-service system:
 ```mermaid
+%% MUCH MORE READABLE VERSION
 flowchart LR
-    %% ============================================================
-    %%  TOP LEVEL SYSTEM
-    %% ============================================================
+    %% Global styling for better readability
+    classDef bigbox fill:#fffde7,stroke:#666,stroke-width:2px,color:#000,rx:6px,ry:6px,font-size:16px;
+    classDef header font-size:20px,font-weight:bold;
+
+    %% Top-level
     subgraph HPC_Cluster["🏔️ HPC Cluster (SJSU CoE)"]
     direction LR
 
-        %% ========================================================
         %% Left Hemisphere
-        %% ========================================================
         subgraph LH["🧠 Left Hemisphere (Reasoning + Planning)"]
         direction TB
-            LH_RPC["gRPC Server\nPlanService / MetaService"]
+            LH_RPC["gRPC Server<br/>PlanService / MetaService"]
             LH_MEM["Semantic Memory Queries"]
             LH_SAFETY["Pre-Action Safety RPC"]
-            LH_META["Metacognition Client\n(ReviewPlan)"]
-            LH_EVENTS["EventFabric Publisher\n(plan.step_ready)"]
+            LH_META["Metacognition Client<br/>(ReviewPlan)"]
+            LH_EVENTS["EventFabric Publisher<br/>(plan.step_ready)"]
         end
 
-        %% ========================================================
         %% Right Hemisphere
-        %% ========================================================
         subgraph RH["👁️ Right Hemisphere (Perception + World Model + Control)"]
         direction TB
-            RH_RPC["gRPC Server\nSimulatePlan / ControlService"]
-            RH_PERCEPTION["Perception Pipeline\n(vision encoders, object detection)"]
-            RH_WM["World Model\n(short-horizon physics & prediction)"]
+            RH_RPC["gRPC Server<br/>SimulatePlan / ControlService"]
+            RH_PERCEPTION["Perception Pipeline<br/>(vision encoders, object detection)"]
+            RH_WM["World Model<br/>(short-horizon physics & prediction)"]
             RH_SAFETY["In-Action Safety RPC"]
             RH_POST["Post-Action Safety RPC"]
-            RH_EVENTS["EventFabric Publisher\n(perception.state_update,\n simulation.result)"]
+            RH_EVENTS["EventFabric Publisher<br/>(perception.state_update,<br/>simulation.result)"]
         end
 
-        %% ========================================================
-        %% Memory Subsystem
-        %% ========================================================
+        %% Memory
         subgraph MEM["💾 Memory Subsystem"]
         direction TB
             subgraph SEM["📚 Semantic Memory"]
                 SEM_RPC["SemanticService RPC"]
-                SEM_STORE["Vector Store (Qdrant/FAISS)\nConcepts, skills, facts"]
+                SEM_STORE["Vector Store (Qdrant/FAISS)<br/>Concepts, skills, facts"]
             end
             subgraph EPI["🎞️ Episodic Memory"]
                 EPI_RPC["EpisodicService RPC"]
-                EPI_LOG["Append-only Logs\n(JSONL/Parquet)"]
+                EPI_LOG["Append-only Logs (JSONL/Parquet)"]
             end
             subgraph PROC["⚙️ Procedural Memory"]
                 PROC_RPC["ProceduralService RPC"]
-                PROC_SKILLS["Skill Catalog\n(pre/postconditions,\n policies)"]
+                PROC_SKILLS["Skill Catalog<br/>(pre/postconditions, policies)"]
             end
         end
 
-        %% ========================================================
-        %% Safety Subsystem
-        %% ========================================================
+        %% Safety
         subgraph SAFETY["🛡️ Safety Subsystem"]
         direction TB
-            PRE["Pre-Action Safety\n(CheckPlan)"]
-            INACT["In-Action Safety\n(CheckStep)"]
-            POST["Post-Action Safety\n(AnalyzeOutcome)"]
-            RULES["Rule Engine\n(banned tools, constraints,\n risk scoring, thresholds)"]
+            PRE["Pre-Action Safety<br/>(CheckPlan)"]
+            INACT["In-Action Safety<br/>(CheckStep)"]
+            POST["Post-Action Safety<br/>(AnalyzeOutcome)"]
+            RULES["Rule Engine<br/>(banned tools, constraints,<br/>risk scoring, thresholds)"]
         end
 
-        %% ========================================================
         %% Metacognition
-        %% ========================================================
         subgraph META["🔍 Metacognition"]
         direction TB
             META_RPC["MetacognitionService RPC"]
-            META_ENGINE["Evaluation Engine\n(confidence, issues,\n ACCEPT/REVISE/REJECT)"]
+            META_ENGINE["Evaluation Engine<br/>(confidence, issues,<br/>ACCEPT/REVISE/REJECT)"]
         end
 
-        %% ========================================================
         %% Event Fabric
-        %% ========================================================
         subgraph FABRIC["🔌 Event Fabric (UCX/ZeroMQ)"]
         direction TB
-            TOPICS["Topics:\nperception.state_update\nplan.step_ready\nsimulation.result\nsafety.*\nmeta.review"]
+            TOPICS["Topics:<br/>perception.state_update<br/>plan.step_ready<br/>simulation.result<br/>safety.*<br/>meta.review"]
         end
 
     end
 
-    %% ============================================================
-    %% External Environment
-    %% ============================================================
-    subgraph ENV["🌍 Virtual Environment\n(Unity or MuJoCo)\n(runs on laptop)"]
+    %% External environment
+    subgraph ENV["🌍 Virtual Environment<br/>(Unity or MuJoCo)<br/>(runs on laptop)"]
     direction TB
-        CAM["Camera Frames\nRGB-D / metadata"]
-        STEP_API["HTTP/gRPC API\nStep(), Reset(), GetState()"]
+        CAM["Camera Frames<br/>RGB-D / metadata"]
+        STEP_API["HTTP/gRPC API<br/>Step(), Reset(), GetState()"]
     end
 
-    %% ============================================================
-    %%  CONNECTIONS
-    %% ============================================================
-
-    %% Environment → RH
+    %% Connections
     CAM --> RH_PERCEPTION
     STEP_API <--> RH_RPC
 
-    %% Event Fabric links
     RH_EVENTS --> FABRIC
     LH_EVENTS --> FABRIC
+
     FABRIC --> LH_MEM
     FABRIC --> RH_WM
-
     FABRIC --> LH
     FABRIC --> RH
 
-    %% LH RPC to memory & safety & meta
     LH_MEM --> SEM_RPC
     LH ---> SAFETY
     LH -- gRPC ReviewPlan --> META
 
-    %% RH RPC to safety
     RH --> INACT
     RH --> POST
 
-    %% Memory internal wiring
     SEM_RPC --> SEM_STORE
     EPI_RPC --> EPI_LOG
     PROC_RPC --> PROC_SKILLS
 
-    %% Safety uses rule engine
     PRE --> RULES
     INACT --> RULES
     POST --> RULES
 
     META_RPC --> META_ENGINE
 
-    %% LH -> RH plan dispatch
     LH_EVENTS --> RH
+
+    %% Apply bigbox style
+    class LH_RPC,LH_MEM,LH_SAFETY,LH_META,LH_EVENTS bigbox;
+    class RH_RPC,RH_PERCEPTION,RH_WM,RH_SAFETY,RH_POST,RH_EVENTS bigbox;
+    class SEM_RPC,SEM_STORE,EPI_RPC,EPI_LOG,PROC_RPC,PROC_SKILLS bigbox;
+    class PRE,INACT,POST,RULES bigbox;
+    class META_RPC,META_ENGINE bigbox;
+    class TOPICS bigbox;
+    class CAM,STEP_API bigbox;
 ```
 ### Major subsystems
 
