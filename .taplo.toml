@@ -1,0 +1,14 @@
+[format]
+allowed_blank_lines = 1
+indent_string = "    "
+column_width = 88
+
+[linter]
+# High-signal warnings
+allowed_duplicate_keys = false
+allowed_empty_keys = false
+key_ordering = "strict"
+
+[linter.rules]
+# enforce key ordering for project sections
+project-order = true

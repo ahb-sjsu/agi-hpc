@@ -28,37 +28,48 @@ dev = [
     "pytest>=7.4",
     "pytest-cov>=4.1",
     "pytest-asyncio>=0.23",
-    "ruff>=0.4.0",
-    "black>=24.2.0",
-    "mypy>=1.10.0",
-    "pre-commit>=3.6.0",
+    "black>=24.2",
+    "ruff>=0.4",
+    "mypy>=1.10",
+    "pre-commit>=3.6",
+    "taplo>=0.9",
 ]
 
 ci = [
     "pytest>=7.4",
     "pytest-cov>=4.1",
-    "ruff>=0.4.0",
-    "black>=24.2.0",
-    "mypy>=1.10.0",
-    "coverage>=7.5.0",
+    "black>=24.2",
+    "ruff>=0.4",
+    "mypy>=1.10",
+    "coverage>=7.5",
+    "taplo>=0.9",
 ]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
+# -----------------------------
+# Ruff
+# -----------------------------
 [tool.ruff]
 line-length = 88
-target-version = "py311"
 extend-select = ["E", "F", "W", "I", "B", "C90"]
 ignore = ["E203", "W503"]
+target-version = "py311"
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
 
+# -----------------------------
+# Black
+# -----------------------------
 [tool.black]
 line-length = 88
 target-version = ["py310", "py311", "py312"]
 
+# -----------------------------
+# MyPy
+# -----------------------------
 [tool.mypy]
 python_version = "3.11"
 ignore_missing_imports = true
@@ -66,10 +77,16 @@ strict = false
 warn_unused_ignores = true
 pretty = true
 
+# -----------------------------
+# Pytest
+# -----------------------------
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 addopts = "--disable-warnings --maxfail=1 -q"
 
+# -----------------------------
+# Coverage
+# -----------------------------
 [tool.coverage.run]
 source = ["src/agi"]
 branch = true
@@ -78,6 +95,9 @@ branch = true
 show_missing = true
 skip_covered = true
 
+# -----------------------------
+# Pre-commit (array-of-tables syntax)
+# -----------------------------
 [[tool.pre-commit.repos]]
 repo = "https://github.com/charliermarsh/ruff-pre-commit"
 rev = "v0.4.0"
@@ -92,4 +112,3 @@ hooks = [{ id = "black" }]
 repo = "https://github.com/pre-commit/mirrors-mypy"
 rev = "v1.10.0"
 hooks = [{ id = "mypy" }]
-

@@ -65,6 +65,15 @@ jobs:
           python generate_protos.py --clean
 
       # -----------------------------
+      # Validate TOML Syntax in GitHub Actions
+      # -----------------------------
+      - name: Validate pyproject.toml syntax (Taplo)
+        run: |
+          pip install taplo
+          taplo lint pyproject.toml
+
+
+      # -----------------------------
       # Lint (Black, isort, flake8)
       # -----------------------------
       - name: Lint source files
