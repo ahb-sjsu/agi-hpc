@@ -81,6 +81,13 @@ jobs:
           black src tests
 
       # -----------------------------
+      # Let Ruff autofix everything
+      # -----------------------------
+      - name: Auto-fix with Ruff
+        run: |
+          ruff check --fix src tests
+        
+      # -----------------------------
       # Validate TOML syntax
       # -----------------------------
       - name: Validate pyproject.toml syntax (Taplo)
@@ -95,7 +102,6 @@ jobs:
         run: |
           black --check src tests
           ruff check src tests
-          flake8 src tests
 
       # -----------------------------
       # Run tests
