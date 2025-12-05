@@ -63,6 +63,7 @@ jobs:
       - name: Generate Python GRPC stubs
         run: |
           python generate_protos.py --clean
+          black src tests
 
       # -----------------------------
       # Validate TOML Syntax in GitHub Actions
