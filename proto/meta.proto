@@ -1,1 +1,3 @@
+syntax = "proto3";
+package agi.meta.v1;
 // TODO proto

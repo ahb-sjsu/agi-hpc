@@ -1,1 +1,3 @@
+syntax = "proto3";
+package agi.memory.v1;
 // TODO proto
