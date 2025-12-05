@@ -94,7 +94,7 @@ jobs:
       - name: Lint source files
         run: |
           black --check src tests
-          isort --check-only src tests
+          ruff check src tests
           flake8 src tests
 
       # -----------------------------
