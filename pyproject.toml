@@ -54,7 +54,7 @@ where = ["src"]
 [tool.ruff]
 line-length = 88
 extend-select = ["E", "F", "W", "I", "B", "C90"]
-ignore = ["E203", "W503"]
+ignore = ["E203"]
 target-version = "py311"
 
 [tool.ruff.lint.isort]
