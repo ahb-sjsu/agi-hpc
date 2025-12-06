@@ -25,8 +25,6 @@ Public API:
     fabric.subscribe("topic", handler)
     fabric.publish("topic", {"data": 1})
     fabric.close()
-
-All messages are JSON encoded.
 """
 
 from __future__ import annotations
@@ -37,39 +35,26 @@ import logging
 import os
 import threading
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional, Protocol, Sequence, runtime_checkable
+from typing import Callable, Dict, List, Optional, Protocol, runtime_checkable
 
 logger = logging.getLogger(__name__)
 
-
-# ---------------------------------------------------------------------------
-# Optional dependencies
-# ---------------------------------------------------------------------------
-
-try:
+try:  # pyzmq optional
     import zmq  # type: ignore
 except Exception:
     zmq = None  # type: ignore
 
-try:
+try:  # ucx-py optional
     import ucp  # type: ignore
 except Exception:
     ucp = None  # type: ignore
 
 
-# ---------------------------------------------------------------------------
-# Config
-# ---------------------------------------------------------------------------
-
 DEFAULT_MODE = os.getenv("AGI_FABRIC_MODE", "local").lower()
-
 DEFAULT_PUB_ENDPOINT = os.getenv("AGI_FABRIC_PUB_ENDPOINT", "tcp://fabric:5556")
 DEFAULT_SUB_ENDPOINT = os.getenv("AGI_FABRIC_SUB_ENDPOINT", "tcp://fabric:5555")
-
 DEFAULT_UCX_ENDPOINT = os.getenv("AGI_FABRIC_UCX_ENDPOINT", "tcp://fabric:13337")
-
 DEFAULT_IDENTITY = os.getenv("AGI_FABRIC_IDENTITY", "node")
-
 
 EventHandler = Callable[[dict], None]
 
@@ -102,7 +87,6 @@ class LocalBackend:
     def publish(self, topic: str, message: dict) -> None:
         with self._lock:
             handlers = list(self._subscribers.get(topic, []))
-
         for fn in handlers:
             try:
                 fn(message)
@@ -136,7 +120,6 @@ class ZmqBackend:
         sub_endpoint: str = DEFAULT_SUB_ENDPOINT,
         identity: str = DEFAULT_IDENTITY,
     ) -> None:
-
         if zmq is None:
             raise RuntimeError("pyzmq not installed")
 
@@ -198,23 +181,20 @@ class ZmqBackend:
         logger.info("[fabric][zmq] closed")
 
     # ---------------------------------------------------------
-    # Refactored recv loop (fixes C901)
+    # ZMQ recv loop (refactored to avoid C901)
     # ---------------------------------------------------------
 
     def _recv_loop(self) -> None:
         poller = zmq.Poller()
         poller.register(self._sub, zmq.POLLIN)
-
         logger.info("[fabric][zmq] recv loop started id=%s", self._identity)
 
         while not self._stop_event.is_set():
             if not self._poll_ready(poller):
                 continue
-
             frames = self._recv_frames()
             if frames is None:
                 continue
-
             self._handle_frames(frames)
 
         logger.info("[fabric][zmq] recv loop exiting id=%s", self._identity)
@@ -269,7 +249,7 @@ class ZmqBackend:
 @dataclass
 class _UcxState:
     endpoint_str: str
-    ep: Optional["ucp.Endpoint"] = None
+    ep: Optional["ucp.Endpoint"] = None  # type: ignore[name-defined]
     connected: bool = False
 
 
@@ -283,7 +263,6 @@ class UcxBackend:
         endpoint: str = DEFAULT_UCX_ENDPOINT,
         identity: str = DEFAULT_IDENTITY,
     ) -> None:
-
         if ucp is None:
             raise RuntimeError("ucx-py not installed")
 
@@ -294,7 +273,7 @@ class UcxBackend:
         self._lock = threading.Lock()
         self._stop_event = threading.Event()
 
-        # Run UCX in a dedicated event loop thread
+        # Dedicated event loop thread
         self._loop = asyncio.new_event_loop()
         self._thread = threading.Thread(
             target=self._run_loop,
@@ -303,13 +282,14 @@ class UcxBackend:
         )
         self._thread.start()
 
-        # Initialize UCX on loop thread
         self._loop.call_soon_threadsafe(ucp.init)
-
-        # Connect + start recv loop
         asyncio.run_coroutine_threadsafe(self._connect_and_loop(), self._loop)
 
-        logger.info("[fabric][ucx] initialized id=%s endpoint=%s", identity, endpoint)
+        logger.info(
+            "[fabric][ucx] initialized id=%s endpoint=%s",
+            identity,
+            endpoint,
+        )
 
     # ---------------------------------------------------------
     # Public API
@@ -321,7 +301,7 @@ class UcxBackend:
         size_prefix = len(wire).to_bytes(4, "little")
         data = size_prefix + wire
 
-        async def _send():
+        async def _send() -> None:
             if not self._state.connected or self._state.ep is None:
                 return
             try:
@@ -340,7 +320,7 @@ class UcxBackend:
     def close(self) -> None:
         self._stop_event.set()
 
-        async def _shutdown():
+        async def _shutdown() -> None:
             try:
                 if self._state.ep is not None:
                     await self._state.ep.close()
@@ -367,7 +347,7 @@ class UcxBackend:
         logger.info("[fabric][ucx] closed id=%s", self._identity)
 
     # ---------------------------------------------------------
-    # UCX loop logic (refactored to fix C901)
+    # UCX loop logic (C901-friendly helpers)
     # ---------------------------------------------------------
 
     def _run_loop(self) -> None:
@@ -395,9 +375,7 @@ class UcxBackend:
 
         logger.info("[fabric][ucx] recv loop exiting")
 
-    # ---- helpers ----
-
-    def _parse_ucx_addr(self, addr: str):
+    def _parse_ucx_addr(self, addr: str) -> tuple[str, int]:
         if not addr.startswith("tcp://"):
             logger.warning("[fabric][ucx] only tcp:// supported: %s", addr)
         host_port = addr.replace("tcp://", "")
@@ -417,7 +395,6 @@ class UcxBackend:
             payload = bytearray(size)
             await ep.recv(payload)
             return payload
-
         except Exception:
             if not self._stop_event.is_set():
                 logger.exception("[fabric][ucx] recv error")
@@ -440,7 +417,6 @@ class UcxBackend:
 
         with self._lock:
             handlers = list(self._subscribers.get(topic, []))
-
         for fn in handlers:
             try:
                 fn(msg)
@@ -455,7 +431,7 @@ class UcxBackend:
 
 class EventFabric:
     """
-    High-level API that selects a backend.
+    High-level API selecting backend: local, zmq, or ucx.
     """
 
     def __init__(
@@ -467,33 +443,28 @@ class EventFabric:
         ucx_endpoint: Optional[str] = None,
         identity: Optional[str] = None,
     ) -> None:
-
         mode = mode.lower()
         identity = identity or DEFAULT_IDENTITY
 
         if mode == "local":
-            backend = LocalBackend()
-
+            backend: FabricBackend = LocalBackend()
         elif mode == "zmq":
             backend = ZmqBackend(
                 pub_endpoint=pub_endpoint or DEFAULT_PUB_ENDPOINT,
                 sub_endpoint=sub_endpoint or DEFAULT_SUB_ENDPOINT,
                 identity=identity,
             )
-
         elif mode == "ucx":
             backend = UcxBackend(
                 endpoint=ucx_endpoint or DEFAULT_UCX_ENDPOINT,
                 identity=identity,
             )
-
         else:
             raise ValueError(f"Unknown AGI_FABRIC_MODE={mode!r}")
 
         self._backend = backend
         logger.info("[fabric] initialized mode=%s id=%s", mode, identity)
 
-    # Convenience delegation
     def publish(self, topic: str, message: dict) -> None:
         self._backend.publish(topic, message)
 
