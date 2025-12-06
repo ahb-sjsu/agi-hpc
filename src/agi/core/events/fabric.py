@@ -2,11 +2,11 @@
 Event fabric abstraction for AGI-HPC.
 
 Backends:
-    - local : in-process pub/sub (no networking, best for tests and single-process dev)
-    - zmq   : ZeroMQ PUB/SUB over TCP (simple multi-process / multi-node)
-    - ucx   : UCX (via ucx-py / ucp) for low-latency HPC inter-node transport
+    - local : in-process pub/sub (no networking, ideal for tests)
+    - zmq   : ZeroMQ PUB/SUB (simple multi-node)
+    - ucx   : UCX via ucx-py (HPC-grade transport: RDMA, SHM, TCP fallback)
 
-Mode selection is via environment variable:
+Mode selection via environment variable:
 
     AGI_FABRIC_MODE = "local" | "zmq" | "ucx"
 
@@ -16,17 +16,17 @@ Additional configuration:
     AGI_FABRIC_PUB_ENDPOINT = "tcp://fabric:5556"
     AGI_FABRIC_SUB_ENDPOINT = "tcp://fabric:5555"
 
-    # UCX backend (client -> broker/server)
+    # UCX backend
     AGI_FABRIC_UCX_ENDPOINT = "tcp://fabric:13337"
 
 Public API:
 
     fabric = EventFabric()
-    fabric.subscribe("topic.name", handler: Callable[[dict], None])
-    fabric.publish("topic.name", {"payload": 1})
+    fabric.subscribe("topic", handler)
+    fabric.publish("topic", {"data": 1})
     fabric.close()
 
-All messages are JSON-encoded dicts, transported as UTF-8 bytes.
+All messages are JSON encoded.
 """
 
 from __future__ import annotations
@@ -37,25 +37,25 @@ import logging
 import os
 import threading
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional, Protocol, runtime_checkable
+from typing import Callable, Dict, List, Optional, Protocol, Sequence, runtime_checkable
 
 logger = logging.getLogger(__name__)
 
-EventHandler = Callable[[dict], None]
 
 # ---------------------------------------------------------------------------
-# Optional dependencies (pyzmq, ucx-py)
+# Optional dependencies
 # ---------------------------------------------------------------------------
 
-try:  # ZeroMQ backend
-    import zmq  # type: ignore[import]
-except Exception:  # pragma: no cover - optional
-    zmq = None  # type: ignore[assignment]
+try:
+    import zmq  # type: ignore
+except Exception:
+    zmq = None  # type: ignore
 
-try:  # UCX backend
-    import ucp  # type: ignore[import]
-except Exception:  # pragma: no cover - optional
-    ucp = None  # type: ignore[assignment]
+try:
+    import ucp  # type: ignore
+except Exception:
+    ucp = None  # type: ignore
+
 
 # ---------------------------------------------------------------------------
 # Config
@@ -63,13 +63,15 @@ except Exception:  # pragma: no cover - optional
 
 DEFAULT_MODE = os.getenv("AGI_FABRIC_MODE", "local").lower()
 
-# ZMQ
 DEFAULT_PUB_ENDPOINT = os.getenv("AGI_FABRIC_PUB_ENDPOINT", "tcp://fabric:5556")
 DEFAULT_SUB_ENDPOINT = os.getenv("AGI_FABRIC_SUB_ENDPOINT", "tcp://fabric:5555")
 
-# UCX
 DEFAULT_UCX_ENDPOINT = os.getenv("AGI_FABRIC_UCX_ENDPOINT", "tcp://fabric:13337")
+
 DEFAULT_IDENTITY = os.getenv("AGI_FABRIC_IDENTITY", "node")
+
+
+EventHandler = Callable[[dict], None]
 
 
 # ---------------------------------------------------------------------------
@@ -78,28 +80,21 @@ DEFAULT_IDENTITY = os.getenv("AGI_FABRIC_IDENTITY", "node")
 
 @runtime_checkable
 class FabricBackend(Protocol):
-    def publish(self, topic: str, message: dict) -> None:  # pragma: no cover - protocol
+    def publish(self, topic: str, message: dict) -> None:
         ...
 
-    def subscribe(self, topic: str, handler: EventHandler) -> None:  # pragma: no cover
+    def subscribe(self, topic: str, handler: EventHandler) -> None:
         ...
 
-    def close(self) -> None:  # pragma: no cover
+    def close(self) -> None:
         ...
 
 
 # ---------------------------------------------------------------------------
-# Local in-process backend
+# LOCAL BACKEND
 # ---------------------------------------------------------------------------
 
 class LocalBackend:
-    """
-    Simple in-process pub/sub.
-
-    - No networking
-    - Handlers are called synchronously in the caller's thread
-    """
-
     def __init__(self) -> None:
         self._subscribers: Dict[str, List[EventHandler]] = {}
         self._lock = threading.Lock()
@@ -108,23 +103,17 @@ class LocalBackend:
     def publish(self, topic: str, message: dict) -> None:
         with self._lock:
             handlers = list(self._subscribers.get(topic, []))
-        logger.debug(
-            "[fabric][local] publish topic=%s handlers=%d", topic, len(handlers)
-        )
+
         for fn in handlers:
             try:
                 fn(message)
-            except Exception:  # pragma: no cover - defensive
-                logger.exception("[fabric][local] handler error for topic=%s", topic)
+            except Exception:
+                logger.exception("[fabric][local] handler error topic=%s", topic)
 
     def subscribe(self, topic: str, handler: EventHandler) -> None:
         with self._lock:
             self._subscribers.setdefault(topic, []).append(handler)
-        logger.info(
-            "[fabric][local] subscribed topic=%s handler=%s",
-            topic,
-            getattr(handler, "__name__", repr(handler)),
-        )
+        logger.info("[fabric][local] subscribed topic=%s", topic)
 
     def close(self) -> None:
         with self._lock:
@@ -133,20 +122,12 @@ class LocalBackend:
 
 
 # ---------------------------------------------------------------------------
-# ZeroMQ backend
+# ZEROMQ BACKEND
 # ---------------------------------------------------------------------------
 
 class ZmqBackend:
     """
-    ZeroMQ PUB/SUB backend.
-
-    Topology assumption:
-        - One or more 'broker' processes providing XPUB/XSUB bridge
-        - Each node:
-            * connects PUB socket to AGI_FABRIC_PUB_ENDPOINT
-            * connects SUB socket to AGI_FABRIC_SUB_ENDPOINT
-
-    Wire format: multipart message [topic, json_payload]
+    ZeroMQ PUB/SUB with a broker providing XPUB/XSUB.
     """
 
     def __init__(
@@ -155,28 +136,25 @@ class ZmqBackend:
         sub_endpoint: str = DEFAULT_SUB_ENDPOINT,
         identity: str = DEFAULT_IDENTITY,
     ) -> None:
+
         if zmq is None:
-            raise RuntimeError(
-                "ZMQ backend requested but 'pyzmq' is not installed. "
-                "Add 'pyzmq' to dependencies."
-            )
+            raise RuntimeError("pyzmq not installed")
 
         self._ctx = zmq.Context.instance()
         self._pub = self._ctx.socket(zmq.PUB)
         self._sub = self._ctx.socket(zmq.SUB)
+
         self._identity = identity
         self._pub.setsockopt_string(zmq.IDENTITY, identity)
         self._sub.setsockopt_string(zmq.IDENTITY, identity)
 
-        self._subscribers: Dict[str, List[EventHandler]] = {}
-        self._lock = threading.Lock()
-        self._stop_event = threading.Event()
-        self._recv_thread: Optional[threading.Thread] = None
-
         self._pub.connect(pub_endpoint)
         self._sub.connect(sub_endpoint)
 
-        # Start background receiver
+        self._subscribers: Dict[str, List[EventHandler]] = {}
+        self._lock = threading.Lock()
+        self._stop_event = threading.Event()
+
         self._recv_thread = threading.Thread(
             target=self._recv_loop,
             name=f"fabric-zmq-recv-{identity}",
@@ -191,46 +169,37 @@ class ZmqBackend:
             sub_endpoint,
         )
 
+    # ---------------------------------------------------------
+    # Public API
+    # ---------------------------------------------------------
+
     def publish(self, topic: str, message: dict) -> None:
-        payload = json.dumps(message, separators=(",", ":")).encode("utf-8")
+        payload = json.dumps(message).encode("utf-8")
         try:
             self._pub.send_multipart([topic.encode("utf-8"), payload])
-            logger.debug(
-                "[fabric][zmq] publish topic=%s size=%d", topic, len(payload)
-            )
-        except Exception:  # pragma: no cover - defensive
+        except Exception:
             logger.exception("[fabric][zmq] publish failed topic=%s", topic)
 
     def subscribe(self, topic: str, handler: EventHandler) -> None:
         with self._lock:
             self._subscribers.setdefault(topic, []).append(handler)
-
-        # Update SUB socket filter
         self._sub.setsockopt_string(zmq.SUBSCRIBE, topic)
-
-        logger.info(
-            "[fabric][zmq] subscribed topic=%s handler=%s",
-            topic,
-            getattr(handler, "__name__", repr(handler)),
-        )
+        logger.info("[fabric][zmq] subscribed topic=%s", topic)
 
     def close(self) -> None:
         self._stop_event.set()
-        if self._recv_thread and self._recv_thread.is_alive():
+        if self._recv_thread.is_alive():
             self._recv_thread.join(timeout=2.0)
-
         try:
             self._sub.close(linger=0)
-        except Exception:  # pragma: no cover
-            logger.exception("[fabric][zmq] error closing SUB socket")
-
-        try:
             self._pub.close(linger=0)
-        except Exception:  # pragma: no cover
-            logger.exception("[fabric][zmq] error closing PUB socket")
-
-        # Do not terminate shared context; other sockets may exist.
+        except Exception:
+            logger.exception("[fabric][zmq] close error")
         logger.info("[fabric][zmq] closed")
+
+    # ---------------------------------------------------------
+    # Refactored recv loop (fixes C901)
+    # ---------------------------------------------------------
 
     def _recv_loop(self) -> None:
         poller = zmq.Poller()
@@ -239,80 +208,73 @@ class ZmqBackend:
         logger.info("[fabric][zmq] recv loop started id=%s", self._identity)
 
         while not self._stop_event.is_set():
-            try:
-                events = dict(poller.poll(timeout=1000))  # 1s
-            except zmq.ZMQError as exc:  # pragma: no cover - defensive
-                if self._stop_event.is_set():
-                    break
-                logger.exception("[fabric][zmq] poll error: %s", exc)
+            if not self._poll_ready(poller):
                 continue
 
-            if self._sub in events and events[self._sub] & zmq.POLLIN:
-                try:
-                    frames = self._sub.recv_multipart(flags=zmq.NOBLOCK)
-                except zmq.Again:
-                    continue
-                except Exception:  # pragma: no cover
-                    logger.exception("[fabric][zmq] recv_multipart failed")
-                    continue
+            frames = self._recv_frames()
+            if frames is None:
+                continue
 
-                if len(frames) != 2:
-                    logger.warning(
-                        "[fabric][zmq] ignoring malformed message frames=%d",
-                        len(frames),
-                    )
-                    continue
-
-                topic = frames[0].decode("utf-8", errors="ignore")
-                try:
-                    payload = json.loads(frames[1].decode("utf-8"))
-                except Exception:  # pragma: no cover
-                    logger.exception(
-                        "[fabric][zmq] failed to decode JSON for topic=%s", topic
-                    )
-                    continue
-
-                with self._lock:
-                    handlers = list(self._subscribers.get(topic, []))
-
-                logger.debug(
-                    "[fabric][zmq] received topic=%s handlers=%d",
-                    topic,
-                    len(handlers),
-                )
-
-                for fn in handlers:
-                    try:
-                        fn(payload)
-                    except Exception:  # pragma: no cover
-                        logger.exception(
-                            "[fabric][zmq] handler error for topic=%s", topic
-                        )
+            self._handle_frames(frames)
 
         logger.info("[fabric][zmq] recv loop exiting id=%s", self._identity)
 
+    def _poll_ready(self, poller) -> bool:
+        try:
+            events = dict(poller.poll(timeout=1000))
+        except Exception:
+            if not self._stop_event.is_set():
+                logger.exception("[fabric][zmq] poll error")
+            return False
+        return self._sub in events and events[self._sub] & zmq.POLLIN
+
+    def _recv_frames(self) -> Optional[List[bytes]]:
+        try:
+            return self._sub.recv_multipart(flags=zmq.NOBLOCK)
+        except zmq.Again:
+            return None
+        except Exception:
+            logger.exception("[fabric][zmq] recv error")
+            return None
+
+    def _handle_frames(self, frames: List[bytes]) -> None:
+        if len(frames) != 2:
+            logger.warning("[fabric][zmq] malformed frames=%d", len(frames))
+            return
+
+        topic_bytes, data = frames
+        topic = topic_bytes.decode("utf-8", errors="ignore")
+
+        try:
+            msg = json.loads(data.decode("utf-8"))
+        except Exception:
+            logger.exception("[fabric][zmq] JSON decode failed topic=%s", topic)
+            return
+
+        with self._lock:
+            handlers = list(self._subscribers.get(topic, []))
+
+        for fn in handlers:
+            try:
+                fn(msg)
+            except Exception:
+                logger.exception("[fabric][zmq] handler error topic=%s", topic)
+
 
 # ---------------------------------------------------------------------------
-# UCX backend (via ucx-py / ucp)
+# UCX BACKEND
 # ---------------------------------------------------------------------------
 
 @dataclass
-class _UcxClientState:
+class _UcxState:
     endpoint_str: str
-    ep: Optional["ucp.Endpoint"] = None  # type: ignore[name-defined]
+    ep: Optional["ucp.Endpoint"] = None
     connected: bool = False
 
 
 class UcxBackend:
     """
-    UCX-based backend using ucx-py (ucp) for HPC inter-node transport.
-
-    Topology:
-        - Assumes a separate UCX server/broker listening on AGI_FABRIC_UCX_ENDPOINT
-        - This backend connects as a client and sends/receives framed messages.
-
-    Wire format:
-        [4-byte little-endian length][topic utf-8][0x00][json utf-8]
+    High-performance UCX backend.
     """
 
     def __init__(
@@ -320,19 +282,18 @@ class UcxBackend:
         endpoint: str = DEFAULT_UCX_ENDPOINT,
         identity: str = DEFAULT_IDENTITY,
     ) -> None:
+
         if ucp is None:
-            raise RuntimeError(
-                "UCX backend requested but 'ucx-py' (ucp) is not installed. "
-                "Add 'ucx-py' to dependencies."
-            )
+            raise RuntimeError("ucx-py not installed")
 
         self._identity = identity
-        self._state = _UcxClientState(endpoint_str=endpoint)
+        self._state = _UcxState(endpoint_str=endpoint)
+
         self._subscribers: Dict[str, List[EventHandler]] = {}
         self._lock = threading.Lock()
         self._stop_event = threading.Event()
 
-        # Async machinery
+        # Run UCX in a dedicated event loop thread
         self._loop = asyncio.new_event_loop()
         self._thread = threading.Thread(
             target=self._run_loop,
@@ -341,194 +302,158 @@ class UcxBackend:
         )
         self._thread.start()
 
-        # Initialize UCX and schedule connect + recv loop
-        def _init_ucx() -> None:
-            ucp.init()
-        self._loop.call_soon_threadsafe(_init_ucx)
-        asyncio.run_coroutine_threadsafe(self._connect_and_recv(), self._loop)
+        # Initialize UCX on loop thread
+        self._loop.call_soon_threadsafe(ucp.init)
+
+        # Connect + start recv loop
+        asyncio.run_coroutine_threadsafe(self._connect_and_loop(), self._loop)
 
         logger.info("[fabric][ucx] initialized id=%s endpoint=%s", identity, endpoint)
 
-    # Public API ---------------------------------------------------------
+    # ---------------------------------------------------------
+    # Public API
+    # ---------------------------------------------------------
 
     def publish(self, topic: str, message: dict) -> None:
-        """
-        Schedule a UCX send on the background event loop.
-        """
-        data = json.dumps(message, separators=(",", ":")).encode("utf-8")
-        wire = topic.encode("utf-8") + b"\0" + data
-        size_bytes = len(wire).to_bytes(4, "little")
-        payload = size_bytes + wire
+        payload = json.dumps(message).encode("utf-8")
+        wire = topic.encode("utf-8") + b"\0" + payload
+        size_prefix = len(wire).to_bytes(4, "little")
+        data = size_prefix + wire
 
-        async def _send() -> None:
+        async def _send():
             if not self._state.connected or self._state.ep is None:
-                logger.debug(
-                    "[fabric][ucx] publish but not yet connected; dropping message"
-                )
                 return
             try:
-                await self._state.ep.send(payload)
-                logger.debug(
-                    "[fabric][ucx] published topic=%s size=%d", topic, len(payload)
-                )
-            except Exception:  # pragma: no cover
+                await self._state.ep.send(data)
+            except Exception:
                 logger.exception("[fabric][ucx] send failed topic=%s", topic)
 
         if self._loop.is_running():
             asyncio.run_coroutine_threadsafe(_send(), self._loop)
-        else:
-            logger.warning("[fabric][ucx] event loop not running; dropping message")
 
     def subscribe(self, topic: str, handler: EventHandler) -> None:
         with self._lock:
             self._subscribers.setdefault(topic, []).append(handler)
-        logger.info(
-            "[fabric][ucx] subscribed topic=%s handler=%s",
-            topic,
-            getattr(handler, "__name__", repr(handler)),
-        )
+        logger.info("[fabric][ucx] subscribed topic=%s", topic)
 
     def close(self) -> None:
         self._stop_event.set()
 
-        async def _shutdown() -> None:
-            if self._state.ep is not None:
-                try:
+        async def _shutdown():
+            try:
+                if self._state.ep is not None:
                     await self._state.ep.close()
-                except Exception:  # pragma: no cover
-                    logger.exception("[fabric][ucx] error closing endpoint")
+            except Exception:
+                logger.exception("[fabric][ucx] error closing endpoint")
+
             try:
                 ucp.finalize()
-            except Exception:  # pragma: no cover
-                logger.exception("[fabric][ucx] error in ucp.finalize()")
+            except Exception:
+                logger.exception("[fabric][ucx] finalize error")
+
+            self._loop.stop()
 
         if self._loop.is_running():
             fut = asyncio.run_coroutine_threadsafe(_shutdown(), self._loop)
             try:
                 fut.result(timeout=2.0)
-            except Exception:  # pragma: no cover
-                logger.exception("[fabric][ucx] error during shutdown")
-
-            self._loop.call_soon_threadsafe(self._loop.stop)
+            except Exception:
+                pass
 
         if self._thread.is_alive():
             self._thread.join(timeout=2.0)
 
         logger.info("[fabric][ucx] closed id=%s", self._identity)
 
-    # Internal async machinery ------------------------------------------
+    # ---------------------------------------------------------
+    # UCX loop logic (refactored to fix C901)
+    # ---------------------------------------------------------
 
     def _run_loop(self) -> None:
         asyncio.set_event_loop(self._loop)
         self._loop.run_forever()
 
-    async def _connect_and_recv(self) -> None:
-        """
-        Connect to UCX endpoint and start a recv loop.
-
-        The remote side (broker/server) is expected to:
-            - Accept connections
-            - Fan-out messages to all peers
-            - Use the same framing protocol.
-        """
-        # Parse endpoint of form "tcp://host:port"
-        ep_str = self._state.endpoint_str
-        if not ep_str.startswith("tcp://"):
-            logger.warning(
-                "[fabric][ucx] only tcp:// endpoints are currently supported; got %s",
-                ep_str,
-            )
-        host_port = ep_str.replace("tcp://", "")
-        try:
-            host, port_str = host_port.split(":")
-            port = int(port_str)
-        except ValueError:
-            logger.error("[fabric][ucx] invalid endpoint: %s", ep_str)
-            return
-
-        logger.info("[fabric][ucx] connecting to %s:%d", host, port)
+    async def _connect_and_loop(self) -> None:
+        host, port = self._parse_ucx_addr(self._state.endpoint_str)
 
         try:
             ep = await ucp.create_endpoint(host, port)
         except Exception:
-            logger.exception("[fabric][ucx] failed to create endpoint")
+            logger.exception("[fabric][ucx] failed to connect")
             return
 
         self._state.ep = ep
         self._state.connected = True
-
         logger.info("[fabric][ucx] connected to %s:%d", host, port)
 
-        # Receive loop
         while not self._stop_event.is_set():
-            try:
-                # First read 4-byte size
-                size_buf = bytearray(4)
-                await ep.recv(size_buf)
-                size = int.from_bytes(size_buf, "little")
-                if size <= 0 or size > 16 * 1024 * 1024:
-                    logger.warning("[fabric][ucx] unreasonable message size=%d", size)
-                    continue
-
-                payload = bytearray(size)
-                await ep.recv(payload)
-
-                # Parse: topic\0json
-                try:
-                    topic_bytes, msg_bytes = payload.split(b"\0", 1)
-                except ValueError:
-                    logger.warning("[fabric][ucx] malformed payload; missing separator")
-                    continue
-
-                topic = topic_bytes.decode("utf-8", errors="ignore")
-                try:
-                    message = json.loads(msg_bytes.decode("utf-8"))
-                except Exception:
-                    logger.exception(
-                        "[fabric][ucx] failed to decode JSON for topic=%s", topic
-                    )
-                    continue
-
-                with self._lock:
-                    handlers = list(self._subscribers.get(topic, []))
-
-                logger.debug(
-                    "[fabric][ucx] received topic=%s handlers=%d",
-                    topic,
-                    len(handlers),
-                )
-
-                for fn in handlers:
-                    try:
-                        fn(message)
-                    except Exception:  # pragma: no cover
-                        logger.exception(
-                            "[fabric][ucx] handler error for topic=%s", topic
-                        )
-
-            except Exception:  # pragma: no cover
-                if self._stop_event.is_set():
-                    break
-                logger.exception("[fabric][ucx] recv loop error")
-                await asyncio.sleep(1.0)
+            payload = await self._recv_one(ep)
+            if payload is None:
+                continue
+            self._dispatch_ucx(payload)
 
         logger.info("[fabric][ucx] recv loop exiting")
 
+    # ---- helpers ----
+
+    def _parse_ucx_addr(self, addr: str):
+        if not addr.startswith("tcp://"):
+            logger.warning("[fabric][ucx] only tcp:// supported: %s", addr)
+        host_port = addr.replace("tcp://", "")
+        host, port_s = host_port.split(":")
+        return host, int(port_s)
+
+    async def _recv_one(self, ep) -> Optional[bytes]:
+        try:
+            hdr = bytearray(4)
+            await ep.recv(hdr)
+            size = int.from_bytes(hdr, "little")
+
+            if size <= 0 or size > 16 * 1024 * 1024:
+                logger.warning("[fabric][ucx] invalid size=%d", size)
+                return None
+
+            payload = bytearray(size)
+            await ep.recv(payload)
+            return payload
+
+        except Exception:
+            if not self._stop_event.is_set():
+                logger.exception("[fabric][ucx] recv error")
+            return None
+
+    def _dispatch_ucx(self, payload: bytes) -> None:
+        try:
+            topic_bytes, data = payload.split(b"\0", 1)
+        except ValueError:
+            logger.warning("[fabric][ucx] missing separator")
+            return
+
+        topic = topic_bytes.decode("utf-8", errors="ignore")
+
+        try:
+            msg = json.loads(data.decode("utf-8"))
+        except Exception:
+            logger.exception("[fabric][ucx] JSON decode failed topic=%s", topic)
+            return
+
+        with self._lock:
+            handlers = list(self._subscribers.get(topic, []))
+
+        for fn in handlers:
+            try:
+                fn(msg)
+            except Exception:
+                logger.exception("[fabric][ucx] handler error topic=%s", topic)
+
 
 # ---------------------------------------------------------------------------
-# Public facade
+# PUBLIC FACADE
 # ---------------------------------------------------------------------------
 
 class EventFabric:
     """
-    Facade class that selects a backend (local, zmq, ucx) based on config.
-
-    Usage:
-
-        fabric = EventFabric()  # mode from env
-        fabric.subscribe("plan.step_ready", handler)
-        fabric.publish("plan.step_ready", {"plan_id": "abc"})
-        fabric.close()
+    High-level API that selects a backend.
     """
 
     def __init__(
@@ -540,31 +465,33 @@ class EventFabric:
         ucx_endpoint: Optional[str] = None,
         identity: Optional[str] = None,
     ) -> None:
-        self._mode = mode.lower()
-        self._backend: FabricBackend
 
-        ident = identity or DEFAULT_IDENTITY
+        mode = mode.lower()
+        identity = identity or DEFAULT_IDENTITY
 
-        if self._mode == "local":
-            self._backend = LocalBackend()
-        elif self._mode == "zmq":
-            self._backend = ZmqBackend(
+        if mode == "local":
+            backend = LocalBackend()
+
+        elif mode == "zmq":
+            backend = ZmqBackend(
                 pub_endpoint=pub_endpoint or DEFAULT_PUB_ENDPOINT,
                 sub_endpoint=sub_endpoint or DEFAULT_SUB_ENDPOINT,
-                identity=ident,
+                identity=identity,
             )
-        elif self._mode == "ucx":
-            self._backend = UcxBackend(
+
+        elif mode == "ucx":
+            backend = UcxBackend(
                 endpoint=ucx_endpoint or DEFAULT_UCX_ENDPOINT,
-                identity=ident,
+                identity=identity,
             )
+
         else:
             raise ValueError(f"Unknown AGI_FABRIC_MODE={mode!r}")
 
-        logger.info("[fabric] EventFabric initialized mode=%s id=%s", self._mode, ident)
+        self._backend = backend
+        logger.info("[fabric] initialized mode=%s id=%s", mode, identity)
 
-    # Public API delegates -----------------------------------------------
-
+    # Convenience delegation
     def publish(self, topic: str, message: dict) -> None:
         self._backend.publish(topic, message)
 
