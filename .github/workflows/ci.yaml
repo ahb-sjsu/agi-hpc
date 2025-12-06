@@ -38,6 +38,11 @@ jobs:
           # DO NOT install grpcio-tools here (it autogenerates files into src/)
           pip install -e ".[dev]"
           pip install protobuf absl-py
+          
+      - name: Install dev tools
+        run: |
+          pip install black==24.4.2
+          pip install ruff==0.14.8
 
       # -----------------------------
       # Remove any auto-generated pb2 files
