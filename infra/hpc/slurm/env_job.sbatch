@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=LH
-#SBATCH --output=logs/lh_%j.out
-#SBATCH --error=logs/lh_%j.err
+#SBATCH --job-name=ENV
+#SBATCH --output=logs/env_%j.out
+#SBATCH --error=logs/env_%j.err
 #SBATCH --partition=standard
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -10,9 +10,9 @@
 
 module load apptainer
 
-echo "Starting Left Hemisphere..."
+echo "Starting Environment Server..."
 
 apptainer exec \
     --bind /scratch:/scratch \
-    ../apptainer/LH.sif \
-    python3 -m agi_hpc.services.left_hemisphere
+    ../apptainer/env.sif \
+    python3 -m agi_hpc.environment.env_server
