@@ -1,3 +1,230 @@
-version: '3.9'
+version: "3.9"
+
 services:
-  TODO:
+
+  # -------------------------------------------------------
+  # Left Hemisphere (reasoning, planning)
+  # -------------------------------------------------------
+  lh:
+    build:
+      context: ..
+      dockerfile: infra/hpc/docker/Dockerfile.lh
+    container_name: agi_lh
+    restart: unless-stopped
+    ports:
+      - "50051:50051"
+    environment:
+      PYTHONUNBUFFERED: "1"
+      SERVICE_NAME: "LH"
+    depends_on:
+      - semantic
+      - procedural
+      - episodic
+      - safety
+      - meta
+      - fabric
+      - rh
+    networks:
+      - aginet
+
+  # -------------------------------------------------------
+  # Right Hemisphere (perception, world model, control)
+  # -------------------------------------------------------
+  rh:
+    build:
+      context: ..
+      dockerfile: infra/hpc/docker/Dockerfile.rh
+    container_name: agi_rh
+    restart: unless-stopped
+    ports:
+      - "50052:50052"
+    environment:
+      PYTHONUNBUFFERED: "1"
+      SERVICE_NAME: "RH"
+    depends_on:
+      - safety
+      - fabric
+      - env
+    networks:
+      - aginet
+
+  # -------------------------------------------------------
+  # Semantic Memory - vector DB (FAISS, Qdrant client)
+  # -------------------------------------------------------
+  semantic:
+    build:
+      context: ..
+      dockerfile: infra/hpc/docker/Dockerfile.semantic
+    container_name: agi_semantic
+    restart: unless-stopped
+    ports:
+      - "50110:50110"
+    volumes:
+      - semantic_data:/opt/agi/memory/semantic
+    environment:
+      PYTHONUNBUFFERED: "1"
+      SERVICE_NAME: "SEMANTIC"
+    networks:
+      - aginet
+
+  # -------------------------------------------------------
+  # Episodic Memory - append-only parquet/jsonl logs
+  # -------------------------------------------------------
+  episodic:
+    build:
+      context: ..
+      dockerfile: infra/hpc/docker/Dockerfile.episodic
+    container_name: agi_episodic
+    restart: unless-stopped
+    ports:
+      - "50120:50120"
+    volumes:
+      - episodic_data:/opt/agi/memory/episodic
+    environment:
+      PYTHONUNBUFFERED: "1"
+      SERVICE_NAME: "EPISODIC"
+    networks:
+      - aginet
+
+  # -------------------------------------------------------
+  # Procedural Memory - skill catalog
+  # -------------------------------------------------------
+  procedural:
+    build:
+      context: ..
+      dockerfile: infra/hpc/docker/Dockerfile.procedural
+    container_name: agi_procedural
+    restart: unless-stopped
+    ports:
+      - "50130:50130"
+    volumes:
+      - procedural_data:/opt/agi/memory/procedural
+    environment:
+      PYTHONUNBUFFERED: "1"
+      SERVICE_NAME: "PROCEDURAL"
+    networks:
+      - aginet
+
+  # -------------------------------------------------------
+  # Safety subsystem (pre/check/post)
+  # -------------------------------------------------------
+  safety:
+    build:
+      context: ..
+      dockerfile: infra/hpc/docker/Dockerfile.safety
+    container_name: agi_safety
+    restart: unless-stopped
+    ports:
+      - "50200:50200"
+    environment:
+      PYTHONUNBUFFERED: "1"
+      SERVICE_NAME: "SAFETY"
+    networks:
+      - aginet
+
+  # -------------------------------------------------------
+  # Metacognition subsystem
+  # -------------------------------------------------------
+  meta:
+    build:
+      context: ..
+      dockerfile: infra/hpc/docker/Dockerfile.meta
+    container_name: agi_meta
+    restart: unless-stopped
+    ports:
+      - "50300:50300"
+    environment:
+      PYTHONUNBUFFERED: "1"
+      SERVICE_NAME: "META"
+    networks:
+      - aginet
+
+  # -------------------------------------------------------
+  # Event Fabric (ZeroMQ / UCX)
+  # -------------------------------------------------------
+  fabric:
+    build:
+      context: ..
+      dockerfile: infra/hpc/docker/Dockerfile.fabric
+    container_name: agi_fabric
+    restart: unless-stopped
+    ports:
+      - "50400:50400"
+    environment:
+      PYTHONUNBUFFERED: "1"
+      SERVICE_NAME: "FABRIC"
+    networks:
+      - aginet
+
+  # -------------------------------------------------------
+  # Virtual Environment (Unity/MuJoCo connector)
+  # -------------------------------------------------------
+  env:
+    build:
+      context: ..
+      dockerfile: infra/hpc/docker/Dockerfile.env
+    container_name: agi_env
+    restart: unless-stopped
+    ports:
+      - "50500:50500"
+    environment:
+      PYTHONUNBUFFERED: "1"
+      SERVICE_NAME: "ENV"
+    networks:
+      - aginet
+
+  # -------------------------------------------------------
+  # Prometheus (optional monitoring)
+  # -------------------------------------------------------
+  prometheus:
+    image: prom/prometheus
+    container_name: agi_prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus/prometheus.yaml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - aginet
+    depends_on:
+      - lh
+      - rh
+      - semantic
+      - episodic
+      - procedural
+      - safety
+      - meta
+      - fabric
+      - env
+
+  # -------------------------------------------------------
+  # Grafana (optional monitoring)
+  # -------------------------------------------------------
+  grafana:
+    image: grafana/grafana
+    container_name: agi_grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - aginet
+    depends_on:
+      - prometheus
+
+# -----------------------------------------------------------
+# Network
+# -----------------------------------------------------------
+networks:
+  aginet:
+    driver: bridge
+
+# -----------------------------------------------------------
+# Volumes
+# -----------------------------------------------------------
+volumes:
+  semantic_data:
+  episodic_data:
+  procedural_data:
+  grafana_data:

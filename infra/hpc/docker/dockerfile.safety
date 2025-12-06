@@ -1,0 +1,17 @@
+FROM ubuntu:22.04
+
+RUN apt-get update && apt-get install -y \
+    python3 python3-pip python3-dev \
+    build-essential git curl \
+    libzmq3-dev protobuf-compiler libssl-dev && \
+    python3 -m pip install --upgrade pip
+
+COPY ../../ /opt/agi-hpc/
+WORKDIR /opt/agi-hpc
+
+RUN pip install -e .
+
+ENV PYTHONUNBUFFERED=1
+ENV SERVICE_NAME="SAFETY"
+
+CMD ["python3", "-m", "agi_hpc.services.safety"]

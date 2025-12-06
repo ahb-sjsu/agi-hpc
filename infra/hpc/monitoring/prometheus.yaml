@@ -1,1 +1,88 @@
-# TODO Prometheus
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+
+  # --------------------------------------------------------
+  # Left Hemisphere (Planner / Reasoning)
+  # --------------------------------------------------------
+  - job_name: "left_hemisphere"
+    static_configs:
+      - targets:
+          - "lh-node1:50051"     # replace with actual hostname
+
+  # --------------------------------------------------------
+  # Right Hemisphere (Perception + World Model)
+  # --------------------------------------------------------
+  - job_name: "right_hemisphere"
+    static_configs:
+      - targets:
+          - "rh-node1:50052"     # replace with actual hostname
+
+  # --------------------------------------------------------
+  # Semantic Memory
+  # --------------------------------------------------------
+  - job_name: "semantic_memory"
+    static_configs:
+      - targets:
+          - "mem-sem-node1:50110"
+
+  # --------------------------------------------------------
+  # Episodic Memory
+  # --------------------------------------------------------
+  - job_name: "episodic_memory"
+    static_configs:
+      - targets:
+          - "mem-epi-node1:50120"
+
+  # --------------------------------------------------------
+  # Procedural Memory
+  # --------------------------------------------------------
+  - job_name: "procedural_memory"
+    static_configs:
+      - targets:
+          - "mem-proc-node1:50130"
+
+  # --------------------------------------------------------
+  # Safety Subsystem
+  # --------------------------------------------------------
+  - job_name: "safety"
+    static_configs:
+      - targets:
+          - "safety-node1:50200"
+
+  # --------------------------------------------------------
+  # Metacognition subsystem
+  # --------------------------------------------------------
+  - job_name: "metacognition"
+    static_configs:
+      - targets:
+          - "meta-node1:50300"
+
+  # --------------------------------------------------------
+  # Event Fabric (ZeroMQ / UCX instrumentation)
+  # --------------------------------------------------------
+  - job_name: "event_fabric"
+    static_configs:
+      - targets:
+          - "fabric-node1:50400"
+
+  # --------------------------------------------------------
+  # Virtual Environment Connector (Unity/MuJoCo)
+  # --------------------------------------------------------
+  - job_name: "env_server"
+    static_configs:
+      - targets:
+          - "env-node1:50500"
+
+  # --------------------------------------------------------
+  # Node Exporters (system metrics for HPC nodes)
+  # --------------------------------------------------------
+  - job_name: "node_exporter"
+    static_configs:
+      - targets:
+          - "node01:9100"
+          - "node02:9100"
+          - "node03:9100"
+          # add more nodes here
