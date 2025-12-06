@@ -163,7 +163,9 @@ class GRPCServer:
     # Reflection (optional)
     # ------------------------------------------------------------------ #
 
-    def enable_reflection(self, additional_service_names: Optional[Iterable[str]] = None) -> None:
+    def enable_reflection(
+        self, additional_service_names: Optional[Iterable[str]] = None
+    ) -> None:
         """
         Enable gRPC reflection, if the grpc_reflection package is installed.
 
@@ -198,7 +200,9 @@ class GRPCServer:
         service_names.append(reflection.SERVICE_NAME)
 
         reflection.enable_server_reflection(service_names, self._server)
-        logger.info("[grpc] Reflection enabled for services: %s", ", ".join(service_names))
+        logger.info(
+            "[grpc] Reflection enabled for services: %s", ", ".join(service_names)
+        )
 
     # ------------------------------------------------------------------ #
     # Lifecycle
@@ -230,7 +234,9 @@ class GRPCServer:
                 )
                 self._server.add_secure_port(f"[::]:{self._cfg.port}", creds)
             else:
-                logger.info("[grpc] Starting INSECURE server on port %d", self._cfg.port)
+                logger.info(
+                    "[grpc] Starting INSECURE server on port %d", self._cfg.port
+                )
                 self._server.add_insecure_port(f"[::]:{self._cfg.port}")
 
             # Enable reflection if configured

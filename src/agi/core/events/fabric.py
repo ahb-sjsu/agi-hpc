@@ -78,21 +78,20 @@ EventHandler = Callable[[dict], None]
 # Backend protocol
 # ---------------------------------------------------------------------------
 
+
 @runtime_checkable
 class FabricBackend(Protocol):
-    def publish(self, topic: str, message: dict) -> None:
-        ...
+    def publish(self, topic: str, message: dict) -> None: ...
 
-    def subscribe(self, topic: str, handler: EventHandler) -> None:
-        ...
+    def subscribe(self, topic: str, handler: EventHandler) -> None: ...
 
-    def close(self) -> None:
-        ...
+    def close(self) -> None: ...
 
 
 # ---------------------------------------------------------------------------
 # LOCAL BACKEND
 # ---------------------------------------------------------------------------
+
 
 class LocalBackend:
     def __init__(self) -> None:
@@ -124,6 +123,7 @@ class LocalBackend:
 # ---------------------------------------------------------------------------
 # ZEROMQ BACKEND
 # ---------------------------------------------------------------------------
+
 
 class ZmqBackend:
     """
@@ -264,6 +264,7 @@ class ZmqBackend:
 # ---------------------------------------------------------------------------
 # UCX BACKEND
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class _UcxState:
@@ -450,6 +451,7 @@ class UcxBackend:
 # ---------------------------------------------------------------------------
 # PUBLIC FACADE
 # ---------------------------------------------------------------------------
+
 
 class EventFabric:
     """
