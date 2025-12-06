@@ -43,6 +43,8 @@ ci = [
     "mypy>=1.10",
     "coverage>=7.5",
     "taplo>=0.9",
+	"pyzmq >= 25.0",
+	"ucx-py >= 0.36",
 ]
 
 [tool.setuptools.packages.find]

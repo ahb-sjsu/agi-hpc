@@ -217,7 +217,34 @@ python generate_protos.py --clean
 python src/agi/lh/service.py
 python src/agi/rh/service.py
 ```
+### Note
+```
+Local dev (no network)
 
+export AGI_FABRIC_MODE=local
+
+
+ZMQ (dev multi-process / small cluster)
+
+export AGI_FABRIC_MODE=zmq
+export AGI_FABRIC_PUB_ENDPOINT=tcp://fabric:5556
+export AGI_FABRIC_SUB_ENDPOINT=tcp://fabric:5555
+
+
+UCX (HPC inter-node)
+
+export AGI_FABRIC_MODE=ucx
+export AGI_FABRIC_UCX_ENDPOINT=tcp://fabric-node:13337
+
+
+Then run a UCX broker/server on fabric-node:13337 that:
+
+accepts UCX connections
+
+reads framed messages with the same [len][topic\0json] format
+
+fans them out to all connected peers.
+```
 ---
 
 # 📜 License
