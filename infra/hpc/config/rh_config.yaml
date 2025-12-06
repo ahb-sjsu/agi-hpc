@@ -1,0 +1,49 @@
+# ============================================================================
+# Right Hemisphere (RH) Configuration
+# ============================================================================
+
+rh:
+  node_id: "RH01"
+  grpc_port: 50052
+
+logging:
+  level: INFO
+
+# ----------------------------------------------------------------------------
+# Event Fabric Configuration
+# ----------------------------------------------------------------------------
+fabric:
+  # mode: "local"
+  # mode: "zmq"
+  mode: "ucx"
+
+  pub_endpoint: "tcp://fabric:5556"
+  sub_endpoint: "tcp://fabric:5555"
+  ucx_endpoint: "tcp://fabric-node:13337"
+
+# ----------------------------------------------------------------------------
+# Perception subsystem (Section IV.B.1)
+# ----------------------------------------------------------------------------
+perception:
+  model: "dummy_encoder"    # replace with clip-vit, dino, sam2, etc.
+  device: "cpu"             # or "cuda:0"
+
+# ----------------------------------------------------------------------------
+# World Model subsystem (Section IV.B.2, XI)
+# ----------------------------------------------------------------------------
+world_model:
+  model: "dummy_world_model"   # replace with Dreamer, MuJoCo, RL model
+  horizon: 5                   # short-horizon rollout steps
+
+# ----------------------------------------------------------------------------
+# Control subsystem (Section IV.B.3, XI)
+# ----------------------------------------------------------------------------
+control:
+  controller: "rule_based"     # or "mpc", "rl", "pid"
+
+# ----------------------------------------------------------------------------
+# Reserved future extensions
+# ----------------------------------------------------------------------------
+future:
+  version: 1
+  notes: "Extend with real physics, GPU models, robotics controllers"

@@ -1,0 +1,55 @@
+# ============================================================================
+# Left Hemisphere (LH) Configuration
+# ============================================================================
+
+lh:
+  node_id: "LH01"
+  grpc_port: 50051
+
+  # Core pipeline toggles
+  enable_safety: true
+  enable_metacognition: true
+
+logging:
+  level: INFO
+
+# ----------------------------------------------------------------------------
+# Event Fabric Configuration
+# ----------------------------------------------------------------------------
+fabric:
+  # mode: "local"   # good for dev
+  # mode: "zmq"     # good for multi-process local cluster
+  mode: "ucx"       # best for HPC, low latency
+
+  # ZMQ endpoints (only used in zmq mode)
+  pub_endpoint: "tcp://fabric:5556"
+  sub_endpoint: "tcp://fabric:5555"
+
+  # UCX endpoint for RDMA/InfiniBand/SHM/TCP
+  ucx_endpoint: "tcp://fabric-node:13337"
+
+# ----------------------------------------------------------------------------
+# External service dependencies (all gRPC)
+# ----------------------------------------------------------------------------
+services:
+  semantic: "semantic:50110"
+  episodic: "episodic:50120"
+  procedural: "procedural:50130"
+  safety: "safety:50200"
+  meta: "meta:50300"
+
+# ----------------------------------------------------------------------------
+# Optional planner/LLM settings
+# ----------------------------------------------------------------------------
+planner:
+  # For LLM-backed reasoning (optional):
+  llm_backend: null
+  model: null
+  temperature: 0.2
+
+# ----------------------------------------------------------------------------
+# Reserved future extensions
+# ----------------------------------------------------------------------------
+future:
+  version: 1
+  notes: "Extend with LLM planner, skill graphs, retrieval plugins"

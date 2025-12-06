@@ -1,0 +1,174 @@
+syntax = "proto3";
+
+package agi.plan.v1;
+
+option go_package = "agi/plan/v1;plan";
+option java_multiple_files = true;
+option java_package = "com.agi.plan.v1";
+
+// ---------------------------------------------------------------------------
+// LH <-> External API Types
+// ---------------------------------------------------------------------------
+
+// High-level request containing a task, environment info, and optional metadata.
+// Matches architecture description (Sections IV.A, XIV.B.1)
+message PlanRequest {
+  Task task = 1;
+  EnvironmentDescriptor environment = 2;
+
+  // Client-provided metadata (trace ID, session ID, etc.)
+  map<string, string> metadata = 3;
+
+  // For future: multi-goal requests, multi-agent settings
+  reserved 4, 5;
+}
+
+// Response with structured plan and human-readable notes.
+message PlanResponse {
+  string plan_id = 1;
+  repeated PlanStep steps = 2;
+  string notes = 3;
+
+  // Confidence or quality score added by LH/metacognition.
+  float confidence = 4;
+
+  // LH internal metadata exposed to clients for diagnostics.
+  map<string, string> metadata = 5;
+}
+
+
+// ---------------------------------------------------------------------------
+// Task / Environment descriptors
+// ---------------------------------------------------------------------------
+
+// As defined in architecture Section XIV (API Interfaces).
+message Task {
+  string goal_id = 1;
+  string description = 2;
+
+  // Optional classification/type (e.g., navigation, manipulation)
+  string task_type = 3;
+
+  // Optional parameters (domain-specific)
+  map<string, string> params = 4;
+
+  // Future extension (hierarchical tasks)
+  reserved 5, 6;
+}
+
+message EnvironmentDescriptor {
+  string scenario_id = 1;
+  string world_state_ref = 2;   // Pointer to episodic memory or env snapshot
+  map<string, string> metadata = 3;
+
+  reserved 4, 5;
+}
+
+
+// ---------------------------------------------------------------------------
+// Plan Graph (LH internal representation serialized to proto)
+// ---------------------------------------------------------------------------
+
+// A single step in a hierarchical plan graph.
+// Matches architecture's "multi-level plan" description (IV.A).
+message PlanStep {
+  string step_id = 1;       // unique
+  int32 index = 2;          // sequence index (LH assigned)
+  int32 level = 3;          // hierarchical level: mission=0, subgoal=1, step=2+
+
+  string kind = 4;          // mission | subgoal | skill | control | ...
+  string description = 5;   // human-readable summary
+
+  // Parent linkage (hierarchical plan)
+  string parent_id = 6;
+
+  // Whether RH simulation is required before execution
+  bool requires_simulation = 7;
+
+  // Safety annotations (e.g., "high_level", "requires_simulation")
+  repeated string safety_tags = 8;
+
+  // Optional references to tools, skills, or memory entries
+  string tool_id = 9;
+  map<string, string> params = 10;
+
+  // Future: support for dependency graph and branching
+  reserved 11, 12;
+}
+
+
+// ---------------------------------------------------------------------------
+// Full PlanGraphProto for LH->Safety, LH->Metacog, LH->RH simulation
+// ---------------------------------------------------------------------------
+
+// Full serialized hierarchical plan used by:
+//  • SafetyService (pre-action)
+//  • MetacognitionService (review/revise)
+//  • Possibly RH (simulation.request)
+//  • Episodic memory logging
+message PlanGraphProto {
+  string plan_id = 1;
+  string goal_text = 2;
+
+  repeated PlanStep steps = 3;
+
+  // Arbitrary structured metadata from LH (task type, scenario, provenance)
+  map<string, string> metadata = 4;
+
+  // Versioning and forward compatibility
+  int32 schema_version = 5;
+  reserved 6, 7;
+}
+
+
+// ---------------------------------------------------------------------------
+// LH -> RH simulation request API (optional but recommended)
+// ---------------------------------------------------------------------------
+
+// LH sends environment-changing steps here for RH short-horizon rollouts
+message SimulationRequest {
+  string plan_id = 1;
+  repeated PlanStep candidate_steps = 2;
+
+  // Used by RH to reproduce relevant world state (scene graph, snapshot)
+  string world_state_ref = 3;
+
+  map<string, string> metadata = 4;
+}
+
+// RH's world-model predictions (trajectory + risk)
+message SimulationResult {
+  string plan_id = 1;
+
+  // Per-step risk scores (also matches Safety architecture VII)
+  repeated float step_risk = 2;
+
+  // Per-step "hard-stop" constraint violations
+  repeated string violations = 3;
+
+  // Aggregated classification
+  float overall_risk = 4;
+  bool approved = 5;
+
+  // Human-readable notes (optional)
+  string notes = 6;
+
+  map<string, string> metadata = 7;
+
+  reserved 8;
+}
+
+
+// ---------------------------------------------------------------------------
+// Services (LH exposes PlanService; RH exposes SimulationService)
+// ---------------------------------------------------------------------------
+
+service PlanService {
+  rpc Plan(PlanRequest) returns (PlanResponse);
+}
+
+// Simulation service on RH (alignment with XIV.B.1 cognitive API)
+service SimulationService {
+  rpc Simulate(SimulationRequest) returns (SimulationResult);
+}
+

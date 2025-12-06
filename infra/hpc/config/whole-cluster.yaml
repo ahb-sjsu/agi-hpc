@@ -1,0 +1,225 @@
+version: "3.9"
+
+networks:
+  agi-net:
+    driver: bridge
+
+volumes:
+  prometheus_data: {}
+  grafana_data: {}
+
+services:
+  # ------------------------------------------------------------------------
+  # Event Fabric / Broker (for ZMQ; UCX endpoints can be used directly)
+  # ------------------------------------------------------------------------
+  fabric:
+    image: ahb-sjsu/agi-fabric:latest          # TODO: replace with real image
+    container_name: agi-fabric
+    command: >
+      python -m agi.core.events.fabric_broker
+      --pub tcp://0.0.0.0:5556
+      --sub tcp://0.0.0.0:5555
+      --ucx tcp://0.0.0.0:13337
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app/src"
+    volumes:
+      - .:/app
+    networks:
+      - agi-net
+    ports:
+      - "5555:5555"
+      - "5556:5556"
+      - "13337:13337"
+
+  # ------------------------------------------------------------------------
+  # LEFT HEMISPHERE (Planner + Safety/Meta/Memory clients)
+  # ------------------------------------------------------------------------
+  lh:
+    image: ahb-sjsu/agi-hpc-lh:latest          # TODO: replace with real image
+    container_name: agi-lh
+    command: >
+      python -m agi.lh.lh_service
+      --config /config/lh_config.yaml
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app/src"
+    volumes:
+      - .:/app
+      - ./infra/hpc/config/lh_config.yaml:/config/lh_config.yaml:ro
+    depends_on:
+      - fabric
+      - semantic
+      - safety
+      - meta
+    networks:
+      - agi-net
+    ports:
+      - "50051:50051"
+
+  # ------------------------------------------------------------------------
+  # RIGHT HEMISPHERE (Perception + World Model + Control + Simulation)
+  # ------------------------------------------------------------------------
+  rh:
+    image: ahb-sjsu/agi-hpc-rh:latest          # TODO: replace with real image
+    container_name: agi-rh
+    command: >
+      python -m agi.rh.rh_service
+      --config /config/rh_config.yaml
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app/src"
+    volumes:
+      - .:/app
+      - ./infra/hpc/config/rh_config.yaml:/config/rh_config.yaml:ro
+    depends_on:
+      - fabric
+    networks:
+      - agi-net
+    ports:
+      - "50052:50052"
+
+  # ------------------------------------------------------------------------
+  # MEMORY SUBSYSTEM
+  # ------------------------------------------------------------------------
+  semantic:
+    image: ahb-sjsu/agi-hpc-memory-semantic:latest   # TODO: real image
+    container_name: agi-mem-semantic
+    command: >
+      python -m agi.memory.semantic_service
+      --config /config/semantic_config.yaml
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app/src"
+    volumes:
+      - .:/app
+      - ./infra/hpc/config/semantic_config.yaml:/config/semantic_config.yaml:ro
+    networks:
+      - agi-net
+    ports:
+      - "50110:50110"
+
+  episodic:
+    image: ahb-sjsu/agi-hpc-memory-episodic:latest   # TODO: real image
+    container_name: agi-mem-episodic
+    command: >
+      python -m agi.memory.episodic_service
+      --config /config/episodic_config.yaml
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app/src"
+    volumes:
+      - .:/app
+      - ./infra/hpc/config/episodic_config.yaml:/config/episodic_config.yaml:ro
+    networks:
+      - agi-net
+    ports:
+      - "50120:50120"
+
+  procedural:
+    image: ahb-sjsu/agi-hpc-memory-procedural:latest # TODO: real image
+    container_name: agi-mem-procedural
+    command: >
+      python -m agi.memory.procedural_service
+      --config /config/procedural_config.yaml
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app/src"
+    volumes:
+      - .:/app
+      - ./infra/hpc/config/procedural_config.yaml:/config/procedural_config.yaml:ro
+    networks:
+      - agi-net
+    ports:
+      - "50130:50130"
+
+  # ------------------------------------------------------------------------
+  # SAFETY SUBSYSTEM
+  # ------------------------------------------------------------------------
+  safety:
+    image: ahb-sjsu/agi-hpc-safety:latest            # TODO: real image
+    container_name: agi-safety
+    command: >
+      python -m agi.safety.safety_service
+      --config /config/safety_config.yaml
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app/src"
+    volumes:
+      - .:/app
+      - ./infra/hpc/config/safety_config.yaml:/config/safety_config.yaml:ro
+    networks:
+      - agi-net
+    ports:
+      - "50200:50200"
+
+  # ------------------------------------------------------------------------
+  # METACOGNITION SUBSYSTEM
+  # ------------------------------------------------------------------------
+  meta:
+    image: ahb-sjsu/agi-hpc-meta:latest              # TODO: real image
+    container_name: agi-meta
+    command: >
+      python -m agi.meta.metacog_service
+      --config /config/meta_config.yaml
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app/src"
+    volumes:
+      - .:/app
+      - ./infra/hpc/config/meta_config.yaml:/config/meta_config.yaml:ro
+    networks:
+      - agi-net
+    ports:
+      - "50300:50300"
+
+  # ------------------------------------------------------------------------
+  # ENVIRONMENT SIMULATOR (Unity/MuJoCo or stub)
+  # ------------------------------------------------------------------------
+  env-sim:
+    image: ahb-sjsu/agi-env-sim:latest               # TODO: real image
+    container_name: agi-env-sim
+    command: >
+      python -m agi.env.stub_env
+      --config /config/env_config.yaml
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app/src"
+    volumes:
+      - .:/app
+      - ./infra/hpc/config/env_config.yaml:/config/env_config.yaml:ro
+    networks:
+      - agi-net
+    ports:
+      - "60000:60000"   # e.g. HTTP/gRPC Step(), Reset(), GetState()
+
+  # ------------------------------------------------------------------------
+  # OBSERVABILITY: Prometheus + Grafana
+  # ------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: agi-prometheus
+    volumes:
+      - ./infra/monitoring/prometheus.yaml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    networks:
+      - agi-net
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: agi-grafana
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: "admin"
+      GF_SECURITY_ADMIN_PASSWORD: "admin"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - agi-net
+    ports:
+      - "3000:3000"
