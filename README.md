@@ -182,12 +182,9 @@ agi-hpc/
 ├── docs/                    
 ├── design/                  
 │
-├── generate_protos.py       
-├── generate_services.py     
-├── generate_memory_services.py
-├── generate_safety_services.py
-├── generate_metacog_service.py
-│
+├── scripts/       
+├── tests/     
+
 └── .github/workflows/ci.yaml
 ```
 
