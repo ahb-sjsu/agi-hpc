@@ -56,6 +56,7 @@ where = ["src"]
 [tool.ruff]
 line-length = 88
 target-version = "py311"
+extend-ignore = ["C901"]
 
 # Exclude generated protobuf code
 exclude = [

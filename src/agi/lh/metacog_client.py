@@ -103,16 +103,14 @@ class MetacognitionClient:
             When PlanGraphProto is defined, this will send a ReviseRequest.
         """
         if self._stub is None:
-            logger.debug(
-                "[LH][MetacogClient] revise_plan (mock): returning original plan"
-            )
+            logger.debug("[LH][MetacogClient] revise_plan (mock): returning original plan")
             return plan_graph
 
         try:
             req = meta_pb2.ReviseRequest()  # type: ignore[attr-defined]
             resp = self._stub.RevisePlan(req)
+            logger.debug(f"[LH]RevisePlan returned: {resp}")
             # TODO: deserialize RevisedPlan into PlanGraph
-            logger.debug("[LH][MetacogClient] revise_plan successful (stub)")
             return plan_graph
         except Exception:
             logger.exception("[LH][MetacogClient] revise_plan RPC failed")
