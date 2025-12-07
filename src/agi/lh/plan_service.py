@@ -43,6 +43,7 @@ logger = logging.getLogger(__name__)
 # LH PlanService configuration
 # --------------------------------------------------------------------------------------
 
+
 @dataclass
 class LHPlanServiceConfig:
     """
@@ -68,6 +69,7 @@ class LHPlanServiceConfig:
 # --------------------------------------------------------------------------------------
 # LH PlanService Implementation
 # --------------------------------------------------------------------------------------
+
 
 class PlanService(plan_pb2_grpc.PlanServiceServicer):
     """
@@ -107,11 +109,11 @@ class PlanService(plan_pb2_grpc.PlanServiceServicer):
     # (Actual method name must match plan.proto)
     # ----------------------------------------------------------------------------------
 
-    def Plan 
+    def Plan(
         self,
-        request: plan_pb2.PlanRequest, 
+        request: plan_pb2.PlanRequest,
         context: grpc.ServicerContext,
-    ) -> plan_pb2.PlanResponse: # noqa: C901
+    ) -> plan_pb2.PlanResponse:  # noqa: C901
         """
         Full LH planning pipeline:
 
@@ -135,7 +137,9 @@ class PlanService(plan_pb2_grpc.PlanServiceServicer):
         try:
             enriched_req = self._memory.enrich_request(request)
         except Exception:
-            logger.exception("[LH][PlanService] Memory enrichment failed; using raw request")
+            logger.exception(
+                "[LH][PlanService] Memory enrichment failed; using raw request"
+            )
             enriched_req = request
 
         # 2) Planner → internal plan graph
@@ -245,7 +249,9 @@ class PlanService(plan_pb2_grpc.PlanServiceServicer):
                 {"node_id": self._cfg.node_id, "num_steps": len(steps)},
             )
         except Exception:
-            logger.exception("[LH][PlanService] Failed to publish plan completion event")
+            logger.exception(
+                "[LH][PlanService] Failed to publish plan completion event"
+            )
 
     def _serialize_step(self, step) -> dict:
         """

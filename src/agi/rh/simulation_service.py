@@ -152,9 +152,7 @@ class SimulationService(plan_pb2_grpc.SimulationServiceServicer):
                 step_violations.append(f"simulation_error:{exc}")
 
         # Step 3 — aggregate
-        overall_risk = float(sum(step_risk_scores)) / max(
-            1, len(step_risk_scores)
-        )
+        overall_risk = float(sum(step_risk_scores)) / max(1, len(step_risk_scores))
         approved = overall_risk < 0.5  # placeholder threshold
 
         # Step 4 — build protobuf result

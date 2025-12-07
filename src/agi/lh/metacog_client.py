@@ -56,7 +56,9 @@ class MetacognitionClient:
             logger.info("[LH][MetacogClient] Connected to MetaService at %s", address)
         except Exception:
             self._stub = None
-            logger.exception("[LH][MetacogClient] Metacognition unavailable; using mock behavior")
+            logger.exception(
+                "[LH][MetacogClient] Metacognition unavailable; using mock behavior"
+            )
 
     # ------------------------------------------------------------------ #
     # Public API
@@ -101,7 +103,9 @@ class MetacognitionClient:
             When PlanGraphProto is defined, this will send a ReviseRequest.
         """
         if self._stub is None:
-            logger.debug("[LH][MetacogClient] revise_plan (mock): returning original plan")
+            logger.debug(
+                "[LH][MetacogClient] revise_plan (mock): returning original plan"
+            )
             return plan_graph
 
         try:

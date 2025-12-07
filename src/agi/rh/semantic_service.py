@@ -225,7 +225,9 @@ def create_backend(cfg: SemanticServiceConfig) -> SemanticBackend:
     # Hook for future backends:
     # if cfg.backend == "qdrant": return QdrantBackend(...)
     # if cfg.backend == "faiss": return FaissBackend(...)
-    logger.warning("[semantic] Unknown backend '%s', falling back to in-memory", cfg.backend)
+    logger.warning(
+        "[semantic] Unknown backend '%s', falling back to in-memory", cfg.backend
+    )
     return InMemorySemanticBackend()
 
 

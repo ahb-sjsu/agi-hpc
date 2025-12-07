@@ -71,7 +71,7 @@ class ControlService:
         This stub follows a deterministic mapping pattern that can later
         be replaced with a full motion planner or behavior tree.
         """
-        kind = step.kind.lower() # noqa: F841
+        kind = step.kind.lower()  # noqa: F841
         desc = step.description.lower()
 
         if self._controller_type == "disabled":

@@ -35,6 +35,7 @@ class MemoryAugmentResult:
     """
     Placeholder result container for enriched request information.
     """
+
     enriched_request: object
 
 
@@ -61,7 +62,9 @@ class MemoryClient:
         try:
             self._channel = grpc.insecure_channel(address)
             self._stub = memory_pb2_grpc.SemanticMemoryServiceStub(self._channel)
-            logger.info("[LH][MemoryClient] Connected to semantic memory at %s", address)
+            logger.info(
+                "[LH][MemoryClient] Connected to semantic memory at %s", address
+            )
         except Exception:
             self._stub = None
             logger.exception(
