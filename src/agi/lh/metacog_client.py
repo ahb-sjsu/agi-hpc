@@ -103,7 +103,9 @@ class MetacognitionClient:
             When PlanGraphProto is defined, this will send a ReviseRequest.
         """
         if self._stub is None:
-            logger.debug("[LH][MetacogClient] revise_plan (mock): returning original plan")
+            logger.debug(
+                "[LH][MetacogClient] revise_plan (mock): returning original plan"
+            )
             return plan_graph
 
         try:
