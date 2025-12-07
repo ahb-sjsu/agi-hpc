@@ -79,6 +79,7 @@ class MetacognitionClient:
             # TODO: serialize plan_graph → MetaReviewRequest
             req = meta_pb2.MetaReviewRequest()  # type: ignore[attr-defined]
             resp = self._stub.ReviewPlan(req)
+            logger.debug(f"[LH][MetacogClient] revise_plan successful: {resp}")
             return MetaReviewResult(
                 decision=getattr(resp, "decision", "ACCEPT"),
                 issues=list(getattr(resp, "issues", [])),

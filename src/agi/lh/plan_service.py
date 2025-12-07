@@ -107,9 +107,9 @@ class PlanService(plan_pb2_grpc.PlanServiceServicer):
     # (Actual method name must match plan.proto)
     # ----------------------------------------------------------------------------------
 
-    def Plan(
+    def Plan # noqa: C901
         self,
-        request: plan_pb2.PlanRequest,
+        request: plan_pb2.PlanRequest, 
         context: grpc.ServicerContext,
     ) -> plan_pb2.PlanResponse:
         """
