@@ -1,22 +1,109 @@
 #!/usr/bin/env python3
+# AGI-HPC Project - High-Performance Computing Architecture for AGI
+# Copyright (c) 2025 Andrew H. Bond
+# Contact: agi.hpc@gmail.com
+#
+# Licensed under the AGI-HPC Responsible AI License v1.0.
+# You may obtain a copy of the License at the root of this repository,
+# or by contacting the author(s).
+#
+# You may use, modify, and distribute this file for non-commercial
+# research and educational purposes, subject to the conditions in
+# the License. Commercial use, high-risk deployments, and autonomous
+# operation in safety-critical domains require separate written
+# permission and must include appropriate safety and governance controls.
+#
+# Unless required by applicable law or agreed to in writing, this
+# software is provided "AS IS", without warranties or conditions
+# of any kind. See the License for the specific language governing
+# permissions and limitations.
+
+import argparse
+import os
+import sys
+from typing import List
+
+# >>>>>> EDIT THIS TEXT TO YOUR UPDATED HEADER <<<<<<
+HEADER = """# AGI-HPC Project - High-Performance Computing Architecture for AGI
+# Copyright (c) 2025 Andrew H. Bond
+# Project email, agi.hpc@gmail.com 
+# Licensed under the AGI-HPC Responsible AI License v1.0.
+# You may obtain a copy of the License at the root of this repository,
+# or by contacting the author(s).
+#
+# You may use, modify, and distribute this file for non-commercial
+# research and educational purposes, subject to the conditions in
+# the License. Commercial use, high-risk deployments, and autonomous
+# operation in safety-critical domains require separate written
+# permission and must include appropriate safety and governance controls.
+#
+# Unless required by applicable law or agreed to in writing, this
+# software is provided "AS IS", without warranties or conditions
+# of any kind. See the License for the specific language governing
+# permissions and limitations.
 """
-generate_memory_services.py
 
-Creates service skeletons for:
-- Semantic Memory
-- Episodic Memory
-- Procedural Memory
+# Directory names we never want to touch
+SKIP_DIR_NAMES = {
+    ".git",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "env",
+    ".env",
+    ".mypy_cache",
+    ".idea",
+    "Lib",           # Windows Python install stuff
+    "lib",           # *nix-style
+    "site-packages",
+    "dist-packages",
+}
 
-Each service includes:
-- gRPC server
-- EventFabric integration
-- Config loader
-- Appendix-A compliant RPC stubs
-- Logging + TODO placeholders
 
-Run:
-    python generate_memory_services.py
-"""
+def should_skip_dir(path: str) -> bool:
+    basename = os.path.basename(path)
+    if basename in SKIP_DIR_NAMES:
+        return True
+
+    # Extra safety: skip any path that contains site-packages / dist-packages anywhere
+    parts = path.split(os.sep)
+    for p in parts:
+        if p in ("site-packages", "dist-packages"):
+            return True
+
+    return False
+
+
+def find_python_files(root: str) -> List[str]:
+    py_files: List[str] = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [
+            d for d in dirnames
+            if not should_skip_dir(os.path.join(dirpath, d))
+        ]
+        for filename in filenames:
+            if filename.endswith(".py"):
+                py_files.append(os.path.join(dirpath, filename))
+    return py_files
+
+
+def update_header(content: str) -> str:
+    """
+    Remove the initial block of comment lines (#...) after an optional shebang,
+    and replace it with HEADER. If there is no comment block, insert HEADER.
+    """
+    lines = content.splitlines(keepends=True)
+
+    if not lines:
+        # Empty file: just header
+        return HEADER.rstrip() + "\n"
+
+    insert_idx = 0
+    new_lines = []
+
+    # Preserve shebang if present
+    if lines[0].startswith("#!"):
+
 
 from pathlib import Path
 from textwrap import dedent
