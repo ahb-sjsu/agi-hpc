@@ -107,11 +107,11 @@ class PlanService(plan_pb2_grpc.PlanServiceServicer):
     # (Actual method name must match plan.proto)
     # ----------------------------------------------------------------------------------
 
-    def Plan # noqa: C901
+    def Plan 
         self,
         request: plan_pb2.PlanRequest, 
         context: grpc.ServicerContext,
-    ) -> plan_pb2.PlanResponse:
+    ) -> plan_pb2.PlanResponse: # noqa: C901
         """
         Full LH planning pipeline:
 
