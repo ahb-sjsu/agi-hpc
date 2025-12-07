@@ -10,7 +10,7 @@ Before adopting it for your project, you should consult qualified legal counsel.
 Project: AGI-HPC (High-Performance Computing Architecture for Artificial General Intelligence)  
 Licensor: Andrew H. Bond and contributing authors  
 Institutional Affiliation: San José State University (SJSU), where applicable  
-Contact: andrew.bond@sjsu.edu (or updated project contact)
+Contact: agi.hpc@gmail.com 
 
 By using, copying, modifying, or distributing the Software (as defined below), you accept this License.
 
