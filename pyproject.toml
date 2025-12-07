@@ -18,7 +18,7 @@ dependencies = [
     "grpcio>=1.60",
     "grpcio-tools>=1.60",
     "protobuf>=4.25",
-    "numpy>=1.26",
+    "numpy>=2.1.0",
     "absl-py>=2.0",
     "prometheus-client>=0.20",
 ]
