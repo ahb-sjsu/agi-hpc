@@ -19,6 +19,17 @@ This repository provides the **full scaffolding and automation tools** necessary
 
 ---
 
+# Dev Teams
+- Cognitive Architecture (LH/RH) Team
+- Memory Systems Team
+- EventBus & Messaging Team
+- HPC Deployment Team
+- Maritime Digital Twin Team
+- Unity Simulation Team
+- Evaluation & Metrics Team
+
+---
+
 # 📐 Architecture Overview
 
 Below is a high-level diagram of the full AGI-HPC multi-service system:
