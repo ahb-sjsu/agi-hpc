@@ -69,3 +69,13 @@ For major changes (e.g., new module type, new safety mechanism, new memory layer
 2. Create a new branch for your work:
    ```bash
    git checkout -b feature/my-new-feature
+
+## 5. Project Teams
+
+ 1. Cognitive Architecture (LH/RH) Team
+ 2. Memory Systems Team
+ 3. EventBus & Messaging Team
+ 4. HPC Deployment Team
+ 5. Evaluation & Metrics Team
+
+
