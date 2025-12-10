@@ -90,7 +90,7 @@ jobs:
       # -----------------------------
       - name: Generate Python GRPC stubs
         run: |
-          python scripts/generate_protos.py --clean
+          python generate_protos.py --clean
 
       # -----------------------------
       # Format generated code
