@@ -1,0 +1,36 @@
+# Left Hemisphere (LH) Service Configuration
+# AGI-HPC Project
+
+# gRPC Server Settings
+server:
+  port: 50100
+  max_workers: 16
+  enable_reflection: true
+
+# Downstream Service Addresses
+services:
+  memory: "localhost:50110"
+  safety: "localhost:50200"
+  metacognition: "localhost:50300"
+
+# Event Fabric Settings
+fabric:
+  mode: "local"  # local, zmq, ucx
+  identity: "LH"
+  # ZMQ endpoints (only used when mode=zmq)
+  zmq:
+    pub_endpoint: "tcp://fabric:5556"
+    sub_endpoint: "tcp://fabric:5555"
+  # UCX endpoint (only used when mode=ucx)
+  ucx:
+    endpoint: "tcp://fabric:13337"
+
+# Feature Flags
+features:
+  enable_safety: true
+  enable_metacognition: true
+
+# Logging
+logging:
+  level: "INFO"
+  format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"

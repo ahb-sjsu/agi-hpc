@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-import plan_pb2 as plan__pb2
+from agi.proto_gen import plan_pb2 as plan__pb2
 
 GRPC_GENERATED_VERSION = "1.76.0"
 GRPC_VERSION = grpc.__version__
