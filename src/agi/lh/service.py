@@ -35,15 +35,36 @@ logger = logging.getLogger(__name__)
 @dataclass
 class LHServiceConfig:
     port: int = field(default_factory=lambda: int(os.getenv("AGI_LH_PORT", "50100")))
-    max_workers: int = field(default_factory=lambda: int(os.getenv("AGI_LH_MAX_WORKERS", "16")))
-    memory_addr: str = field(default_factory=lambda: os.getenv("AGI_LH_MEMORY_ADDR", "localhost:50110"))
-    safety_addr: str = field(default_factory=lambda: os.getenv("AGI_LH_SAFETY_ADDR", "localhost:50200"))
-    meta_addr: str = field(default_factory=lambda: os.getenv("AGI_LH_META_ADDR", "localhost:50300"))
-    fabric_mode: str = field(default_factory=lambda: os.getenv("AGI_FABRIC_MODE", "local"))
-    fabric_identity: str = field(default_factory=lambda: os.getenv("AGI_FABRIC_IDENTITY", "LH"))
-    enable_safety: bool = field(default_factory=lambda: os.getenv("AGI_LH_ENABLE_SAFETY", "true").lower() == "true")
-    enable_metacognition: bool = field(default_factory=lambda: os.getenv("AGI_LH_ENABLE_META", "true").lower() == "true")
-    enable_reflection: bool = field(default_factory=lambda: os.getenv("AGI_LH_ENABLE_REFLECTION", "true").lower() == "true")
+    max_workers: int = field(
+        default_factory=lambda: int(os.getenv("AGI_LH_MAX_WORKERS", "16"))
+    )
+    memory_addr: str = field(
+        default_factory=lambda: os.getenv("AGI_LH_MEMORY_ADDR", "localhost:50110")
+    )
+    safety_addr: str = field(
+        default_factory=lambda: os.getenv("AGI_LH_SAFETY_ADDR", "localhost:50200")
+    )
+    meta_addr: str = field(
+        default_factory=lambda: os.getenv("AGI_LH_META_ADDR", "localhost:50300")
+    )
+    fabric_mode: str = field(
+        default_factory=lambda: os.getenv("AGI_FABRIC_MODE", "local")
+    )
+    fabric_identity: str = field(
+        default_factory=lambda: os.getenv("AGI_FABRIC_IDENTITY", "LH")
+    )
+    enable_safety: bool = field(
+        default_factory=lambda: os.getenv("AGI_LH_ENABLE_SAFETY", "true").lower()
+        == "true"
+    )
+    enable_metacognition: bool = field(
+        default_factory=lambda: os.getenv("AGI_LH_ENABLE_META", "true").lower()
+        == "true"
+    )
+    enable_reflection: bool = field(
+        default_factory=lambda: os.getenv("AGI_LH_ENABLE_REFLECTION", "true").lower()
+        == "true"
+    )
 
 
 class LHService:
@@ -51,10 +72,14 @@ class LHService:
         self._cfg = config or LHServiceConfig()
         self._server: Optional[GRPCServer] = None
         self._fabric: Optional[EventFabric] = None
-        logger.info("[LH] Initializing port=%d fabric=%s", self._cfg.port, self._cfg.fabric_mode)
+        logger.info(
+            "[LH] Initializing port=%d fabric=%s", self._cfg.port, self._cfg.fabric_mode
+        )
 
     def start(self) -> None:
-        self._fabric = EventFabric(mode=self._cfg.fabric_mode, identity=self._cfg.fabric_identity)
+        self._fabric = EventFabric(
+            mode=self._cfg.fabric_mode, identity=self._cfg.fabric_identity
+        )
         memory_client = MemoryClient(address=self._cfg.memory_addr)
         safety_client = SafetyClient(address=self._cfg.safety_addr)
         metacog_client = MetacognitionClient(address=self._cfg.meta_addr)
@@ -66,17 +91,24 @@ class LHService:
             node_id=self._cfg.fabric_identity,
         )
         plan_service = PlanService(
-            planner=planner, memory=memory_client, safety=safety_client,
-            metacog=metacog_client, fabric=self._fabric, config=plan_service_config,
+            planner=planner,
+            memory=memory_client,
+            safety=safety_client,
+            metacog=metacog_client,
+            fabric=self._fabric,
+            config=plan_service_config,
         )
 
         grpc_config = GRPCServerConfig(
-            port=self._cfg.port, max_workers=self._cfg.max_workers,
+            port=self._cfg.port,
+            max_workers=self._cfg.max_workers,
             enable_reflection=self._cfg.enable_reflection,
             reflection_service_names=["agi.plan.v1.PlanService"],
         )
         self._server = GRPCServer(config=grpc_config)
-        self._server.add_servicer(plan_service, plan_pb2_grpc.add_PlanServiceServicer_to_server)
+        self._server.add_servicer(
+            plan_service, plan_pb2_grpc.add_PlanServiceServicer_to_server
+        )
         self._server.add_signal_handlers()
         self._server.start()
         logger.info("[LH] Started on port %d", self._cfg.port)

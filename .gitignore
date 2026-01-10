@@ -4,3 +4,15 @@ __pycache__/
 src/agi_hpc.egg-info/
 src/*.egg-info/
 *.egg-info/
+
+# Virtual environment in repo (Windows)
+Lib/
+Scripts/
+scripts/*.exe
+share/
+Include/
+pyvenv.cfg
+*.dll
+
+# Python generated
+*.pyd

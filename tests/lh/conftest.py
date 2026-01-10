@@ -1,6 +1,7 @@
 """
 Pytest fixtures for LH unit tests.
 """
+
 import pytest
 from unittest.mock import MagicMock, patch
 from dataclasses import dataclass
@@ -39,7 +40,7 @@ class MockSafetyResult:
     issues: Optional[List[str]] = None
 
 
-@dataclass 
+@dataclass
 class MockMetaResult:
     decision: str = "ACCEPT"
     issues: Optional[List[str]] = None
@@ -48,44 +49,48 @@ class MockMetaResult:
 
 class MockMemoryClient:
     """Mock MemoryClient that passes through requests."""
+
     def enrich_request(self, request):
         return request
 
 
 class MockSafetyClient:
     """Mock SafetyClient with configurable behavior."""
+
     def __init__(self, approved: bool = True, issues: Optional[List[str]] = None):
         self._approved = approved
         self._issues = issues or []
-    
+
     def check_plan(self, plan_graph):
         return MockSafetyResult(approved=self._approved, issues=self._issues)
 
 
 class MockMetacogClient:
     """Mock MetacognitionClient with configurable behavior."""
+
     def __init__(self, decision: str = "ACCEPT", issues: Optional[List[str]] = None):
         self._decision = decision
         self._issues = issues or []
-    
+
     def review_plan(self, plan_graph):
         return MockMetaResult(decision=self._decision, issues=self._issues)
-    
+
     def revise_plan(self, plan_graph, review):
         return plan_graph
 
 
 class MockEventFabric:
     """Mock EventFabric that records published events."""
+
     def __init__(self):
         self.published_events = []
-    
+
     def publish(self, topic: str, payload: dict):
         self.published_events.append((topic, payload))
-    
+
     def subscribe(self, topic: str, handler):
         pass
-    
+
     def close(self):
         pass
 
