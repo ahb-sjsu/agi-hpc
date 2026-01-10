@@ -91,6 +91,40 @@ def clean_out_dir(out_dir: Path):
 
 
 # -----------------------------------------------------------------------------
+# Fix gRPC imports (post-processing)
+# -----------------------------------------------------------------------------
+
+def fix_grpc_imports(out_dir: Path):
+    """
+    Fix imports in generated *_pb2_grpc.py files.
+
+    grpc_tools.protoc generates: `import foo_pb2 as foo__pb2`
+    We need: `from agi.proto_gen import foo_pb2 as foo__pb2`
+    """
+    import re
+
+    grpc_files = list(out_dir.glob("*_pb2_grpc.py"))
+    if not grpc_files:
+        return
+
+    log(f"Fixing imports in {len(grpc_files)} gRPC files...")
+
+    # Pattern: import <name>_pb2 as <name>__pb2
+    pattern = re.compile(r'^import (\w+_pb2) as (\w+__pb2)$', re.MULTILINE)
+
+    for grpc_file in grpc_files:
+        content = grpc_file.read_text()
+        original = content
+
+        # Replace with package-relative import
+        content = pattern.sub(r'from agi.proto_gen import \1 as \2', content)
+
+        if content != original:
+            grpc_file.write_text(content)
+            log(f"  OK: Fixed imports in {grpc_file.name}")
+
+
+# -----------------------------------------------------------------------------
 # Generate protobuf stubs
 # -----------------------------------------------------------------------------
 
@@ -136,9 +170,12 @@ def generate_stubs(proto_dir: Path, clean=False, dry_run=False):
         except subprocess.CalledProcessError as e:
             fatal(f"protoc failed for {pf.name}: {e}")
 
-        log(f"✓ Generated: {pf.name}")
+        log(f"OK: {pf.name}")
 
     log("All proto files compiled successfully.")
+
+    # Post-process: fix imports in *_grpc.py files
+    fix_grpc_imports(out_dir)
 
 
 # -----------------------------------------------------------------------------
