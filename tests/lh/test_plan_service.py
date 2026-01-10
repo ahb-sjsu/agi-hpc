@@ -245,3 +245,199 @@ class TestPlanServiceMetacognition:
         # Should not raise even with rejecting metacog client
         response = service.Plan(sample_plan_request, mock_context)
         assert response is not None
+
+
+class TestPlanServiceExceptionHandling:
+    """Tests for exception handling in the pipeline."""
+
+    def test_memory_enrichment_failure_uses_raw_request(
+        self,
+        planner,
+        mock_memory,
+        mock_safety,
+        mock_metacog,
+        mock_fabric,
+        sample_plan_request,
+    ):
+        """Plan should continue with raw request if memory enrichment fails."""
+        # Make enrich_request raise an exception
+        mock_memory.enrich_request = MagicMock(side_effect=Exception("Memory error"))
+
+        service = PlanService(
+            planner=planner,
+            memory=mock_memory,
+            safety=mock_safety,
+            metacog=mock_metacog,
+            fabric=mock_fabric,
+        )
+
+        mock_context = MagicMock(spec=grpc.ServicerContext)
+
+        # Should not raise - falls back to raw request
+        response = service.Plan(sample_plan_request, mock_context)
+        assert response is not None
+
+    def test_metacog_revise_triggers_revision(
+        self,
+        planner,
+        mock_memory,
+        mock_safety,
+        mock_fabric,
+        sample_plan_request,
+    ):
+        """Plan should call revise_plan when metacog returns REVISE."""
+        mock_metacog = MagicMock()
+        mock_metacog.review_plan = MagicMock(
+            return_value=MagicMock(decision="REVISE", issues=["need_revision"])
+        )
+        mock_metacog.revise_plan = MagicMock(return_value=MagicMock(steps=[]))
+
+        service = PlanService(
+            planner=planner,
+            memory=mock_memory,
+            safety=mock_safety,
+            metacog=mock_metacog,
+            fabric=mock_fabric,
+        )
+
+        mock_context = MagicMock(spec=grpc.ServicerContext)
+        service.Plan(sample_plan_request, mock_context)
+
+        mock_metacog.revise_plan.assert_called_once()
+
+
+class TestPlanServiceHelpers:
+    """Tests for internal helper methods."""
+
+    def test_publish_plan_steps_handles_empty_steps(
+        self,
+        planner,
+        mock_memory,
+        mock_safety,
+        mock_metacog,
+        mock_fabric,
+    ):
+        """_publish_plan_steps should handle plan with no steps."""
+        service = PlanService(
+            planner=planner,
+            memory=mock_memory,
+            safety=mock_safety,
+            metacog=mock_metacog,
+            fabric=mock_fabric,
+        )
+
+        # Create a plan with no steps
+        empty_plan = MagicMock()
+        empty_plan.steps = []
+
+        # Should not raise
+        service._publish_plan_steps(empty_plan)
+
+        # Should only have completion event (no step events)
+        step_events = [
+            e for e in mock_fabric.published_events if e[0] == "plan.step_ready"
+        ]
+        assert len(step_events) == 0
+
+    def test_publish_plan_steps_handles_none_steps(
+        self,
+        planner,
+        mock_memory,
+        mock_safety,
+        mock_metacog,
+        mock_fabric,
+    ):
+        """_publish_plan_steps should handle plan with None steps."""
+        service = PlanService(
+            planner=planner,
+            memory=mock_memory,
+            safety=mock_safety,
+            metacog=mock_metacog,
+            fabric=mock_fabric,
+        )
+
+        # Create a plan with None steps
+        plan_no_steps = MagicMock(spec=[])  # No 'steps' attribute
+
+        # Should not raise
+        service._publish_plan_steps(plan_no_steps)
+
+    def test_serialize_step_handles_dict(
+        self,
+        planner,
+        mock_memory,
+        mock_safety,
+        mock_metacog,
+        mock_fabric,
+    ):
+        """_serialize_step should pass through dict steps."""
+        service = PlanService(
+            planner=planner,
+            memory=mock_memory,
+            safety=mock_safety,
+            metacog=mock_metacog,
+            fabric=mock_fabric,
+        )
+
+        dict_step = {"action": "move", "params": {"x": 1, "y": 2}}
+        result = service._serialize_step(dict_step)
+
+        assert result is dict_step
+
+    def test_serialize_step_handles_object_with_attrs(
+        self,
+        planner,
+        mock_memory,
+        mock_safety,
+        mock_metacog,
+        mock_fabric,
+    ):
+        """_serialize_step should extract known attributes from objects."""
+        service = PlanService(
+            planner=planner,
+            memory=mock_memory,
+            safety=mock_safety,
+            metacog=mock_metacog,
+            fabric=mock_fabric,
+        )
+
+        class StepObj:
+            action = "grasp"
+            params = {"force": 10}
+            preconditions = ["object_visible"]
+            postconditions = ["object_held"]
+
+        step = StepObj()
+        result = service._serialize_step(step)
+
+        assert result["action"] == "grasp"
+        assert result["params"] == {"force": 10}
+        assert result["preconditions"] == ["object_visible"]
+        assert result["postconditions"] == ["object_held"]
+
+    def test_fabric_publish_error_handled(
+        self,
+        planner,
+        mock_memory,
+        mock_safety,
+        mock_metacog,
+        sample_plan_request,
+    ):
+        """Fabric publish errors should be logged but not raise."""
+        # Create a fabric that raises on publish
+        mock_fabric = MagicMock()
+        mock_fabric.publish = MagicMock(side_effect=Exception("Fabric error"))
+
+        service = PlanService(
+            planner=planner,
+            memory=mock_memory,
+            safety=mock_safety,
+            metacog=mock_metacog,
+            fabric=mock_fabric,
+        )
+
+        mock_context = MagicMock(spec=grpc.ServicerContext)
+
+        # Should not raise - errors are logged
+        response = service.Plan(sample_plan_request, mock_context)
+        assert response is not None
