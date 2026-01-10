@@ -1,0 +1,33 @@
+# Dockerfile for AGI-HPC LH Service
+#
+# Build: docker build -f infra/local/Dockerfile.lh -t agi-hpc-lh .
+# Run:   docker run -p 50100:50100 agi-hpc-lh
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install dependencies
+COPY pyproject.toml .
+COPY src/ src/
+COPY proto/ proto/
+COPY generate_protos.py .
+
+# Install package and dependencies
+RUN pip install --no-cache-dir -e ".[dev]"
+RUN pip install --no-cache-dir grpcio-tools
+
+# Generate protobuf stubs
+RUN python generate_protos.py --clean
+
+# Expose gRPC port
+EXPOSE 50100
+
+# Run LH service
+ENV PYTHONUNBUFFERED=1
+CMD ["python", "-m", "agi.lh.service", "--port", "50100"]

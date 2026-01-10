@@ -1,0 +1,96 @@
+# AGI-HPC Local LH Stack
+# Docker Compose configuration for running LH service with mock dependencies
+#
+# Usage:
+#   docker-compose -f infra/local/docker-compose.lh.yaml up
+#
+# Services:
+#   - lh: Left Hemisphere planning service (gRPC on port 50100)
+#   - safety-mock: Mock safety service (always approves)
+#   - metacog-mock: Mock metacognition service (always accepts)
+#
+# Environment:
+#   - AGI_FABRIC_MODE=local (in-process event fabric)
+#   - AGI_LH_PORT=50100
+
+version: '3.8'
+
+services:
+  # ---------------------------------------------------------------------------
+  # LH Service - Main planning service
+  # ---------------------------------------------------------------------------
+  lh:
+    build:
+      context: ../..
+      dockerfile: infra/local/Dockerfile.lh
+    ports:
+      - "50100:50100"
+    environment:
+      - AGI_LH_PORT=50100
+      - AGI_FABRIC_MODE=local
+      - AGI_LH_MEMORY_ADDR=memory-mock:50110
+      - AGI_LH_SAFETY_ADDR=safety-mock:50120
+      - AGI_LH_META_ADDR=metacog-mock:50130
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      - safety-mock
+      - metacog-mock
+    networks:
+      - lh-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import grpc; ch = grpc.insecure_channel('localhost:50100'); grpc.channel_ready_future(ch).result(timeout=5)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # Mock Safety Service
+  # ---------------------------------------------------------------------------
+  safety-mock:
+    build:
+      context: ../..
+      dockerfile: infra/local/Dockerfile.mock
+    environment:
+      - MOCK_SERVICE=safety
+      - MOCK_PORT=50120
+      - MOCK_BEHAVIOR=approve
+    ports:
+      - "50120:50120"
+    networks:
+      - lh-network
+
+  # ---------------------------------------------------------------------------
+  # Mock Metacognition Service
+  # ---------------------------------------------------------------------------
+  metacog-mock:
+    build:
+      context: ../..
+      dockerfile: infra/local/Dockerfile.mock
+    environment:
+      - MOCK_SERVICE=metacog
+      - MOCK_PORT=50130
+      - MOCK_BEHAVIOR=accept
+    ports:
+      - "50130:50130"
+    networks:
+      - lh-network
+
+  # ---------------------------------------------------------------------------
+  # Mock Memory Service (optional)
+  # ---------------------------------------------------------------------------
+  memory-mock:
+    build:
+      context: ../..
+      dockerfile: infra/local/Dockerfile.mock
+    environment:
+      - MOCK_SERVICE=memory
+      - MOCK_PORT=50110
+      - MOCK_BEHAVIOR=passthrough
+    ports:
+      - "50110:50110"
+    networks:
+      - lh-network
+
+networks:
+  lh-network:
+    driver: bridge

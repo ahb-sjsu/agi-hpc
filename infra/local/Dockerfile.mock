@@ -1,0 +1,25 @@
+# Dockerfile for AGI-HPC Mock Services
+#
+# Generic mock service that can behave as Safety, Metacognition, or Memory
+# based on environment variables.
+#
+# Environment:
+#   MOCK_SERVICE: safety | metacog | memory
+#   MOCK_PORT: Port to listen on
+#   MOCK_BEHAVIOR: approve | reject | accept | revise | passthrough
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install grpcio
+RUN pip install --no-cache-dir grpcio grpcio-tools
+
+# Copy mock server script
+COPY infra/local/mock_server.py .
+
+# Default port
+EXPOSE 50120
+
+ENV PYTHONUNBUFFERED=1
+CMD ["python", "mock_server.py"]
