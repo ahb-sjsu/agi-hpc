@@ -9,77 +9,79 @@ from google.protobuf import descriptor_pool as _descriptor_pool
 from google.protobuf import runtime_version as _runtime_version
 from google.protobuf import symbol_database as _symbol_database
 from google.protobuf.internal import builder as _builder
-
 _runtime_version.ValidateProtobufRuntimeVersion(
-    _runtime_version.Domain.PUBLIC, 6, 31, 1, "", "plan.proto"
+    _runtime_version.Domain.PUBLIC,
+    6,
+    31,
+    1,
+    '',
+    'plan.proto'
 )
 # @@protoc_insertion_point(imports)
 
 _sym_db = _symbol_database.Default()
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(
-    b'\n\nplan.proto\x12\x0b\x61gi.plan.v1"\xde\x01\n\x0bPlanRequest\x12\x1f\n\x04task\x18\x01 \x01(\x0b\x32\x11.agi.plan.v1.Task\x12\x37\n\x0b\x65nvironment\x18\x02 \x01(\x0b\x32".agi.plan.v1.EnvironmentDescriptor\x12\x38\n\x08metadata\x18\x03 \x03(\x0b\x32&.agi.plan.v1.PlanRequest.MetadataEntry\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01J\x04\x08\x04\x10\x05J\x04\x08\x05\x10\x06"\xd4\x01\n\x0cPlanResponse\x12\x0f\n\x07plan_id\x18\x01 \x01(\t\x12$\n\x05steps\x18\x02 \x03(\x0b\x32\x15.agi.plan.v1.PlanStep\x12\r\n\x05notes\x18\x03 \x01(\t\x12\x12\n\nconfidence\x18\x04 \x01(\x02\x12\x39\n\x08metadata\x18\x05 \x03(\x0b\x32\'.agi.plan.v1.PlanResponse.MetadataEntry\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01"\xa9\x01\n\x04Task\x12\x0f\n\x07goal_id\x18\x01 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x02 \x01(\t\x12\x11\n\ttask_type\x18\x03 \x01(\t\x12-\n\x06params\x18\x04 \x03(\x0b\x32\x1d.agi.plan.v1.Task.ParamsEntry\x1a-\n\x0bParamsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01J\x04\x08\x05\x10\x06J\x04\x08\x06\x10\x07"\xc6\x01\n\x15\x45nvironmentDescriptor\x12\x13\n\x0bscenario_id\x18\x01 \x01(\t\x12\x17\n\x0fworld_state_ref\x18\x02 \x01(\t\x12\x42\n\x08metadata\x18\x03 \x03(\x0b\x32\x30.agi.plan.v1.EnvironmentDescriptor.MetadataEntry\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01J\x04\x08\x04\x10\x05J\x04\x08\x05\x10\x06"\xa0\x02\n\x08PlanStep\x12\x0f\n\x07step_id\x18\x01 \x01(\t\x12\r\n\x05index\x18\x02 \x01(\x05\x12\r\n\x05level\x18\x03 \x01(\x05\x12\x0c\n\x04kind\x18\x04 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x05 \x01(\t\x12\x11\n\tparent_id\x18\x06 \x01(\t\x12\x1b\n\x13requires_simulation\x18\x07 \x01(\x08\x12\x13\n\x0bsafety_tags\x18\x08 \x03(\t\x12\x0f\n\x07tool_id\x18\t \x01(\t\x12\x31\n\x06params\x18\n \x03(\x0b\x32!.agi.plan.v1.PlanStep.ParamsEntry\x1a-\n\x0bParamsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01J\x04\x08\x0b\x10\x0cJ\x04\x08\x0c\x10\r"\xec\x01\n\x0ePlanGraphProto\x12\x0f\n\x07plan_id\x18\x01 \x01(\t\x12\x11\n\tgoal_text\x18\x02 \x01(\t\x12$\n\x05steps\x18\x03 \x03(\x0b\x32\x15.agi.plan.v1.PlanStep\x12;\n\x08metadata\x18\x04 \x03(\x0b\x32).agi.plan.v1.PlanGraphProto.MetadataEntry\x12\x16\n\x0eschema_version\x18\x05 \x01(\x05\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01J\x04\x08\x06\x10\x07J\x04\x08\x07\x10\x08"\xde\x01\n\x11SimulationRequest\x12\x0f\n\x07plan_id\x18\x01 \x01(\t\x12.\n\x0f\x63\x61ndidate_steps\x18\x02 \x03(\x0b\x32\x15.agi.plan.v1.PlanStep\x12\x17\n\x0fworld_state_ref\x18\x03 \x01(\t\x12>\n\x08metadata\x18\x04 \x03(\x0b\x32,.agi.plan.v1.SimulationRequest.MetadataEntry\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01"\xf7\x01\n\x10SimulationResult\x12\x0f\n\x07plan_id\x18\x01 \x01(\t\x12\x11\n\tstep_risk\x18\x02 \x03(\x02\x12\x12\n\nviolations\x18\x03 \x03(\t\x12\x14\n\x0coverall_risk\x18\x04 \x01(\x02\x12\x10\n\x08\x61pproved\x18\x05 \x01(\x08\x12\r\n\x05notes\x18\x06 \x01(\t\x12=\n\x08metadata\x18\x07 \x03(\x0b\x32+.agi.plan.v1.SimulationResult.MetadataEntry\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01J\x04\x08\x08\x10\t2J\n\x0bPlanService\x12;\n\x04Plan\x12\x18.agi.plan.v1.PlanRequest\x1a\x19.agi.plan.v1.PlanResponse2^\n\x11SimulationService\x12I\n\x08Simulate\x12\x1e.agi.plan.v1.SimulationRequest\x1a\x1d.agi.plan.v1.SimulationResultB%\n\x0f\x63om.agi.plan.v1P\x01Z\x10\x61gi/plan/v1;planb\x06proto3'
-)
+
+
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nplan.proto\x12\x0b\x61gi.plan.v1\"\xde\x01\n\x0bPlanRequest\x12\x1f\n\x04task\x18\x01 \x01(\x0b\x32\x11.agi.plan.v1.Task\x12\x37\n\x0b\x65nvironment\x18\x02 \x01(\x0b\x32\".agi.plan.v1.EnvironmentDescriptor\x12\x38\n\x08metadata\x18\x03 \x03(\x0b\x32&.agi.plan.v1.PlanRequest.MetadataEntry\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01J\x04\x08\x04\x10\x05J\x04\x08\x05\x10\x06\"\xd4\x01\n\x0cPlanResponse\x12\x0f\n\x07plan_id\x18\x01 \x01(\t\x12$\n\x05steps\x18\x02 \x03(\x0b\x32\x15.agi.plan.v1.PlanStep\x12\r\n\x05notes\x18\x03 \x01(\t\x12\x12\n\nconfidence\x18\x04 \x01(\x02\x12\x39\n\x08metadata\x18\x05 \x03(\x0b\x32\'.agi.plan.v1.PlanResponse.MetadataEntry\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xa9\x01\n\x04Task\x12\x0f\n\x07goal_id\x18\x01 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x02 \x01(\t\x12\x11\n\ttask_type\x18\x03 \x01(\t\x12-\n\x06params\x18\x04 \x03(\x0b\x32\x1d.agi.plan.v1.Task.ParamsEntry\x1a-\n\x0bParamsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01J\x04\x08\x05\x10\x06J\x04\x08\x06\x10\x07\"\xc6\x01\n\x15\x45nvironmentDescriptor\x12\x13\n\x0bscenario_id\x18\x01 \x01(\t\x12\x17\n\x0fworld_state_ref\x18\x02 \x01(\t\x12\x42\n\x08metadata\x18\x03 \x03(\x0b\x32\x30.agi.plan.v1.EnvironmentDescriptor.MetadataEntry\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01J\x04\x08\x04\x10\x05J\x04\x08\x05\x10\x06\"\xa0\x02\n\x08PlanStep\x12\x0f\n\x07step_id\x18\x01 \x01(\t\x12\r\n\x05index\x18\x02 \x01(\x05\x12\r\n\x05level\x18\x03 \x01(\x05\x12\x0c\n\x04kind\x18\x04 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x05 \x01(\t\x12\x11\n\tparent_id\x18\x06 \x01(\t\x12\x1b\n\x13requires_simulation\x18\x07 \x01(\x08\x12\x13\n\x0bsafety_tags\x18\x08 \x03(\t\x12\x0f\n\x07tool_id\x18\t \x01(\t\x12\x31\n\x06params\x18\n \x03(\x0b\x32!.agi.plan.v1.PlanStep.ParamsEntry\x1a-\n\x0bParamsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01J\x04\x08\x0b\x10\x0cJ\x04\x08\x0c\x10\r\"\xec\x01\n\x0ePlanGraphProto\x12\x0f\n\x07plan_id\x18\x01 \x01(\t\x12\x11\n\tgoal_text\x18\x02 \x01(\t\x12$\n\x05steps\x18\x03 \x03(\x0b\x32\x15.agi.plan.v1.PlanStep\x12;\n\x08metadata\x18\x04 \x03(\x0b\x32).agi.plan.v1.PlanGraphProto.MetadataEntry\x12\x16\n\x0eschema_version\x18\x05 \x01(\x05\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01J\x04\x08\x06\x10\x07J\x04\x08\x07\x10\x08\"\xde\x01\n\x11SimulationRequest\x12\x0f\n\x07plan_id\x18\x01 \x01(\t\x12.\n\x0f\x63\x61ndidate_steps\x18\x02 \x03(\x0b\x32\x15.agi.plan.v1.PlanStep\x12\x17\n\x0fworld_state_ref\x18\x03 \x01(\t\x12>\n\x08metadata\x18\x04 \x03(\x0b\x32,.agi.plan.v1.SimulationRequest.MetadataEntry\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xf7\x01\n\x10SimulationResult\x12\x0f\n\x07plan_id\x18\x01 \x01(\t\x12\x11\n\tstep_risk\x18\x02 \x03(\x02\x12\x12\n\nviolations\x18\x03 \x03(\t\x12\x14\n\x0coverall_risk\x18\x04 \x01(\x02\x12\x10\n\x08\x61pproved\x18\x05 \x01(\x08\x12\r\n\x05notes\x18\x06 \x01(\t\x12=\n\x08metadata\x18\x07 \x03(\x0b\x32+.agi.plan.v1.SimulationResult.MetadataEntry\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01J\x04\x08\x08\x10\t2J\n\x0bPlanService\x12;\n\x04Plan\x12\x18.agi.plan.v1.PlanRequest\x1a\x19.agi.plan.v1.PlanResponse2^\n\x11SimulationService\x12I\n\x08Simulate\x12\x1e.agi.plan.v1.SimulationRequest\x1a\x1d.agi.plan.v1.SimulationResultB%\n\x0f\x63om.agi.plan.v1P\x01Z\x10\x61gi/plan/v1;planb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
-_builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, "plan_pb2", _globals)
+_builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'plan_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
-    _globals["DESCRIPTOR"]._loaded_options = None
-    _globals["DESCRIPTOR"]._serialized_options = (
-        b"\n\017com.agi.plan.v1P\001Z\020agi/plan/v1;plan"
-    )
-    _globals["_PLANREQUEST_METADATAENTRY"]._loaded_options = None
-    _globals["_PLANREQUEST_METADATAENTRY"]._serialized_options = b"8\001"
-    _globals["_PLANRESPONSE_METADATAENTRY"]._loaded_options = None
-    _globals["_PLANRESPONSE_METADATAENTRY"]._serialized_options = b"8\001"
-    _globals["_TASK_PARAMSENTRY"]._loaded_options = None
-    _globals["_TASK_PARAMSENTRY"]._serialized_options = b"8\001"
-    _globals["_ENVIRONMENTDESCRIPTOR_METADATAENTRY"]._loaded_options = None
-    _globals["_ENVIRONMENTDESCRIPTOR_METADATAENTRY"]._serialized_options = b"8\001"
-    _globals["_PLANSTEP_PARAMSENTRY"]._loaded_options = None
-    _globals["_PLANSTEP_PARAMSENTRY"]._serialized_options = b"8\001"
-    _globals["_PLANGRAPHPROTO_METADATAENTRY"]._loaded_options = None
-    _globals["_PLANGRAPHPROTO_METADATAENTRY"]._serialized_options = b"8\001"
-    _globals["_SIMULATIONREQUEST_METADATAENTRY"]._loaded_options = None
-    _globals["_SIMULATIONREQUEST_METADATAENTRY"]._serialized_options = b"8\001"
-    _globals["_SIMULATIONRESULT_METADATAENTRY"]._loaded_options = None
-    _globals["_SIMULATIONRESULT_METADATAENTRY"]._serialized_options = b"8\001"
-    _globals["_PLANREQUEST"]._serialized_start = 28
-    _globals["_PLANREQUEST"]._serialized_end = 250
-    _globals["_PLANREQUEST_METADATAENTRY"]._serialized_start = 191
-    _globals["_PLANREQUEST_METADATAENTRY"]._serialized_end = 238
-    _globals["_PLANRESPONSE"]._serialized_start = 253
-    _globals["_PLANRESPONSE"]._serialized_end = 465
-    _globals["_PLANRESPONSE_METADATAENTRY"]._serialized_start = 191
-    _globals["_PLANRESPONSE_METADATAENTRY"]._serialized_end = 238
-    _globals["_TASK"]._serialized_start = 468
-    _globals["_TASK"]._serialized_end = 637
-    _globals["_TASK_PARAMSENTRY"]._serialized_start = 580
-    _globals["_TASK_PARAMSENTRY"]._serialized_end = 625
-    _globals["_ENVIRONMENTDESCRIPTOR"]._serialized_start = 640
-    _globals["_ENVIRONMENTDESCRIPTOR"]._serialized_end = 838
-    _globals["_ENVIRONMENTDESCRIPTOR_METADATAENTRY"]._serialized_start = 191
-    _globals["_ENVIRONMENTDESCRIPTOR_METADATAENTRY"]._serialized_end = 238
-    _globals["_PLANSTEP"]._serialized_start = 841
-    _globals["_PLANSTEP"]._serialized_end = 1129
-    _globals["_PLANSTEP_PARAMSENTRY"]._serialized_start = 580
-    _globals["_PLANSTEP_PARAMSENTRY"]._serialized_end = 625
-    _globals["_PLANGRAPHPROTO"]._serialized_start = 1132
-    _globals["_PLANGRAPHPROTO"]._serialized_end = 1368
-    _globals["_PLANGRAPHPROTO_METADATAENTRY"]._serialized_start = 191
-    _globals["_PLANGRAPHPROTO_METADATAENTRY"]._serialized_end = 238
-    _globals["_SIMULATIONREQUEST"]._serialized_start = 1371
-    _globals["_SIMULATIONREQUEST"]._serialized_end = 1593
-    _globals["_SIMULATIONREQUEST_METADATAENTRY"]._serialized_start = 191
-    _globals["_SIMULATIONREQUEST_METADATAENTRY"]._serialized_end = 238
-    _globals["_SIMULATIONRESULT"]._serialized_start = 1596
-    _globals["_SIMULATIONRESULT"]._serialized_end = 1843
-    _globals["_SIMULATIONRESULT_METADATAENTRY"]._serialized_start = 191
-    _globals["_SIMULATIONRESULT_METADATAENTRY"]._serialized_end = 238
-    _globals["_PLANSERVICE"]._serialized_start = 1845
-    _globals["_PLANSERVICE"]._serialized_end = 1919
-    _globals["_SIMULATIONSERVICE"]._serialized_start = 1921
-    _globals["_SIMULATIONSERVICE"]._serialized_end = 2015
+  _globals['DESCRIPTOR']._loaded_options = None
+  _globals['DESCRIPTOR']._serialized_options = b'\n\017com.agi.plan.v1P\001Z\020agi/plan/v1;plan'
+  _globals['_PLANREQUEST_METADATAENTRY']._loaded_options = None
+  _globals['_PLANREQUEST_METADATAENTRY']._serialized_options = b'8\001'
+  _globals['_PLANRESPONSE_METADATAENTRY']._loaded_options = None
+  _globals['_PLANRESPONSE_METADATAENTRY']._serialized_options = b'8\001'
+  _globals['_TASK_PARAMSENTRY']._loaded_options = None
+  _globals['_TASK_PARAMSENTRY']._serialized_options = b'8\001'
+  _globals['_ENVIRONMENTDESCRIPTOR_METADATAENTRY']._loaded_options = None
+  _globals['_ENVIRONMENTDESCRIPTOR_METADATAENTRY']._serialized_options = b'8\001'
+  _globals['_PLANSTEP_PARAMSENTRY']._loaded_options = None
+  _globals['_PLANSTEP_PARAMSENTRY']._serialized_options = b'8\001'
+  _globals['_PLANGRAPHPROTO_METADATAENTRY']._loaded_options = None
+  _globals['_PLANGRAPHPROTO_METADATAENTRY']._serialized_options = b'8\001'
+  _globals['_SIMULATIONREQUEST_METADATAENTRY']._loaded_options = None
+  _globals['_SIMULATIONREQUEST_METADATAENTRY']._serialized_options = b'8\001'
+  _globals['_SIMULATIONRESULT_METADATAENTRY']._loaded_options = None
+  _globals['_SIMULATIONRESULT_METADATAENTRY']._serialized_options = b'8\001'
+  _globals['_PLANREQUEST']._serialized_start=28
+  _globals['_PLANREQUEST']._serialized_end=250
+  _globals['_PLANREQUEST_METADATAENTRY']._serialized_start=191
+  _globals['_PLANREQUEST_METADATAENTRY']._serialized_end=238
+  _globals['_PLANRESPONSE']._serialized_start=253
+  _globals['_PLANRESPONSE']._serialized_end=465
+  _globals['_PLANRESPONSE_METADATAENTRY']._serialized_start=191
+  _globals['_PLANRESPONSE_METADATAENTRY']._serialized_end=238
+  _globals['_TASK']._serialized_start=468
+  _globals['_TASK']._serialized_end=637
+  _globals['_TASK_PARAMSENTRY']._serialized_start=580
+  _globals['_TASK_PARAMSENTRY']._serialized_end=625
+  _globals['_ENVIRONMENTDESCRIPTOR']._serialized_start=640
+  _globals['_ENVIRONMENTDESCRIPTOR']._serialized_end=838
+  _globals['_ENVIRONMENTDESCRIPTOR_METADATAENTRY']._serialized_start=191
+  _globals['_ENVIRONMENTDESCRIPTOR_METADATAENTRY']._serialized_end=238
+  _globals['_PLANSTEP']._serialized_start=841
+  _globals['_PLANSTEP']._serialized_end=1129
+  _globals['_PLANSTEP_PARAMSENTRY']._serialized_start=580
+  _globals['_PLANSTEP_PARAMSENTRY']._serialized_end=625
+  _globals['_PLANGRAPHPROTO']._serialized_start=1132
+  _globals['_PLANGRAPHPROTO']._serialized_end=1368
+  _globals['_PLANGRAPHPROTO_METADATAENTRY']._serialized_start=191
+  _globals['_PLANGRAPHPROTO_METADATAENTRY']._serialized_end=238
+  _globals['_SIMULATIONREQUEST']._serialized_start=1371
+  _globals['_SIMULATIONREQUEST']._serialized_end=1593
+  _globals['_SIMULATIONREQUEST_METADATAENTRY']._serialized_start=191
+  _globals['_SIMULATIONREQUEST_METADATAENTRY']._serialized_end=238
+  _globals['_SIMULATIONRESULT']._serialized_start=1596
+  _globals['_SIMULATIONRESULT']._serialized_end=1843
+  _globals['_SIMULATIONRESULT_METADATAENTRY']._serialized_start=191
+  _globals['_SIMULATIONRESULT_METADATAENTRY']._serialized_end=238
+  _globals['_PLANSERVICE']._serialized_start=1845
+  _globals['_PLANSERVICE']._serialized_end=1919
+  _globals['_SIMULATIONSERVICE']._serialized_start=1921
+  _globals['_SIMULATIONSERVICE']._serialized_end=2015
 # @@protoc_insertion_point(module_scope)

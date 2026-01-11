@@ -9,22 +9,107 @@ from google.protobuf import descriptor_pool as _descriptor_pool
 from google.protobuf import runtime_version as _runtime_version
 from google.protobuf import symbol_database as _symbol_database
 from google.protobuf.internal import builder as _builder
-
 _runtime_version.ValidateProtobufRuntimeVersion(
-    _runtime_version.Domain.PUBLIC, 6, 31, 1, "", "memory.proto"
+    _runtime_version.Domain.PUBLIC,
+    6,
+    31,
+    1,
+    '',
+    'memory.proto'
 )
 # @@protoc_insertion_point(imports)
 
 _sym_db = _symbol_database.Default()
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(
-    b"\n\x0cmemory.proto\x12\ragi.memory.v1b\x06proto3"
-)
+
+
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0cmemory.proto\x12\ragi.memory.v1\"p\n\rSemanticQuery\x12\x0c\n\x04text\x18\x01 \x01(\t\x12\x0e\n\x06\x64omain\x18\x02 \x01(\t\x12\x13\n\x0bmax_results\x18\x03 \x01(\x05\x12\x16\n\x0emin_similarity\x18\x04 \x01(\x02\x12\x14\n\x0c\x65ntity_types\x18\x05 \x03(\t\"\x91\x01\n\x0eSemanticResult\x12*\n\x05\x66\x61\x63ts\x18\x01 \x03(\x0b\x32\x1b.agi.memory.v1.SemanticFact\x12\'\n\x08\x65ntities\x18\x02 \x03(\x0b\x32\x15.agi.memory.v1.Entity\x12*\n\trelations\x18\x03 \x03(\x0b\x32\x17.agi.memory.v1.Relation\"\x8c\x01\n\x0cSemanticFact\x12\x0f\n\x07\x66\x61\x63t_id\x18\x01 \x01(\t\x12\x0f\n\x07\x63ontent\x18\x02 \x01(\t\x12\x12\n\nconfidence\x18\x03 \x01(\x02\x12\x12\n\nsimilarity\x18\x04 \x01(\x02\x12\x0e\n\x06source\x18\x05 \x01(\t\x12\x0f\n\x07\x64omains\x18\x06 \x03(\t\x12\x11\n\tembedding\x18\x07 \x03(\x02\"\xac\x01\n\x06\x45ntity\x12\x11\n\tentity_id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x13\n\x0b\x65ntity_type\x18\x03 \x01(\t\x12\x39\n\nproperties\x18\x04 \x03(\x0b\x32%.agi.memory.v1.Entity.PropertiesEntry\x1a\x31\n\x0fPropertiesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"m\n\x08Relation\x12\x13\n\x0brelation_id\x18\x01 \x01(\t\x12\x12\n\nsubject_id\x18\x02 \x01(\t\x12\x11\n\tpredicate\x18\x03 \x01(\t\x12\x11\n\tobject_id\x18\x04 \x01(\t\x12\x12\n\nconfidence\x18\x05 \x01(\x02\"X\n\x10StoreFactRequest\x12\x0f\n\x07\x63ontent\x18\x01 \x01(\t\x12\x0e\n\x06source\x18\x02 \x01(\t\x12\x0f\n\x07\x64omains\x18\x03 \x03(\t\x12\x12\n\nconfidence\x18\x04 \x01(\x02\"5\n\x11StoreFactResponse\x12\x0f\n\x07\x66\x61\x63t_id\x18\x01 \x01(\t\x12\x0f\n\x07success\x18\x02 \x01(\x08\"$\n\x11ToolSchemaRequest\x12\x0f\n\x07tool_id\x18\x01 \x01(\t\"?\n\x12ToolSchemaResponse\x12)\n\x06schema\x18\x01 \x01(\x0b\x32\x19.agi.memory.v1.ToolSchema\"\xcf\x01\n\nToolSchema\x12\x0f\n\x07tool_id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x03 \x01(\t\x12\x30\n\nparameters\x18\x04 \x03(\x0b\x32\x1c.agi.memory.v1.ToolParameter\x12\x17\n\x0frequired_params\x18\x05 \x03(\t\x12\x13\n\x0breturn_type\x18\x06 \x01(\t\x12\x15\n\rpreconditions\x18\x07 \x03(\t\x12\x16\n\x0epostconditions\x18\x08 \x03(\t\"o\n\rToolParameter\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x12\n\nparam_type\x18\x02 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x03 \x01(\t\x12\x15\n\rdefault_value\x18\x04 \x01(\t\x12\x10\n\x08required\x18\x05 \x01(\x08\"\xc7\x01\n\rEpisodicQuery\x12\x1d\n\x15situation_description\x18\x01 \x01(\t\x12\x11\n\ttask_type\x18\x02 \x01(\t\x12\x13\n\x0bscenario_id\x18\x03 \x01(\t\x12\x13\n\x0bmax_results\x18\x04 \x01(\x05\x12\x16\n\x0emin_similarity\x18\x05 \x01(\x02\x12\x14\n\x0csuccess_only\x18\x06 \x01(\x08\x12\x16\n\x0e\x66rom_timestamp\x18\x07 \x01(\x03\x12\x14\n\x0cto_timestamp\x18\x08 \x01(\x03\":\n\x0e\x45pisodicResult\x12(\n\x08\x65pisodes\x18\x01 \x03(\x0b\x32\x16.agi.memory.v1.Episode\"\xf2\x01\n\x07\x45pisode\x12\x12\n\nepisode_id\x18\x01 \x01(\t\x12\x11\n\ttimestamp\x18\x02 \x01(\x03\x12\x18\n\x10task_description\x18\x03 \x01(\t\x12\x11\n\ttask_type\x18\x04 \x01(\t\x12\x13\n\x0bscenario_id\x18\x05 \x01(\t\x12(\n\x04plan\x18\x06 \x01(\x0b\x32\x1a.agi.memory.v1.EpisodePlan\x12.\n\x07outcome\x18\x07 \x01(\x0b\x32\x1d.agi.memory.v1.EpisodeOutcome\x12\x12\n\nsimilarity\x18\x08 \x01(\x02\x12\x10\n\x08insights\x18\t \x03(\t\"I\n\x0b\x45pisodePlan\x12\x0f\n\x07plan_id\x18\x01 \x01(\t\x12)\n\x05steps\x18\x02 \x03(\x0b\x32\x1a.agi.memory.v1.EpisodeStep\"\x84\x01\n\x0b\x45pisodeStep\x12\x0f\n\x07step_id\x18\x01 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x02 \x01(\t\x12\x0f\n\x07tool_id\x18\x03 \x01(\t\x12\x11\n\tsucceeded\x18\x04 \x01(\x08\x12\x16\n\x0e\x66\x61ilure_reason\x18\x05 \x01(\t\x12\x13\n\x0b\x64uration_ms\x18\x06 \x01(\x03\"\x91\x01\n\x0e\x45pisodeOutcome\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x1d\n\x15\x63ompletion_percentage\x18\x02 \x01(\x02\x12\x1b\n\x13outcome_description\x18\x03 \x01(\t\x12\x17\n\x0f\x66\x61ilure_reasons\x18\x04 \x03(\t\x12\x19\n\x11total_duration_ms\x18\x05 \x01(\x03\">\n\x13StoreEpisodeRequest\x12\'\n\x07\x65pisode\x18\x01 \x01(\x0b\x32\x16.agi.memory.v1.Episode\";\n\x14StoreEpisodeResponse\x12\x12\n\nepisode_id\x18\x01 \x01(\t\x12\x0f\n\x07success\x18\x02 \x01(\x08\"\'\n\x11GetEpisodeRequest\x12\x12\n\nepisode_id\x18\x01 \x01(\t\"\x8d\x01\n\nSkillQuery\x12\x1e\n\x16\x63\x61pability_description\x18\x01 \x01(\t\x12\x11\n\ttask_type\x18\x02 \x01(\t\x12\x1e\n\x16required_preconditions\x18\x03 \x03(\t\x12\x13\n\x0bmax_results\x18\x04 \x01(\x05\x12\x17\n\x0fmin_proficiency\x18\x05 \x01(\x02\"3\n\x0bSkillResult\x12$\n\x06skills\x18\x01 \x03(\x0b\x32\x14.agi.memory.v1.Skill\"\xce\x02\n\x05Skill\x12\x10\n\x08skill_id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x03 \x01(\t\x12\x10\n\x08\x63\x61tegory\x18\x04 \x01(\t\x12\x15\n\rpreconditions\x18\x05 \x03(\t\x12\x16\n\x0epostconditions\x18\x06 \x03(\t\x12\x31\n\nparameters\x18\x07 \x03(\x0b\x32\x1d.agi.memory.v1.SkillParameter\x12+\n\x07\x61\x63tions\x18\x08 \x03(\x0b\x32\x1a.agi.memory.v1.SkillAction\x12\x13\n\x0bproficiency\x18\t \x01(\x02\x12\x17\n\x0f\x65xecution_count\x18\n \x01(\x05\x12\x14\n\x0csuccess_rate\x18\x0b \x01(\x02\x12\x17\n\x0f\x61vg_duration_ms\x18\x0c \x01(\x03\x12\x12\n\nsimilarity\x18\r \x01(\x02\"p\n\x0eSkillParameter\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x12\n\nparam_type\x18\x02 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x03 \x01(\t\x12\x10\n\x08required\x18\x04 \x01(\x08\x12\x15\n\rdefault_value\x18\x05 \x01(\t\"\xcd\x01\n\x0bSkillAction\x12\x10\n\x08sequence\x18\x01 \x01(\x05\x12\x13\n\x0b\x61\x63tion_type\x18\x02 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x03 \x01(\t\x12\x0f\n\x07tool_id\x18\x04 \x01(\t\x12>\n\nparameters\x18\x05 \x03(\x0b\x32*.agi.memory.v1.SkillAction.ParametersEntry\x1a\x31\n\x0fParametersEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"#\n\x0fGetSkillRequest\x12\x10\n\x08skill_id\x18\x01 \x01(\t\";\n\x14RegisterSkillRequest\x12#\n\x05skill\x18\x01 \x01(\x0b\x32\x14.agi.memory.v1.Skill\":\n\x15RegisterSkillResponse\x12\x10\n\x08skill_id\x18\x01 \x01(\t\x12\x0f\n\x07success\x18\x02 \x01(\x08\"g\n\x17UpdateSkillStatsRequest\x12\x10\n\x08skill_id\x18\x01 \x01(\t\x12\x1b\n\x13\x65xecution_succeeded\x18\x02 \x01(\x08\x12\x1d\n\x15\x65xecution_duration_ms\x18\x03 \x01(\x03\"^\n\x18UpdateSkillStatsResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x17\n\x0fnew_proficiency\x18\x02 \x01(\x02\x12\x18\n\x10new_success_rate\x18\x03 \x01(\x02\"\xe7\x01\n\x16PlanningContextRequest\x12\x18\n\x10task_description\x18\x01 \x01(\t\x12\x11\n\ttask_type\x18\x02 \x01(\t\x12\x13\n\x0bscenario_id\x18\x03 \x01(\t\x12\x18\n\x10include_semantic\x18\x04 \x01(\x08\x12\x18\n\x10include_episodic\x18\x05 \x01(\x08\x12\x1a\n\x12include_procedural\x18\x06 \x01(\x08\x12\x11\n\tmax_facts\x18\x07 \x01(\x05\x12\x14\n\x0cmax_episodes\x18\x08 \x01(\x05\x12\x12\n\nmax_skills\x18\t \x01(\x05\"\xc6\x01\n\x17PlanningContextResponse\x12*\n\x05\x66\x61\x63ts\x18\x01 \x03(\x0b\x32\x1b.agi.memory.v1.SemanticFact\x12(\n\x08\x65pisodes\x18\x02 \x03(\x0b\x32\x16.agi.memory.v1.Episode\x12$\n\x06skills\x18\x03 \x03(\x0b\x32\x14.agi.memory.v1.Skill\x12/\n\x0ctool_schemas\x18\x04 \x03(\x0b\x32\x19.agi.memory.v1.ToolSchema2\x8c\x02\n\x15SemanticMemoryService\x12M\n\x0eSemanticSearch\x12\x1c.agi.memory.v1.SemanticQuery\x1a\x1d.agi.memory.v1.SemanticResult\x12N\n\tStoreFact\x12\x1f.agi.memory.v1.StoreFactRequest\x1a .agi.memory.v1.StoreFactResponse\x12T\n\rGetToolSchema\x12 .agi.memory.v1.ToolSchemaRequest\x1a!.agi.memory.v1.ToolSchemaResponse2\x87\x02\n\x15\x45pisodicMemoryService\x12M\n\x0e\x45pisodicSearch\x12\x1c.agi.memory.v1.EpisodicQuery\x1a\x1d.agi.memory.v1.EpisodicResult\x12W\n\x0cStoreEpisode\x12\".agi.memory.v1.StoreEpisodeRequest\x1a#.agi.memory.v1.StoreEpisodeResponse\x12\x46\n\nGetEpisode\x12 .agi.memory.v1.GetEpisodeRequest\x1a\x16.agi.memory.v1.Episode2\xe2\x02\n\x17ProceduralMemoryService\x12\x44\n\x0bSkillSearch\x12\x19.agi.memory.v1.SkillQuery\x1a\x1a.agi.memory.v1.SkillResult\x12@\n\x08GetSkill\x12\x1e.agi.memory.v1.GetSkillRequest\x1a\x14.agi.memory.v1.Skill\x12Z\n\rRegisterSkill\x12#.agi.memory.v1.RegisterSkillRequest\x1a$.agi.memory.v1.RegisterSkillResponse\x12\x63\n\x10UpdateSkillStats\x12&.agi.memory.v1.UpdateSkillStatsRequest\x1a\'.agi.memory.v1.UpdateSkillStatsResponse2~\n\x14UnifiedMemoryService\x12\x66\n\x15\x45nrichPlanningContext\x12%.agi.memory.v1.PlanningContextRequest\x1a&.agi.memory.v1.PlanningContextResponseB-Z+github.com/agi-hpc/proto/memory/v1;memoryv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
-_builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, "memory_pb2", _globals)
+_builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'memory_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
-    DESCRIPTOR._loaded_options = None
+  _globals['DESCRIPTOR']._loaded_options = None
+  _globals['DESCRIPTOR']._serialized_options = b'Z+github.com/agi-hpc/proto/memory/v1;memoryv1'
+  _globals['_ENTITY_PROPERTIESENTRY']._loaded_options = None
+  _globals['_ENTITY_PROPERTIESENTRY']._serialized_options = b'8\001'
+  _globals['_SKILLACTION_PARAMETERSENTRY']._loaded_options = None
+  _globals['_SKILLACTION_PARAMETERSENTRY']._serialized_options = b'8\001'
+  _globals['_SEMANTICQUERY']._serialized_start=31
+  _globals['_SEMANTICQUERY']._serialized_end=143
+  _globals['_SEMANTICRESULT']._serialized_start=146
+  _globals['_SEMANTICRESULT']._serialized_end=291
+  _globals['_SEMANTICFACT']._serialized_start=294
+  _globals['_SEMANTICFACT']._serialized_end=434
+  _globals['_ENTITY']._serialized_start=437
+  _globals['_ENTITY']._serialized_end=609
+  _globals['_ENTITY_PROPERTIESENTRY']._serialized_start=560
+  _globals['_ENTITY_PROPERTIESENTRY']._serialized_end=609
+  _globals['_RELATION']._serialized_start=611
+  _globals['_RELATION']._serialized_end=720
+  _globals['_STOREFACTREQUEST']._serialized_start=722
+  _globals['_STOREFACTREQUEST']._serialized_end=810
+  _globals['_STOREFACTRESPONSE']._serialized_start=812
+  _globals['_STOREFACTRESPONSE']._serialized_end=865
+  _globals['_TOOLSCHEMAREQUEST']._serialized_start=867
+  _globals['_TOOLSCHEMAREQUEST']._serialized_end=903
+  _globals['_TOOLSCHEMARESPONSE']._serialized_start=905
+  _globals['_TOOLSCHEMARESPONSE']._serialized_end=968
+  _globals['_TOOLSCHEMA']._serialized_start=971
+  _globals['_TOOLSCHEMA']._serialized_end=1178
+  _globals['_TOOLPARAMETER']._serialized_start=1180
+  _globals['_TOOLPARAMETER']._serialized_end=1291
+  _globals['_EPISODICQUERY']._serialized_start=1294
+  _globals['_EPISODICQUERY']._serialized_end=1493
+  _globals['_EPISODICRESULT']._serialized_start=1495
+  _globals['_EPISODICRESULT']._serialized_end=1553
+  _globals['_EPISODE']._serialized_start=1556
+  _globals['_EPISODE']._serialized_end=1798
+  _globals['_EPISODEPLAN']._serialized_start=1800
+  _globals['_EPISODEPLAN']._serialized_end=1873
+  _globals['_EPISODESTEP']._serialized_start=1876
+  _globals['_EPISODESTEP']._serialized_end=2008
+  _globals['_EPISODEOUTCOME']._serialized_start=2011
+  _globals['_EPISODEOUTCOME']._serialized_end=2156
+  _globals['_STOREEPISODEREQUEST']._serialized_start=2158
+  _globals['_STOREEPISODEREQUEST']._serialized_end=2220
+  _globals['_STOREEPISODERESPONSE']._serialized_start=2222
+  _globals['_STOREEPISODERESPONSE']._serialized_end=2281
+  _globals['_GETEPISODEREQUEST']._serialized_start=2283
+  _globals['_GETEPISODEREQUEST']._serialized_end=2322
+  _globals['_SKILLQUERY']._serialized_start=2325
+  _globals['_SKILLQUERY']._serialized_end=2466
+  _globals['_SKILLRESULT']._serialized_start=2468
+  _globals['_SKILLRESULT']._serialized_end=2519
+  _globals['_SKILL']._serialized_start=2522
+  _globals['_SKILL']._serialized_end=2856
+  _globals['_SKILLPARAMETER']._serialized_start=2858
+  _globals['_SKILLPARAMETER']._serialized_end=2970
+  _globals['_SKILLACTION']._serialized_start=2973
+  _globals['_SKILLACTION']._serialized_end=3178
+  _globals['_SKILLACTION_PARAMETERSENTRY']._serialized_start=3129
+  _globals['_SKILLACTION_PARAMETERSENTRY']._serialized_end=3178
+  _globals['_GETSKILLREQUEST']._serialized_start=3180
+  _globals['_GETSKILLREQUEST']._serialized_end=3215
+  _globals['_REGISTERSKILLREQUEST']._serialized_start=3217
+  _globals['_REGISTERSKILLREQUEST']._serialized_end=3276
+  _globals['_REGISTERSKILLRESPONSE']._serialized_start=3278
+  _globals['_REGISTERSKILLRESPONSE']._serialized_end=3336
+  _globals['_UPDATESKILLSTATSREQUEST']._serialized_start=3338
+  _globals['_UPDATESKILLSTATSREQUEST']._serialized_end=3441
+  _globals['_UPDATESKILLSTATSRESPONSE']._serialized_start=3443
+  _globals['_UPDATESKILLSTATSRESPONSE']._serialized_end=3537
+  _globals['_PLANNINGCONTEXTREQUEST']._serialized_start=3540
+  _globals['_PLANNINGCONTEXTREQUEST']._serialized_end=3771
+  _globals['_PLANNINGCONTEXTRESPONSE']._serialized_start=3774
+  _globals['_PLANNINGCONTEXTRESPONSE']._serialized_end=3972
+  _globals['_SEMANTICMEMORYSERVICE']._serialized_start=3975
+  _globals['_SEMANTICMEMORYSERVICE']._serialized_end=4243
+  _globals['_EPISODICMEMORYSERVICE']._serialized_start=4246
+  _globals['_EPISODICMEMORYSERVICE']._serialized_end=4509
+  _globals['_PROCEDURALMEMORYSERVICE']._serialized_start=4512
+  _globals['_PROCEDURALMEMORYSERVICE']._serialized_end=4866
+  _globals['_UNIFIEDMEMORYSERVICE']._serialized_start=4868
+  _globals['_UNIFIEDMEMORYSERVICE']._serialized_end=4994
 # @@protoc_insertion_point(module_scope)

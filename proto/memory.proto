@@ -1,3 +1,402 @@
 syntax = "proto3";
 package agi.memory.v1;
-// TODO proto
+
+option go_package = "github.com/agi-hpc/proto/memory/v1;memoryv1";
+
+// =============================================================================
+// Semantic Memory Service
+// =============================================================================
+// Long-term storage of facts, concepts, schemas, and domain knowledge.
+// Organized as a knowledge graph with typed relations.
+
+service SemanticMemoryService {
+  // Query semantic memory for relevant facts
+  rpc SemanticSearch(SemanticQuery) returns (SemanticResult);
+
+  // Store new facts in semantic memory
+  rpc StoreFact(StoreFactRequest) returns (StoreFactResponse);
+
+  // Get tool/skill schemas
+  rpc GetToolSchema(ToolSchemaRequest) returns (ToolSchemaResponse);
+}
+
+message SemanticQuery {
+  // Natural language query text
+  string text = 1;
+
+  // Optional domain filter (e.g., "robotics", "navigation")
+  string domain = 2;
+
+  // Maximum number of results
+  int32 max_results = 3;
+
+  // Minimum similarity threshold (0.0 - 1.0)
+  float min_similarity = 4;
+
+  // Optional entity types to filter
+  repeated string entity_types = 5;
+}
+
+message SemanticResult {
+  // Retrieved facts/concepts
+  repeated SemanticFact facts = 1;
+
+  // Related entities found
+  repeated Entity entities = 2;
+
+  // Related relations
+  repeated Relation relations = 3;
+}
+
+message SemanticFact {
+  // Unique fact identifier
+  string fact_id = 1;
+
+  // Fact content as natural language
+  string content = 2;
+
+  // Confidence score (0.0 - 1.0)
+  float confidence = 3;
+
+  // Similarity to query (0.0 - 1.0)
+  float similarity = 4;
+
+  // Source of the fact
+  string source = 5;
+
+  // Domain tags
+  repeated string domains = 6;
+
+  // Embedding vector (optional, for client-side operations)
+  repeated float embedding = 7;
+}
+
+message Entity {
+  string entity_id = 1;
+  string name = 2;
+  string entity_type = 3;
+  map<string, string> properties = 4;
+}
+
+message Relation {
+  string relation_id = 1;
+  string subject_id = 2;
+  string predicate = 3;
+  string object_id = 4;
+  float confidence = 5;
+}
+
+message StoreFactRequest {
+  string content = 1;
+  string source = 2;
+  repeated string domains = 3;
+  float confidence = 4;
+}
+
+message StoreFactResponse {
+  string fact_id = 1;
+  bool success = 2;
+}
+
+message ToolSchemaRequest {
+  // Tool identifier (e.g., "lh.task_interpreter")
+  string tool_id = 1;
+}
+
+message ToolSchemaResponse {
+  ToolSchema schema = 1;
+}
+
+message ToolSchema {
+  string tool_id = 1;
+  string name = 2;
+  string description = 3;
+  repeated ToolParameter parameters = 4;
+  repeated string required_params = 5;
+  string return_type = 6;
+  repeated string preconditions = 7;
+  repeated string postconditions = 8;
+}
+
+message ToolParameter {
+  string name = 1;
+  string param_type = 2;
+  string description = 3;
+  string default_value = 4;
+  bool required = 5;
+}
+
+// =============================================================================
+// Episodic Memory Service
+// =============================================================================
+// Stores specific experiences, events, and task executions with temporal context.
+
+service EpisodicMemoryService {
+  // Query for similar past episodes
+  rpc EpisodicSearch(EpisodicQuery) returns (EpisodicResult);
+
+  // Store a new episode
+  rpc StoreEpisode(StoreEpisodeRequest) returns (StoreEpisodeResponse);
+
+  // Get episode by ID
+  rpc GetEpisode(GetEpisodeRequest) returns (Episode);
+}
+
+message EpisodicQuery {
+  // Description of the current task/situation
+  string situation_description = 1;
+
+  // Task type to match
+  string task_type = 2;
+
+  // Environment/scenario context
+  string scenario_id = 3;
+
+  // Maximum episodes to return
+  int32 max_results = 4;
+
+  // Minimum similarity threshold
+  float min_similarity = 5;
+
+  // Only return successful episodes
+  bool success_only = 6;
+
+  // Time range filter (optional)
+  int64 from_timestamp = 7;
+  int64 to_timestamp = 8;
+}
+
+message EpisodicResult {
+  // Matching episodes
+  repeated Episode episodes = 1;
+}
+
+message Episode {
+  // Unique episode identifier
+  string episode_id = 1;
+
+  // When this episode occurred
+  int64 timestamp = 2;
+
+  // Original goal/task description
+  string task_description = 3;
+
+  // Task type
+  string task_type = 4;
+
+  // Scenario context
+  string scenario_id = 5;
+
+  // The plan that was executed
+  EpisodePlan plan = 6;
+
+  // Outcome of the episode
+  EpisodeOutcome outcome = 7;
+
+  // Similarity to query (when returned from search)
+  float similarity = 8;
+
+  // Key learnings/insights from this episode
+  repeated string insights = 9;
+}
+
+message EpisodePlan {
+  string plan_id = 1;
+  repeated EpisodeStep steps = 2;
+}
+
+message EpisodeStep {
+  string step_id = 1;
+  string description = 2;
+  string tool_id = 3;
+  bool succeeded = 4;
+  string failure_reason = 5;
+  int64 duration_ms = 6;
+}
+
+message EpisodeOutcome {
+  bool success = 1;
+  float completion_percentage = 2;
+  string outcome_description = 3;
+  repeated string failure_reasons = 4;
+  int64 total_duration_ms = 5;
+}
+
+message StoreEpisodeRequest {
+  Episode episode = 1;
+}
+
+message StoreEpisodeResponse {
+  string episode_id = 1;
+  bool success = 2;
+}
+
+message GetEpisodeRequest {
+  string episode_id = 1;
+}
+
+// =============================================================================
+// Procedural Memory Service
+// =============================================================================
+// Stores skills, action sequences, and learned procedures.
+
+service ProceduralMemoryService {
+  // Search for relevant skills
+  rpc SkillSearch(SkillQuery) returns (SkillResult);
+
+  // Get skill by ID
+  rpc GetSkill(GetSkillRequest) returns (Skill);
+
+  // Register a new skill
+  rpc RegisterSkill(RegisterSkillRequest) returns (RegisterSkillResponse);
+
+  // Update skill statistics
+  rpc UpdateSkillStats(UpdateSkillStatsRequest) returns (UpdateSkillStatsResponse);
+}
+
+message SkillQuery {
+  // Natural language description of needed capability
+  string capability_description = 1;
+
+  // Specific task type
+  string task_type = 2;
+
+  // Required preconditions that must be met
+  repeated string required_preconditions = 3;
+
+  // Maximum skills to return
+  int32 max_results = 4;
+
+  // Minimum proficiency level (0.0 - 1.0)
+  float min_proficiency = 5;
+}
+
+message SkillResult {
+  repeated Skill skills = 1;
+}
+
+message Skill {
+  // Unique skill identifier
+  string skill_id = 1;
+
+  // Human-readable name
+  string name = 2;
+
+  // Description of what this skill does
+  string description = 3;
+
+  // Skill category (e.g., "navigation", "manipulation", "perception")
+  string category = 4;
+
+  // Preconditions required to execute this skill
+  repeated string preconditions = 5;
+
+  // Effects/postconditions after skill execution
+  repeated string postconditions = 6;
+
+  // Parameters the skill accepts
+  repeated SkillParameter parameters = 7;
+
+  // The action sequence for this skill
+  repeated SkillAction actions = 8;
+
+  // Proficiency level based on past executions (0.0 - 1.0)
+  float proficiency = 9;
+
+  // Number of times this skill has been executed
+  int32 execution_count = 10;
+
+  // Success rate (0.0 - 1.0)
+  float success_rate = 11;
+
+  // Average execution time in milliseconds
+  int64 avg_duration_ms = 12;
+
+  // Similarity to query (when returned from search)
+  float similarity = 13;
+}
+
+message SkillParameter {
+  string name = 1;
+  string param_type = 2;
+  string description = 3;
+  bool required = 4;
+  string default_value = 5;
+}
+
+message SkillAction {
+  int32 sequence = 1;
+  string action_type = 2;
+  string description = 3;
+  string tool_id = 4;
+  map<string, string> parameters = 5;
+}
+
+message GetSkillRequest {
+  string skill_id = 1;
+}
+
+message RegisterSkillRequest {
+  Skill skill = 1;
+}
+
+message RegisterSkillResponse {
+  string skill_id = 1;
+  bool success = 2;
+}
+
+message UpdateSkillStatsRequest {
+  string skill_id = 1;
+  bool execution_succeeded = 2;
+  int64 execution_duration_ms = 3;
+}
+
+message UpdateSkillStatsResponse {
+  bool success = 1;
+  float new_proficiency = 2;
+  float new_success_rate = 3;
+}
+
+// =============================================================================
+// Unified Memory Query (convenience wrapper)
+// =============================================================================
+
+service UnifiedMemoryService {
+  // Query all memory types at once for planning context
+  rpc EnrichPlanningContext(PlanningContextRequest) returns (PlanningContextResponse);
+}
+
+message PlanningContextRequest {
+  // Task description
+  string task_description = 1;
+
+  // Task type
+  string task_type = 2;
+
+  // Scenario/environment
+  string scenario_id = 3;
+
+  // Which memory types to query
+  bool include_semantic = 4;
+  bool include_episodic = 5;
+  bool include_procedural = 6;
+
+  // Result limits
+  int32 max_facts = 7;
+  int32 max_episodes = 8;
+  int32 max_skills = 9;
+}
+
+message PlanningContextResponse {
+  // Relevant facts from semantic memory
+  repeated SemanticFact facts = 1;
+
+  // Similar past episodes
+  repeated Episode episodes = 2;
+
+  // Available skills
+  repeated Skill skills = 3;
+
+  // Tool schemas referenced in facts/skills
+  repeated ToolSchema tool_schemas = 4;
+}
