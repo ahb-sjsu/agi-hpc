@@ -24,10 +24,11 @@ Backends:
     - local : in-process pub/sub (no networking, ideal for tests)
     - zmq   : ZeroMQ PUB/SUB (simple multi-node)
     - ucx   : UCX via ucx-py (HPC-grade transport: RDMA, SHM, TCP fallback)
+    - redis : Redis Streams (persistent messaging with replay)
 
 Mode selection via environment variable:
 
-    AGI_FABRIC_MODE = "local" | "zmq" | "ucx"
+    AGI_FABRIC_MODE = "local" | "zmq" | "ucx" | "redis"
 
 Additional configuration:
 
@@ -37,6 +38,11 @@ Additional configuration:
 
     # UCX backend
     AGI_FABRIC_UCX_ENDPOINT = "tcp://fabric:13337"
+
+    # Redis backend
+    AGI_FABRIC_REDIS_URL = "redis://localhost:6379"
+    AGI_FABRIC_REDIS_PREFIX = "fabric:"
+    AGI_FABRIC_CONSUMER_GROUP = "agi-hpc"
 
 Public API:
 
@@ -67,6 +73,12 @@ try:  # ucx-py optional
     import ucp  # type: ignore
 except Exception:
     ucp = None  # type: ignore
+
+try:  # redis optional
+    from agi.core.events.redis_backend import RedisBackend, RedisBackendConfig
+except Exception:
+    RedisBackend = None  # type: ignore
+    RedisBackendConfig = None  # type: ignore
 
 
 DEFAULT_MODE = os.getenv("AGI_FABRIC_MODE", "local").lower()
@@ -450,7 +462,7 @@ class UcxBackend:
 
 class EventFabric:
     """
-    High-level API selecting backend: local, zmq, or ucx.
+    High-level API selecting backend: local, zmq, ucx, or redis.
     """
 
     def __init__(
@@ -460,6 +472,9 @@ class EventFabric:
         pub_endpoint: Optional[str] = None,
         sub_endpoint: Optional[str] = None,
         ucx_endpoint: Optional[str] = None,
+        redis_url: Optional[str] = None,
+        redis_prefix: Optional[str] = None,
+        consumer_group: Optional[str] = None,
         identity: Optional[str] = None,
     ) -> None:
         mode = mode.lower()
@@ -478,6 +493,16 @@ class EventFabric:
                 endpoint=ucx_endpoint or DEFAULT_UCX_ENDPOINT,
                 identity=identity,
             )
+        elif mode == "redis":
+            if RedisBackend is None:
+                raise RuntimeError("redis-py is required for redis backend")
+            config = RedisBackendConfig(
+                url=redis_url or os.getenv("AGI_FABRIC_REDIS_URL", "redis://localhost:6379"),
+                stream_prefix=redis_prefix or os.getenv("AGI_FABRIC_REDIS_PREFIX", "fabric:"),
+                consumer_group=consumer_group or os.getenv("AGI_FABRIC_CONSUMER_GROUP", "agi-hpc"),
+                consumer_name=identity,
+            )
+            backend = RedisBackend(config)
         else:
             raise ValueError(f"Unknown AGI_FABRIC_MODE={mode!r}")
 
