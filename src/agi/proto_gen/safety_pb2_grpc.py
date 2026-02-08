@@ -3,25 +3,395 @@
 import grpc
 import warnings
 
+from agi.proto_gen import safety_pb2 as safety__pb2
 
-GRPC_GENERATED_VERSION = "1.76.0"
+GRPC_GENERATED_VERSION = '1.76.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
 try:
     from grpc._utilities import first_version_is_lower
-
-    _version_not_supported = first_version_is_lower(
-        GRPC_VERSION, GRPC_GENERATED_VERSION
-    )
+    _version_not_supported = first_version_is_lower(GRPC_VERSION, GRPC_GENERATED_VERSION)
 except ImportError:
     _version_not_supported = True
 
 if _version_not_supported:
     raise RuntimeError(
-        f"The grpc package installed is at version {GRPC_VERSION},"
-        + " but the generated code in safety_pb2_grpc.py depends on"
-        + f" grpcio>={GRPC_GENERATED_VERSION}."
-        + f" Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}"
-        + f" or downgrade your generated code using grpcio-tools<={GRPC_VERSION}."
+        f'The grpc package installed is at version {GRPC_VERSION},'
+        + ' but the generated code in safety_pb2_grpc.py depends on'
+        + f' grpcio>={GRPC_GENERATED_VERSION}.'
+        + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
+        + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
     )
+
+
+class PreActionSafetyServiceStub(object):
+    """---------------------------------------------------------------------------
+    Safety Services
+    ---------------------------------------------------------------------------
+
+    Pre-action safety service (called by LH before plan execution)
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.CheckPlan = channel.unary_unary(
+                '/agi.safety.v1.PreActionSafetyService/CheckPlan',
+                request_serializer=safety__pb2.CheckPlanRequest.SerializeToString,
+                response_deserializer=safety__pb2.CheckPlanResponse.FromString,
+                _registered_method=True)
+        self.CheckStep = channel.unary_unary(
+                '/agi.safety.v1.PreActionSafetyService/CheckStep',
+                request_serializer=safety__pb2.CheckActionRequest.SerializeToString,
+                response_deserializer=safety__pb2.SafetyResult.FromString,
+                _registered_method=True)
+
+
+class PreActionSafetyServiceServicer(object):
+    """---------------------------------------------------------------------------
+    Safety Services
+    ---------------------------------------------------------------------------
+
+    Pre-action safety service (called by LH before plan execution)
+    """
+
+    def CheckPlan(self, request, context):
+        """Check entire plan
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def CheckStep(self, request, context):
+        """Check single step
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_PreActionSafetyServiceServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'CheckPlan': grpc.unary_unary_rpc_method_handler(
+                    servicer.CheckPlan,
+                    request_deserializer=safety__pb2.CheckPlanRequest.FromString,
+                    response_serializer=safety__pb2.CheckPlanResponse.SerializeToString,
+            ),
+            'CheckStep': grpc.unary_unary_rpc_method_handler(
+                    servicer.CheckStep,
+                    request_deserializer=safety__pb2.CheckActionRequest.FromString,
+                    response_serializer=safety__pb2.SafetyResult.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'agi.safety.v1.PreActionSafetyService', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('agi.safety.v1.PreActionSafetyService', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class PreActionSafetyService(object):
+    """---------------------------------------------------------------------------
+    Safety Services
+    ---------------------------------------------------------------------------
+
+    Pre-action safety service (called by LH before plan execution)
+    """
+
+    @staticmethod
+    def CheckPlan(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agi.safety.v1.PreActionSafetyService/CheckPlan',
+            safety__pb2.CheckPlanRequest.SerializeToString,
+            safety__pb2.CheckPlanResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def CheckStep(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agi.safety.v1.PreActionSafetyService/CheckStep',
+            safety__pb2.CheckActionRequest.SerializeToString,
+            safety__pb2.SafetyResult.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+
+class InActionSafetyServiceStub(object):
+    """In-action safety service (called during execution)
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.CheckAction = channel.unary_unary(
+                '/agi.safety.v1.InActionSafetyService/CheckAction',
+                request_serializer=safety__pb2.CheckActionRequest.SerializeToString,
+                response_deserializer=safety__pb2.CheckActionResponse.FromString,
+                _registered_method=True)
+        self.ReflexCheck = channel.unary_unary(
+                '/agi.safety.v1.InActionSafetyService/ReflexCheck',
+                request_serializer=safety__pb2.ReflexCheckRequest.SerializeToString,
+                response_deserializer=safety__pb2.ReflexCheckResponse.FromString,
+                _registered_method=True)
+        self.EmergencyStop = channel.unary_unary(
+                '/agi.safety.v1.InActionSafetyService/EmergencyStop',
+                request_serializer=safety__pb2.EmergencyStopRequest.SerializeToString,
+                response_deserializer=safety__pb2.EmergencyStopResponse.FromString,
+                _registered_method=True)
+
+
+class InActionSafetyServiceServicer(object):
+    """In-action safety service (called during execution)
+    """
+
+    def CheckAction(self, request, context):
+        """Real-time action monitoring
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ReflexCheck(self, request, context):
+        """Fast reflex check (<100μs target)
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def EmergencyStop(self, request, context):
+        """Emergency stop (unary call)
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_InActionSafetyServiceServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'CheckAction': grpc.unary_unary_rpc_method_handler(
+                    servicer.CheckAction,
+                    request_deserializer=safety__pb2.CheckActionRequest.FromString,
+                    response_serializer=safety__pb2.CheckActionResponse.SerializeToString,
+            ),
+            'ReflexCheck': grpc.unary_unary_rpc_method_handler(
+                    servicer.ReflexCheck,
+                    request_deserializer=safety__pb2.ReflexCheckRequest.FromString,
+                    response_serializer=safety__pb2.ReflexCheckResponse.SerializeToString,
+            ),
+            'EmergencyStop': grpc.unary_unary_rpc_method_handler(
+                    servicer.EmergencyStop,
+                    request_deserializer=safety__pb2.EmergencyStopRequest.FromString,
+                    response_serializer=safety__pb2.EmergencyStopResponse.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'agi.safety.v1.InActionSafetyService', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('agi.safety.v1.InActionSafetyService', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class InActionSafetyService(object):
+    """In-action safety service (called during execution)
+    """
+
+    @staticmethod
+    def CheckAction(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agi.safety.v1.InActionSafetyService/CheckAction',
+            safety__pb2.CheckActionRequest.SerializeToString,
+            safety__pb2.CheckActionResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ReflexCheck(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agi.safety.v1.InActionSafetyService/ReflexCheck',
+            safety__pb2.ReflexCheckRequest.SerializeToString,
+            safety__pb2.ReflexCheckResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def EmergencyStop(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agi.safety.v1.InActionSafetyService/EmergencyStop',
+            safety__pb2.EmergencyStopRequest.SerializeToString,
+            safety__pb2.EmergencyStopResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+
+class PostActionSafetyServiceStub(object):
+    """Post-action safety service (called after execution for learning)
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.ReportOutcome = channel.unary_unary(
+                '/agi.safety.v1.PostActionSafetyService/ReportOutcome',
+                request_serializer=safety__pb2.ActionOutcomeReport.SerializeToString,
+                response_deserializer=safety__pb2.ActionOutcomeAck.FromString,
+                _registered_method=True)
+
+
+class PostActionSafetyServiceServicer(object):
+    """Post-action safety service (called after execution for learning)
+    """
+
+    def ReportOutcome(self, request, context):
+        """Report action outcome
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_PostActionSafetyServiceServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'ReportOutcome': grpc.unary_unary_rpc_method_handler(
+                    servicer.ReportOutcome,
+                    request_deserializer=safety__pb2.ActionOutcomeReport.FromString,
+                    response_serializer=safety__pb2.ActionOutcomeAck.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'agi.safety.v1.PostActionSafetyService', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('agi.safety.v1.PostActionSafetyService', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class PostActionSafetyService(object):
+    """Post-action safety service (called after execution for learning)
+    """
+
+    @staticmethod
+    def ReportOutcome(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agi.safety.v1.PostActionSafetyService/ReportOutcome',
+            safety__pb2.ActionOutcomeReport.SerializeToString,
+            safety__pb2.ActionOutcomeAck.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)

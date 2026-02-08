@@ -5,26 +5,23 @@ import warnings
 
 from agi.proto_gen import plan_pb2 as plan__pb2
 
-GRPC_GENERATED_VERSION = "1.76.0"
+GRPC_GENERATED_VERSION = '1.76.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
 try:
     from grpc._utilities import first_version_is_lower
-
-    _version_not_supported = first_version_is_lower(
-        GRPC_VERSION, GRPC_GENERATED_VERSION
-    )
+    _version_not_supported = first_version_is_lower(GRPC_VERSION, GRPC_GENERATED_VERSION)
 except ImportError:
     _version_not_supported = True
 
 if _version_not_supported:
     raise RuntimeError(
-        f"The grpc package installed is at version {GRPC_VERSION},"
-        + " but the generated code in plan_pb2_grpc.py depends on"
-        + f" grpcio>={GRPC_GENERATED_VERSION}."
-        + f" Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}"
-        + f" or downgrade your generated code using grpcio-tools<={GRPC_VERSION}."
+        f'The grpc package installed is at version {GRPC_VERSION},'
+        + ' but the generated code in plan_pb2_grpc.py depends on'
+        + f' grpcio>={GRPC_GENERATED_VERSION}.'
+        + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
+        + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
     )
 
 
@@ -42,11 +39,10 @@ class PlanServiceStub(object):
             channel: A grpc.Channel.
         """
         self.Plan = channel.unary_unary(
-            "/agi.plan.v1.PlanService/Plan",
-            request_serializer=plan__pb2.PlanRequest.SerializeToString,
-            response_deserializer=plan__pb2.PlanResponse.FromString,
-            _registered_method=True,
-        )
+                '/agi.plan.v1.PlanService/Plan',
+                request_serializer=plan__pb2.PlanRequest.SerializeToString,
+                response_deserializer=plan__pb2.PlanResponse.FromString,
+                _registered_method=True)
 
 
 class PlanServiceServicer(object):
@@ -59,28 +55,25 @@ class PlanServiceServicer(object):
     def Plan(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
 
 def add_PlanServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-        "Plan": grpc.unary_unary_rpc_method_handler(
-            servicer.Plan,
-            request_deserializer=plan__pb2.PlanRequest.FromString,
-            response_serializer=plan__pb2.PlanResponse.SerializeToString,
-        ),
+            'Plan': grpc.unary_unary_rpc_method_handler(
+                    servicer.Plan,
+                    request_deserializer=plan__pb2.PlanRequest.FromString,
+                    response_serializer=plan__pb2.PlanResponse.SerializeToString,
+            ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-        "agi.plan.v1.PlanService", rpc_method_handlers
-    )
+            'agi.plan.v1.PlanService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers(
-        "agi.plan.v1.PlanService", rpc_method_handlers
-    )
+    server.add_registered_method_handlers('agi.plan.v1.PlanService', rpc_method_handlers)
 
 
-# This class is part of an EXPERIMENTAL API.
+ # This class is part of an EXPERIMENTAL API.
 class PlanService(object):
     """---------------------------------------------------------------------------
     Services (LH exposes PlanService; RH exposes SimulationService)
@@ -89,22 +82,20 @@ class PlanService(object):
     """
 
     @staticmethod
-    def Plan(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
+    def Plan(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
         return grpc.experimental.unary_unary(
             request,
             target,
-            "/agi.plan.v1.PlanService/Plan",
+            '/agi.plan.v1.PlanService/Plan',
             plan__pb2.PlanRequest.SerializeToString,
             plan__pb2.PlanResponse.FromString,
             options,
@@ -115,12 +106,12 @@ class PlanService(object):
             wait_for_ready,
             timeout,
             metadata,
-            _registered_method=True,
-        )
+            _registered_method=True)
 
 
 class SimulationServiceStub(object):
-    """Simulation service on RH (alignment with XIV.B.1 cognitive API)"""
+    """Simulation service on RH (alignment with XIV.B.1 cognitive API)
+    """
 
     def __init__(self, channel):
         """Constructor.
@@ -129,61 +120,57 @@ class SimulationServiceStub(object):
             channel: A grpc.Channel.
         """
         self.Simulate = channel.unary_unary(
-            "/agi.plan.v1.SimulationService/Simulate",
-            request_serializer=plan__pb2.SimulationRequest.SerializeToString,
-            response_deserializer=plan__pb2.SimulationResult.FromString,
-            _registered_method=True,
-        )
+                '/agi.plan.v1.SimulationService/Simulate',
+                request_serializer=plan__pb2.SimulationRequest.SerializeToString,
+                response_deserializer=plan__pb2.SimulationResult.FromString,
+                _registered_method=True)
 
 
 class SimulationServiceServicer(object):
-    """Simulation service on RH (alignment with XIV.B.1 cognitive API)"""
+    """Simulation service on RH (alignment with XIV.B.1 cognitive API)
+    """
 
     def Simulate(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
 
 def add_SimulationServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-        "Simulate": grpc.unary_unary_rpc_method_handler(
-            servicer.Simulate,
-            request_deserializer=plan__pb2.SimulationRequest.FromString,
-            response_serializer=plan__pb2.SimulationResult.SerializeToString,
-        ),
+            'Simulate': grpc.unary_unary_rpc_method_handler(
+                    servicer.Simulate,
+                    request_deserializer=plan__pb2.SimulationRequest.FromString,
+                    response_serializer=plan__pb2.SimulationResult.SerializeToString,
+            ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-        "agi.plan.v1.SimulationService", rpc_method_handlers
-    )
+            'agi.plan.v1.SimulationService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers(
-        "agi.plan.v1.SimulationService", rpc_method_handlers
-    )
+    server.add_registered_method_handlers('agi.plan.v1.SimulationService', rpc_method_handlers)
 
 
-# This class is part of an EXPERIMENTAL API.
+ # This class is part of an EXPERIMENTAL API.
 class SimulationService(object):
-    """Simulation service on RH (alignment with XIV.B.1 cognitive API)"""
+    """Simulation service on RH (alignment with XIV.B.1 cognitive API)
+    """
 
     @staticmethod
-    def Simulate(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
+    def Simulate(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
         return grpc.experimental.unary_unary(
             request,
             target,
-            "/agi.plan.v1.SimulationService/Simulate",
+            '/agi.plan.v1.SimulationService/Simulate',
             plan__pb2.SimulationRequest.SerializeToString,
             plan__pb2.SimulationResult.FromString,
             options,
@@ -194,5 +181,4 @@ class SimulationService(object):
             wait_for_ready,
             timeout,
             metadata,
-            _registered_method=True,
-        )
+            _registered_method=True)

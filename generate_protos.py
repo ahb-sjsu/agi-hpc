@@ -38,13 +38,14 @@ import sys
 from pathlib import Path
 import shutil
 
-
 # -----------------------------------------------------------------------------
 # Logging helpers
 # -----------------------------------------------------------------------------
 
+
 def log(msg: str):
     print(f"[protos] {msg}")
+
 
 def fatal(msg: str):
     print(f"[ERROR] {msg}", file=sys.stderr)
@@ -54,6 +55,7 @@ def fatal(msg: str):
 # -----------------------------------------------------------------------------
 # Find protoc (system or grpc_tools)
 # -----------------------------------------------------------------------------
+
 
 def find_protoc():
     """
@@ -70,7 +72,8 @@ def find_protoc():
     try:
         subprocess.run(
             [sys.executable, "-m", "grpc_tools.protoc", "--version"],
-            check=True, capture_output=True
+            check=True,
+            capture_output=True,
         )
         return [sys.executable, "-m", "grpc_tools.protoc"], True
     except Exception:
@@ -83,6 +86,7 @@ def find_protoc():
 # Clean output dir
 # -----------------------------------------------------------------------------
 
+
 def clean_out_dir(out_dir: Path):
     if out_dir.exists():
         log(f"Cleaning output directory: {out_dir}")
@@ -94,39 +98,50 @@ def clean_out_dir(out_dir: Path):
 # Fix gRPC imports (post-processing)
 # -----------------------------------------------------------------------------
 
-def fix_grpc_imports(out_dir: Path):
+
+def fix_proto_imports(out_dir: Path):
     """
-    Fix imports in generated *_pb2_grpc.py files.
+    Fix imports in generated *_pb2.py and *_pb2_grpc.py files.
 
     grpc_tools.protoc generates: `import foo_pb2 as foo__pb2`
     We need: `from agi.proto_gen import foo_pb2 as foo__pb2`
+
+    This applies to both _pb2.py (for cross-file imports like safety->plan)
+    and _pb2_grpc.py files.
     """
     import re
 
-    grpc_files = list(out_dir.glob("*_pb2_grpc.py"))
-    if not grpc_files:
+    # Fix all generated Python files (both _pb2.py and _pb2_grpc.py)
+    pb2_files = list(out_dir.glob("*_pb2.py")) + list(out_dir.glob("*_pb2_grpc.py"))
+    if not pb2_files:
         return
 
-    log(f"Fixing imports in {len(grpc_files)} gRPC files...")
+    log(f"Fixing imports in {len(pb2_files)} generated files...")
 
     # Pattern: import <name>_pb2 as <name>__pb2
-    pattern = re.compile(r'^import (\w+_pb2) as (\w+__pb2)$', re.MULTILINE)
+    pattern = re.compile(r"^import (\w+_pb2) as (\w+__pb2)$", re.MULTILINE)
 
-    for grpc_file in grpc_files:
-        content = grpc_file.read_text()
+    fixed_count = 0
+    for pb2_file in pb2_files:
+        content = pb2_file.read_text()
         original = content
 
         # Replace with package-relative import
-        content = pattern.sub(r'from agi.proto_gen import \1 as \2', content)
+        content = pattern.sub(r"from agi.proto_gen import \1 as \2", content)
 
         if content != original:
-            grpc_file.write_text(content)
-            log(f"  OK: Fixed imports in {grpc_file.name}")
+            pb2_file.write_text(content)
+            log(f"  OK: Fixed imports in {pb2_file.name}")
+            fixed_count += 1
+
+    if fixed_count == 0:
+        log("  No imports needed fixing.")
 
 
 # -----------------------------------------------------------------------------
 # Generate protobuf stubs
 # -----------------------------------------------------------------------------
+
 
 def generate_stubs(proto_dir: Path, clean=False, dry_run=False):
     protoc_cmd, _ = find_protoc()
@@ -158,7 +173,7 @@ def generate_stubs(proto_dir: Path, clean=False, dry_run=False):
             f"--proto_path={proto_dir}",
             f"--python_out={out_dir}",
             f"--grpc_python_out={out_dir}",
-            str(pf)
+            str(pf),
         ]
 
         if dry_run:
@@ -174,18 +189,23 @@ def generate_stubs(proto_dir: Path, clean=False, dry_run=False):
 
     log("All proto files compiled successfully.")
 
-    # Post-process: fix imports in *_grpc.py files
-    fix_grpc_imports(out_dir)
+    # Post-process: fix imports in generated Python files
+    fix_proto_imports(out_dir)
 
 
 # -----------------------------------------------------------------------------
 # CLI
 # -----------------------------------------------------------------------------
 
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--clean", action="store_true", help="Delete output dir before generating")
-    ap.add_argument("--dry-run", action="store_true", help="Print commands without running them")
+    ap.add_argument(
+        "--clean", action="store_true", help="Delete output dir before generating"
+    )
+    ap.add_argument(
+        "--dry-run", action="store_true", help="Print commands without running them"
+    )
     args = ap.parse_args()
 
     repo_root = Path(".").resolve()
@@ -196,7 +216,7 @@ def main():
 
     generate_stubs(proto_dir, clean=args.clean, dry_run=args.dry_run)
 
-    log(f"Generated stubs in: src/agi/proto_gen/")
+    log("Generated stubs in: src/agi/proto_gen/")
 
 
 if __name__ == "__main__":

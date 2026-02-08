@@ -15,7 +15,6 @@ from agi.lh.safety_client import SafetyClient, SafetyResult
 from agi.lh.metacog_client import MetacognitionClient, MetaReviewResult
 from agi.proto_gen import plan_pb2
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

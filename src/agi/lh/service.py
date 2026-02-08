@@ -23,7 +23,6 @@ from agi.lh.memory_client import MemoryClient
 from agi.lh.safety_client import SafetyClient
 from agi.lh.metacog_client import MetacognitionClient
 
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",

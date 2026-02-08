@@ -1,3 +1,221 @@
 syntax = "proto3";
+
 package agi.safety.v1;
-// TODO proto
+
+option go_package = "agi/safety/v1;safety";
+option java_multiple_files = true;
+option java_package = "com.agi.safety.v1";
+
+import "plan.proto";
+import "erisml.proto";
+
+// ---------------------------------------------------------------------------
+// Safety Gateway - Pre/In/Post Action Safety Checks
+// Three-layer safety architecture: Reflex (<100μs), Tactical (10-100ms), Strategic
+// ---------------------------------------------------------------------------
+
+
+// ---------------------------------------------------------------------------
+// Safety Check Results
+// ---------------------------------------------------------------------------
+
+// Decision outcomes from safety checks
+enum SafetyDecision {
+  SAFETY_DECISION_UNSPECIFIED = 0;
+  SAFETY_DECISION_ALLOW = 1;   // Action permitted
+  SAFETY_DECISION_BLOCK = 2;   // Action forbidden
+  SAFETY_DECISION_REVISE = 3;  // Action needs modification
+  SAFETY_DECISION_DEFER = 4;   // Escalate to human/strategic layer
+}
+
+// Risk category classification
+enum RiskCategory {
+  RISK_CATEGORY_UNSPECIFIED = 0;
+  RISK_CATEGORY_PHYSICAL_HARM = 1;
+  RISK_CATEGORY_RIGHTS_VIOLATION = 2;
+  RISK_CATEGORY_RULE_VIOLATION = 3;
+  RISK_CATEGORY_FAIRNESS = 4;
+  RISK_CATEGORY_EPISTEMIC = 5;
+  RISK_CATEGORY_BOND_INDEX = 6;
+}
+
+// Result from any safety check
+message SafetyResult {
+  SafetyDecision decision = 1;
+  float risk_score = 2;  // 0.0 = safe, 1.0 = maximum risk
+  repeated string reasons = 3;
+  repeated RiskCategory categories = 4;
+
+  // ErisML integration results (when available)
+  agi.erisml.v1.BondIndexResultProto bond_index = 10;
+  agi.erisml.v1.DecisionProofProto decision_proof = 11;
+
+  // Metadata for diagnostics
+  map<string, string> metadata = 20;
+
+  reserved 5 to 9, 12 to 19;
+}
+
+
+// ---------------------------------------------------------------------------
+// Pre-Action Safety (before execution begins)
+// ---------------------------------------------------------------------------
+
+// Request to check a plan before execution
+message CheckPlanRequest {
+  agi.plan.v1.PlanGraphProto plan = 1;
+  string profile_name = 2;  // DEME profile (default: agi_hpc_safety_v1)
+  bool require_proofs = 3;  // Generate DecisionProofs
+
+  reserved 4 to 9;
+}
+
+// Response from plan check
+message CheckPlanResponse {
+  SafetyResult result = 1;
+  repeated StepSafetyResult step_results = 2;  // Per-step breakdown
+  bool plan_approved = 3;
+
+  reserved 4 to 9;
+}
+
+// Per-step safety result
+message StepSafetyResult {
+  string step_id = 1;
+  SafetyResult result = 2;
+
+  reserved 3 to 9;
+}
+
+
+// ---------------------------------------------------------------------------
+// In-Action Safety (during execution)
+// ---------------------------------------------------------------------------
+
+// Request to check an action in progress
+message CheckActionRequest {
+  string plan_id = 1;
+  string step_id = 2;
+  agi.plan.v1.PlanStep step = 3;
+
+  // Current world state for context
+  string world_state_ref = 4;
+
+  // Real-time sensor data (collision detection, etc.)
+  map<string, float> sensor_readings = 10;
+
+  reserved 5 to 9, 11 to 19;
+}
+
+// Response for in-action check
+message CheckActionResponse {
+  SafetyResult result = 1;
+
+  // Emergency stop triggered
+  bool emergency_stop = 2;
+  string stop_reason = 3;
+
+  reserved 4 to 9;
+}
+
+
+// ---------------------------------------------------------------------------
+// Post-Action Safety (after execution, for learning)
+// ---------------------------------------------------------------------------
+
+// Report of action outcome for learning
+message ActionOutcomeReport {
+  string plan_id = 1;
+  string step_id = 2;
+
+  // What happened
+  string outcome_description = 3;
+  bool success = 4;
+
+  // Compare prediction vs reality
+  float predicted_risk = 5;
+  float actual_harm = 6;
+
+  // For episodic memory logging
+  string decision_proof_hash = 10;
+
+  reserved 7 to 9, 11 to 19;
+}
+
+// Acknowledgment of outcome report
+message ActionOutcomeAck {
+  string event_id = 1;  // Episodic memory event ID
+  bool logged = 2;
+
+  reserved 3 to 9;
+}
+
+
+// ---------------------------------------------------------------------------
+// Reflex Layer - Fast Hardware-Level Safety (<100μs)
+// ---------------------------------------------------------------------------
+
+// Reflex check for time-critical safety (collision avoidance, etc.)
+message ReflexCheckRequest {
+  // Minimal data for fast processing
+  float physical_harm_risk = 1;
+  float collision_probability = 2;
+  bool emergency_flag = 3;
+
+  reserved 4 to 9;
+}
+
+message ReflexCheckResponse {
+  bool safe = 1;
+  bool emergency_stop = 2;
+  string reason = 3;
+
+  reserved 4 to 9;
+}
+
+
+// ---------------------------------------------------------------------------
+// Safety Services
+// ---------------------------------------------------------------------------
+
+// Pre-action safety service (called by LH before plan execution)
+service PreActionSafetyService {
+  // Check entire plan
+  rpc CheckPlan(CheckPlanRequest) returns (CheckPlanResponse);
+
+  // Check single step
+  rpc CheckStep(CheckActionRequest) returns (SafetyResult);
+}
+
+// In-action safety service (called during execution)
+service InActionSafetyService {
+  // Real-time action monitoring
+  rpc CheckAction(CheckActionRequest) returns (CheckActionResponse);
+
+  // Fast reflex check (<100μs target)
+  rpc ReflexCheck(ReflexCheckRequest) returns (ReflexCheckResponse);
+
+  // Emergency stop (unary call)
+  rpc EmergencyStop(EmergencyStopRequest) returns (EmergencyStopResponse);
+}
+
+// Post-action safety service (called after execution for learning)
+service PostActionSafetyService {
+  // Report action outcome
+  rpc ReportOutcome(ActionOutcomeReport) returns (ActionOutcomeAck);
+}
+
+// Emergency stop messages
+message EmergencyStopRequest {
+  string reason = 1;
+  string source = 2;  // Which component triggered
+
+  reserved 3 to 9;
+}
+
+message EmergencyStopResponse {
+  bool acknowledged = 1;
+  string stop_id = 2;
+
+  reserved 3 to 9;
+}

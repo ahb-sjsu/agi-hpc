@@ -25,7 +25,6 @@ from agi.lh.llm import (
 from agi.lh.planner import PlanGraph, PlanStep
 from agi.proto_gen import plan_pb2
 
-
 # ---------------------------------------------------------------------------
 # LLMConfig Tests
 # ---------------------------------------------------------------------------

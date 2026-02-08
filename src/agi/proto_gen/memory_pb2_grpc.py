@@ -5,26 +5,23 @@ import warnings
 
 from agi.proto_gen import memory_pb2 as memory__pb2
 
-GRPC_GENERATED_VERSION = "1.76.0"
+GRPC_GENERATED_VERSION = '1.76.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
 try:
     from grpc._utilities import first_version_is_lower
-
-    _version_not_supported = first_version_is_lower(
-        GRPC_VERSION, GRPC_GENERATED_VERSION
-    )
+    _version_not_supported = first_version_is_lower(GRPC_VERSION, GRPC_GENERATED_VERSION)
 except ImportError:
     _version_not_supported = True
 
 if _version_not_supported:
     raise RuntimeError(
-        f"The grpc package installed is at version {GRPC_VERSION},"
-        + " but the generated code in memory_pb2_grpc.py depends on"
-        + f" grpcio>={GRPC_GENERATED_VERSION}."
-        + f" Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}"
-        + f" or downgrade your generated code using grpcio-tools<={GRPC_VERSION}."
+        f'The grpc package installed is at version {GRPC_VERSION},'
+        + ' but the generated code in memory_pb2_grpc.py depends on'
+        + f' grpcio>={GRPC_GENERATED_VERSION}.'
+        + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
+        + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
     )
 
 
@@ -44,23 +41,20 @@ class SemanticMemoryServiceStub(object):
             channel: A grpc.Channel.
         """
         self.SemanticSearch = channel.unary_unary(
-            "/agi.memory.v1.SemanticMemoryService/SemanticSearch",
-            request_serializer=memory__pb2.SemanticQuery.SerializeToString,
-            response_deserializer=memory__pb2.SemanticResult.FromString,
-            _registered_method=True,
-        )
+                '/agi.memory.v1.SemanticMemoryService/SemanticSearch',
+                request_serializer=memory__pb2.SemanticQuery.SerializeToString,
+                response_deserializer=memory__pb2.SemanticResult.FromString,
+                _registered_method=True)
         self.StoreFact = channel.unary_unary(
-            "/agi.memory.v1.SemanticMemoryService/StoreFact",
-            request_serializer=memory__pb2.StoreFactRequest.SerializeToString,
-            response_deserializer=memory__pb2.StoreFactResponse.FromString,
-            _registered_method=True,
-        )
+                '/agi.memory.v1.SemanticMemoryService/StoreFact',
+                request_serializer=memory__pb2.StoreFactRequest.SerializeToString,
+                response_deserializer=memory__pb2.StoreFactResponse.FromString,
+                _registered_method=True)
         self.GetToolSchema = channel.unary_unary(
-            "/agi.memory.v1.SemanticMemoryService/GetToolSchema",
-            request_serializer=memory__pb2.ToolSchemaRequest.SerializeToString,
-            response_deserializer=memory__pb2.ToolSchemaResponse.FromString,
-            _registered_method=True,
-        )
+                '/agi.memory.v1.SemanticMemoryService/GetToolSchema',
+                request_serializer=memory__pb2.ToolSchemaRequest.SerializeToString,
+                response_deserializer=memory__pb2.ToolSchemaResponse.FromString,
+                _registered_method=True)
 
 
 class SemanticMemoryServiceServicer(object):
@@ -73,52 +67,52 @@ class SemanticMemoryServiceServicer(object):
     """
 
     def SemanticSearch(self, request, context):
-        """Query semantic memory for relevant facts"""
+        """Query semantic memory for relevant facts
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def StoreFact(self, request, context):
-        """Store new facts in semantic memory"""
+        """Store new facts in semantic memory
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def GetToolSchema(self, request, context):
-        """Get tool/skill schemas"""
+        """Get tool/skill schemas
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
 
 def add_SemanticMemoryServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-        "SemanticSearch": grpc.unary_unary_rpc_method_handler(
-            servicer.SemanticSearch,
-            request_deserializer=memory__pb2.SemanticQuery.FromString,
-            response_serializer=memory__pb2.SemanticResult.SerializeToString,
-        ),
-        "StoreFact": grpc.unary_unary_rpc_method_handler(
-            servicer.StoreFact,
-            request_deserializer=memory__pb2.StoreFactRequest.FromString,
-            response_serializer=memory__pb2.StoreFactResponse.SerializeToString,
-        ),
-        "GetToolSchema": grpc.unary_unary_rpc_method_handler(
-            servicer.GetToolSchema,
-            request_deserializer=memory__pb2.ToolSchemaRequest.FromString,
-            response_serializer=memory__pb2.ToolSchemaResponse.SerializeToString,
-        ),
+            'SemanticSearch': grpc.unary_unary_rpc_method_handler(
+                    servicer.SemanticSearch,
+                    request_deserializer=memory__pb2.SemanticQuery.FromString,
+                    response_serializer=memory__pb2.SemanticResult.SerializeToString,
+            ),
+            'StoreFact': grpc.unary_unary_rpc_method_handler(
+                    servicer.StoreFact,
+                    request_deserializer=memory__pb2.StoreFactRequest.FromString,
+                    response_serializer=memory__pb2.StoreFactResponse.SerializeToString,
+            ),
+            'GetToolSchema': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetToolSchema,
+                    request_deserializer=memory__pb2.ToolSchemaRequest.FromString,
+                    response_serializer=memory__pb2.ToolSchemaResponse.SerializeToString,
+            ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-        "agi.memory.v1.SemanticMemoryService", rpc_method_handlers
-    )
+            'agi.memory.v1.SemanticMemoryService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers(
-        "agi.memory.v1.SemanticMemoryService", rpc_method_handlers
-    )
+    server.add_registered_method_handlers('agi.memory.v1.SemanticMemoryService', rpc_method_handlers)
 
 
-# This class is part of an EXPERIMENTAL API.
+ # This class is part of an EXPERIMENTAL API.
 class SemanticMemoryService(object):
     """=============================================================================
     Semantic Memory Service
@@ -129,22 +123,20 @@ class SemanticMemoryService(object):
     """
 
     @staticmethod
-    def SemanticSearch(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
+    def SemanticSearch(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
         return grpc.experimental.unary_unary(
             request,
             target,
-            "/agi.memory.v1.SemanticMemoryService/SemanticSearch",
+            '/agi.memory.v1.SemanticMemoryService/SemanticSearch',
             memory__pb2.SemanticQuery.SerializeToString,
             memory__pb2.SemanticResult.FromString,
             options,
@@ -155,26 +147,23 @@ class SemanticMemoryService(object):
             wait_for_ready,
             timeout,
             metadata,
-            _registered_method=True,
-        )
+            _registered_method=True)
 
     @staticmethod
-    def StoreFact(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
+    def StoreFact(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
         return grpc.experimental.unary_unary(
             request,
             target,
-            "/agi.memory.v1.SemanticMemoryService/StoreFact",
+            '/agi.memory.v1.SemanticMemoryService/StoreFact',
             memory__pb2.StoreFactRequest.SerializeToString,
             memory__pb2.StoreFactResponse.FromString,
             options,
@@ -185,26 +174,23 @@ class SemanticMemoryService(object):
             wait_for_ready,
             timeout,
             metadata,
-            _registered_method=True,
-        )
+            _registered_method=True)
 
     @staticmethod
-    def GetToolSchema(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
+    def GetToolSchema(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
         return grpc.experimental.unary_unary(
             request,
             target,
-            "/agi.memory.v1.SemanticMemoryService/GetToolSchema",
+            '/agi.memory.v1.SemanticMemoryService/GetToolSchema',
             memory__pb2.ToolSchemaRequest.SerializeToString,
             memory__pb2.ToolSchemaResponse.FromString,
             options,
@@ -215,8 +201,7 @@ class SemanticMemoryService(object):
             wait_for_ready,
             timeout,
             metadata,
-            _registered_method=True,
-        )
+            _registered_method=True)
 
 
 class EpisodicMemoryServiceStub(object):
@@ -234,23 +219,20 @@ class EpisodicMemoryServiceStub(object):
             channel: A grpc.Channel.
         """
         self.EpisodicSearch = channel.unary_unary(
-            "/agi.memory.v1.EpisodicMemoryService/EpisodicSearch",
-            request_serializer=memory__pb2.EpisodicQuery.SerializeToString,
-            response_deserializer=memory__pb2.EpisodicResult.FromString,
-            _registered_method=True,
-        )
+                '/agi.memory.v1.EpisodicMemoryService/EpisodicSearch',
+                request_serializer=memory__pb2.EpisodicQuery.SerializeToString,
+                response_deserializer=memory__pb2.EpisodicResult.FromString,
+                _registered_method=True)
         self.StoreEpisode = channel.unary_unary(
-            "/agi.memory.v1.EpisodicMemoryService/StoreEpisode",
-            request_serializer=memory__pb2.StoreEpisodeRequest.SerializeToString,
-            response_deserializer=memory__pb2.StoreEpisodeResponse.FromString,
-            _registered_method=True,
-        )
+                '/agi.memory.v1.EpisodicMemoryService/StoreEpisode',
+                request_serializer=memory__pb2.StoreEpisodeRequest.SerializeToString,
+                response_deserializer=memory__pb2.StoreEpisodeResponse.FromString,
+                _registered_method=True)
         self.GetEpisode = channel.unary_unary(
-            "/agi.memory.v1.EpisodicMemoryService/GetEpisode",
-            request_serializer=memory__pb2.GetEpisodeRequest.SerializeToString,
-            response_deserializer=memory__pb2.Episode.FromString,
-            _registered_method=True,
-        )
+                '/agi.memory.v1.EpisodicMemoryService/GetEpisode',
+                request_serializer=memory__pb2.GetEpisodeRequest.SerializeToString,
+                response_deserializer=memory__pb2.Episode.FromString,
+                _registered_method=True)
 
 
 class EpisodicMemoryServiceServicer(object):
@@ -262,52 +244,52 @@ class EpisodicMemoryServiceServicer(object):
     """
 
     def EpisodicSearch(self, request, context):
-        """Query for similar past episodes"""
+        """Query for similar past episodes
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def StoreEpisode(self, request, context):
-        """Store a new episode"""
+        """Store a new episode
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def GetEpisode(self, request, context):
-        """Get episode by ID"""
+        """Get episode by ID
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
 
 def add_EpisodicMemoryServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-        "EpisodicSearch": grpc.unary_unary_rpc_method_handler(
-            servicer.EpisodicSearch,
-            request_deserializer=memory__pb2.EpisodicQuery.FromString,
-            response_serializer=memory__pb2.EpisodicResult.SerializeToString,
-        ),
-        "StoreEpisode": grpc.unary_unary_rpc_method_handler(
-            servicer.StoreEpisode,
-            request_deserializer=memory__pb2.StoreEpisodeRequest.FromString,
-            response_serializer=memory__pb2.StoreEpisodeResponse.SerializeToString,
-        ),
-        "GetEpisode": grpc.unary_unary_rpc_method_handler(
-            servicer.GetEpisode,
-            request_deserializer=memory__pb2.GetEpisodeRequest.FromString,
-            response_serializer=memory__pb2.Episode.SerializeToString,
-        ),
+            'EpisodicSearch': grpc.unary_unary_rpc_method_handler(
+                    servicer.EpisodicSearch,
+                    request_deserializer=memory__pb2.EpisodicQuery.FromString,
+                    response_serializer=memory__pb2.EpisodicResult.SerializeToString,
+            ),
+            'StoreEpisode': grpc.unary_unary_rpc_method_handler(
+                    servicer.StoreEpisode,
+                    request_deserializer=memory__pb2.StoreEpisodeRequest.FromString,
+                    response_serializer=memory__pb2.StoreEpisodeResponse.SerializeToString,
+            ),
+            'GetEpisode': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetEpisode,
+                    request_deserializer=memory__pb2.GetEpisodeRequest.FromString,
+                    response_serializer=memory__pb2.Episode.SerializeToString,
+            ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-        "agi.memory.v1.EpisodicMemoryService", rpc_method_handlers
-    )
+            'agi.memory.v1.EpisodicMemoryService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers(
-        "agi.memory.v1.EpisodicMemoryService", rpc_method_handlers
-    )
+    server.add_registered_method_handlers('agi.memory.v1.EpisodicMemoryService', rpc_method_handlers)
 
 
-# This class is part of an EXPERIMENTAL API.
+ # This class is part of an EXPERIMENTAL API.
 class EpisodicMemoryService(object):
     """=============================================================================
     Episodic Memory Service
@@ -317,22 +299,20 @@ class EpisodicMemoryService(object):
     """
 
     @staticmethod
-    def EpisodicSearch(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
+    def EpisodicSearch(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
         return grpc.experimental.unary_unary(
             request,
             target,
-            "/agi.memory.v1.EpisodicMemoryService/EpisodicSearch",
+            '/agi.memory.v1.EpisodicMemoryService/EpisodicSearch',
             memory__pb2.EpisodicQuery.SerializeToString,
             memory__pb2.EpisodicResult.FromString,
             options,
@@ -343,26 +323,23 @@ class EpisodicMemoryService(object):
             wait_for_ready,
             timeout,
             metadata,
-            _registered_method=True,
-        )
+            _registered_method=True)
 
     @staticmethod
-    def StoreEpisode(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
+    def StoreEpisode(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
         return grpc.experimental.unary_unary(
             request,
             target,
-            "/agi.memory.v1.EpisodicMemoryService/StoreEpisode",
+            '/agi.memory.v1.EpisodicMemoryService/StoreEpisode',
             memory__pb2.StoreEpisodeRequest.SerializeToString,
             memory__pb2.StoreEpisodeResponse.FromString,
             options,
@@ -373,26 +350,23 @@ class EpisodicMemoryService(object):
             wait_for_ready,
             timeout,
             metadata,
-            _registered_method=True,
-        )
+            _registered_method=True)
 
     @staticmethod
-    def GetEpisode(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
+    def GetEpisode(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
         return grpc.experimental.unary_unary(
             request,
             target,
-            "/agi.memory.v1.EpisodicMemoryService/GetEpisode",
+            '/agi.memory.v1.EpisodicMemoryService/GetEpisode',
             memory__pb2.GetEpisodeRequest.SerializeToString,
             memory__pb2.Episode.FromString,
             options,
@@ -403,8 +377,7 @@ class EpisodicMemoryService(object):
             wait_for_ready,
             timeout,
             metadata,
-            _registered_method=True,
-        )
+            _registered_method=True)
 
 
 class ProceduralMemoryServiceStub(object):
@@ -422,29 +395,25 @@ class ProceduralMemoryServiceStub(object):
             channel: A grpc.Channel.
         """
         self.SkillSearch = channel.unary_unary(
-            "/agi.memory.v1.ProceduralMemoryService/SkillSearch",
-            request_serializer=memory__pb2.SkillQuery.SerializeToString,
-            response_deserializer=memory__pb2.SkillResult.FromString,
-            _registered_method=True,
-        )
+                '/agi.memory.v1.ProceduralMemoryService/SkillSearch',
+                request_serializer=memory__pb2.SkillQuery.SerializeToString,
+                response_deserializer=memory__pb2.SkillResult.FromString,
+                _registered_method=True)
         self.GetSkill = channel.unary_unary(
-            "/agi.memory.v1.ProceduralMemoryService/GetSkill",
-            request_serializer=memory__pb2.GetSkillRequest.SerializeToString,
-            response_deserializer=memory__pb2.Skill.FromString,
-            _registered_method=True,
-        )
+                '/agi.memory.v1.ProceduralMemoryService/GetSkill',
+                request_serializer=memory__pb2.GetSkillRequest.SerializeToString,
+                response_deserializer=memory__pb2.Skill.FromString,
+                _registered_method=True)
         self.RegisterSkill = channel.unary_unary(
-            "/agi.memory.v1.ProceduralMemoryService/RegisterSkill",
-            request_serializer=memory__pb2.RegisterSkillRequest.SerializeToString,
-            response_deserializer=memory__pb2.RegisterSkillResponse.FromString,
-            _registered_method=True,
-        )
+                '/agi.memory.v1.ProceduralMemoryService/RegisterSkill',
+                request_serializer=memory__pb2.RegisterSkillRequest.SerializeToString,
+                response_deserializer=memory__pb2.RegisterSkillResponse.FromString,
+                _registered_method=True)
         self.UpdateSkillStats = channel.unary_unary(
-            "/agi.memory.v1.ProceduralMemoryService/UpdateSkillStats",
-            request_serializer=memory__pb2.UpdateSkillStatsRequest.SerializeToString,
-            response_deserializer=memory__pb2.UpdateSkillStatsResponse.FromString,
-            _registered_method=True,
-        )
+                '/agi.memory.v1.ProceduralMemoryService/UpdateSkillStats',
+                request_serializer=memory__pb2.UpdateSkillStatsRequest.SerializeToString,
+                response_deserializer=memory__pb2.UpdateSkillStatsResponse.FromString,
+                _registered_method=True)
 
 
 class ProceduralMemoryServiceServicer(object):
@@ -456,63 +425,64 @@ class ProceduralMemoryServiceServicer(object):
     """
 
     def SkillSearch(self, request, context):
-        """Search for relevant skills"""
+        """Search for relevant skills
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def GetSkill(self, request, context):
-        """Get skill by ID"""
+        """Get skill by ID
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def RegisterSkill(self, request, context):
-        """Register a new skill"""
+        """Register a new skill
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def UpdateSkillStats(self, request, context):
-        """Update skill statistics"""
+        """Update skill statistics
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
 
 def add_ProceduralMemoryServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-        "SkillSearch": grpc.unary_unary_rpc_method_handler(
-            servicer.SkillSearch,
-            request_deserializer=memory__pb2.SkillQuery.FromString,
-            response_serializer=memory__pb2.SkillResult.SerializeToString,
-        ),
-        "GetSkill": grpc.unary_unary_rpc_method_handler(
-            servicer.GetSkill,
-            request_deserializer=memory__pb2.GetSkillRequest.FromString,
-            response_serializer=memory__pb2.Skill.SerializeToString,
-        ),
-        "RegisterSkill": grpc.unary_unary_rpc_method_handler(
-            servicer.RegisterSkill,
-            request_deserializer=memory__pb2.RegisterSkillRequest.FromString,
-            response_serializer=memory__pb2.RegisterSkillResponse.SerializeToString,
-        ),
-        "UpdateSkillStats": grpc.unary_unary_rpc_method_handler(
-            servicer.UpdateSkillStats,
-            request_deserializer=memory__pb2.UpdateSkillStatsRequest.FromString,
-            response_serializer=memory__pb2.UpdateSkillStatsResponse.SerializeToString,
-        ),
+            'SkillSearch': grpc.unary_unary_rpc_method_handler(
+                    servicer.SkillSearch,
+                    request_deserializer=memory__pb2.SkillQuery.FromString,
+                    response_serializer=memory__pb2.SkillResult.SerializeToString,
+            ),
+            'GetSkill': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetSkill,
+                    request_deserializer=memory__pb2.GetSkillRequest.FromString,
+                    response_serializer=memory__pb2.Skill.SerializeToString,
+            ),
+            'RegisterSkill': grpc.unary_unary_rpc_method_handler(
+                    servicer.RegisterSkill,
+                    request_deserializer=memory__pb2.RegisterSkillRequest.FromString,
+                    response_serializer=memory__pb2.RegisterSkillResponse.SerializeToString,
+            ),
+            'UpdateSkillStats': grpc.unary_unary_rpc_method_handler(
+                    servicer.UpdateSkillStats,
+                    request_deserializer=memory__pb2.UpdateSkillStatsRequest.FromString,
+                    response_serializer=memory__pb2.UpdateSkillStatsResponse.SerializeToString,
+            ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-        "agi.memory.v1.ProceduralMemoryService", rpc_method_handlers
-    )
+            'agi.memory.v1.ProceduralMemoryService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers(
-        "agi.memory.v1.ProceduralMemoryService", rpc_method_handlers
-    )
+    server.add_registered_method_handlers('agi.memory.v1.ProceduralMemoryService', rpc_method_handlers)
 
 
-# This class is part of an EXPERIMENTAL API.
+ # This class is part of an EXPERIMENTAL API.
 class ProceduralMemoryService(object):
     """=============================================================================
     Procedural Memory Service
@@ -522,22 +492,20 @@ class ProceduralMemoryService(object):
     """
 
     @staticmethod
-    def SkillSearch(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
+    def SkillSearch(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
         return grpc.experimental.unary_unary(
             request,
             target,
-            "/agi.memory.v1.ProceduralMemoryService/SkillSearch",
+            '/agi.memory.v1.ProceduralMemoryService/SkillSearch',
             memory__pb2.SkillQuery.SerializeToString,
             memory__pb2.SkillResult.FromString,
             options,
@@ -548,26 +516,23 @@ class ProceduralMemoryService(object):
             wait_for_ready,
             timeout,
             metadata,
-            _registered_method=True,
-        )
+            _registered_method=True)
 
     @staticmethod
-    def GetSkill(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
+    def GetSkill(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
         return grpc.experimental.unary_unary(
             request,
             target,
-            "/agi.memory.v1.ProceduralMemoryService/GetSkill",
+            '/agi.memory.v1.ProceduralMemoryService/GetSkill',
             memory__pb2.GetSkillRequest.SerializeToString,
             memory__pb2.Skill.FromString,
             options,
@@ -578,26 +543,23 @@ class ProceduralMemoryService(object):
             wait_for_ready,
             timeout,
             metadata,
-            _registered_method=True,
-        )
+            _registered_method=True)
 
     @staticmethod
-    def RegisterSkill(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
+    def RegisterSkill(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
         return grpc.experimental.unary_unary(
             request,
             target,
-            "/agi.memory.v1.ProceduralMemoryService/RegisterSkill",
+            '/agi.memory.v1.ProceduralMemoryService/RegisterSkill',
             memory__pb2.RegisterSkillRequest.SerializeToString,
             memory__pb2.RegisterSkillResponse.FromString,
             options,
@@ -608,26 +570,23 @@ class ProceduralMemoryService(object):
             wait_for_ready,
             timeout,
             metadata,
-            _registered_method=True,
-        )
+            _registered_method=True)
 
     @staticmethod
-    def UpdateSkillStats(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
+    def UpdateSkillStats(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
         return grpc.experimental.unary_unary(
             request,
             target,
-            "/agi.memory.v1.ProceduralMemoryService/UpdateSkillStats",
+            '/agi.memory.v1.ProceduralMemoryService/UpdateSkillStats',
             memory__pb2.UpdateSkillStatsRequest.SerializeToString,
             memory__pb2.UpdateSkillStatsResponse.FromString,
             options,
@@ -638,8 +597,7 @@ class ProceduralMemoryService(object):
             wait_for_ready,
             timeout,
             metadata,
-            _registered_method=True,
-        )
+            _registered_method=True)
 
 
 class UnifiedMemoryServiceStub(object):
@@ -656,11 +614,10 @@ class UnifiedMemoryServiceStub(object):
             channel: A grpc.Channel.
         """
         self.EnrichPlanningContext = channel.unary_unary(
-            "/agi.memory.v1.UnifiedMemoryService/EnrichPlanningContext",
-            request_serializer=memory__pb2.PlanningContextRequest.SerializeToString,
-            response_deserializer=memory__pb2.PlanningContextResponse.FromString,
-            _registered_method=True,
-        )
+                '/agi.memory.v1.UnifiedMemoryService/EnrichPlanningContext',
+                request_serializer=memory__pb2.PlanningContextRequest.SerializeToString,
+                response_deserializer=memory__pb2.PlanningContextResponse.FromString,
+                _registered_method=True)
 
 
 class UnifiedMemoryServiceServicer(object):
@@ -671,30 +628,28 @@ class UnifiedMemoryServiceServicer(object):
     """
 
     def EnrichPlanningContext(self, request, context):
-        """Query all memory types at once for planning context"""
+        """Query all memory types at once for planning context
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
 
 def add_UnifiedMemoryServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-        "EnrichPlanningContext": grpc.unary_unary_rpc_method_handler(
-            servicer.EnrichPlanningContext,
-            request_deserializer=memory__pb2.PlanningContextRequest.FromString,
-            response_serializer=memory__pb2.PlanningContextResponse.SerializeToString,
-        ),
+            'EnrichPlanningContext': grpc.unary_unary_rpc_method_handler(
+                    servicer.EnrichPlanningContext,
+                    request_deserializer=memory__pb2.PlanningContextRequest.FromString,
+                    response_serializer=memory__pb2.PlanningContextResponse.SerializeToString,
+            ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-        "agi.memory.v1.UnifiedMemoryService", rpc_method_handlers
-    )
+            'agi.memory.v1.UnifiedMemoryService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers(
-        "agi.memory.v1.UnifiedMemoryService", rpc_method_handlers
-    )
+    server.add_registered_method_handlers('agi.memory.v1.UnifiedMemoryService', rpc_method_handlers)
 
 
-# This class is part of an EXPERIMENTAL API.
+ # This class is part of an EXPERIMENTAL API.
 class UnifiedMemoryService(object):
     """=============================================================================
     Unified Memory Query (convenience wrapper)
@@ -703,22 +658,20 @@ class UnifiedMemoryService(object):
     """
 
     @staticmethod
-    def EnrichPlanningContext(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
+    def EnrichPlanningContext(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
         return grpc.experimental.unary_unary(
             request,
             target,
-            "/agi.memory.v1.UnifiedMemoryService/EnrichPlanningContext",
+            '/agi.memory.v1.UnifiedMemoryService/EnrichPlanningContext',
             memory__pb2.PlanningContextRequest.SerializeToString,
             memory__pb2.PlanningContextResponse.FromString,
             options,
@@ -729,5 +682,4 @@ class UnifiedMemoryService(object):
             wait_for_ready,
             timeout,
             metadata,
-            _registered_method=True,
-        )
+            _registered_method=True)

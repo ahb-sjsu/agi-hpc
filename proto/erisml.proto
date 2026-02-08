@@ -1,0 +1,229 @@
+syntax = "proto3";
+
+package agi.erisml.v1;
+
+option go_package = "agi/erisml/v1;erisml";
+option java_multiple_files = true;
+option java_package = "com.agi.erisml.v1";
+
+// ---------------------------------------------------------------------------
+// ErisML Integration - Ethical Facts and Moral Vectors
+// Bridge between AGI-HPC cognitive architecture and ErisML safety framework
+// ---------------------------------------------------------------------------
+
+// EthicalFacts captures the morally relevant dimensions of an action/plan step.
+// Maps AGI-HPC PlanStep to ErisML's ethical evaluation input.
+message EthicalFactsProto {
+  string option_id = 1;  // Corresponds to PlanStep.step_id
+
+  // --- Consequences (Consequentialist dimension) ---
+  float expected_benefit = 10;
+  float expected_harm = 11;
+  float urgency = 12;
+  int32 affected_count = 13;
+
+  // --- Rights and Duties (Deontological dimension) ---
+  bool violates_rights = 20;
+  bool has_valid_consent = 21;
+  bool violates_explicit_rule = 22;
+
+  // --- Justice and Fairness ---
+  bool discriminates_on_protected_attr = 30;
+  bool exploits_vulnerable_population = 31;
+
+  // --- Safety and Security ---
+  float physical_harm_risk = 40;
+  float collision_probability = 41;
+
+  // --- Epistemic Status ---
+  float uncertainty_level = 50;
+  float evidence_quality = 51;
+  bool novel_situation = 52;
+
+  // --- Domain-specific extensions ---
+  map<string, float> extensions = 100;
+
+  reserved 2 to 9, 14 to 19, 23 to 29, 32 to 39, 42 to 49, 53 to 99;
+}
+
+
+// ---------------------------------------------------------------------------
+// Moral Vector - 8+1 dimensional ethical evaluation output
+// ---------------------------------------------------------------------------
+
+// MoralVector represents the multi-dimensional ethical assessment of an action.
+// Based on DEME 2.0 architecture from erisml-lib.
+message MoralVectorProto {
+  // Core 8 dimensions
+  float physical_harm = 1;           // Physical safety dimension
+  float rights_respect = 2;          // Rights and duties
+  float fairness_equity = 3;         // Justice and fairness
+  float autonomy_respect = 4;        // Respect for agent autonomy
+  float privacy_protection = 5;      // Privacy considerations
+  float societal_environmental = 6;  // Broader societal impact
+  float virtue_care = 7;             // Virtue ethics dimension
+  float legitimacy_trust = 8;        // Procedural legitimacy
+
+  // Epistemic quality (+1 dimension)
+  float epistemic_quality = 9;
+
+  // Veto flags from reflex layer
+  repeated string veto_flags = 20;
+
+  // Reason codes explaining the vector values
+  repeated string reason_codes = 21;
+
+  reserved 10 to 19, 22 to 99;
+}
+
+
+// ---------------------------------------------------------------------------
+// Hohfeldian Analysis - Normative Position Verification
+// ---------------------------------------------------------------------------
+
+// Hohfeldian verdict for a party's normative position.
+// States: O (Obligation), C (Claim), L (Liberty), N (No-claim)
+// Correlative symmetry: O <-> C, L <-> N
+message HohfeldianVerdictProto {
+  string party_name = 1;
+  string state = 2;           // O, C, L, or N
+  string expected_state = 3;  // For verification against correlative
+  float confidence = 4;
+
+  reserved 5 to 9;
+}
+
+// Result of Bond Index computation.
+// Bond Index measures deviation from perfect correlative symmetry.
+// 0 = perfect invariance (ideal), baseline ~0.155 from Dear Abby corpus.
+message BondIndexResultProto {
+  float bond_index = 1;       // 0 = perfect symmetry
+  float baseline = 2;         // 0.155 (Dear Abby empirical baseline)
+  bool within_threshold = 3;  // bond_index < block_threshold (default 0.30)
+  repeated string violations = 4;  // List of symmetry violations
+
+  reserved 5 to 9;
+}
+
+
+// ---------------------------------------------------------------------------
+// Decision Proof - Auditable Decision Trail with Hash Chain
+// ---------------------------------------------------------------------------
+
+// DecisionProof provides cryptographic audit trail for ethical decisions.
+// Implements hash-chained proofs for governance compliance.
+message DecisionProofProto {
+  string decision_id = 1;
+  string timestamp = 2;        // ISO 8601 format
+
+  // Input hashes for verification
+  string input_facts_hash = 3;
+  string profile_hash = 4;
+  string profile_name = 5;
+
+  // Decision content
+  repeated string candidate_option_ids = 10;
+  string selected_option_id = 11;
+  repeated string ranked_options = 12;
+  repeated string forbidden_options = 13;
+
+  // Governance
+  string governance_rationale = 20;
+  float confidence = 21;
+
+  // Hash chain
+  string previous_proof_hash = 30;
+  string proof_hash = 31;
+
+  reserved 6 to 9, 14 to 19, 22 to 29, 32 to 99;
+}
+
+
+// ---------------------------------------------------------------------------
+// Service Request/Response Messages
+// ---------------------------------------------------------------------------
+
+// Request to evaluate a single plan step
+message EvaluateStepRequest {
+  EthicalFactsProto facts = 1;
+  string profile_name = 2;  // DEME profile to use (default: agi_hpc_safety_v1)
+
+  reserved 3 to 9;
+}
+
+// Response from single step evaluation
+message EvaluateStepResponse {
+  // Verdict: strongly_prefer, prefer, neutral, avoid, forbid
+  string verdict = 1;
+  MoralVectorProto moral_vector = 2;
+  bool vetoed = 3;
+  string veto_reason = 4;
+  DecisionProofProto proof = 5;
+
+  reserved 6 to 9;
+}
+
+// Request to evaluate entire plan
+message EvaluatePlanRequest {
+  repeated EthicalFactsProto step_facts = 1;
+  string profile_name = 2;
+  bool generate_proofs = 3;
+
+  reserved 4 to 9;
+}
+
+// Response from plan evaluation
+message EvaluatePlanResponse {
+  repeated EvaluateStepResponse step_results = 1;
+  bool plan_approved = 2;
+  repeated string blocked_steps = 3;
+  BondIndexResultProto bond_index = 4;
+  DecisionProofProto plan_proof = 5;
+
+  reserved 6 to 9;
+}
+
+// Request for Bond Index computation
+message BondIndexRequest {
+  repeated HohfeldianVerdictProto party_a_verdicts = 1;
+  repeated HohfeldianVerdictProto party_b_verdicts = 2;
+
+  reserved 3 to 9;
+}
+
+// Request for Hohfeldian consistency verification
+message HohfeldianRequest {
+  repeated HohfeldianVerdictProto verdicts = 1;
+
+  reserved 2 to 9;
+}
+
+// Response from Hohfeldian verification
+message HohfeldianResponse {
+  bool consistent = 1;
+  float symmetry_rate = 2;  // 1.0 = perfect O<->C, L<->N symmetry
+  repeated string violations = 3;
+
+  reserved 4 to 9;
+}
+
+
+// ---------------------------------------------------------------------------
+// ErisML Service Definition
+// ---------------------------------------------------------------------------
+
+// ErisMLService provides ethical evaluation for AGI-HPC cognitive architecture.
+// Integrates with the Safety Gateway for pre-action safety checks.
+service ErisMLService {
+  // Evaluate a single plan step through DEME pipeline
+  rpc EvaluateStep(EvaluateStepRequest) returns (EvaluateStepResponse);
+
+  // Evaluate entire plan graph with aggregated Bond Index
+  rpc EvaluatePlan(EvaluatePlanRequest) returns (EvaluatePlanResponse);
+
+  // Compute Bond Index for Hohfeldian position pairs
+  rpc ComputeBondIndex(BondIndexRequest) returns (BondIndexResultProto);
+
+  // Verify Hohfeldian correlative symmetry
+  rpc VerifyHohfeldian(HohfeldianRequest) returns (HohfeldianResponse);
+}

@@ -9,22 +9,71 @@ from google.protobuf import descriptor_pool as _descriptor_pool
 from google.protobuf import runtime_version as _runtime_version
 from google.protobuf import symbol_database as _symbol_database
 from google.protobuf.internal import builder as _builder
-
 _runtime_version.ValidateProtobufRuntimeVersion(
-    _runtime_version.Domain.PUBLIC, 6, 31, 1, "", "safety.proto"
+    _runtime_version.Domain.PUBLIC,
+    6,
+    31,
+    1,
+    '',
+    'safety.proto'
 )
 # @@protoc_insertion_point(imports)
 
 _sym_db = _symbol_database.Default()
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(
-    b"\n\x0csafety.proto\x12\ragi.safety.v1b\x06proto3"
-)
+from agi.proto_gen import plan_pb2 as plan__pb2
+from agi.proto_gen import erisml_pb2 as erisml__pb2
+
+
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0csafety.proto\x12\ragi.safety.v1\x1a\nplan.proto\x1a\x0c\x65risml.proto\"\x83\x03\n\x0cSafetyResult\x12/\n\x08\x64\x65\x63ision\x18\x01 \x01(\x0e\x32\x1d.agi.safety.v1.SafetyDecision\x12\x12\n\nrisk_score\x18\x02 \x01(\x02\x12\x0f\n\x07reasons\x18\x03 \x03(\t\x12/\n\ncategories\x18\x04 \x03(\x0e\x32\x1b.agi.safety.v1.RiskCategory\x12\x37\n\nbond_index\x18\n \x01(\x0b\x32#.agi.erisml.v1.BondIndexResultProto\x12\x39\n\x0e\x64\x65\x63ision_proof\x18\x0b \x01(\x0b\x32!.agi.erisml.v1.DecisionProofProto\x12;\n\x08metadata\x18\x14 \x03(\x0b\x32).agi.safety.v1.SafetyResult.MetadataEntry\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01J\x04\x08\x05\x10\nJ\x04\x08\x0c\x10\x14\"q\n\x10\x43heckPlanRequest\x12)\n\x04plan\x18\x01 \x01(\x0b\x32\x1b.agi.plan.v1.PlanGraphProto\x12\x14\n\x0cprofile_name\x18\x02 \x01(\t\x12\x16\n\x0erequire_proofs\x18\x03 \x01(\x08J\x04\x08\x04\x10\n\"\x94\x01\n\x11\x43heckPlanResponse\x12+\n\x06result\x18\x01 \x01(\x0b\x32\x1b.agi.safety.v1.SafetyResult\x12\x35\n\x0cstep_results\x18\x02 \x03(\x0b\x32\x1f.agi.safety.v1.StepSafetyResult\x12\x15\n\rplan_approved\x18\x03 \x01(\x08J\x04\x08\x04\x10\n\"V\n\x10StepSafetyResult\x12\x0f\n\x07step_id\x18\x01 \x01(\t\x12+\n\x06result\x18\x02 \x01(\x0b\x32\x1b.agi.safety.v1.SafetyResultJ\x04\x08\x03\x10\n\"\x87\x02\n\x12\x43heckActionRequest\x12\x0f\n\x07plan_id\x18\x01 \x01(\t\x12\x0f\n\x07step_id\x18\x02 \x01(\t\x12#\n\x04step\x18\x03 \x01(\x0b\x32\x15.agi.plan.v1.PlanStep\x12\x17\n\x0fworld_state_ref\x18\x04 \x01(\t\x12N\n\x0fsensor_readings\x18\n \x03(\x0b\x32\x35.agi.safety.v1.CheckActionRequest.SensorReadingsEntry\x1a\x35\n\x13SensorReadingsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x02:\x02\x38\x01J\x04\x08\x05\x10\nJ\x04\x08\x0b\x10\x14\"u\n\x13\x43heckActionResponse\x12+\n\x06result\x18\x01 \x01(\x0b\x32\x1b.agi.safety.v1.SafetyResult\x12\x16\n\x0e\x65mergency_stop\x18\x02 \x01(\x08\x12\x13\n\x0bstop_reason\x18\x03 \x01(\tJ\x04\x08\x04\x10\n\"\xbb\x01\n\x13\x41\x63tionOutcomeReport\x12\x0f\n\x07plan_id\x18\x01 \x01(\t\x12\x0f\n\x07step_id\x18\x02 \x01(\t\x12\x1b\n\x13outcome_description\x18\x03 \x01(\t\x12\x0f\n\x07success\x18\x04 \x01(\x08\x12\x16\n\x0epredicted_risk\x18\x05 \x01(\x02\x12\x13\n\x0b\x61\x63tual_harm\x18\x06 \x01(\x02\x12\x1b\n\x13\x64\x65\x63ision_proof_hash\x18\n \x01(\tJ\x04\x08\x07\x10\nJ\x04\x08\x0b\x10\x14\":\n\x10\x41\x63tionOutcomeAck\x12\x10\n\x08\x65vent_id\x18\x01 \x01(\t\x12\x0e\n\x06logged\x18\x02 \x01(\x08J\x04\x08\x03\x10\n\"m\n\x12ReflexCheckRequest\x12\x1a\n\x12physical_harm_risk\x18\x01 \x01(\x02\x12\x1d\n\x15\x63ollision_probability\x18\x02 \x01(\x02\x12\x16\n\x0e\x65mergency_flag\x18\x03 \x01(\x08J\x04\x08\x04\x10\n\"Q\n\x13ReflexCheckResponse\x12\x0c\n\x04safe\x18\x01 \x01(\x08\x12\x16\n\x0e\x65mergency_stop\x18\x02 \x01(\x08\x12\x0e\n\x06reason\x18\x03 \x01(\tJ\x04\x08\x04\x10\n\"<\n\x14\x45mergencyStopRequest\x12\x0e\n\x06reason\x18\x01 \x01(\t\x12\x0e\n\x06source\x18\x02 \x01(\tJ\x04\x08\x03\x10\n\"D\n\x15\x45mergencyStopResponse\x12\x14\n\x0c\x61\x63knowledged\x18\x01 \x01(\x08\x12\x0f\n\x07stop_id\x18\x02 \x01(\tJ\x04\x08\x03\x10\n*\x9e\x01\n\x0eSafetyDecision\x12\x1f\n\x1bSAFETY_DECISION_UNSPECIFIED\x10\x00\x12\x19\n\x15SAFETY_DECISION_ALLOW\x10\x01\x12\x19\n\x15SAFETY_DECISION_BLOCK\x10\x02\x12\x1a\n\x16SAFETY_DECISION_REVISE\x10\x03\x12\x19\n\x15SAFETY_DECISION_DEFER\x10\x04*\xeb\x01\n\x0cRiskCategory\x12\x1d\n\x19RISK_CATEGORY_UNSPECIFIED\x10\x00\x12\x1f\n\x1bRISK_CATEGORY_PHYSICAL_HARM\x10\x01\x12\"\n\x1eRISK_CATEGORY_RIGHTS_VIOLATION\x10\x02\x12 \n\x1cRISK_CATEGORY_RULE_VIOLATION\x10\x03\x12\x1a\n\x16RISK_CATEGORY_FAIRNESS\x10\x04\x12\x1b\n\x17RISK_CATEGORY_EPISTEMIC\x10\x05\x12\x1c\n\x18RISK_CATEGORY_BOND_INDEX\x10\x06\x32\xb5\x01\n\x16PreActionSafetyService\x12N\n\tCheckPlan\x12\x1f.agi.safety.v1.CheckPlanRequest\x1a .agi.safety.v1.CheckPlanResponse\x12K\n\tCheckStep\x12!.agi.safety.v1.CheckActionRequest\x1a\x1b.agi.safety.v1.SafetyResult2\x9f\x02\n\x15InActionSafetyService\x12T\n\x0b\x43heckAction\x12!.agi.safety.v1.CheckActionRequest\x1a\".agi.safety.v1.CheckActionResponse\x12T\n\x0bReflexCheck\x12!.agi.safety.v1.ReflexCheckRequest\x1a\".agi.safety.v1.ReflexCheckResponse\x12Z\n\rEmergencyStop\x12#.agi.safety.v1.EmergencyStopRequest\x1a$.agi.safety.v1.EmergencyStopResponse2o\n\x17PostActionSafetyService\x12T\n\rReportOutcome\x12\".agi.safety.v1.ActionOutcomeReport\x1a\x1f.agi.safety.v1.ActionOutcomeAckB+\n\x11\x63om.agi.safety.v1P\x01Z\x14\x61gi/safety/v1;safetyb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
-_builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, "safety_pb2", _globals)
+_builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'safety_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
-    DESCRIPTOR._loaded_options = None
+  _globals['DESCRIPTOR']._loaded_options = None
+  _globals['DESCRIPTOR']._serialized_options = b'\n\021com.agi.safety.v1P\001Z\024agi/safety/v1;safety'
+  _globals['_SAFETYRESULT_METADATAENTRY']._loaded_options = None
+  _globals['_SAFETYRESULT_METADATAENTRY']._serialized_options = b'8\001'
+  _globals['_CHECKACTIONREQUEST_SENSORREADINGSENTRY']._loaded_options = None
+  _globals['_CHECKACTIONREQUEST_SENSORREADINGSENTRY']._serialized_options = b'8\001'
+  _globals['_SAFETYDECISION']._serialized_start=1763
+  _globals['_SAFETYDECISION']._serialized_end=1921
+  _globals['_RISKCATEGORY']._serialized_start=1924
+  _globals['_RISKCATEGORY']._serialized_end=2159
+  _globals['_SAFETYRESULT']._serialized_start=58
+  _globals['_SAFETYRESULT']._serialized_end=445
+  _globals['_SAFETYRESULT_METADATAENTRY']._serialized_start=386
+  _globals['_SAFETYRESULT_METADATAENTRY']._serialized_end=433
+  _globals['_CHECKPLANREQUEST']._serialized_start=447
+  _globals['_CHECKPLANREQUEST']._serialized_end=560
+  _globals['_CHECKPLANRESPONSE']._serialized_start=563
+  _globals['_CHECKPLANRESPONSE']._serialized_end=711
+  _globals['_STEPSAFETYRESULT']._serialized_start=713
+  _globals['_STEPSAFETYRESULT']._serialized_end=799
+  _globals['_CHECKACTIONREQUEST']._serialized_start=802
+  _globals['_CHECKACTIONREQUEST']._serialized_end=1065
+  _globals['_CHECKACTIONREQUEST_SENSORREADINGSENTRY']._serialized_start=1000
+  _globals['_CHECKACTIONREQUEST_SENSORREADINGSENTRY']._serialized_end=1053
+  _globals['_CHECKACTIONRESPONSE']._serialized_start=1067
+  _globals['_CHECKACTIONRESPONSE']._serialized_end=1184
+  _globals['_ACTIONOUTCOMEREPORT']._serialized_start=1187
+  _globals['_ACTIONOUTCOMEREPORT']._serialized_end=1374
+  _globals['_ACTIONOUTCOMEACK']._serialized_start=1376
+  _globals['_ACTIONOUTCOMEACK']._serialized_end=1434
+  _globals['_REFLEXCHECKREQUEST']._serialized_start=1436
+  _globals['_REFLEXCHECKREQUEST']._serialized_end=1545
+  _globals['_REFLEXCHECKRESPONSE']._serialized_start=1547
+  _globals['_REFLEXCHECKRESPONSE']._serialized_end=1628
+  _globals['_EMERGENCYSTOPREQUEST']._serialized_start=1630
+  _globals['_EMERGENCYSTOPREQUEST']._serialized_end=1690
+  _globals['_EMERGENCYSTOPRESPONSE']._serialized_start=1692
+  _globals['_EMERGENCYSTOPRESPONSE']._serialized_end=1760
+  _globals['_PREACTIONSAFETYSERVICE']._serialized_start=2162
+  _globals['_PREACTIONSAFETYSERVICE']._serialized_end=2343
+  _globals['_INACTIONSAFETYSERVICE']._serialized_start=2346
+  _globals['_INACTIONSAFETYSERVICE']._serialized_end=2633
+  _globals['_POSTACTIONSAFETYSERVICE']._serialized_start=2635
+  _globals['_POSTACTIONSAFETYSERVICE']._serialized_end=2746
 # @@protoc_insertion_point(module_scope)

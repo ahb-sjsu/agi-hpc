@@ -21,7 +21,6 @@ from agi.lh.observability import (
     track_llm_call,
 )
 
-
 # ---------------------------------------------------------------------------
 # RequestContext Tests
 # ---------------------------------------------------------------------------
@@ -191,10 +190,10 @@ class TestHistogram:
         hist = Histogram("test_hist", "Test histogram")
 
         with hist.time():
-            time.sleep(0.01)
+            time.sleep(0.05)  # Increased from 0.01 for timing reliability
 
         assert hist.get_count() == 1
-        assert hist.get_sum() >= 0.01
+        assert hist.get_sum() >= 0.04  # Allow some timing variance
 
 
 class TestGauge:
