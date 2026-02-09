@@ -182,7 +182,7 @@ class TestUnifiedMemoryServiceWithClients:
         mock_semantic_client,
     ):
         """Should skip semantic query when include_semantic=False."""
-        ctx = await unified_memory_service.enrich_planning_context(
+        await unified_memory_service.enrich_planning_context(
             task_description="Test task",
             include_semantic=False,
         )
@@ -197,7 +197,7 @@ class TestUnifiedMemoryServiceWithClients:
         mock_episodic_client,
     ):
         """Should skip episodic query when include_episodic=False."""
-        ctx = await unified_memory_service.enrich_planning_context(
+        await unified_memory_service.enrich_planning_context(
             task_description="Test task",
             include_episodic=False,
         )
@@ -211,7 +211,7 @@ class TestUnifiedMemoryServiceWithClients:
         mock_procedural_client,
     ):
         """Should skip procedural query when include_procedural=False."""
-        ctx = await unified_memory_service.enrich_planning_context(
+        await unified_memory_service.enrich_planning_context(
             task_description="Test task",
             include_procedural=False,
         )
