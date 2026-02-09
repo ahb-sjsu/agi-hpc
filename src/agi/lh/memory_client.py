@@ -593,12 +593,12 @@ class MemoryClient:
         # Check cache first (Sprint 5)
         cache_key = None
         if use_cache and self._cache:
-            cache_key = self._cache._make_key(
-                task_description, task_type, scenario_id
-            )
+            cache_key = self._cache._make_key(task_description, task_type, scenario_id)
             cached = self._cache.get(cache_key)
             if cached is not None:
-                logger.debug("[LH][MemoryClient] Cache hit for task: %s", task_description[:50])
+                logger.debug(
+                    "[LH][MemoryClient] Cache hit for task: %s", task_description[:50]
+                )
                 return cached
 
         # Handle passthrough mode

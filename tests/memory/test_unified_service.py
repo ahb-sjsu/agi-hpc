@@ -40,9 +40,7 @@ class TestPlanningContext:
 
     def test_context_with_skills_has_context(self):
         """PlanningContext with skills should report has_context=True."""
-        ctx = PlanningContext(
-            skills=[{"skill_id": "s1", "name": "test_skill"}]
-        )
+        ctx = PlanningContext(skills=[{"skill_id": "s1", "name": "test_skill"}])
         assert ctx.has_context is True
 
     def test_to_prompt_context_empty(self):

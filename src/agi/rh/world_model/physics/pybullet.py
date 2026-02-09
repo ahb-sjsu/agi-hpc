@@ -329,9 +329,7 @@ class PyBulletEngine(BasePhysicsEngine):
                 )
             else:
                 # Check all contacts for body_a
-                contacts = p.getContactPoints(
-                    body_a, physicsClientId=self._client_id
-                )
+                contacts = p.getContactPoints(body_a, physicsClientId=self._client_id)
 
             for contact in contacts:
                 # contact: (contactFlag, bodyA, bodyB, linkIndexA, linkIndexB,

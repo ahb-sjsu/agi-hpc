@@ -166,8 +166,7 @@ class BaseLLMAdapter(ABC):
     def __init__(self, config: Optional[LLMConfig] = None):
         self._config = config or LLMConfig()
         logger.info(
-            f"[LLM] Initializing {self.__class__.__name__} "
-            f"model={self._config.model}"
+            f"[LLM] Initializing {self.__class__.__name__} model={self._config.model}"
         )
 
     @property

@@ -53,16 +53,19 @@ class LHServiceConfig:
         default_factory=lambda: os.getenv("AGI_FABRIC_IDENTITY", "LH")
     )
     enable_safety: bool = field(
-        default_factory=lambda: os.getenv("AGI_LH_ENABLE_SAFETY", "true").lower()
-        == "true"
+        default_factory=lambda: (
+            os.getenv("AGI_LH_ENABLE_SAFETY", "true").lower() == "true"
+        )
     )
     enable_metacognition: bool = field(
-        default_factory=lambda: os.getenv("AGI_LH_ENABLE_META", "true").lower()
-        == "true"
+        default_factory=lambda: (
+            os.getenv("AGI_LH_ENABLE_META", "true").lower() == "true"
+        )
     )
     enable_reflection: bool = field(
-        default_factory=lambda: os.getenv("AGI_LH_ENABLE_REFLECTION", "true").lower()
-        == "true"
+        default_factory=lambda: (
+            os.getenv("AGI_LH_ENABLE_REFLECTION", "true").lower() == "true"
+        )
     )
 
 

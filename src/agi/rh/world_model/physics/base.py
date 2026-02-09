@@ -396,9 +396,7 @@ class BasePhysicsEngine(ABC):
         duration = self._current_time - start_time
 
         # Compute risk score
-        risk_score = self._compute_risk_score(
-            states, all_collisions, violations
-        )
+        risk_score = self._compute_risk_score(states, all_collisions, violations)
 
         return SimulationResult(
             success=not collision_detected and not violations,
@@ -454,18 +452,10 @@ class BasePhysicsEngine(ABC):
 
         for obj_id in self._objects:
             obj_state = self._get_object_state(obj_id)
-            positions[obj_id] = obj_state.get(
-                "position", np.zeros(3)
-            )
-            orientations[obj_id] = obj_state.get(
-                "orientation", np.array([0, 0, 0, 1])
-            )
-            linear_velocities[obj_id] = obj_state.get(
-                "linear_velocity", np.zeros(3)
-            )
-            angular_velocities[obj_id] = obj_state.get(
-                "angular_velocity", np.zeros(3)
-            )
+            positions[obj_id] = obj_state.get("position", np.zeros(3))
+            orientations[obj_id] = obj_state.get("orientation", np.array([0, 0, 0, 1]))
+            linear_velocities[obj_id] = obj_state.get("linear_velocity", np.zeros(3))
+            angular_velocities[obj_id] = obj_state.get("angular_velocity", np.zeros(3))
 
         # Get all collisions
         collisions = []

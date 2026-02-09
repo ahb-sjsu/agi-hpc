@@ -158,9 +158,7 @@ class AnomalyDetector:
         self._config = config or AnomalyDetectorConfig()
 
         # History tracking
-        self._confidence_history: Deque[float] = deque(
-            maxlen=self._config.window_size
-        )
+        self._confidence_history: Deque[float] = deque(maxlen=self._config.window_size)
         self._latency_history: Deque[int] = deque(maxlen=self._config.window_size)
         self._decision_history: Deque[DecisionRecord] = deque(
             maxlen=self._config.window_size
@@ -278,7 +276,9 @@ class AnomalyDetector:
                 severity=AnomalySeverity.WARNING
                 if abs(drift) < 0.3
                 else AnomalySeverity.CRITICAL,
-                confidence=min(1.0, abs(drift) / self._config.confidence_drop_threshold),
+                confidence=min(
+                    1.0, abs(drift) / self._config.confidence_drop_threshold
+                ),
                 detected_at=int(time.time() * 1000),
                 context={
                     "recent_mean": recent_mean,
@@ -316,7 +316,9 @@ class AnomalyDetector:
                 anomaly_type=AnomalyType.CONFIDENCE_DRIFT,
                 description=f"Confidence {direction} by {abs(drift):.2f}",
                 severity=AnomalySeverity.INFO,
-                confidence=min(1.0, abs(drift) / self._config.confidence_drift_threshold),
+                confidence=min(
+                    1.0, abs(drift) / self._config.confidence_drift_threshold
+                ),
                 detected_at=int(time.time() * 1000),
                 context={
                     "recent_mean": recent_mean,
@@ -413,7 +415,9 @@ class AnomalyDetector:
                 anomaly_type=AnomalyType.DECISION_PATTERN,
                 description=f"Decision streak: {streak} consecutive '{decision}' decisions",
                 severity=AnomalySeverity.WARNING,
-                confidence=min(1.0, streak / (self._config.decision_streak_threshold * 2)),
+                confidence=min(
+                    1.0, streak / (self._config.decision_streak_threshold * 2)
+                ),
                 detected_at=int(time.time() * 1000),
                 context={
                     "streak_length": streak,
@@ -454,15 +458,17 @@ class AnomalyDetector:
             )
 
         # Track calibration over time
-        recent_records = [
-            d for d in self._decision_history if d.outcome is not None
-        ][-20:]
+        recent_records = [d for d in self._decision_history if d.outcome is not None][
+            -20:
+        ]
 
         if len(recent_records) >= 10:
             # Calculate expected vs actual success rate
             high_conf_records = [r for r in recent_records if r.confidence > 0.7]
             if high_conf_records:
-                expected_success_rate = np.mean([r.confidence for r in high_conf_records])
+                expected_success_rate = np.mean(
+                    [r.confidence for r in high_conf_records]
+                )
                 actual_success_rate = np.mean(
                     [1.0 if r.outcome else 0.0 for r in high_conf_records]
                 )
@@ -498,9 +504,9 @@ class AnomalyDetector:
             return None
 
         # Check recent error rate
-        recent_records = [
-            d for d in self._decision_history if d.outcome is not None
-        ][-20:]
+        recent_records = [d for d in self._decision_history if d.outcome is not None][
+            -20:
+        ]
 
         if len(recent_records) < 10:
             return None
@@ -520,7 +526,9 @@ class AnomalyDetector:
                 severity=AnomalySeverity.CRITICAL
                 if recent_error_rate > 0.5
                 else AnomalySeverity.WARNING,
-                confidence=min(1.0, recent_error_rate / self._config.error_rate_threshold),
+                confidence=min(
+                    1.0, recent_error_rate / self._config.error_rate_threshold
+                ),
                 detected_at=int(time.time() * 1000),
                 context={
                     "recent_error_rate": recent_error_rate,

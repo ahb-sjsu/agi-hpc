@@ -121,7 +121,9 @@ def mock_procedural_client():
     """Create a mock procedural memory client."""
     client = MagicMock()
 
-    async def mock_search(capability_description, task_type="", max_results=10, **kwargs):
+    async def mock_search(
+        capability_description, task_type="", max_results=10, **kwargs
+    ):
         result = MagicMock()
         result.skills = [
             MockSkill(description=f"Skill for: {capability_description[:20]}")

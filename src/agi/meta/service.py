@@ -87,7 +87,6 @@ class MetacognitionEngine:
 
 
 class MetacognitionServicer(MetacognitionServiceServicer):
-
     def __init__(self, engine: MetacognitionEngine, fabric: EventFabric):
         self.engine = engine
         self.fabric = fabric
