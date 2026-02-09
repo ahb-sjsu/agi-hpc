@@ -37,10 +37,27 @@ from agi.metacognition.reasoning_analyzer import (
     CoherenceChecker,
     EvidenceValidator,
 )
+from agi.metacognition.consistency_checker import (
+    ConsistencyChecker,
+    ConsistencyCheckResult,
+    ConsistencyLevel,
+    ComponentType,
+    ComponentState,
+    Inconsistency,
+    InconsistencyType,
+)
 
 __all__ = [
     # Main analyzer
     "ReasoningAnalyzer",
+    # Consistency checker
+    "ConsistencyChecker",
+    "ConsistencyCheckResult",
+    "ConsistencyLevel",
+    "ComponentType",
+    "ComponentState",
+    "Inconsistency",
+    "InconsistencyType",
     # Data types
     "ReasoningTrace",
     "ReasoningStep",

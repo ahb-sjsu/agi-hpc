@@ -12,9 +12,26 @@ Bridges AGI-HPC cognitive architecture to ErisML ethical reasoning framework.
 
 from agi.safety.erisml.service import ErisMLServicer, create_erisml_server
 from agi.safety.erisml.facts_builder import PlanStepToEthicalFacts
+from agi.safety.erisml.integration import (
+    ErisMLIntegration,
+    ErisMLConfig,
+    IntegratedEvaluation,
+    PlanEvaluation,
+    SafetyDecision,
+    EvaluationSource,
+)
 
 __all__ = [
+    # Service
     "ErisMLServicer",
     "create_erisml_server",
+    # Facts builder
     "PlanStepToEthicalFacts",
+    # Integration
+    "ErisMLIntegration",
+    "ErisMLConfig",
+    "IntegratedEvaluation",
+    "PlanEvaluation",
+    "SafetyDecision",
+    "EvaluationSource",
 ]
