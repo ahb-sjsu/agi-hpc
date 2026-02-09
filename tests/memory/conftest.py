@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, AsyncMock
 from dataclasses import dataclass
 from typing import List, Dict, Any
 
-
 # ---------------------------------------------------------------------------
 # Mock Memory Clients
 # ---------------------------------------------------------------------------

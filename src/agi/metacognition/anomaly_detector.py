@@ -273,9 +273,11 @@ class AnomalyDetector:
                 anomaly_type=AnomalyType.CONFIDENCE_DROP,
                 description=f"Confidence dropped by {abs(drift):.2f} "
                 f"(from {older_mean:.2f} to {recent_mean:.2f})",
-                severity=AnomalySeverity.WARNING
-                if abs(drift) < 0.3
-                else AnomalySeverity.CRITICAL,
+                severity=(
+                    AnomalySeverity.WARNING
+                    if abs(drift) < 0.3
+                    else AnomalySeverity.CRITICAL
+                ),
                 confidence=min(
                     1.0, abs(drift) / self._config.confidence_drop_threshold
                 ),
@@ -523,9 +525,11 @@ class AnomalyDetector:
                 anomaly_type=AnomalyType.ERROR_RATE_SPIKE,
                 description=f"Error rate spike: {recent_error_rate:.1%} "
                 f"(threshold: {self._config.error_rate_threshold:.1%})",
-                severity=AnomalySeverity.CRITICAL
-                if recent_error_rate > 0.5
-                else AnomalySeverity.WARNING,
+                severity=(
+                    AnomalySeverity.CRITICAL
+                    if recent_error_rate > 0.5
+                    else AnomalySeverity.WARNING
+                ),
                 confidence=min(
                     1.0, recent_error_rate / self._config.error_rate_threshold
                 ),
