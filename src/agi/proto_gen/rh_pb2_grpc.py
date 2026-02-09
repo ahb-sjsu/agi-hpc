@@ -3,6 +3,7 @@
 import grpc
 import warnings
 
+from agi.proto_gen import rh_pb2 as rh__pb2
 
 GRPC_GENERATED_VERSION = '1.78.0'
 GRPC_VERSION = grpc.__version__
@@ -22,3 +23,407 @@ if _version_not_supported:
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
     )
+
+
+class PerceptionServiceStub(object):
+    """---------------------------------------------------------------------------
+    RH Services
+    ---------------------------------------------------------------------------
+
+    Main RH perception service
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.UpdatePerception = channel.unary_unary(
+                '/agi.rh.v1.PerceptionService/UpdatePerception',
+                request_serializer=rh__pb2.UpdatePerceptionRequest.SerializeToString,
+                response_deserializer=rh__pb2.UpdatePerceptionResponse.FromString,
+                _registered_method=True)
+        self.GetState = channel.unary_unary(
+                '/agi.rh.v1.PerceptionService/GetState',
+                request_serializer=rh__pb2.GetPerceptionStateRequest.SerializeToString,
+                response_deserializer=rh__pb2.GetPerceptionStateResponse.FromString,
+                _registered_method=True)
+
+
+class PerceptionServiceServicer(object):
+    """---------------------------------------------------------------------------
+    RH Services
+    ---------------------------------------------------------------------------
+
+    Main RH perception service
+    """
+
+    def UpdatePerception(self, request, context):
+        """Update perception with new observation
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetState(self, request, context):
+        """Get current perception state
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_PerceptionServiceServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'UpdatePerception': grpc.unary_unary_rpc_method_handler(
+                    servicer.UpdatePerception,
+                    request_deserializer=rh__pb2.UpdatePerceptionRequest.FromString,
+                    response_serializer=rh__pb2.UpdatePerceptionResponse.SerializeToString,
+            ),
+            'GetState': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetState,
+                    request_deserializer=rh__pb2.GetPerceptionStateRequest.FromString,
+                    response_serializer=rh__pb2.GetPerceptionStateResponse.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'agi.rh.v1.PerceptionService', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('agi.rh.v1.PerceptionService', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class PerceptionService(object):
+    """---------------------------------------------------------------------------
+    RH Services
+    ---------------------------------------------------------------------------
+
+    Main RH perception service
+    """
+
+    @staticmethod
+    def UpdatePerception(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agi.rh.v1.PerceptionService/UpdatePerception',
+            rh__pb2.UpdatePerceptionRequest.SerializeToString,
+            rh__pb2.UpdatePerceptionResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetState(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agi.rh.v1.PerceptionService/GetState',
+            rh__pb2.GetPerceptionStateRequest.SerializeToString,
+            rh__pb2.GetPerceptionStateResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+
+class WorldModelServiceStub(object):
+    """World model service (prediction/simulation)
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.Predict = channel.unary_unary(
+                '/agi.rh.v1.WorldModelService/Predict',
+                request_serializer=rh__pb2.WorldModelQuery.SerializeToString,
+                response_deserializer=rh__pb2.WorldModelResponse.FromString,
+                _registered_method=True)
+
+
+class WorldModelServiceServicer(object):
+    """World model service (prediction/simulation)
+    """
+
+    def Predict(self, request, context):
+        """Run world model prediction
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_WorldModelServiceServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'Predict': grpc.unary_unary_rpc_method_handler(
+                    servicer.Predict,
+                    request_deserializer=rh__pb2.WorldModelQuery.FromString,
+                    response_serializer=rh__pb2.WorldModelResponse.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'agi.rh.v1.WorldModelService', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('agi.rh.v1.WorldModelService', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class WorldModelService(object):
+    """World model service (prediction/simulation)
+    """
+
+    @staticmethod
+    def Predict(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agi.rh.v1.WorldModelService/Predict',
+            rh__pb2.WorldModelQuery.SerializeToString,
+            rh__pb2.WorldModelResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+
+class ControlExecutionServiceStub(object):
+    """Control execution service
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.Execute = channel.unary_unary(
+                '/agi.rh.v1.ControlExecutionService/Execute',
+                request_serializer=rh__pb2.ExecuteControlRequest.SerializeToString,
+                response_deserializer=rh__pb2.ExecuteControlResponse.FromString,
+                _registered_method=True)
+        self.GetStatus = channel.unary_unary(
+                '/agi.rh.v1.ControlExecutionService/GetStatus',
+                request_serializer=rh__pb2.ControlStatusRequest.SerializeToString,
+                response_deserializer=rh__pb2.ControlFeedback.FromString,
+                _registered_method=True)
+
+
+class ControlExecutionServiceServicer(object):
+    """Control execution service
+    """
+
+    def Execute(self, request, context):
+        """Execute control commands
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetStatus(self, request, context):
+        """Get status of pending command
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_ControlExecutionServiceServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'Execute': grpc.unary_unary_rpc_method_handler(
+                    servicer.Execute,
+                    request_deserializer=rh__pb2.ExecuteControlRequest.FromString,
+                    response_serializer=rh__pb2.ExecuteControlResponse.SerializeToString,
+            ),
+            'GetStatus': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetStatus,
+                    request_deserializer=rh__pb2.ControlStatusRequest.FromString,
+                    response_serializer=rh__pb2.ControlFeedback.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'agi.rh.v1.ControlExecutionService', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('agi.rh.v1.ControlExecutionService', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class ControlExecutionService(object):
+    """Control execution service
+    """
+
+    @staticmethod
+    def Execute(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agi.rh.v1.ControlExecutionService/Execute',
+            rh__pb2.ExecuteControlRequest.SerializeToString,
+            rh__pb2.ExecuteControlResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetStatus(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agi.rh.v1.ControlExecutionService/GetStatus',
+            rh__pb2.ControlStatusRequest.SerializeToString,
+            rh__pb2.ControlFeedback.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+
+class RHHealthServiceStub(object):
+    """RH health and status service
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.GetStatus = channel.unary_unary(
+                '/agi.rh.v1.RHHealthService/GetStatus',
+                request_serializer=rh__pb2.RHStatusRequest.SerializeToString,
+                response_deserializer=rh__pb2.RHStatusResponse.FromString,
+                _registered_method=True)
+
+
+class RHHealthServiceServicer(object):
+    """RH health and status service
+    """
+
+    def GetStatus(self, request, context):
+        """Health check
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_RHHealthServiceServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'GetStatus': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetStatus,
+                    request_deserializer=rh__pb2.RHStatusRequest.FromString,
+                    response_serializer=rh__pb2.RHStatusResponse.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'agi.rh.v1.RHHealthService', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('agi.rh.v1.RHHealthService', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class RHHealthService(object):
+    """RH health and status service
+    """
+
+    @staticmethod
+    def GetStatus(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agi.rh.v1.RHHealthService/GetStatus',
+            rh__pb2.RHStatusRequest.SerializeToString,
+            rh__pb2.RHStatusResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)

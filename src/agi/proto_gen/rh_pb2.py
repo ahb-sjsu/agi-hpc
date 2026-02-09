@@ -22,13 +22,85 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
+from agi.proto_gen import plan_pb2 as plan__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x08rh.proto\x12\tagi.rh.v1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x08rh.proto\x12\tagi.rh.v1\x1a\nplan.proto\"\xec\x01\n\x0e\x44\x65tectedObject\x12\x11\n\tobject_id\x18\x01 \x01(\t\x12\r\n\x05label\x18\x02 \x01(\t\x12\x12\n\nconfidence\x18\x03 \x01(\x02\x12\x10\n\x08position\x18\x04 \x03(\x02\x12\x0c\n\x04\x62\x62ox\x18\x05 \x03(\x02\x12\x0c\n\x04pose\x18\x06 \x03(\x02\x12=\n\nproperties\x18\n \x03(\x0b\x32).agi.rh.v1.DetectedObject.PropertiesEntry\x1a\x31\n\x0fPropertiesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01J\x04\x08\x07\x10\n\"c\n\tAgentPose\x12\x10\n\x08position\x18\x01 \x03(\x02\x12\x13\n\x0borientation\x18\x02 \x03(\x02\x12\x10\n\x08velocity\x18\x03 \x03(\x02\x12\x17\n\x0fjoint_positions\x18\x04 \x03(\x02J\x04\x08\x05\x10\n\"\xc4\x02\n\x0fPerceptionState\x12\x10\n\x08state_id\x18\x01 \x01(\t\x12\x14\n\x0ctimestamp_ms\x18\x02 \x01(\x03\x12*\n\x07objects\x18\x03 \x03(\x0b\x32\x19.agi.rh.v1.DetectedObject\x12(\n\nagent_pose\x18\x04 \x01(\x0b\x32\x14.agi.rh.v1.AgentPose\x12\x11\n\tembedding\x18\x05 \x01(\x0c\x12\x15\n\rembedding_dim\x18\x06 \x01(\x05\x12\x10\n\x08\x66rame_id\x18\n \x01(\t\x12:\n\x08metadata\x18\x0b \x03(\x0b\x32(.agi.rh.v1.PerceptionState.MetadataEntry\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01J\x04\x08\x07\x10\nJ\x04\x08\x0c\x10\x14\"\xb5\x01\n\x0fWorldModelQuery\x12\x10\n\x08query_id\x18\x01 \x01(\t\x12\x31\n\rinitial_state\x18\x02 \x01(\x0b\x32\x1a.agi.rh.v1.PerceptionState\x12*\n\x07\x61\x63tions\x18\x03 \x03(\x0b\x32\x19.agi.rh.v1.ControlCommand\x12\x0f\n\x07horizon\x18\x04 \x01(\x05\x12\x1a\n\x12include_trajectory\x18\x05 \x01(\x08J\x04\x08\x06\x10\n\"\xb7\x01\n\x12WorldModelResponse\x12\x10\n\x08query_id\x18\x01 \x01(\t\x12\x12\n\nrisk_score\x18\x02 \x01(\x02\x12\x11\n\tviolation\x18\x03 \x01(\t\x12\x34\n\x10predicted_states\x18\x04 \x03(\x0b\x32\x1a.agi.rh.v1.PerceptionState\x12\x12\n\nstep_risks\x18\x05 \x03(\x02\x12\x12\n\nconfidence\x18\n \x01(\x02J\x04\x08\x06\x10\nJ\x04\x08\x0b\x10\x14\"\x91\x02\n\x0e\x43ontrolCommand\x12\x12\n\ncommand_id\x18\x01 \x01(\t\x12$\n\x04type\x18\x02 \x01(\x0e\x32\x16.agi.rh.v1.ControlType\x12\x0e\n\x06target\x18\x03 \x03(\x02\x12\x11\n\tmagnitude\x18\x04 \x01(\x02\x12\x10\n\x08\x64uration\x18\x05 \x01(\x02\x12\r\n\x05speed\x18\x06 \x01(\x02\x12\x0f\n\x07tool_id\x18\n \x01(\t\x12\x35\n\x06params\x18\x0b \x03(\x0b\x32%.agi.rh.v1.ControlCommand.ParamsEntry\x1a-\n\x0bParamsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01J\x04\x08\x07\x10\nJ\x04\x08\x0c\x10\x14\"\xc9\x01\n\x0f\x43ontrolFeedback\x12\x12\n\ncommand_id\x18\x01 \x01(\t\x12(\n\x06status\x18\x02 \x01(\x0e\x32\x18.agi.rh.v1.ControlStatus\x12+\n\rachieved_pose\x18\x03 \x01(\x0b\x32\x14.agi.rh.v1.AgentPose\x12\x19\n\x11\x65xecution_time_ms\x18\x04 \x01(\x02\x12\r\n\x05\x65rror\x18\x05 \x01(\x02\x12\x15\n\rerror_message\x18\n \x01(\tJ\x04\x08\x06\x10\nJ\x04\x08\x0b\x10\x14\"*\n\x0fRHStatusRequest\x12\x17\n\x0finclude_details\x18\x01 \x01(\x08\"\xdf\x02\n\x10RHStatusResponse\x12\x0f\n\x07healthy\x18\x01 \x01(\x08\x12\x0e\n\x06status\x18\x02 \x01(\t\x12.\n\nperception\x18\x03 \x01(\x0b\x32\x1a.agi.rh.v1.ComponentStatus\x12/\n\x0bworld_model\x18\x04 \x01(\x0b\x32\x1a.agi.rh.v1.ComponentStatus\x12+\n\x07\x63ontrol\x18\x05 \x01(\x0b\x32\x1a.agi.rh.v1.ComponentStatus\x12\x0f\n\x07version\x18\n \x01(\t\x12\x11\n\tuptime_ms\x18\x0b \x01(\x03\x12;\n\x08metadata\x18\x0c \x03(\x0b\x32).agi.rh.v1.RHStatusResponse.MetadataEntry\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01J\x04\x08\x06\x10\nJ\x04\x08\r\x10\x14\"\xc1\x01\n\x0f\x43omponentStatus\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07healthy\x18\x02 \x01(\x08\x12\x0e\n\x06status\x18\x03 \x01(\t\x12\x12\n\nmodel_name\x18\x04 \x01(\t\x12:\n\x08metadata\x18\x05 \x03(\x0b\x32(.agi.rh.v1.ComponentStatus.MetadataEntry\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xce\x01\n\x17UpdatePerceptionRequest\x12\x12\n\nframe_data\x18\x01 \x01(\x0c\x12\x14\n\x0c\x66rame_format\x18\x02 \x01(\t\x12\x14\n\x0ctimestamp_ms\x18\x03 \x01(\x03\x12\x42\n\x08metadata\x18\x04 \x03(\x0b\x32\x30.agi.rh.v1.UpdatePerceptionRequest.MetadataEntry\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"V\n\x18UpdatePerceptionResponse\x12)\n\x05state\x18\x01 \x01(\x0b\x32\x1a.agi.rh.v1.PerceptionState\x12\x0f\n\x07success\x18\x02 \x01(\x08\"6\n\x19GetPerceptionStateRequest\x12\x19\n\x11include_embedding\x18\x01 \x01(\x08\"G\n\x1aGetPerceptionStateResponse\x12)\n\x05state\x18\x01 \x01(\x0b\x32\x1a.agi.rh.v1.PerceptionState\"S\n\x15\x45xecuteControlRequest\x12+\n\x08\x63ommands\x18\x01 \x03(\x0b\x32\x19.agi.rh.v1.ControlCommand\x12\r\n\x05\x61sync\x18\x02 \x01(\x08\"W\n\x16\x45xecuteControlResponse\x12,\n\x08\x66\x65\x65\x64\x62\x61\x63k\x18\x01 \x03(\x0b\x32\x1a.agi.rh.v1.ControlFeedback\x12\x0f\n\x07success\x18\x02 \x01(\x08\"*\n\x14\x43ontrolStatusRequest\x12\x12\n\ncommand_id\x18\x01 \x01(\t*\x82\x02\n\x0b\x43ontrolType\x12\x1c\n\x18\x43ONTROL_TYPE_UNSPECIFIED\x10\x00\x12\x15\n\x11\x43ONTROL_TYPE_MOVE\x10\x01\x12\x17\n\x13\x43ONTROL_TYPE_ROTATE\x10\x02\x12\x16\n\x12\x43ONTROL_TYPE_REACH\x10\x03\x12\x16\n\x12\x43ONTROL_TYPE_GRASP\x10\x04\x12\x18\n\x14\x43ONTROL_TYPE_RELEASE\x10\x05\x12\x15\n\x11\x43ONTROL_TYPE_LIFT\x10\x06\x12\x16\n\x12\x43ONTROL_TYPE_PLACE\x10\x07\x12\x15\n\x11\x43ONTROL_TYPE_SCAN\x10\x08\x12\x15\n\x11\x43ONTROL_TYPE_NOOP\x10\t*\xbe\x01\n\rControlStatus\x12\x1e\n\x1a\x43ONTROL_STATUS_UNSPECIFIED\x10\x00\x12\x1a\n\x16\x43ONTROL_STATUS_PENDING\x10\x01\x12\x1c\n\x18\x43ONTROL_STATUS_EXECUTING\x10\x02\x12\x1c\n\x18\x43ONTROL_STATUS_COMPLETED\x10\x03\x12\x19\n\x15\x43ONTROL_STATUS_FAILED\x10\x04\x12\x1a\n\x16\x43ONTROL_STATUS_ABORTED\x10\x05\x32\xc9\x01\n\x11PerceptionService\x12[\n\x10UpdatePerception\x12\".agi.rh.v1.UpdatePerceptionRequest\x1a#.agi.rh.v1.UpdatePerceptionResponse\x12W\n\x08GetState\x12$.agi.rh.v1.GetPerceptionStateRequest\x1a%.agi.rh.v1.GetPerceptionStateResponse2Y\n\x11WorldModelService\x12\x44\n\x07Predict\x12\x1a.agi.rh.v1.WorldModelQuery\x1a\x1d.agi.rh.v1.WorldModelResponse2\xb3\x01\n\x17\x43ontrolExecutionService\x12N\n\x07\x45xecute\x12 .agi.rh.v1.ExecuteControlRequest\x1a!.agi.rh.v1.ExecuteControlResponse\x12H\n\tGetStatus\x12\x1f.agi.rh.v1.ControlStatusRequest\x1a\x1a.agi.rh.v1.ControlFeedback2W\n\x0fRHHealthService\x12\x44\n\tGetStatus\x12\x1a.agi.rh.v1.RHStatusRequest\x1a\x1b.agi.rh.v1.RHStatusResponseB\x1f\n\rcom.agi.rh.v1P\x01Z\x0c\x61gi/rh/v1;rhb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'rh_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
-  DESCRIPTOR._loaded_options = None
+  _globals['DESCRIPTOR']._loaded_options = None
+  _globals['DESCRIPTOR']._serialized_options = b'\n\rcom.agi.rh.v1P\001Z\014agi/rh/v1;rh'
+  _globals['_DETECTEDOBJECT_PROPERTIESENTRY']._loaded_options = None
+  _globals['_DETECTEDOBJECT_PROPERTIESENTRY']._serialized_options = b'8\001'
+  _globals['_PERCEPTIONSTATE_METADATAENTRY']._loaded_options = None
+  _globals['_PERCEPTIONSTATE_METADATAENTRY']._serialized_options = b'8\001'
+  _globals['_CONTROLCOMMAND_PARAMSENTRY']._loaded_options = None
+  _globals['_CONTROLCOMMAND_PARAMSENTRY']._serialized_options = b'8\001'
+  _globals['_RHSTATUSRESPONSE_METADATAENTRY']._loaded_options = None
+  _globals['_RHSTATUSRESPONSE_METADATAENTRY']._serialized_options = b'8\001'
+  _globals['_COMPONENTSTATUS_METADATAENTRY']._loaded_options = None
+  _globals['_COMPONENTSTATUS_METADATAENTRY']._serialized_options = b'8\001'
+  _globals['_UPDATEPERCEPTIONREQUEST_METADATAENTRY']._loaded_options = None
+  _globals['_UPDATEPERCEPTIONREQUEST_METADATAENTRY']._serialized_options = b'8\001'
+  _globals['_CONTROLTYPE']._serialized_start=2791
+  _globals['_CONTROLTYPE']._serialized_end=3049
+  _globals['_CONTROLSTATUS']._serialized_start=3052
+  _globals['_CONTROLSTATUS']._serialized_end=3242
+  _globals['_DETECTEDOBJECT']._serialized_start=36
+  _globals['_DETECTEDOBJECT']._serialized_end=272
+  _globals['_DETECTEDOBJECT_PROPERTIESENTRY']._serialized_start=217
+  _globals['_DETECTEDOBJECT_PROPERTIESENTRY']._serialized_end=266
+  _globals['_AGENTPOSE']._serialized_start=274
+  _globals['_AGENTPOSE']._serialized_end=373
+  _globals['_PERCEPTIONSTATE']._serialized_start=376
+  _globals['_PERCEPTIONSTATE']._serialized_end=700
+  _globals['_PERCEPTIONSTATE_METADATAENTRY']._serialized_start=641
+  _globals['_PERCEPTIONSTATE_METADATAENTRY']._serialized_end=688
+  _globals['_WORLDMODELQUERY']._serialized_start=703
+  _globals['_WORLDMODELQUERY']._serialized_end=884
+  _globals['_WORLDMODELRESPONSE']._serialized_start=887
+  _globals['_WORLDMODELRESPONSE']._serialized_end=1070
+  _globals['_CONTROLCOMMAND']._serialized_start=1073
+  _globals['_CONTROLCOMMAND']._serialized_end=1346
+  _globals['_CONTROLCOMMAND_PARAMSENTRY']._serialized_start=1289
+  _globals['_CONTROLCOMMAND_PARAMSENTRY']._serialized_end=1334
+  _globals['_CONTROLFEEDBACK']._serialized_start=1349
+  _globals['_CONTROLFEEDBACK']._serialized_end=1550
+  _globals['_RHSTATUSREQUEST']._serialized_start=1552
+  _globals['_RHSTATUSREQUEST']._serialized_end=1594
+  _globals['_RHSTATUSRESPONSE']._serialized_start=1597
+  _globals['_RHSTATUSRESPONSE']._serialized_end=1948
+  _globals['_RHSTATUSRESPONSE_METADATAENTRY']._serialized_start=641
+  _globals['_RHSTATUSRESPONSE_METADATAENTRY']._serialized_end=688
+  _globals['_COMPONENTSTATUS']._serialized_start=1951
+  _globals['_COMPONENTSTATUS']._serialized_end=2144
+  _globals['_COMPONENTSTATUS_METADATAENTRY']._serialized_start=641
+  _globals['_COMPONENTSTATUS_METADATAENTRY']._serialized_end=688
+  _globals['_UPDATEPERCEPTIONREQUEST']._serialized_start=2147
+  _globals['_UPDATEPERCEPTIONREQUEST']._serialized_end=2353
+  _globals['_UPDATEPERCEPTIONREQUEST_METADATAENTRY']._serialized_start=641
+  _globals['_UPDATEPERCEPTIONREQUEST_METADATAENTRY']._serialized_end=688
+  _globals['_UPDATEPERCEPTIONRESPONSE']._serialized_start=2355
+  _globals['_UPDATEPERCEPTIONRESPONSE']._serialized_end=2441
+  _globals['_GETPERCEPTIONSTATEREQUEST']._serialized_start=2443
+  _globals['_GETPERCEPTIONSTATEREQUEST']._serialized_end=2497
+  _globals['_GETPERCEPTIONSTATERESPONSE']._serialized_start=2499
+  _globals['_GETPERCEPTIONSTATERESPONSE']._serialized_end=2570
+  _globals['_EXECUTECONTROLREQUEST']._serialized_start=2572
+  _globals['_EXECUTECONTROLREQUEST']._serialized_end=2655
+  _globals['_EXECUTECONTROLRESPONSE']._serialized_start=2657
+  _globals['_EXECUTECONTROLRESPONSE']._serialized_end=2744
+  _globals['_CONTROLSTATUSREQUEST']._serialized_start=2746
+  _globals['_CONTROLSTATUSREQUEST']._serialized_end=2788
+  _globals['_PERCEPTIONSERVICE']._serialized_start=3245
+  _globals['_PERCEPTIONSERVICE']._serialized_end=3446
+  _globals['_WORLDMODELSERVICE']._serialized_start=3448
+  _globals['_WORLDMODELSERVICE']._serialized_end=3537
+  _globals['_CONTROLEXECUTIONSERVICE']._serialized_start=3540
+  _globals['_CONTROLEXECUTIONSERVICE']._serialized_end=3719
+  _globals['_RHHEALTHSERVICE']._serialized_start=3721
+  _globals['_RHHEALTHSERVICE']._serialized_end=3808
 # @@protoc_insertion_point(module_scope)
