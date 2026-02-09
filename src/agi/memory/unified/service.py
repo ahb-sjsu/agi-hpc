@@ -209,27 +209,31 @@ class UnifiedMemoryService:
             task_type,
         )
 
+        # Helper for empty async result
+        async def empty_result():
+            return []
+
         # Build async tasks for parallel queries
         tasks = []
 
         if include_semantic:
             tasks.append(self._query_semantic(task_description, max_facts))
         else:
-            tasks.append(asyncio.coroutine(lambda: [])())
+            tasks.append(empty_result())
 
         if include_episodic:
             tasks.append(
                 self._query_episodic(task_description, task_type, max_episodes)
             )
         else:
-            tasks.append(asyncio.coroutine(lambda: [])())
+            tasks.append(empty_result())
 
         if include_procedural:
             tasks.append(
                 self._query_procedural(task_description, task_type, max_skills)
             )
         else:
-            tasks.append(asyncio.coroutine(lambda: [])())
+            tasks.append(empty_result())
 
         # Execute queries in parallel
         try:

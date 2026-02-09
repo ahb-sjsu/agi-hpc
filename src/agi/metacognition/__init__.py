@@ -46,6 +46,13 @@ from agi.metacognition.consistency_checker import (
     Inconsistency,
     InconsistencyType,
 )
+from agi.metacognition.anomaly_detector import (
+    AnomalyDetector,
+    AnomalyDetectorConfig,
+    Anomaly,
+    AnomalyType,
+    AnomalySeverity,
+)
 
 __all__ = [
     # Main analyzer
@@ -58,6 +65,12 @@ __all__ = [
     "ComponentState",
     "Inconsistency",
     "InconsistencyType",
+    # Anomaly detector
+    "AnomalyDetector",
+    "AnomalyDetectorConfig",
+    "Anomaly",
+    "AnomalyType",
+    "AnomalySeverity",
     # Data types
     "ReasoningTrace",
     "ReasoningStep",
