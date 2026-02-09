@@ -53,9 +53,7 @@ class OpenAIEmbedder(BaseEmbedder):
     ):
         self._api_key = api_key or os.getenv("OPENAI_API_KEY")
         if not self._api_key:
-            logger.warning(
-                "[embedding][openai] No API key. Set OPENAI_API_KEY."
-            )
+            logger.warning("[embedding][openai] No API key. Set OPENAI_API_KEY.")
 
         # Determine dimension
         dimension = dimensions or MODEL_DIMENSIONS.get(model_name, 1536)

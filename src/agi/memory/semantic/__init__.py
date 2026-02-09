@@ -59,12 +59,14 @@ try:
     from agi.memory.semantic.embedders.sentence_transformer import (
         SentenceTransformerEmbedder,
     )
+
     __all__.append("SentenceTransformerEmbedder")
 except ImportError:
     pass
 
 try:
     from agi.memory.semantic.embedders.openai import OpenAIEmbedder
+
     __all__.append("OpenAIEmbedder")
 except ImportError:
     pass

@@ -40,12 +40,15 @@ try:
         RedisBackendConfig,
         StreamMessage,
     )
-    __all__.extend([
-        "RedisBackend",
-        "AsyncRedisBackend",
-        "RedisBackendConfig",
-        "StreamMessage",
-    ])
+
+    __all__.extend(
+        [
+            "RedisBackend",
+            "AsyncRedisBackend",
+            "RedisBackendConfig",
+            "StreamMessage",
+        ]
+    )
 except ImportError:
     pass
 
@@ -57,11 +60,14 @@ try:
         BrokerConfig,
         BrokerMetrics,
     )
-    __all__.extend([
-        "FabricBroker",
-        "BrokerClient",
-        "BrokerConfig",
-        "BrokerMetrics",
-    ])
+
+    __all__.extend(
+        [
+            "FabricBroker",
+            "BrokerClient",
+            "BrokerConfig",
+            "BrokerMetrics",
+        ]
+    )
 except ImportError:
     pass

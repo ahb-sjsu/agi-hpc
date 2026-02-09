@@ -21,7 +21,16 @@ import threading
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterator, List, Optional, Protocol, Tuple, runtime_checkable
+from typing import (
+    Any,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Protocol,
+    Tuple,
+    runtime_checkable,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -106,10 +115,7 @@ class InMemoryBackend:
             return
 
         self._last_cleanup = now
-        expired_keys = [
-            k for k, v in self._data.items()
-            if v.is_expired
-        ]
+        expired_keys = [k for k, v in self._data.items() if v.is_expired]
 
         for key in expired_keys:
             del self._data[key]
@@ -214,9 +220,10 @@ class RedisBackend:
     ):
         try:
             import redis
+
             self._redis = redis.from_url(url)
         except ImportError:
-            raise RuntimeError("redis-py is required for RedisBackend")
+            raise RuntimeError("redis-py is required for RedisBackend") from None
 
         self._prefix = prefix
         self._default_ttl = default_ttl

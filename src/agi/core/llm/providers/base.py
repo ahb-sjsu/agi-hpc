@@ -118,7 +118,7 @@ class BaseProvider(ABC):
                 response.latency_ms,
             )
             return response
-        except Exception as e:
+        except Exception:
             logger.exception("[llm][%s] completion failed", self.name)
             raise
 
@@ -131,7 +131,7 @@ class BaseProvider(ABC):
                 model=self._model,
                 provider=self.name,
             )
-        except Exception as e:
+        except Exception:
             logger.exception("[llm][%s] stream failed", self.name)
             raise
 
@@ -243,7 +243,7 @@ class BaseAsyncProvider(ABC):
                 response.latency_ms,
             )
             return response
-        except Exception as e:
+        except Exception:
             logger.exception("[llm][%s][async] completion failed", self.name)
             raise
 

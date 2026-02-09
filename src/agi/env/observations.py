@@ -26,6 +26,7 @@ import numpy as np
 
 class SensorType(str, Enum):
     """Types of sensors."""
+
     CAMERA = "camera"
     DEPTH_CAMERA = "depth_camera"
     LIDAR = "lidar"
@@ -138,7 +139,9 @@ class PointCloud:
         )
         return PointCloud(
             points=self.points[mask],
-            intensities=self.intensities[mask] if self.intensities is not None else None,
+            intensities=(
+                self.intensities[mask] if self.intensities is not None else None
+            ),
             colors=self.colors[mask] if self.colors is not None else None,
             normals=self.normals[mask] if self.normals is not None else None,
             ring=self.ring[mask] if self.ring is not None else None,
@@ -174,9 +177,7 @@ class ImuObservation(Observation):
     linear_acceleration: np.ndarray = field(
         default_factory=lambda: np.zeros(3)
     )  # m/s^2
-    angular_velocity: np.ndarray = field(
-        default_factory=lambda: np.zeros(3)
-    )  # rad/s
+    angular_velocity: np.ndarray = field(default_factory=lambda: np.zeros(3))  # rad/s
     orientation: Optional[np.ndarray] = None  # (4,) quaternion [x,y,z,w]
     orientation_covariance: Optional[np.ndarray] = None  # (3, 3)
     linear_acceleration_covariance: Optional[np.ndarray] = None  # (3, 3)
@@ -340,15 +341,15 @@ class Pose:
         x, y, z, w = self.orientation
 
         matrix = np.eye(4)
-        matrix[0, 0] = 1 - 2*y*y - 2*z*z
-        matrix[0, 1] = 2*x*y - 2*z*w
-        matrix[0, 2] = 2*x*z + 2*y*w
-        matrix[1, 0] = 2*x*y + 2*z*w
-        matrix[1, 1] = 1 - 2*x*x - 2*z*z
-        matrix[1, 2] = 2*y*z - 2*x*w
-        matrix[2, 0] = 2*x*z - 2*y*w
-        matrix[2, 1] = 2*y*z + 2*x*w
-        matrix[2, 2] = 1 - 2*x*x - 2*y*y
+        matrix[0, 0] = 1 - 2 * y * y - 2 * z * z
+        matrix[0, 1] = 2 * x * y - 2 * z * w
+        matrix[0, 2] = 2 * x * z + 2 * y * w
+        matrix[1, 0] = 2 * x * y + 2 * z * w
+        matrix[1, 1] = 1 - 2 * x * x - 2 * z * z
+        matrix[1, 2] = 2 * y * z - 2 * x * w
+        matrix[2, 0] = 2 * x * z - 2 * y * w
+        matrix[2, 1] = 2 * y * z + 2 * x * w
+        matrix[2, 2] = 1 - 2 * x * x - 2 * y * y
         matrix[:3, 3] = self.position
 
         return matrix

@@ -80,9 +80,7 @@ class DHTClient:
         """
         self.config = config or DHTConfig()
 
-        self._ring = HashRing(
-            default_virtual_nodes=self.config.virtual_nodes
-        )
+        self._ring = HashRing(default_virtual_nodes=self.config.virtual_nodes)
 
         # Local storage for this node (each node has its own)
         self._local_storage = create_backend(

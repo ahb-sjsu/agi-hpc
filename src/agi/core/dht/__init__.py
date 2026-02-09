@@ -33,6 +33,12 @@ from agi.core.dht.storage import (
     create_backend,
 )
 from agi.core.dht.client import DHTClient, DHTConfig
+from agi.core.dht.state_manager import (
+    StateManager,
+    StateManagerConfig,
+    AgentState,
+    SessionState,
+)
 
 __all__ = [
     # Client
@@ -48,4 +54,9 @@ __all__ = [
     "InMemoryBackend",
     "RedisBackend",
     "create_backend",
+    # State Manager
+    "StateManager",
+    "StateManagerConfig",
+    "AgentState",
+    "SessionState",
 ]

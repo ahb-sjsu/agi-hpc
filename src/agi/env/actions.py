@@ -25,6 +25,7 @@ import numpy as np
 
 class ControlMode(str, Enum):
     """Joint control modes."""
+
     POSITION = "position"
     VELOCITY = "velocity"
     TORQUE = "torque"
@@ -33,6 +34,7 @@ class ControlMode(str, Enum):
 
 class ActionStatus(str, Enum):
     """Status of action execution."""
+
     PENDING = "pending"
     EXECUTING = "executing"
     COMPLETED = "completed"
@@ -98,7 +100,7 @@ class JointAction(Action):
         """Create from joint names and value array."""
         commands = [
             JointCommand(name=name, value=float(value), mode=mode)
-            for name, value in zip(names, values)
+            for name, value in zip(names, values, strict=False)
         ]
         return cls(commands=commands, **kwargs)
 
@@ -131,7 +133,9 @@ class CartesianPose:
     frame_id: str = "world"
 
     @classmethod
-    def from_matrix(cls, matrix: np.ndarray, frame_id: str = "world") -> "CartesianPose":
+    def from_matrix(
+        cls, matrix: np.ndarray, frame_id: str = "world"
+    ) -> "CartesianPose":
         """Create from 4x4 transformation matrix."""
         position = matrix[:3, 3]
 
@@ -213,6 +217,7 @@ class CartesianAction(Action):
 
 class GripperCommand(str, Enum):
     """Gripper command types."""
+
     OPEN = "open"
     CLOSE = "close"
     MOVE = "move"

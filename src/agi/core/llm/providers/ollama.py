@@ -49,10 +49,9 @@ class OllamaProvider(BaseProvider):
     def __init__(self, config: Optional[LLMConfig] = None):
         super().__init__(config)
         import os
+
         self._base_url = (
-            self._config.base_url or
-            os.getenv("OLLAMA_HOST") or
-            self.DEFAULT_URL
+            self._config.base_url or os.getenv("OLLAMA_HOST") or self.DEFAULT_URL
         )
 
     @property
@@ -66,10 +65,12 @@ class OllamaProvider(BaseProvider):
         """Build payload for /api/chat endpoint."""
         messages = []
         for msg in request.messages:
-            messages.append({
-                "role": msg.role.value,
-                "content": msg.content,
-            })
+            messages.append(
+                {
+                    "role": msg.role.value,
+                    "content": msg.content,
+                }
+            )
 
         return {
             "model": self._get_model(request),
@@ -159,8 +160,7 @@ class OllamaProvider(BaseProvider):
             prompt_tokens=result.get("prompt_eval_count", 0),
             completion_tokens=result.get("eval_count", 0),
             total_tokens=(
-                result.get("prompt_eval_count", 0) +
-                result.get("eval_count", 0)
+                result.get("prompt_eval_count", 0) + result.get("eval_count", 0)
             ),
         )
 
@@ -235,6 +235,7 @@ class OllamaProvider(BaseProvider):
                     return resp.status_code == 200
             else:
                 import urllib.request
+
                 req = urllib.request.Request(url, method="GET")
                 with urllib.request.urlopen(req, timeout=5.0) as resp:
                     return resp.status == 200
@@ -252,6 +253,7 @@ class OllamaProvider(BaseProvider):
                     result = resp.json()
             else:
                 import urllib.request
+
                 req = urllib.request.Request(url, method="GET")
                 with urllib.request.urlopen(req, timeout=5.0) as resp:
                     result = json.loads(resp.read().decode("utf-8"))

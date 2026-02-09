@@ -54,12 +54,8 @@ except ImportError:
 class QdrantConfig:
     """Configuration for Qdrant vector store."""
 
-    url: str = field(
-        default_factory=lambda: os.getenv("QDRANT_URL", "localhost:6333")
-    )
-    api_key: Optional[str] = field(
-        default_factory=lambda: os.getenv("QDRANT_API_KEY")
-    )
+    url: str = field(default_factory=lambda: os.getenv("QDRANT_URL", "localhost:6333"))
+    api_key: Optional[str] = field(default_factory=lambda: os.getenv("QDRANT_API_KEY"))
     collection_name: str = "semantic_facts"
     vector_size: int = 768  # Default for all-mpnet-base-v2
     distance: str = "cosine"
@@ -214,7 +210,7 @@ class QdrantVectorStore:
 
         points = [
             PointStruct(id=id, vector=vector, payload=payload)
-            for id, vector, payload in zip(ids, vectors, payloads)
+            for id, vector, payload in zip(ids, vectors, payloads, strict=False)
         ]
 
         self._client.upsert(

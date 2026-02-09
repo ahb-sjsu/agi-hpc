@@ -57,6 +57,7 @@ Middleware = Callable[[CompletionRequest, Callable], LLMResponse]
 @dataclass
 class RetryConfig:
     """Configuration for retry middleware."""
+
     max_retries: int = 3
     base_delay: float = 1.0
     max_delay: float = 60.0
@@ -176,12 +177,15 @@ class LLMClient:
 
         if provider_name == "anthropic":
             from agi.core.llm.providers.anthropic import AnthropicProvider
+
             return AnthropicProvider(self._config)
         elif provider_name == "openai":
             from agi.core.llm.providers.openai import OpenAIProvider
+
             return OpenAIProvider(self._config)
         elif provider_name == "ollama":
             from agi.core.llm.providers.ollama import OllamaProvider
+
             return OllamaProvider(self._config)
         else:
             raise ValueError(f"Unknown provider: {provider_name}")
@@ -196,10 +200,14 @@ class LLMClient:
 
         # Add retry middleware
         if self._config.max_retries > 0:
-            middleware.append(RetryMiddleware(RetryConfig(
-                max_retries=self._config.max_retries,
-                base_delay=self._config.retry_delay,
-            )))
+            middleware.append(
+                RetryMiddleware(
+                    RetryConfig(
+                        max_retries=self._config.max_retries,
+                        base_delay=self._config.retry_delay,
+                    )
+                )
+            )
 
         return middleware
 
@@ -336,12 +344,15 @@ def get_provider(
 
     if name == "anthropic":
         from agi.core.llm.providers.anthropic import AnthropicProvider
+
         return AnthropicProvider(config)
     elif name == "openai":
         from agi.core.llm.providers.openai import OpenAIProvider
+
         return OpenAIProvider(config)
     elif name == "ollama":
         from agi.core.llm.providers.ollama import OllamaProvider
+
         return OllamaProvider(config)
     else:
         raise ValueError(f"Unknown provider: {name}")

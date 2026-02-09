@@ -19,6 +19,7 @@ from typing import Any, Dict, Iterator, List, Optional, Union
 
 class MessageRole(str, Enum):
     """Role of a message in a conversation."""
+
     SYSTEM = "system"
     USER = "user"
     ASSISTANT = "assistant"
@@ -28,6 +29,7 @@ class MessageRole(str, Enum):
 @dataclass
 class Message:
     """A message in a conversation."""
+
     role: MessageRole
     content: str
     name: Optional[str] = None
@@ -62,6 +64,7 @@ class Message:
 @dataclass
 class Usage:
     """Token usage statistics."""
+
     prompt_tokens: int = 0
     completion_tokens: int = 0
     total_tokens: int = 0
@@ -71,7 +74,9 @@ class Usage:
         """Create from API response dict."""
         return cls(
             prompt_tokens=data.get("prompt_tokens", data.get("input_tokens", 0)),
-            completion_tokens=data.get("completion_tokens", data.get("output_tokens", 0)),
+            completion_tokens=data.get(
+                "completion_tokens", data.get("output_tokens", 0)
+            ),
             total_tokens=data.get("total_tokens", 0),
         )
 
@@ -79,6 +84,7 @@ class Usage:
 @dataclass
 class LLMResponse:
     """Response from an LLM completion call."""
+
     content: str
     model: str
     usage: Usage = field(default_factory=Usage)
@@ -105,6 +111,7 @@ class LLMResponse:
 @dataclass
 class StreamChunk:
     """A chunk from a streaming response."""
+
     content: str
     delta: str
     finish_reason: Optional[str] = None
@@ -174,6 +181,7 @@ class StreamingResponse:
 @dataclass
 class CompletionRequest:
     """Request for LLM completion."""
+
     messages: List[Message]
     model: Optional[str] = None
     temperature: Optional[float] = None

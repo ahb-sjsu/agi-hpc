@@ -90,10 +90,16 @@ class Fact:
             confidence=payload.get("confidence", 1.0),
             timestamp=payload.get("timestamp", 0.0),
             metadata={
-                k: v for k, v in payload.items()
-                if k not in (
-                    "content", "domain", "entity_type",
-                    "source", "confidence", "timestamp"
+                k: v
+                for k, v in payload.items()
+                if k
+                not in (
+                    "content",
+                    "domain",
+                    "entity_type",
+                    "source",
+                    "confidence",
+                    "timestamp",
                 )
             },
         )
@@ -144,9 +150,7 @@ class SemanticMemoryClient:
 
         # Create default store if not provided
         if store is None:
-            config = store_config or QdrantConfig(
-                vector_size=embedder.dimension
-            )
+            config = store_config or QdrantConfig(vector_size=embedder.dimension)
             store = QdrantVectorStore(config)
         self._store = store
 
@@ -162,6 +166,7 @@ class SemanticMemoryClient:
             from agi.memory.semantic.embedders.sentence_transformer import (
                 SentenceTransformerEmbedder,
             )
+
             return SentenceTransformerEmbedder()
         except (ImportError, RuntimeError):
             pass
@@ -169,6 +174,7 @@ class SemanticMemoryClient:
         # Fall back to OpenAI
         try:
             from agi.memory.semantic.embedders.openai import OpenAIEmbedder
+
             return OpenAIEmbedder()
         except (ImportError, RuntimeError):
             pass
@@ -257,7 +263,7 @@ class SemanticMemoryClient:
         vectors = []
         payloads = []
 
-        for fact_dict, embedding in zip(facts, embeddings):
+        for fact_dict, embedding in zip(facts, embeddings, strict=False):
             fact_id = fact_dict.get("id") or str(uuid.uuid4())
             fact = Fact(
                 id=fact_id,

@@ -243,9 +243,7 @@ class EpisodicMemoryClient:
         end_time = datetime.utcnow()
         duration_ms = 0
         if episode.start_time:
-            duration_ms = int(
-                (end_time - episode.start_time).total_seconds() * 1000
-            )
+            duration_ms = int((end_time - episode.start_time).total_seconds() * 1000)
 
         # Update episode
         episode.end_time = end_time

@@ -51,9 +51,21 @@ from agi.core.llm.client import (
     LLMClient,
     create_client,
     get_provider,
-    LoggingMiddleware,
+)
+from agi.core.llm.middleware import (
+    CachingMiddleware,
+    CacheConfig,
+    RateLimitMiddleware,
+    RateLimitConfig,
+    RateLimitExceeded,
     RetryMiddleware,
     RetryConfig,
+    FallbackMiddleware,
+    FallbackConfig,
+    LoggingMiddleware,
+    LoggingConfig,
+    MiddlewareStack,
+    create_default_middleware,
 )
 
 # Re-export providers
@@ -85,9 +97,19 @@ __all__ = [
     "ProviderConfig",
     "get_default_model",
     # Middleware
-    "LoggingMiddleware",
+    "CachingMiddleware",
+    "CacheConfig",
+    "RateLimitMiddleware",
+    "RateLimitConfig",
+    "RateLimitExceeded",
     "RetryMiddleware",
     "RetryConfig",
+    "FallbackMiddleware",
+    "FallbackConfig",
+    "LoggingMiddleware",
+    "LoggingConfig",
+    "MiddlewareStack",
+    "create_default_middleware",
     # Providers
     "LLMProvider",
     "AsyncLLMProvider",

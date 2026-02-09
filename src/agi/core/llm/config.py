@@ -50,14 +50,10 @@ class LLMConfig:
     )
 
     # Model configuration
-    model: str = field(
-        default_factory=lambda: os.getenv("AGI_LLM_MODEL", "")
-    )
+    model: str = field(default_factory=lambda: os.getenv("AGI_LLM_MODEL", ""))
 
     # Authentication
-    api_key: Optional[str] = field(
-        default_factory=lambda: os.getenv("AGI_LLM_API_KEY")
-    )
+    api_key: Optional[str] = field(default_factory=lambda: os.getenv("AGI_LLM_API_KEY"))
 
     # Endpoint configuration
     base_url: Optional[str] = field(

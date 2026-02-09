@@ -86,6 +86,18 @@ from agi.env.actions import (
     SkillAction,
 )
 
+# Backend implementations
+from agi.env.backends import (
+    MockEnvironment,
+    MockConfig,
+    NavigationMockEnvironment,
+    ManipulationMockEnvironment,
+    MuJoCoEnvironment,
+    MuJoCoConfig,
+    list_backends,
+    get_backend_info,
+)
+
 __all__ = [
     # Base
     "Environment",
@@ -133,4 +145,13 @@ __all__ = [
     "BasePose",
     "RobotAction",
     "SkillAction",
+    # Backends
+    "MockEnvironment",
+    "MockConfig",
+    "NavigationMockEnvironment",
+    "ManipulationMockEnvironment",
+    "MuJoCoEnvironment",
+    "MuJoCoConfig",
+    "list_backends",
+    "get_backend_info",
 ]

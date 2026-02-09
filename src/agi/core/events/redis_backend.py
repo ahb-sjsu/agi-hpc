@@ -100,7 +100,9 @@ class StreamMessage:
             retry_count = 0
 
         return cls(
-            message_id=message_id if isinstance(message_id, str) else message_id.decode(),
+            message_id=(
+                message_id if isinstance(message_id, str) else message_id.decode()
+            ),
             topic=topic,
             data=data,
             timestamp=timestamp,
@@ -352,12 +354,16 @@ class RedisBackend:
             )
             return [
                 {
-                    "message_id": p["message_id"].decode()
-                    if isinstance(p["message_id"], bytes)
-                    else p["message_id"],
-                    "consumer": p["consumer"].decode()
-                    if isinstance(p["consumer"], bytes)
-                    else p["consumer"],
+                    "message_id": (
+                        p["message_id"].decode()
+                        if isinstance(p["message_id"], bytes)
+                        else p["message_id"]
+                    ),
+                    "consumer": (
+                        p["consumer"].decode()
+                        if isinstance(p["consumer"], bytes)
+                        else p["consumer"]
+                    ),
                     "idle_time": p["time_since_delivered"],
                     "delivery_count": p["times_delivered"],
                 }
@@ -409,9 +415,7 @@ class RedisBackend:
 
             for stream_key, stream_messages in messages:
                 topic = (
-                    stream_key.decode()
-                    if isinstance(stream_key, bytes)
-                    else stream_key
+                    stream_key.decode() if isinstance(stream_key, bytes) else stream_key
                 )
                 topic = topic.replace(self.config.stream_prefix, "")
                 self._process_messages(topic, stream_messages)
@@ -585,3 +589,210 @@ class AsyncRedisBackend:
             self._client = None
         self._connected = False
         logger.info("[fabric][redis][async] closed")
+
+
+# ---------------------------------------------------------------------------
+# Export Utilities
+# ---------------------------------------------------------------------------
+
+
+def export_stream_to_jsonl(
+    topic: str,
+    output_path: str,
+    start_id: str = "0",
+    end_id: str = "+",
+    batch_size: int = 1000,
+    config: Optional[RedisBackendConfig] = None,
+) -> int:
+    """Export a Redis stream to JSONL file.
+
+    Args:
+        topic: Topic name to export
+        output_path: Output file path
+        start_id: Start message ID
+        end_id: End message ID
+        batch_size: Batch size for reading
+        config: Redis backend configuration
+
+    Returns:
+        Number of messages exported
+    """
+    backend = RedisBackend(config)
+    backend.connect()
+
+    total_exported = 0
+    current_id = start_id
+
+    try:
+        with open(output_path, "w") as f:
+            while True:
+                messages = backend.replay(
+                    topic,
+                    start_id=current_id,
+                    end_id=end_id,
+                    count=batch_size,
+                )
+
+                if not messages:
+                    break
+
+                for msg in messages:
+                    record = {
+                        "message_id": msg.message_id,
+                        "topic": msg.topic,
+                        "timestamp": msg.timestamp,
+                        "data": msg.data,
+                    }
+                    f.write(json.dumps(record) + "\n")
+                    total_exported += 1
+
+                # Move to next batch (exclusive of last ID)
+                last_id = messages[-1].message_id
+                # Increment the sequence number for exclusive range
+                parts = last_id.split("-")
+                if len(parts) == 2:
+                    current_id = f"{parts[0]}-{int(parts[1]) + 1}"
+                else:
+                    break
+
+                if len(messages) < batch_size:
+                    break
+
+        logger.info(
+            "[fabric][redis] exported %d messages from %s to %s",
+            total_exported,
+            topic,
+            output_path,
+        )
+
+    finally:
+        backend.close()
+
+    return total_exported
+
+
+def import_stream_from_jsonl(
+    input_path: str,
+    topic: Optional[str] = None,
+    config: Optional[RedisBackendConfig] = None,
+) -> int:
+    """Import messages from JSONL file to Redis stream.
+
+    Args:
+        input_path: Input JSONL file path
+        topic: Override topic (uses original if None)
+        config: Redis backend configuration
+
+    Returns:
+        Number of messages imported
+    """
+    backend = RedisBackend(config)
+    backend.connect()
+
+    total_imported = 0
+
+    try:
+        with open(input_path) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+
+                try:
+                    record = json.loads(line)
+                    target_topic = topic or record.get("topic", "unknown")
+                    data = record.get("data", {})
+                    backend.publish(target_topic, data)
+                    total_imported += 1
+                except (json.JSONDecodeError, KeyError) as e:
+                    logger.warning("[fabric][redis] skip invalid record: %s", e)
+                    continue
+
+        logger.info(
+            "[fabric][redis] imported %d messages from %s",
+            total_imported,
+            input_path,
+        )
+
+    finally:
+        backend.close()
+
+    return total_imported
+
+
+def get_stream_stats(
+    topics: List[str],
+    config: Optional[RedisBackendConfig] = None,
+) -> Dict[str, Dict[str, Any]]:
+    """Get statistics for multiple streams.
+
+    Args:
+        topics: List of topic names
+        config: Redis backend configuration
+
+    Returns:
+        Dict mapping topic to stats
+    """
+    backend = RedisBackend(config)
+    backend.connect()
+
+    stats = {}
+
+    try:
+        for topic in topics:
+            info = backend.get_stream_info(topic)
+            pending = backend.get_pending(topic)
+            stats[topic] = {
+                **info,
+                "pending_count": len(pending),
+                "pending_messages": pending[:10],  # First 10 only
+            }
+    finally:
+        backend.close()
+
+    return stats
+
+
+def cleanup_streams(
+    topics: List[str],
+    max_age_seconds: float = 86400 * 7,  # 7 days
+    config: Optional[RedisBackendConfig] = None,
+) -> Dict[str, int]:
+    """Clean up old messages from streams.
+
+    Args:
+        topics: List of topic names
+        max_age_seconds: Maximum age for messages
+        config: Redis backend configuration
+
+    Returns:
+        Dict mapping topic to number of messages deleted
+    """
+    if redis is None:
+        raise RuntimeError("redis-py is required")
+
+    config = config or RedisBackendConfig()
+    client = redis.from_url(config.url, decode_responses=False)
+
+    deleted = {}
+    cutoff_time = int((time.time() - max_age_seconds) * 1000)
+    cutoff_id = f"{cutoff_time}-0"
+
+    try:
+        for topic in topics:
+            stream_key = f"{config.stream_prefix}{topic}"
+            try:
+                count = client.xtrim(stream_key, minid=cutoff_id)
+                deleted[topic] = count
+                logger.info(
+                    "[fabric][redis] cleaned %d messages from %s",
+                    count,
+                    topic,
+                )
+            except redis.ResponseError as e:
+                logger.warning("[fabric][redis] cleanup failed for %s: %s", topic, e)
+                deleted[topic] = 0
+    finally:
+        client.close()
+
+    return deleted

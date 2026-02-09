@@ -1,0 +1,323 @@
+# Base Safety Rules for AGI-HPC
+# Version 1.0
+#
+# These rules define core safety constraints for the AGI-HPC system.
+# Rules are organized by layer (reflex, tactical, strategic) with
+# priority-based conflict resolution.
+
+version: "1.0"
+metadata:
+  name: "Base Safety Rules"
+  description: "Core safety constraints for AGI-HPC"
+  author: "Safety Team"
+  created_at: "2025-01-01"
+
+rules:
+  # ===========================================================================
+  # REFLEX LAYER (<100μs) - Hardware interlocks, emergency stops
+  # ===========================================================================
+
+  - id: "reflex.emergency_stop"
+    name: "Emergency Stop Override"
+    description: "Immediate stop on critical safety conditions"
+    layer: reflex
+    priority: 1000
+    tags: ["critical", "hardware"]
+    conditions:
+      any:
+        - metric: "joint_torque_max"
+          operator: ">"
+          value: 100.0
+        - metric: "collision_proximity"
+          operator: "<"
+          value: 0.05
+        - signal: "emergency_button"
+          value: true
+    action:
+      type: allow
+    violation_action:
+      type: deny
+      immediate: true
+      trigger_hardware_stop: true
+      reason: "Emergency stop condition triggered"
+      log_level: critical
+
+  - id: "reflex.force_limit"
+    name: "Force Limit Protection"
+    description: "Prevent excessive force application"
+    layer: reflex
+    priority: 950
+    tags: ["hardware", "force"]
+    conditions:
+      all:
+        - field: "parameters.force"
+          operator: "<="
+          value: 100.0
+        - metric: "current_force"
+          operator: "<="
+          value: 100.0
+    action:
+      type: allow
+    violation_action:
+      type: deny
+      trigger_hardware_stop: true
+      reason: "Force limit exceeded"
+      log_level: critical
+
+  - id: "reflex.velocity_emergency"
+    name: "Velocity Emergency Limit"
+    description: "Emergency stop on extreme velocity"
+    layer: reflex
+    priority: 900
+    conditions:
+      field: "velocity_magnitude"
+      operator: "<="
+      value: 3.0
+    action:
+      type: allow
+    violation_action:
+      type: deny
+      trigger_hardware_stop: true
+      reason: "Velocity emergency limit exceeded"
+
+  # ===========================================================================
+  # TACTICAL LAYER (10-100ms) - Rule engine, constraint checking
+  # ===========================================================================
+
+  - id: "tactical.workspace_bounds"
+    name: "Workspace Boundary Check"
+    description: "Ensure target position is within workspace"
+    layer: tactical
+    priority: 500
+    tags: ["workspace", "bounds"]
+    conditions:
+      all:
+        - field: "parameters.target_position.x"
+          operator: "within"
+          range: [-2.0, 2.0]
+        - field: "parameters.target_position.y"
+          operator: "within"
+          range: [-2.0, 2.0]
+        - field: "parameters.target_position.z"
+          operator: "within"
+          range: [0.0, 3.0]
+    action:
+      type: allow
+    violation_action:
+      type: modify
+      clip_to_bounds: true
+      reason: "Target position outside workspace bounds"
+
+  - id: "tactical.velocity_limit"
+    name: "Maximum Velocity Constraint"
+    description: "Limit operational velocity"
+    layer: tactical
+    priority: 400
+    conditions:
+      field: "velocity_magnitude"
+      operator: "<="
+      value: 1.5
+    action:
+      type: allow
+    violation_action:
+      type: modify
+      scale_velocity: 0.5
+      reason: "Velocity exceeds operational limit"
+
+  - id: "tactical.acceleration_limit"
+    name: "Maximum Acceleration Constraint"
+    description: "Limit operational acceleration"
+    layer: tactical
+    priority: 350
+    conditions:
+      field: "acceleration_magnitude"
+      operator: "<="
+      value: 5.0
+    action:
+      type: allow
+    violation_action:
+      type: modify
+      reason: "Acceleration exceeds operational limit"
+
+  - id: "tactical.joint_limits"
+    name: "Joint Limit Check"
+    description: "Ensure joint angles within limits"
+    layer: tactical
+    priority: 450
+    conditions:
+      field: "joint_limit_violations"
+      operator: "=="
+      value: 0
+    action:
+      type: allow
+    violation_action:
+      type: deny
+      reason: "Joint limits would be violated"
+
+  - id: "tactical.collision_check"
+    name: "Collision Avoidance"
+    description: "Check for predicted collisions"
+    layer: tactical
+    priority: 600
+    conditions:
+      field: "predicted_collision"
+      operator: "=="
+      value: false
+    action:
+      type: allow
+    violation_action:
+      type: deny
+      reason: "Predicted collision in trajectory"
+
+  - id: "tactical.tool_banned"
+    name: "Banned Tool Check"
+    description: "Block usage of banned tools"
+    layer: tactical
+    priority: 550
+    conditions:
+      field: "parameters.tool"
+      operator: "not_in"
+      value: ["rm -rf", "sudo", "dd", "mkfs", ":(){:|:&};:"]
+    action:
+      type: allow
+    violation_action:
+      type: deny
+      reason: "Tool is banned by security policy"
+      log_level: warning
+
+  # ===========================================================================
+  # STRATEGIC LAYER (100ms-10s) - ErisML ethical reasoning
+  # ===========================================================================
+
+  - id: "strategic.human_proximity"
+    name: "Human Proximity Safety"
+    description: "Safety constraints when humans are nearby"
+    layer: strategic
+    priority: 300
+    tags: ["human-safety", "collaborative"]
+    conditions:
+      any:
+        - field: "nearest_human_distance"
+          operator: ">="
+          value: 2.0
+        - all:
+            - field: "nearest_human_distance"
+              operator: ">="
+              value: 0.5
+            - field: "velocity_magnitude"
+              operator: "<="
+              value: 0.3
+    action:
+      type: allow
+    violation_action:
+      type: defer
+      reason: "Human too close for planned action"
+      require_human_approval: true
+
+  - id: "strategic.harm_prevention"
+    name: "Harm Prevention"
+    description: "Prevent actions with unacceptable harm probability"
+    layer: strategic
+    priority: 900
+    tags: ["ethics", "harm"]
+    conditions:
+      field: "predicted_harm_probability"
+      operator: "<"
+      value: 0.01
+    action:
+      type: allow
+    violation_action:
+      type: deny
+      reason: "Unacceptable harm probability"
+      log_level: critical
+
+  - id: "strategic.resource_fairness"
+    name: "Resource Allocation Fairness"
+    description: "Ensure fair resource distribution"
+    layer: strategic
+    priority: 200
+    tags: ["ethics", "fairness"]
+    conditions:
+      field: "resource_gini_coefficient"
+      operator: "<="
+      value: 0.3
+    action:
+      type: allow
+    violation_action:
+      type: modify
+      redistribute: true
+      reason: "Resource distribution unfair"
+
+  - id: "strategic.autonomy_respect"
+    name: "Respect Human Autonomy"
+    description: "Defer to humans on autonomous decisions"
+    layer: strategic
+    priority: 250
+    tags: ["ethics", "autonomy"]
+    conditions:
+      all:
+        - field: "affects_human_autonomy"
+          operator: "=="
+          value: false
+        - field: "requires_consent"
+          operator: "=="
+          value: false
+    action:
+      type: allow
+    violation_action:
+      type: defer
+      require_human_approval: true
+      reason: "Action may affect human autonomy"
+
+  - id: "strategic.transparency"
+    name: "Explainability Requirement"
+    description: "Ensure actions can be explained"
+    layer: strategic
+    priority: 150
+    tags: ["ethics", "transparency"]
+    conditions:
+      field: "explainability_score"
+      operator: ">="
+      value: 0.7
+    action:
+      type: allow
+    violation_action:
+      type: defer
+      reason: "Action lacks sufficient explainability"
+
+  - id: "strategic.reversibility"
+    name: "Reversibility Check"
+    description: "Prefer reversible actions"
+    layer: strategic
+    priority: 180
+    tags: ["safety", "reversibility"]
+    conditions:
+      any:
+        - field: "is_reversible"
+          operator: "=="
+          value: true
+        - field: "irreversibility_justified"
+          operator: "=="
+          value: true
+    action:
+      type: allow
+    violation_action:
+      type: defer
+      require_human_approval: true
+      reason: "Irreversible action requires approval"
+
+  - id: "strategic.uncertainty_threshold"
+    name: "Uncertainty Handling"
+    description: "Defer when uncertainty is high"
+    layer: strategic
+    priority: 220
+    tags: ["safety", "uncertainty"]
+    conditions:
+      field: "prediction_confidence"
+      operator: ">="
+      value: 0.8
+    action:
+      type: allow
+    violation_action:
+      type: defer
+      reason: "High uncertainty in prediction"

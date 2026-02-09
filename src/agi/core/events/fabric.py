@@ -497,9 +497,12 @@ class EventFabric:
             if RedisBackend is None:
                 raise RuntimeError("redis-py is required for redis backend")
             config = RedisBackendConfig(
-                url=redis_url or os.getenv("AGI_FABRIC_REDIS_URL", "redis://localhost:6379"),
-                stream_prefix=redis_prefix or os.getenv("AGI_FABRIC_REDIS_PREFIX", "fabric:"),
-                consumer_group=consumer_group or os.getenv("AGI_FABRIC_CONSUMER_GROUP", "agi-hpc"),
+                url=redis_url
+                or os.getenv("AGI_FABRIC_REDIS_URL", "redis://localhost:6379"),
+                stream_prefix=redis_prefix
+                or os.getenv("AGI_FABRIC_REDIS_PREFIX", "fabric:"),
+                consumer_group=consumer_group
+                or os.getenv("AGI_FABRIC_CONSUMER_GROUP", "agi-hpc"),
                 consumer_name=identity,
             )
             backend = RedisBackend(config)

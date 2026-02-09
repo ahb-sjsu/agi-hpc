@@ -1,3 +1,300 @@
 syntax = "proto3";
+
 package agi.rh.v1;
-// TODO proto
+
+option go_package = "agi/rh/v1;rh";
+option java_multiple_files = true;
+option java_package = "com.agi.rh.v1";
+
+import "plan.proto";
+
+// ---------------------------------------------------------------------------
+// Right Hemisphere (RH) - Perception, World Model, Control
+// Architecture: Section IV.B, XI (Sensorimotor Loop)
+// ---------------------------------------------------------------------------
+
+
+// ---------------------------------------------------------------------------
+// Perception State
+// ---------------------------------------------------------------------------
+
+// Detected object in the scene
+message DetectedObject {
+  string object_id = 1;
+  string label = 2;
+  float confidence = 3;
+
+  // Position in 3D space
+  repeated float position = 4;  // [x, y, z]
+
+  // Bounding box (optional)
+  repeated float bbox = 5;  // [x_min, y_min, z_min, x_max, y_max, z_max]
+
+  // Pose (optional) - quaternion + translation
+  repeated float pose = 6;  // [qw, qx, qy, qz, tx, ty, tz]
+
+  // Object properties
+  map<string, string> properties = 10;
+
+  reserved 7 to 9;
+}
+
+// Agent pose and state
+message AgentPose {
+  repeated float position = 1;  // [x, y, z]
+  repeated float orientation = 2;  // [qw, qx, qy, qz] or [roll, pitch, yaw]
+  repeated float velocity = 3;  // [vx, vy, vz]
+  repeated float joint_positions = 4;  // For articulated robots
+
+  reserved 5 to 9;
+}
+
+// Full perception state snapshot
+message PerceptionState {
+  string state_id = 1;
+  int64 timestamp_ms = 2;
+
+  // Detected objects in scene
+  repeated DetectedObject objects = 3;
+
+  // Agent's own pose
+  AgentPose agent_pose = 4;
+
+  // Feature embeddings (for semantic search/comparison)
+  bytes embedding = 5;  // Serialized float array
+  int32 embedding_dim = 6;
+
+  // Raw observation metadata
+  string frame_id = 10;
+  map<string, string> metadata = 11;
+
+  reserved 7 to 9, 12 to 19;
+}
+
+
+// ---------------------------------------------------------------------------
+// World Model Queries
+// ---------------------------------------------------------------------------
+
+// Query the world model for predictions
+message WorldModelQuery {
+  string query_id = 1;
+
+  // Initial state for rollout
+  PerceptionState initial_state = 2;
+
+  // Actions to simulate
+  repeated ControlCommand actions = 3;
+
+  // Rollout parameters
+  int32 horizon = 4;  // Number of steps to simulate
+  bool include_trajectory = 5;  // Return predicted states
+
+  reserved 6 to 9;
+}
+
+// World model prediction result
+message WorldModelResponse {
+  string query_id = 1;
+
+  // Risk assessment
+  float risk_score = 2;  // 0.0 = safe, 1.0 = high risk
+  string violation = 3;  // Empty if no violation
+
+  // Predicted trajectory (if requested)
+  repeated PerceptionState predicted_states = 4;
+
+  // Per-step risk scores
+  repeated float step_risks = 5;
+
+  // Confidence in prediction
+  float confidence = 10;
+
+  reserved 6 to 9, 11 to 19;
+}
+
+
+// ---------------------------------------------------------------------------
+// Control Commands
+// ---------------------------------------------------------------------------
+
+// Control command types
+enum ControlType {
+  CONTROL_TYPE_UNSPECIFIED = 0;
+  CONTROL_TYPE_MOVE = 1;
+  CONTROL_TYPE_ROTATE = 2;
+  CONTROL_TYPE_REACH = 3;
+  CONTROL_TYPE_GRASP = 4;
+  CONTROL_TYPE_RELEASE = 5;
+  CONTROL_TYPE_LIFT = 6;
+  CONTROL_TYPE_PLACE = 7;
+  CONTROL_TYPE_SCAN = 8;
+  CONTROL_TYPE_NOOP = 9;
+}
+
+// Low-level control command
+message ControlCommand {
+  string command_id = 1;
+  ControlType type = 2;
+
+  // Target position/orientation (for move, reach, etc.)
+  repeated float target = 3;  // [x, y, z] or joint angles
+
+  // Motion parameters
+  float magnitude = 4;
+  float duration = 5;  // seconds
+  float speed = 6;
+
+  // Optional tool/skill reference
+  string tool_id = 10;
+  map<string, string> params = 11;
+
+  reserved 7 to 9, 12 to 19;
+}
+
+// Feedback from control execution
+message ControlFeedback {
+  string command_id = 1;
+
+  // Execution status
+  ControlStatus status = 2;
+
+  // Actual achieved state
+  AgentPose achieved_pose = 3;
+
+  // Execution metrics
+  float execution_time_ms = 4;
+  float error = 5;  // Tracking error
+
+  // Error details (if failed)
+  string error_message = 10;
+
+  reserved 6 to 9, 11 to 19;
+}
+
+enum ControlStatus {
+  CONTROL_STATUS_UNSPECIFIED = 0;
+  CONTROL_STATUS_PENDING = 1;
+  CONTROL_STATUS_EXECUTING = 2;
+  CONTROL_STATUS_COMPLETED = 3;
+  CONTROL_STATUS_FAILED = 4;
+  CONTROL_STATUS_ABORTED = 5;
+}
+
+
+// ---------------------------------------------------------------------------
+// RH Service Status
+// ---------------------------------------------------------------------------
+
+// Health check request
+message RHStatusRequest {
+  bool include_details = 1;
+}
+
+// Health check response
+message RHStatusResponse {
+  bool healthy = 1;
+  string status = 2;  // "ready", "degraded", "error"
+
+  // Component statuses
+  ComponentStatus perception = 3;
+  ComponentStatus world_model = 4;
+  ComponentStatus control = 5;
+
+  // Service metadata
+  string version = 10;
+  int64 uptime_ms = 11;
+  map<string, string> metadata = 12;
+
+  reserved 6 to 9, 13 to 19;
+}
+
+message ComponentStatus {
+  string name = 1;
+  bool healthy = 2;
+  string status = 3;
+  string model_name = 4;
+  map<string, string> metadata = 5;
+}
+
+
+// ---------------------------------------------------------------------------
+// Perception Service
+// ---------------------------------------------------------------------------
+
+// Request to update perception with new observation
+message UpdatePerceptionRequest {
+  bytes frame_data = 1;  // Raw image/observation bytes
+  string frame_format = 2;  // "rgb", "depth", "pointcloud", etc.
+  int64 timestamp_ms = 3;
+  map<string, string> metadata = 4;
+}
+
+message UpdatePerceptionResponse {
+  PerceptionState state = 1;
+  bool success = 2;
+}
+
+// Request current perception state
+message GetPerceptionStateRequest {
+  bool include_embedding = 1;
+}
+
+message GetPerceptionStateResponse {
+  PerceptionState state = 1;
+}
+
+
+// ---------------------------------------------------------------------------
+// Control Service
+// ---------------------------------------------------------------------------
+
+// Execute control command(s)
+message ExecuteControlRequest {
+  repeated ControlCommand commands = 1;
+  bool async = 2;  // If true, return immediately
+}
+
+message ExecuteControlResponse {
+  repeated ControlFeedback feedback = 1;
+  bool success = 2;
+}
+
+
+// ---------------------------------------------------------------------------
+// RH Services
+// ---------------------------------------------------------------------------
+
+// Main RH perception service
+service PerceptionService {
+  // Update perception with new observation
+  rpc UpdatePerception(UpdatePerceptionRequest) returns (UpdatePerceptionResponse);
+
+  // Get current perception state
+  rpc GetState(GetPerceptionStateRequest) returns (GetPerceptionStateResponse);
+}
+
+// World model service (prediction/simulation)
+service WorldModelService {
+  // Run world model prediction
+  rpc Predict(WorldModelQuery) returns (WorldModelResponse);
+}
+
+// Control execution service
+service ControlExecutionService {
+  // Execute control commands
+  rpc Execute(ExecuteControlRequest) returns (ExecuteControlResponse);
+
+  // Get status of pending command
+  rpc GetStatus(ControlStatusRequest) returns (ControlFeedback);
+}
+
+message ControlStatusRequest {
+  string command_id = 1;
+}
+
+// RH health and status service
+service RHHealthService {
+  // Health check
+  rpc GetStatus(RHStatusRequest) returns (RHStatusResponse);
+}

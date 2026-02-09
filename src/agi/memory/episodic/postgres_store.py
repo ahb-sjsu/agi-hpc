@@ -57,21 +57,13 @@ except ImportError:
 class PostgresConfig:
     """Configuration for PostgreSQL storage."""
 
-    host: str = field(
-        default_factory=lambda: os.getenv("POSTGRES_HOST", "localhost")
-    )
-    port: int = field(
-        default_factory=lambda: int(os.getenv("POSTGRES_PORT", "5432"))
-    )
+    host: str = field(default_factory=lambda: os.getenv("POSTGRES_HOST", "localhost"))
+    port: int = field(default_factory=lambda: int(os.getenv("POSTGRES_PORT", "5432")))
     database: str = field(
         default_factory=lambda: os.getenv("POSTGRES_DB", "agi_memory")
     )
-    user: str = field(
-        default_factory=lambda: os.getenv("POSTGRES_USER", "postgres")
-    )
-    password: str = field(
-        default_factory=lambda: os.getenv("POSTGRES_PASSWORD", "")
-    )
+    user: str = field(default_factory=lambda: os.getenv("POSTGRES_USER", "postgres"))
+    password: str = field(default_factory=lambda: os.getenv("POSTGRES_PASSWORD", ""))
 
     @property
     def connection_string(self) -> str:
@@ -168,15 +160,18 @@ class DecisionProof:
 
     def compute_hash(self) -> str:
         """Compute hash for this proof."""
-        content = json.dumps({
-            "episode_id": self.episode_id,
-            "step_id": self.step_id,
-            "timestamp_ms": self.timestamp_ms,
-            "decision": self.decision,
-            "bond_index": self.bond_index,
-            "moral_vector": self.moral_vector,
-            "previous_proof_hash": self.previous_proof_hash,
-        }, sort_keys=True)
+        content = json.dumps(
+            {
+                "episode_id": self.episode_id,
+                "step_id": self.step_id,
+                "timestamp_ms": self.timestamp_ms,
+                "decision": self.decision,
+                "bond_index": self.bond_index,
+                "moral_vector": self.moral_vector,
+                "previous_proof_hash": self.previous_proof_hash,
+            },
+            sort_keys=True,
+        )
         return hashlib.sha256(content.encode()).hexdigest()
 
 
@@ -317,7 +312,8 @@ class PostgresEpisodicStore:
         episode_id = episode.episode_id or str(uuid.uuid4())
 
         with self._conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO episodes (
                     episode_id, task_description, task_type, scenario_id,
                     start_time, end_time, outcome_success, outcome_description,
@@ -334,20 +330,22 @@ class PostgresEpisodicStore:
                     total_duration_ms = EXCLUDED.total_duration_ms,
                     insights = EXCLUDED.insights,
                     metadata = EXCLUDED.metadata
-            """, (
-                episode_id,
-                episode.task_description,
-                episode.task_type,
-                episode.scenario_id,
-                episode.start_time or datetime.utcnow(),
-                episode.end_time,
-                episode.outcome_success,
-                episode.outcome_description,
-                episode.completion_percentage,
-                episode.total_duration_ms,
-                episode.insights,
-                Json(episode.metadata),
-            ))
+            """,
+                (
+                    episode_id,
+                    episode.task_description,
+                    episode.task_type,
+                    episode.scenario_id,
+                    episode.start_time or datetime.utcnow(),
+                    episode.end_time,
+                    episode.outcome_success,
+                    episode.outcome_description,
+                    episode.completion_percentage,
+                    episode.total_duration_ms,
+                    episode.insights,
+                    Json(episode.metadata),
+                ),
+            )
         self._conn.commit()
 
         logger.debug("[memory][episodic][postgres] stored episode=%s", episode_id)
@@ -359,22 +357,25 @@ class PostgresEpisodicStore:
             self.connect()
 
         with self._conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO episode_steps (
                     episode_id, step_index, step_id, description,
                     tool_id, succeeded, failure_reason, duration_ms, params
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (
-                step.episode_id,
-                step.step_index,
-                step.step_id,
-                step.description,
-                step.tool_id,
-                step.succeeded,
-                step.failure_reason,
-                step.duration_ms,
-                Json(step.params),
-            ))
+            """,
+                (
+                    step.episode_id,
+                    step.step_index,
+                    step.step_id,
+                    step.description,
+                    step.tool_id,
+                    step.succeeded,
+                    step.failure_reason,
+                    step.duration_ms,
+                    Json(step.params),
+                ),
+            )
         self._conn.commit()
 
     def store_event(self, event: EpisodeEvent) -> None:
@@ -383,19 +384,22 @@ class PostgresEpisodicStore:
             self.connect()
 
         with self._conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO episode_events (
                     episode_id, step_index, event_type,
                     timestamp_ms, payload, tags
                 ) VALUES (%s, %s, %s, %s, %s, %s)
-            """, (
-                event.episode_id,
-                event.step_index,
-                event.event_type,
-                event.timestamp_ms,
-                Json(event.payload),
-                Json(event.tags),
-            ))
+            """,
+                (
+                    event.episode_id,
+                    event.step_index,
+                    event.event_type,
+                    event.timestamp_ms,
+                    Json(event.payload),
+                    Json(event.tags),
+                ),
+            )
         self._conn.commit()
 
     def store_decision_proof(self, proof: DecisionProof) -> str:
@@ -407,24 +411,27 @@ class PostgresEpisodicStore:
         proof_hash = proof.proof_hash or proof.compute_hash()
 
         with self._conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO decision_proofs (
                     proof_id, episode_id, step_id, timestamp_ms,
                     decision, bond_index, moral_vector,
                     previous_proof_hash, proof_hash, signature
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (
-                proof_id,
-                proof.episode_id,
-                proof.step_id,
-                proof.timestamp_ms,
-                proof.decision,
-                proof.bond_index,
-                Json(proof.moral_vector),
-                proof.previous_proof_hash,
-                proof_hash,
-                proof.signature,
-            ))
+            """,
+                (
+                    proof_id,
+                    proof.episode_id,
+                    proof.step_id,
+                    proof.timestamp_ms,
+                    proof.decision,
+                    proof.bond_index,
+                    Json(proof.moral_vector),
+                    proof.previous_proof_hash,
+                    proof_hash,
+                    proof.signature,
+                ),
+            )
         self._conn.commit()
 
         logger.debug(
@@ -440,15 +447,18 @@ class PostgresEpisodicStore:
             self.connect()
 
         with self._conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT * FROM episodes WHERE episode_id = %s
-            """, (episode_id,))
+            """,
+                (episode_id,),
+            )
             row = cur.fetchone()
             if not row:
                 return None
 
             columns = [desc[0] for desc in cur.description]
-            return Episode.from_row(dict(zip(columns, row)))
+            return Episode.from_row(dict(zip(columns, row, strict=False)))
 
     def query_episodes(
         self,
@@ -486,16 +496,19 @@ class PostgresEpisodicStore:
         params.append(limit)
 
         with self._conn.cursor() as cur:
-            cur.execute(f"""
+            cur.execute(
+                f"""
                 SELECT * FROM episodes
                 WHERE {where_clause}
                 ORDER BY start_time DESC
                 LIMIT %s
-            """, params)
+            """,
+                params,
+            )
 
             columns = [desc[0] for desc in cur.description]
             return [
-                Episode.from_row(dict(zip(columns, row)))
+                Episode.from_row(dict(zip(columns, row, strict=False)))
                 for row in cur.fetchall()
             ]
 
@@ -505,11 +518,14 @@ class PostgresEpisodicStore:
             self.connect()
 
         with self._conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT * FROM episode_steps
                 WHERE episode_id = %s
                 ORDER BY step_index
-            """, (episode_id,))
+            """,
+                (episode_id,),
+            )
 
             columns = [desc[0] for desc in cur.description]
             return [
@@ -533,11 +549,14 @@ class PostgresEpisodicStore:
             self.connect()
 
         with self._conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT * FROM episode_events
                 WHERE episode_id = %s
                 ORDER BY timestamp_ms
-            """, (episode_id,))
+            """,
+                (episode_id,),
+            )
 
             columns = [desc[0] for desc in cur.description]
             return [
@@ -558,11 +577,14 @@ class PostgresEpisodicStore:
             self.connect()
 
         with self._conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT * FROM decision_proofs
                 WHERE episode_id = %s
                 ORDER BY timestamp_ms
-            """, (episode_id,))
+            """,
+                (episode_id,),
+            )
 
             columns = [desc[0] for desc in cur.description]
             rows = cur.fetchall()
@@ -572,7 +594,7 @@ class PostgresEpisodicStore:
 
         prev_hash = ""
         for row in rows:
-            data = dict(zip(columns, row))
+            data = dict(zip(columns, row, strict=False))
 
             # Verify previous hash matches
             if data["previous_proof_hash"] != prev_hash:

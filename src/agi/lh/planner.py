@@ -20,7 +20,7 @@
 """
 Hierarchical Planning Engine for the Left Hemisphere (LH).
 
-This module implements a minimal but architecture-aligned planning core:
+This module implements an LLM-powered planning core:
 
     PlanRequest  ->  PlanGraph (mission → subgoals → actionable steps)
 
@@ -32,21 +32,24 @@ hierarchical planning engine:
     • annotations for required world-model checks and safety gates
     • integration points for memory and skills retrieval
 
-At this stage, the planner is intentionally simple and deterministic so
-that the rest of the system (safety, metacognition, RH, memory) can be
-developed and tested. Later, this module can be upgraded to call a large
-language model and richer search routines without changing the public
-interface.
+Supports two modes:
+    • LLM mode: Uses LLMClient for intelligent plan generation
+    • Scaffold mode: Deterministic fallback for testing/offline use
 """
 
 from __future__ import annotations
 
+import json
 import logging
+import re
 import uuid
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from agi.proto_gen import plan_pb2
+
+if TYPE_CHECKING:
+    from agi.core.llm.client import LLMClient
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +108,66 @@ class PlanGraph:
 # ---------------------------------------------------------------------------
 
 
+PLANNING_SYSTEM_PROMPT = """You are a hierarchical task planner for an AGI system.
+Given a goal, generate a structured multi-level plan with:
+- Level 0: Mission (the overall objective)
+- Level 1: Subgoals (major phases)
+- Level 2: Actionable steps (concrete operations)
+
+For each step, specify:
+- kind: mission|subgoal|skill|analysis|memory_query|llm_planning|safety_precheck|simulation_request|control
+- description: What this step accomplishes
+- requires_simulation: true/false (whether RH simulation is needed)
+- safety_tags: list of tags (e.g., ["planning"], ["safety_pre_action"], ["execution"])
+- tool_id: optional tool identifier (e.g., "memory.semantic.query", "safety.pre_action.check_plan")
+
+Respond with valid JSON in this format:
+{
+  "steps": [
+    {
+      "kind": "mission",
+      "level": 0,
+      "description": "Mission description",
+      "requires_simulation": false,
+      "safety_tags": ["high_level"],
+      "parent_index": null
+    },
+    {
+      "kind": "subgoal",
+      "level": 1,
+      "description": "Subgoal description",
+      "requires_simulation": false,
+      "safety_tags": ["planning"],
+      "parent_index": 0
+    },
+    {
+      "kind": "skill",
+      "level": 2,
+      "description": "Actionable step",
+      "requires_simulation": true,
+      "safety_tags": ["execution"],
+      "tool_id": "tool.name",
+      "parent_index": 1
+    }
+  ]
+}
+
+Always include safety checks and simulation requests for environment-changing actions.
+"""
+
+
+@dataclass
+class PlannerConfig:
+    """Configuration for the planner."""
+
+    use_llm: bool = True
+    llm_provider: str = "anthropic"
+    llm_model: Optional[str] = None
+    max_tokens: int = 2048
+    temperature: float = 0.7
+    fallback_to_scaffold: bool = True
+
+
 class Planner:
     """
     Hierarchical planner used by LH PlanService.
@@ -116,14 +179,48 @@ class Planner:
         3. Construct a multi-level PlanGraph (mission → subgoals → steps).
         4. Mark which steps require RH simulation and safety attention.
 
-    This initial implementation is deliberately simple: it creates a
-    canonical "scaffold" plan suitable for end-to-end integration
-    testing. Later phases can plug in a language model and richer search
-    without changing the public interface.
+    Supports two modes:
+        - LLM mode: Uses LLMClient for intelligent plan generation
+        - Scaffold mode: Deterministic fallback for testing/offline use
     """
 
-    def __init__(self) -> None:
-        logger.info("[LH][Planner] Initialized minimal hierarchical planner")
+    def __init__(
+        self,
+        config: Optional[PlannerConfig] = None,
+        llm_client: Optional["LLMClient"] = None,
+    ) -> None:
+        self._config = config or PlannerConfig()
+        self._llm_client = llm_client
+        self._llm_available = False
+
+        # Initialize LLM if enabled
+        if self._config.use_llm and llm_client is None:
+            self._llm_client = self._create_llm_client()
+
+        if self._llm_client:
+            self._llm_available = self._llm_client.is_available()
+
+        mode = "llm" if self._llm_available else "scaffold"
+        logger.info("[LH][Planner] Initialized planner mode=%s", mode)
+
+    def _create_llm_client(self) -> Optional["LLMClient"]:
+        """Create LLM client if available."""
+        try:
+            from agi.core.llm.client import LLMClient
+            from agi.core.llm.config import LLMConfig
+
+            config = LLMConfig(
+                provider=self._config.llm_provider,
+                max_tokens=self._config.max_tokens,
+                temperature=self._config.temperature,
+            )
+            if self._config.llm_model:
+                config = config.with_model(self._config.llm_model)
+
+            return LLMClient(config=config)
+        except Exception as e:
+            logger.warning("[LH][Planner] LLM client creation failed: %s", e)
+            return None
 
     # Public API used by PlanService -------------------------------------
 
@@ -131,9 +228,8 @@ class Planner:
         """
         Entry point called by PlanService.
 
-        The method is synchronous and deterministic; any long-running or
-        stochastic behavior should be introduced later (e.g., via LLM
-        calls, search, or RH simulation loops).
+        Uses LLM for intelligent plan generation when available,
+        falls back to scaffold mode otherwise.
         """
         goal_text = self._extract_goal_text(request)
         plan_id = self._derive_plan_id(request)
@@ -157,14 +253,138 @@ class Planner:
             goal_text,
         )
 
-        self._populate_plan_graph(graph)
+        # Try LLM-based planning first
+        if self._llm_available:
+            try:
+                self._populate_with_llm(graph, request)
+            except Exception as e:
+                logger.warning(
+                    "[LH][Planner] LLM planning failed: %s, using scaffold",
+                    e,
+                )
+                if self._config.fallback_to_scaffold:
+                    self._populate_plan_graph(graph)
+                else:
+                    raise
+        else:
+            self._populate_plan_graph(graph)
 
         logger.info(
-            "[LH][Planner] Generated plan plan_id=%s steps=%d",
+            "[LH][Planner] Generated plan plan_id=%s steps=%d mode=%s",
             plan_id,
             len(graph.steps),
+            "llm" if self._llm_available else "scaffold",
         )
         return graph
+
+    def _populate_with_llm(
+        self,
+        graph: PlanGraph,
+        request: plan_pb2.PlanRequest,
+    ) -> None:
+        """Use LLM to generate plan steps."""
+        # Build context for the LLM
+        context = self._build_planning_context(request)
+
+        prompt = f"""Generate a hierarchical plan for this goal:
+
+Goal: {graph.goal_text}
+
+Context:
+{json.dumps(context, indent=2)}
+
+Generate a complete multi-level plan with proper dependencies.
+"""
+
+        response = self._llm_client.complete(
+            prompt,
+            system=PLANNING_SYSTEM_PROMPT,
+            temperature=self._config.temperature,
+            max_tokens=self._config.max_tokens,
+        )
+
+        # Parse LLM response
+        plan_data = self._parse_llm_response(response.content)
+
+        # Convert to PlanSteps
+        step_id_map: Dict[int, str] = {}  # index -> step_id
+
+        for i, step_data in enumerate(plan_data.get("steps", [])):
+            step_id = self._new_step_id(step_data.get("kind", "step"))
+            step_id_map[i] = step_id
+
+            parent_idx = step_data.get("parent_index")
+            parent_id = step_id_map.get(parent_idx) if parent_idx is not None else None
+
+            step = PlanStep(
+                step_id=step_id,
+                index=len(graph.steps),
+                level=step_data.get("level", 0),
+                kind=step_data.get("kind", "step"),
+                description=step_data.get("description", ""),
+                parent_id=parent_id,
+                requires_simulation=step_data.get("requires_simulation", False),
+                safety_tags=step_data.get("safety_tags", []),
+                tool_id=step_data.get("tool_id"),
+                params=step_data.get("params", {}),
+            )
+            graph.add_step(step)
+
+        # If LLM returned no steps, fall back to scaffold
+        if not graph.steps and self._config.fallback_to_scaffold:
+            logger.warning("[LH][Planner] LLM returned no steps, using scaffold")
+            self._populate_plan_graph(graph)
+
+    def _build_planning_context(
+        self,
+        request: plan_pb2.PlanRequest,
+    ) -> Dict[str, Any]:
+        """Build context dictionary for LLM planning."""
+        context: Dict[str, Any] = {}
+
+        task = getattr(request, "task", None)
+        if task:
+            context["task"] = {
+                "type": getattr(task, "task_type", ""),
+                "goal_id": getattr(task, "goal_id", ""),
+                "constraints": list(getattr(task, "constraints", [])),
+            }
+
+        env = getattr(request, "environment", None)
+        if env:
+            context["environment"] = {
+                "scenario_id": getattr(env, "scenario_id", ""),
+                "objects": list(getattr(env, "object_ids", [])),
+            }
+
+        return context
+
+    def _parse_llm_response(self, content: str) -> Dict[str, Any]:
+        """Parse LLM response to extract plan JSON."""
+        # Try direct JSON parse first
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError:
+            pass
+
+        # Try to extract JSON from markdown code blocks
+        json_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", content, re.DOTALL)
+        if json_match:
+            try:
+                return json.loads(json_match.group(1))
+            except json.JSONDecodeError:
+                pass
+
+        # Try to find raw JSON object
+        json_match = re.search(r"\{.*\"steps\".*\}", content, re.DOTALL)
+        if json_match:
+            try:
+                return json.loads(json_match.group(0))
+            except json.JSONDecodeError:
+                pass
+
+        logger.warning("[LH][Planner] Failed to parse LLM response as JSON")
+        return {"steps": []}
 
     # ------------------------------------------------------------------ #
     # Internal helpers

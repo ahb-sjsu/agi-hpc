@@ -305,7 +305,4 @@ class HashRing:
 
         # Convert to percentages
         total = len(self._vnodes)
-        return {
-            node_id: count / total * 100
-            for node_id, count in vnode_counts.items()
-        }
+        return {node_id: count / total * 100 for node_id, count in vnode_counts.items()}

@@ -1,0 +1,63 @@
+# Right Hemisphere (RH) Service Configuration
+# AGI-HPC Project
+#
+# Environment variables override these settings:
+#   AGI_RH_PORT, AGI_RH_GRPC_WORKERS, AGI_RH_PERCEPTION_MODEL, etc.
+
+service_name: "rh-service"
+log_level: "INFO"
+
+# gRPC Server Settings
+grpc:
+  port: 50057
+  max_workers: 16
+  max_message_mb: 64
+  enable_reflection: true
+
+# Perception Pipeline Configuration
+perception:
+  # Model options: dummy_encoder, clip, dinov2, vit
+  model_name: "dummy_encoder"
+  # Device: cpu, cuda, cuda:0, mps
+  device: "cpu"
+  batch_size: 1
+  max_objects: 100
+  confidence_threshold: 0.5
+  enable_tracking: false
+
+# World Model Configuration
+world_model:
+  # Model options: dummy_world_model, mujoco, pybullet, dreamer
+  model_name: "dummy_world_model"
+  # Rollout horizon (number of steps to simulate)
+  horizon: 5
+  # Physics timestep in seconds
+  physics_dt: 0.01
+  # Risk threshold for plan approval
+  risk_threshold: 0.5
+  enable_gpu: false
+
+# Control Service Configuration
+control:
+  # Controller options: rule_based, pid, mpc, learned
+  controller_type: "rule_based"
+  # Default environment for execution
+  default_env: "mock:simple"
+  # Action timeout in seconds
+  action_timeout_sec: 30.0
+  max_retries: 3
+  safety_enabled: true
+
+# EventFabric Configuration
+fabric:
+  # Mode: local, zmq, redis
+  mode: "local"
+  # ZMQ addresses (for zmq mode)
+  zmq_pub_address: "tcp://localhost:5555"
+  zmq_sub_address: "tcp://localhost:5556"
+  # Redis URL (for redis mode)
+  redis_url: "redis://localhost:6379"
+
+# Feature Flags
+enable_event_loop: true
+enable_health_check: true

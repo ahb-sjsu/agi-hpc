@@ -50,11 +50,10 @@ class OpenAIProvider(BaseProvider):
     def __init__(self, config: Optional[LLMConfig] = None):
         super().__init__(config)
         import os
+
         self._api_key = self._config.api_key or os.getenv("OPENAI_API_KEY")
         self._base_url = (
-            self._config.base_url or
-            os.getenv("OPENAI_BASE_URL") or
-            self.API_URL
+            self._config.base_url or os.getenv("OPENAI_BASE_URL") or self.API_URL
         )
 
         if not self._api_key:

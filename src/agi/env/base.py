@@ -56,6 +56,7 @@ ActType = TypeVar("ActType")
 
 class SpaceType(str, Enum):
     """Types of observation/action spaces."""
+
     DISCRETE = "discrete"
     BOX = "box"
     DICT = "dict"
@@ -141,24 +142,21 @@ class Space:
         """Check if x is in the space."""
         if self.space_type == SpaceType.BOX:
             return (
-                isinstance(x, np.ndarray) and
-                x.shape == self.shape and
-                np.all(x >= self.low) and
-                np.all(x <= self.high)
+                isinstance(x, np.ndarray)
+                and x.shape == self.shape
+                and np.all(x >= self.low)
+                and np.all(x <= self.high)
             )
         elif self.space_type == SpaceType.DISCRETE:
             return isinstance(x, (int, np.integer)) and 0 <= x < self.n
         elif self.space_type == SpaceType.MULTI_DISCRETE:
             if not isinstance(x, np.ndarray):
                 return False
-            return all(0 <= xi < ni for xi, ni in zip(x, self.nvec))
+            return all(0 <= xi < ni for xi, ni in zip(x, self.nvec, strict=False))
         elif self.space_type == SpaceType.DICT:
             if not isinstance(x, dict):
                 return False
-            return all(
-                k in x and self.spaces[k].contains(x[k])
-                for k in self.spaces
-            )
+            return all(k in x and self.spaces[k].contains(x[k]) for k in self.spaces)
         return True
 
 
@@ -382,9 +380,9 @@ class Environment(ABC, Generic[ObsType, ActType]):
 
         # Check for truncation due to max steps
         if (
-            not terminated and
-            not truncated and
-            self._step_count >= self.spec.max_episode_steps
+            not terminated
+            and not truncated
+            and self._step_count >= self.spec.max_episode_steps
         ):
             truncated = True
             info["truncated_reason"] = "max_episode_steps"
@@ -545,9 +543,11 @@ class EnvironmentRegistry:
 
 def register_env(name: str):
     """Decorator to register an environment class."""
+
     def decorator(cls: type) -> type:
         EnvironmentRegistry.register(name, cls)
         return cls
+
     return decorator
 
 

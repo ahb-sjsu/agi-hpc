@@ -50,13 +50,12 @@ class AnthropicProvider(BaseProvider):
     def __init__(self, config: Optional[LLMConfig] = None):
         super().__init__(config)
         import os
+
         self._api_key = self._config.api_key or os.getenv("ANTHROPIC_API_KEY")
         self._base_url = self._config.base_url or self.API_URL
 
         if not self._api_key:
-            logger.warning(
-                "[llm][anthropic] No API key. Set ANTHROPIC_API_KEY."
-            )
+            logger.warning("[llm][anthropic] No API key. Set ANTHROPIC_API_KEY.")
 
     @property
     def name(self) -> str:
@@ -81,10 +80,12 @@ class AnthropicProvider(BaseProvider):
             if msg.role.value == "system":
                 system_prompt = msg.content
             else:
-                messages.append({
-                    "role": msg.role.value,
-                    "content": msg.content,
-                })
+                messages.append(
+                    {
+                        "role": msg.role.value,
+                        "content": msg.content,
+                    }
+                )
 
         payload = {
             "model": self._get_model(request),
@@ -162,8 +163,7 @@ class AnthropicProvider(BaseProvider):
             prompt_tokens=usage_data.get("input_tokens", 0),
             completion_tokens=usage_data.get("output_tokens", 0),
             total_tokens=(
-                usage_data.get("input_tokens", 0) +
-                usage_data.get("output_tokens", 0)
+                usage_data.get("input_tokens", 0) + usage_data.get("output_tokens", 0)
             ),
         )
 
