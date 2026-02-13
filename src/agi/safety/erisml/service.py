@@ -33,6 +33,12 @@ from typing import Dict, List, Optional, Tuple
 import grpc
 
 from agi.proto_gen import erisml_pb2, erisml_pb2_grpc
+from agi.safety.erisml.hohfeld import (
+    HohfeldianState,
+    HohfeldianVerdict,
+    compute_bond_index,
+    correlative,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +103,12 @@ class MoralVector:
     epistemic_quality: float = 0.5
     veto_flags: List[str] = field(default_factory=list)
     reason_codes: List[str] = field(default_factory=list)
+
+    def to_tensor(self) -> "MoralTensor":  # noqa: F821
+        """Convert to rank-1 MoralTensor for tensor-based evaluation."""
+        from agi.safety.erisml.moral_tensor import MoralTensor
+
+        return MoralTensor.from_moral_vector(self)
 
     def aggregate_score(self) -> float:
         """Compute aggregate ethical score (higher = more ethical)."""
@@ -317,35 +329,42 @@ class ErisMLServicer(erisml_pb2_grpc.ErisMLServiceServicer):
         Returns:
             BondIndexResultProto with index value and threshold status
         """
-        violations = []
-        total_pairs = 0
-        symmetric_pairs = 0
+        # Convert proto verdicts to typed HohfeldianVerdict objects
+        verdicts_a: List[HohfeldianVerdict] = []
+        verdicts_b: List[HohfeldianVerdict] = []
+        violations: List[str] = []
 
-        # Check each verdict pair for correlative symmetry
         for v_a, v_b in zip(
             request.party_a_verdicts, request.party_b_verdicts, strict=False
         ):
-            total_pairs += 1
-            expected_correlative = CORRELATIVES.get(v_a.state)
+            hv_a = HohfeldianVerdict(
+                party_name=v_a.party_name,
+                state=HohfeldianState(v_a.state),
+                confidence=v_a.confidence,
+            )
+            hv_b = HohfeldianVerdict(
+                party_name=v_b.party_name,
+                state=HohfeldianState(v_b.state),
+                confidence=v_b.confidence,
+            )
+            verdicts_a.append(hv_a)
+            verdicts_b.append(hv_b)
 
-            if v_b.state == expected_correlative:
-                symmetric_pairs += 1
-            else:
+            expected = correlative(hv_a.state)
+            if hv_b.state != expected:
                 violations.append(
-                    f"{v_a.party_name}({v_a.state}) ↔ {v_b.party_name}({v_b.state}): "
-                    f"expected {expected_correlative}"
+                    f"{v_a.party_name}({v_a.state}) <-> "
+                    f"{v_b.party_name}({v_b.state}): "
+                    f"expected {expected.value}"
                 )
 
-        # Compute Bond Index (0 = perfect symmetry)
-        if total_pairs > 0:
-            bond_index = 1.0 - (symmetric_pairs / total_pairs)
-        else:
-            bond_index = 0.0
+        # Compute Bond Index using D4 correlative symmetry
+        bond_idx = compute_bond_index(verdicts_a, verdicts_b, tau=1.0)
 
         result = erisml_pb2.BondIndexResultProto(
-            bond_index=bond_index,
+            bond_index=bond_idx,
             baseline=BOND_INDEX_BASELINE,
-            within_threshold=bond_index < BOND_INDEX_BLOCK_THRESHOLD,
+            within_threshold=bond_idx < BOND_INDEX_BLOCK_THRESHOLD,
         )
         result.violations.extend(violations)
 
@@ -368,23 +387,25 @@ class ErisMLServicer(erisml_pb2_grpc.ErisMLServiceServicer):
         """
         violations = []
 
-        # Group verdicts by expected correlative pairs
+        # Group verdicts by state using D4-aware Hohfeldian states
         by_state: Dict[str, List[erisml_pb2.HohfeldianVerdictProto]] = {}
         for v in request.verdicts:
             by_state.setdefault(v.state, []).append(v)
 
-        # Check O↔C symmetry
-        o_count = len(by_state.get("O", []))
-        c_count = len(by_state.get("C", []))
+        # Check correlative symmetry: O<->C (via s-reflection)
+        o_count = len(by_state.get(HohfeldianState.O.value, []))
+        c_count = len(by_state.get(HohfeldianState.C.value, []))
         if o_count != c_count:
-            violations.append(f"O↔C asymmetry: {o_count} Obligations, {c_count} Claims")
+            violations.append(
+                f"O<->C asymmetry: {o_count} Obligations, {c_count} Claims"
+            )
 
-        # Check L↔N symmetry
-        l_count = len(by_state.get("L", []))
-        n_count = len(by_state.get("N", []))
+        # Check correlative symmetry: L<->N (via s-reflection)
+        l_count = len(by_state.get(HohfeldianState.L.value, []))
+        n_count = len(by_state.get(HohfeldianState.N.value, []))
         if l_count != n_count:
             violations.append(
-                f"L↔N asymmetry: {l_count} Liberties, {n_count} No-claims"
+                f"L<->N asymmetry: {l_count} Liberties, {n_count} No-claims"
             )
 
         # Compute symmetry rate
@@ -538,11 +559,54 @@ class ErisMLServicer(erisml_pb2_grpc.ErisMLServiceServicer):
 
         return proof
 
+    def _derive_hohfeldian_verdicts(
+        self, moral_vector: MoralVector, party_name: str = "agent"
+    ) -> Tuple[HohfeldianVerdict, HohfeldianVerdict]:
+        """
+        Derive Hohfeldian verdicts for agent/affected-party from moral dimensions.
+
+        Maps moral vector dimensions to normative positions:
+        - physical_harm > 0.5: Agent has Obligation to avoid, Affected has Claim
+        - rights_respect < 0.5: Agent has Obligation, Affected has Claim
+        - autonomy_respect > 0.7: Agent has Liberty, Affected has No-claim
+        - Default: Agent has Liberty, Affected has No-claim
+
+        Returns:
+            (agent_verdict, affected_verdict) tuple
+        """
+        if moral_vector.physical_harm > 0.5:
+            agent_state = HohfeldianState.O
+        elif moral_vector.rights_respect < 0.5:
+            agent_state = HohfeldianState.O
+        elif moral_vector.autonomy_respect > 0.7:
+            agent_state = HohfeldianState.L
+        else:
+            agent_state = HohfeldianState.L
+
+        affected_state = correlative(agent_state)
+
+        agent_verdict = HohfeldianVerdict(
+            party_name=party_name,
+            state=agent_state,
+            confidence=moral_vector.epistemic_quality,
+        )
+        affected_verdict = HohfeldianVerdict(
+            party_name=f"{party_name}_affected",
+            state=affected_state,
+            confidence=moral_vector.epistemic_quality,
+        )
+
+        return agent_verdict, affected_verdict
+
     def _compute_plan_bond_index(
         self, step_results: List[erisml_pb2.EvaluateStepResponse]
     ) -> erisml_pb2.BondIndexResultProto:
-        """Compute aggregate Bond Index for a plan."""
-        # Simple aggregation: average of veto rates
+        """
+        Compute aggregate Bond Index for a plan using D4 Hohfeldian symmetry.
+
+        Derives Hohfeldian verdicts from each step's moral vector, then
+        measures correlative symmetry using compute_bond_index().
+        """
         if not step_results:
             return erisml_pb2.BondIndexResultProto(
                 bond_index=0.0,
@@ -550,14 +614,49 @@ class ErisMLServicer(erisml_pb2_grpc.ErisMLServiceServicer):
                 within_threshold=True,
             )
 
-        veto_count = sum(1 for r in step_results if r.vetoed)
-        bond_index = veto_count / len(step_results)
+        agent_verdicts: List[HohfeldianVerdict] = []
+        affected_verdicts: List[HohfeldianVerdict] = []
+        violations: List[str] = []
 
-        return erisml_pb2.BondIndexResultProto(
-            bond_index=bond_index,
+        for i, result in enumerate(step_results):
+            mv_proto = result.moral_vector
+            mv = MoralVector(
+                physical_harm=mv_proto.physical_harm,
+                rights_respect=mv_proto.rights_respect,
+                fairness_equity=mv_proto.fairness_equity,
+                autonomy_respect=mv_proto.autonomy_respect,
+                privacy_protection=mv_proto.privacy_protection,
+                societal_environmental=mv_proto.societal_environmental,
+                virtue_care=mv_proto.virtue_care,
+                legitimacy_trust=mv_proto.legitimacy_trust,
+                epistemic_quality=mv_proto.epistemic_quality,
+            )
+
+            agent_v, affected_v = self._derive_hohfeldian_verdicts(
+                mv, party_name=f"step_{i}"
+            )
+            agent_verdicts.append(agent_v)
+            affected_verdicts.append(affected_v)
+
+            # Track any asymmetries for violation reporting
+            expected = correlative(agent_v.state)
+            if affected_v.state != expected:
+                violations.append(
+                    f"Step {i}: agent({agent_v.state.value}) "
+                    f"<-> affected({affected_v.state.value}): "
+                    f"expected {expected.value}"
+                )
+
+        bond_idx = compute_bond_index(agent_verdicts, affected_verdicts, tau=1.0)
+
+        bi_result = erisml_pb2.BondIndexResultProto(
+            bond_index=bond_idx,
             baseline=BOND_INDEX_BASELINE,
-            within_threshold=bond_index < BOND_INDEX_BLOCK_THRESHOLD,
+            within_threshold=bond_idx < BOND_INDEX_BLOCK_THRESHOLD,
         )
+        bi_result.violations.extend(violations)
+
+        return bi_result
 
 
 # ---------------------------------------------------------------------------

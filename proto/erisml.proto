@@ -101,8 +101,34 @@ message BondIndexResultProto {
   float baseline = 2;         // 0.155 (Dear Abby empirical baseline)
   bool within_threshold = 3;  // bond_index < block_threshold (default 0.30)
   repeated string violations = 4;  // List of symmetry violations
+  float correlative_rate = 5; // Fraction of verdicts with correct correlative
+  float negation_rate = 6;    // Fraction involving negation (r^2) transformations
 
-  reserved 5 to 9;
+  reserved 7 to 9;
+}
+
+
+// ---------------------------------------------------------------------------
+// MoralTensor - Multi-rank tensor representation (DEME V3)
+// ---------------------------------------------------------------------------
+
+// MoralTensor represents ranks 1-6 ethical assessment tensors.
+// Rank 1: (9,) single assessment, Rank 2: (9,n) per-party,
+// Rank 3: (9,n,tau) temporal, Rank 4: (9,n,a,c) coalition actions,
+// Rank 5: (9,n,tau,s) uncertainty, Rank 6: (9,n,tau,a,c,s) full context
+message MoralTensorProto {
+  repeated int32 shape = 1;             // Tensor shape (first dim must be 9)
+  int32 rank = 2;                       // Tensor rank (1-6)
+  repeated float data = 3 [packed = true]; // Dense data in row-major order
+  repeated string axis_names = 4;       // Names for each axis
+  repeated string veto_flags = 6;       // Triggered veto conditions
+  repeated string reason_codes = 7;     // Machine-readable reason codes
+  bool is_sparse = 8;                   // Whether using sparse storage
+  repeated int32 sparse_coords = 10 [packed = true]; // COO coordinates (flattened)
+  repeated float sparse_values = 11 [packed = true];  // COO values
+  float sparse_fill_value = 12;         // Fill value for sparse storage
+
+  reserved 5, 9, 13 to 19;
 }
 
 
@@ -179,8 +205,9 @@ message EvaluatePlanResponse {
   repeated string blocked_steps = 3;
   BondIndexResultProto bond_index = 4;
   DecisionProofProto plan_proof = 5;
+  MoralTensorProto moral_tensor = 6;  // Rank-2 (9, n_steps) plan tensor
 
-  reserved 6 to 9;
+  reserved 7 to 9;
 }
 
 // Request for Bond Index computation
