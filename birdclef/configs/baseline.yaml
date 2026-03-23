@@ -1,0 +1,23 @@
+data:
+  data_dir: data
+  precomputed_dir: null
+  num_workers: 12
+
+model:
+  backbone: tf_efficientnet_b3_ns
+  pretrained: true
+  dropout: 0.3
+
+training:
+  epochs: 30
+  batch_size: 32
+  learning_rate: 1.0e-3
+  weight_decay: 1.0e-4
+  T_0: 5
+  T_mult: 2
+  early_stopping_patience: 5
+  focal_gamma: 2.0
+  mixup_alpha: 0.4
+  mixup_prob: 0.5
+  log_every: 50
+  output_dir: output/baseline

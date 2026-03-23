@@ -1,0 +1,23 @@
+data:
+  train_csv: data/train.csv
+  taxonomy_csv: data/taxonomy.csv
+  audio_dir: data/train_audio
+  precomputed_dir: precomputed
+  num_workers: 12
+
+generator:
+  channels: [32, 64, 128, 256]
+  epsilon: 0.15
+  epsilon_final: 0.05
+
+training:
+  epochs: 15
+  batch_size: 24
+  classifier_lr: 2.0e-4
+  generator_lr: 1.0e-3
+  weight_decay: 1.0e-4
+  focal_gamma: 2.0
+  lambda_recon: 10.0
+  clean_adv_ratio: 0.5
+  log_every: 50
+  output_dir: output/adversarial
