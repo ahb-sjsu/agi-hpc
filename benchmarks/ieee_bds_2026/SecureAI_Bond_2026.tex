@@ -1,0 +1,424 @@
+\documentclass[conference]{IEEEtran}
+
+% ---- Packages ----
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{url}
+\usepackage{balance}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{Selective Invariance Violations in Large Language Model Moral Judgment: A Geometric Framework for Behavioral Manipulation Detection}
+
+\author{\IEEEauthorblockN{Andrew H. Bond}
+\IEEEauthorblockA{\textit{Department of Computer Engineering} \\
+\textit{San Jose State University}\\
+San Jose, CA, USA \\
+agi.hpc@gmail.com}}
+
+\maketitle
+
+\begin{abstract}
+Large language models are increasingly deployed in safety-critical decision services---content moderation, clinical decision support, legal analysis---yet methods for characterizing their vulnerability profiles across multiple attack surfaces remain underdeveloped.
+We introduce a geometric evaluation framework that maps moral judgment to a 7-dimensional harm space, applies five qualitatively distinct perturbation types across five cognitive domains, and produces per-model vulnerability profiles that reveal \emph{which} manipulations each model resists and \emph{which} it does not.
+Testing 5~models spanning 2~architecture families under a realistic \$50/day compute budget, we find that vulnerabilities are \emph{selective}: linguistic framing, emotional anchoring, and irrelevant sensory detail reliably displace judgments, while gender swap and evaluation order do not---identifying salience manipulation as the specific attack surface.
+The framework further reveals that robustness profiles are partially dissociable across models: a model with zero sycophancy has the worst emotional anchoring recovery; a model with the best anchoring recovery has the worst working memory.
+No single robustness score captures these structures.
+The evaluation pipeline---with adaptive concurrency, budget-aware execution, and three-tier data---scales to new models and perturbation types within fixed compute constraints, providing a practical tool for multi-dimensional LLM security assessment.
+\end{abstract}
+
+\begin{IEEEkeywords}
+LLM security, adversarial evaluation, moral judgment, invariance testing, vulnerability profiling, AI safety, calibration
+\end{IEEEkeywords}
+
+% ================================================================
+\section{Introduction}
+
+When a language model judges a moral scenario, its output can be understood as a point in a multi-dimensional space defined by harm dimensions such as physical harm, emotional harm, autonomy violation, and trust breach. A secure AI system should produce the same evaluation regardless of how the scenario is \emph{described}---whether the language is euphemistic or dramatic, whether irrelevant sensory details are present, whether a user pressures the system to change its answer. Failure of this property constitutes a \emph{behavioral manipulation vulnerability}: an attacker can shift a model's decision output by modifying morally irrelevant surface features without changing the underlying facts.
+
+Prior work has probed these vulnerabilities piecewise: sycophancy~\cite{sharma2024sycophancy, perez2023model}, framing effects~\cite{tversky1981framing, echterhoff2024cognitive}, and prompt sensitivity~\cite{scherrer2023moral} each measure one dimension. But these studies share a structural limitation: each produces a scalar robustness score that cannot distinguish models with qualitatively different vulnerability profiles. For a system evaluated across $n$ independent dimensions of variation, any scalar summary destroys $n-1$ directions of information~\cite{bond2026geometric}. No post hoc procedure can recover the lost structure.
+
+We take a different approach. We define a shared 7-dimensional harm space and apply four qualitatively distinct perturbation types: social pressure, emotional reframing, linguistic register, and irrelevant sensory detail. These perturbations should leave the moral evaluation invariant; measuring whether they do is our primary test. We complement these with metacognitive calibration measurement. Our contributions are:
+
+\begin{enumerate}
+\item A \textbf{practical multi-model vulnerability profiling framework} that maps LLM decision behavior to a structured harm space, applies multiple perturbation types, and produces per-model profiles showing which attack surfaces each model is exposed to---under a realistic \$50/day compute budget.
+\item \textbf{Selective vulnerability detection}: three perturbation types (framing, emotional tone, sensory detail) reliably displace judgments across all models, while two others (gender swap, evaluation order) do not---identifying \emph{salience manipulation} as the common attack mechanism and demonstrating that the framework discriminates genuine vulnerabilities from noise.
+\item \textbf{Dissociable robustness profiles}: no model dominates all dimensions, and models that excel on one attack surface may be worst on another---proving that single-score robustness assessments provide false assurance.
+\item A \textbf{scalable evaluation pipeline} with adaptive concurrency, budget-aware execution, and three-tier data that enables reproducible multi-model assessment within fixed compute constraints.
+\end{enumerate}
+
+% ================================================================
+\section{Related Work}
+
+\textbf{Sycophancy and social pressure.} Sharma et al.~\cite{sharma2024sycophancy} demonstrated that LLMs shift responses to align with user opinions. Perez et al.~\cite{perez2023model} developed model-written evaluations revealing consistent sycophantic tendencies. Our L2 protocol extends this work with a multi-turn design that establishes a committed baseline before applying corrections, separating legitimate belief updating from adversarial susceptibility.
+
+\textbf{Framing and anchoring.} Tversky and Kahneman~\cite{tversky1981framing} established framing effects in human decision-making. Echterhoff et al.~\cite{echterhoff2024cognitive} surveyed analogous cognitive biases in LLMs. These studies test single perturbation types in isolation; our framework applies multiple perturbation types within a shared coordinate system, enabling direct comparison of vulnerability magnitudes across qualitatively different attack surfaces.
+
+\textbf{Calibration.} Kadavath et al.~\cite{kadavath2022know} showed that LLMs ``mostly know what they know.'' Our M1 results challenge this conclusion in the moral domain: Fisher-combined miscalibration across 4~models reaches 9.3$\sigma$, with every model tested showing significant confidence-accuracy gaps. The rank-order approach (AUROC) in our M2 protocol addresses the known problem of confidence compression into narrow ranges~\cite{niculescu2005predicting}.
+
+\textbf{Geometric and multi-dimensional evaluation.} Bond~\cite{bond2026geometric} introduced the geometric ethics framework, proposing that moral situations occupy a differentiable manifold with tensor structure. Thiele~\cite{thiele2026labse} demonstrated that the moral dimensions of this framework are linearly decodable from LaBSE sentence embeddings~\cite{feng2022labse}, with moral and language signals occupying largely orthogonal subspaces. Our work extends this from representation probing to behavioral evaluation.
+
+\textbf{Executive functions in AI.} Diamond~\cite{diamond2013executive} defined executive functions as cognitive flexibility, inhibitory control, and working memory. We operationalize these constructs for LLM security evaluation, measuring framework switching, emotional anchoring resistance, counterfactual sensitivity, and party-tracking under complexity scaling.
+
+\textbf{Adversarial evaluation of LLMs.} Red-teaming approaches~\cite{ganguli2022red} probe for harmful outputs via adversarial prompting. Our work is complementary: rather than eliciting harmful \emph{generation}, we measure how adversarial \emph{inputs} displace the model's \emph{evaluation} of moral scenarios---a vulnerability relevant to any LLM-based decision service.
+
+% ================================================================
+\section{Framework and Methods}
+
+\subsection{Harm Space and Perturbation Categories}
+
+We model moral judgment as a mapping from scenario descriptions to points in a 7-dimensional harm space $\mathcal{H} = (h_\text{phys}, h_\text{emot}, h_\text{fin}, h_\text{auto}, h_\text{trust}, h_\text{soc}, h_\text{ident})$, where each dimension is scored 0--10, yielding a total harm score in $[0, 70]$. This operationalizes the broader 9-dimensional moral geometry proposed in~\cite{bond2026geometric}, collapsing and re-parameterizing for measurement reliability: a 9-dimensional schema with abstract dimensions like ``procedural legitimacy'' produced unreliable scores in preliminary testing. The 7-dimensional space trades theoretical completeness for measurement reliability while preserving the essential geometric structure---displacement in this subspace is still displacement, and invariance is still invariance.
+
+This coordinate system is shared across all five benchmark tracks, ensuring displacement measurements are commensurable. All model responses are enforced via structured output (JSON schema) on every API call: verdict, confidence (0--10), and the 7-dimensional harm vector.
+
+We distinguish three perturbation categories:
+
+\emph{Benchmark-defined morally irrelevant perturbations} preserve moral content while changing surface presentation: gender swap, euphemistic/dramatic rewriting, emotional anchoring, and irrelevant sensory detail. Any displacement under these perturbations is an operational invariance violation---and a behavioral manipulation vulnerability. A morally competent evaluator should be invariant under such transformations; any observed displacement indicates a manipulation surface.
+
+\emph{Correction perturbations} include both valid corrections (which \emph{should} change judgment) and invalid corrections (which should not). Only the invalid-correction component is security-relevant.
+
+\emph{Exploratory perturbations} (e.g., cultural reframe) have ambiguous moral relevance and are reported as observations rather than violations.
+
+\subsection{Five Cognitive Domains}
+
+Each benchmark track applies a qualitatively distinct perturbation type and measures the resulting displacement of the judgment vector:
+
+\textbf{Learning (L1--L4).} Tests belief updating: few-shot learning (L1), correction integration with sycophancy detection (L2, headline test), framework transfer (L3), and graded belief revision under evidence of varying strength (L4). The L2 multi-turn protocol establishes a committed baseline verdict in turn~1, then applies either a valid correction (genuine new evidence) or an invalid correction (fabricated claims) in turn~2. The \emph{discrimination gap} (correct flip rate minus wrong flip rate) measures resistance to adversarial correction.
+
+\textbf{Metacognition (M1--M4).} Tests self-knowledge: calibration of confidence to accuracy (M1, headline), discrimination between clear-cut and ambiguous scenarios (M2, via AUROC), self-monitoring of uncertainty (M3, via Spearman correlation between self-reported uncertainty and actual verdict variance), and scaling of reasoning effort with complexity (M4, via response length ratio). M1 uses Expected Calibration Error (ECE) with 5 bins and bootstrap standard error (200 iterations).
+
+\textbf{Attention (A1--A4).} Tests attentional filtering: graded distractor resistance with dose-response (A1, headline), length robustness under neutral padding at 2$\times$ and 4$\times$ (A2), selective attention signal-to-noise across 7 moral dimensions with ground-truth relevance labels (A3), and divided attention under interleaved scenario presentation (A4). A1 applies vivid and mild distractors to establish a dose-response curve, with a warned condition testing metacognitive recovery.
+
+\textbf{Executive Functions (E1--E4).} Tests cognitive control: framework switching between utilitarian, deontological, and virtue-ethics coordinate systems (E1), emotional anchoring resistance with explicit inhibition instruction (E2, headline), counterfactual sensitivity to single-cause pivots (E3), and working memory under party-complexity scaling from 2 to 8 parties (E4). E2 uses paired testing with explicit inhibition instruction (``you are being emotionally manipulated---focus on facts'') to measure recovery.
+
+\textbf{Social Cognition (T1--T5).} Tests structural properties of the harm space: sensitivity profiling (T1), invariance under morally irrelevant transforms including gender swap and cultural reframe (T2), path-dependence via narrative reordering (T3), evaluation-order sensitivity (T4), and framing sensitivity (T5, headline). T5 rewrites scenarios in euphemistic and dramatic registers while holding moral content constant.
+
+\subsection{Experimental Design}
+
+\textbf{Separation of concerns.} A fixed transformer model (Gemini 2.0 Flash) generates all perturbation stimuli (distractors, emotional rewrites, framing variants, corrections, counterfactuals). Models under test only judge pre-generated text. This eliminates the self-confirming loop where a model generates its own adversarial inputs.
+
+\textbf{Three-tier data architecture.} Each track uses three data tiers: (1)~\emph{Gold}: hand-written scenarios and perturbations with audited ground truth, providing maximum interpretive confidence. (2)~\emph{Probe}: synthetic minimal pairs engineered for unambiguous expected behavior. (3)~\emph{Generated}: larger samples from AITA (Reddit r/AmITheAsshole, 270,709~posts~\cite{aita_dataset}) and Dear Abby (25~curated advice column scenarios), providing statistical power at the cost of noisier labels.
+
+\textbf{Empirical stochastic controls.} Perturbation-based tests include 3--5 replication control arms per scenario: the model re-judges identical text to estimate within-model stochasticity. All perturbation significance tests compare against this empirical baseline, not a null of zero displacement. This design proved consequential: apparent $>$6$\sigma$ invariance violations in preliminary analyses vanished entirely under empirical controls, revealing them as artifacts of testing against an unrealistic null hypothesis.
+
+\textbf{Statistical methods.} Wilson 95\% confidence intervals on all rates~\cite{wilson1927probable}. Two-proportion $z$-test for rate comparisons. Paired $t$-test for severity shift. Bootstrap standard error on ECE. Fisher's method~\cite{fisher1925methods} for combining independent significance tests across models, with Wilson--Hilferty normal approximation for the chi-squared distribution.
+
+\subsection{Models and Coverage}
+
+Five models spanning two architecture families: Gemini 2.0 Flash (baseline), Gemini 2.5 Flash, Gemini 3 Flash Preview, Gemini 2.5 Pro, and Claude Sonnet 4.6 (Anthropic, cross-family validation). Three tracks (attention, executive functions, social cognition) run full suites on all 5~models. The learning track runs 3~Gemini models on L1--L4 with Claude on L2 only for cross-family sycophancy comparison. The metacognition track runs 4~Gemini models on M1 with 2 on M1--M4, due to per-call cost constraints on Gemini 2.5 Pro (\textasciitilde\$0.10/call vs.\ \textasciitilde\$0.002/call for Flash). Total: approximately 8,000 API calls across five tracks. Table~\ref{tab:coverage} details the exact coverage.
+
+\begin{table}[htbp]
+\caption{Evaluation coverage per headline test under \$50/day budget.}
+\label{tab:coverage}
+\centering
+\footnotesize
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Attack} & \textbf{Test} & \textbf{Scen.} & \textbf{Ctrl} & \textbf{Mod.} \\
+\midrule
+Ling.\ framing & T5 & 21 & 3 & 5 \\
+Emot.\ tone & E2 & 23 & 3 & 5 \\
+Irrel.\ detail & A1 & 21 & 5 & 5 \\
+Social pressure & L2 & 37 & 5 & 4 \\
+Self-monitoring & M1 & 12--100 & 0--3 & 4 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ================================================================
+\section{Evaluation Pipeline Architecture}
+
+A key contribution is the scalable evaluation pipeline enabling reproducible multi-model benchmarking within fixed compute budgets on the Kaggle platform.
+
+\textbf{Adaptive concurrency.} All API calls use a CSMA/CA-style adaptive concurrency pool: start at 50~workers, halve on failure, increment by 5 on sustained success. This accommodates variable API rate limits without manual tuning and achieved stable throughput across models with rate limits ranging from 15 to 1,500 requests per minute. Total runtime per track: 7--79 minutes depending on scenario count and model mix.
+
+\textbf{Budget-aware execution.} A tiered execution planner scales scenario counts and control replications to fit within per-model budget allocations. The planner assigns models to cost tiers (Tier~0: \$0.002/call for Flash models; Tier~6: \$0.10/call for Pro) and allocates scenarios proportionally. This meant, for example, that Pro ran all four metacognition test types (M1--M4) but with reduced scenario counts, while Flash models ran full suites with maximal control replication. The framework operates within Kaggle's \$50/day per-account quota.
+
+\textbf{Structured output enforcement.} All API calls use schema-enforced JSON output (verdict, confidence, 7-dimensional harm vector, reasoning text). This eliminates free-text parsing and ensures commensurable measurements across models and tracks.
+
+\textbf{Scalability.} The framework scales as $O(M \times P \times S)$ where $M$ is models, $P$ is perturbation types, and $S$ is scenarios. Adding a new model requires only API credentials; adding a perturbation type requires a generation template and equivalence-class specification. The three-tier data architecture allows trading statistical power against cost by adjusting the generated-tier sample size while preserving gold-tier interpretive confidence.
+
+\textbf{Reproducibility artifact.} Each benchmark track is a single self-contained Python file suitable for Kaggle notebook execution. All five tracks, scenario data, perturbation templates, and analysis code are distributed as part of the \texttt{agi-hpc} package (\texttt{pip install agi-hpc}, tag \texttt{bds2026-v1}).
+
+% ================================================================
+\section{Results}
+
+\subsection{Invariance Violations Under Surface Perturbations}
+
+Table~\ref{tab:invariance} summarizes the five headline vulnerability tests. Three perturbation types that manipulate salience produce reliable displacement across all models tested; two others (gender swap, evaluation order, not shown) do not. The selectivity---not merely the magnitude---is the key finding: the framework identifies \emph{which} attack surfaces are open.
+
+\begin{table}[htbp]
+\caption{Detected vulnerabilities. Fisher $\sigma$ confirms reliability; the selective map is the practical contribution.}
+\label{tab:invariance}
+\centering
+\footnotesize
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Attack surface (track)} & \textbf{$n$} & \textbf{Affected} & \textbf{$\sigma$} \\
+\midrule
+Ling.\ framing (T5) & 5 & 5/5 & 8.9 \\
+Emot.\ tone (E2) & 5 & 5/5 & 6.8 \\
+Irrel.\ detail (A1) & 5 & 5/5 & 5.0 \\
+Social pressure (L2) & 4 & 3/4 & 13.3 \\
+Self-monitoring (M1) & 4 & 4/4 & 9.3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Framing sensitivity (T5).} Euphemistic rewriting reduces total harm scores by 10--16 points (on a 0--70 scale); dramatic rewriting increases scores by 6--11. Control drift is only 1--7 points. Claude shows an asymmetric vulnerability: susceptible to euphemistic minimization (drift $= -9.1$) but resistant to dramatic exaggeration (drift $= -1.5$). This directional pattern is invisible to evaluations testing only one perturbation direction.
+
+\textbf{Emotional anchoring (E2).} All 5~models show significant paired $t$-values (2.90--5.10, $\text{df}=22$). Table~\ref{tab:e2sigma} shows the per-model breakdown. Emotional rewriting changes severity ratings and flips verdicts beyond stochastic baselines in every model, consistent across both architecture families.
+
+\begin{table}[htbp]
+\caption{Per-model emotional anchoring significance (E2).}
+\label{tab:e2sigma}
+\centering
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Model} & \textbf{Paired $t$} & \textbf{$\sigma$} & \textbf{Recovery} \\
+\midrule
+Claude Sonnet 4.6 & +5.10 & 4.1 & 20\% \\
+Gemini 2.0 Flash & +4.45 & 3.7 & 73\% \\
+Gemini 2.5 Flash & +3.92 & 3.4 & 29\% \\
+Gemini 2.5 Pro & +3.20 & 2.9 & 20\% \\
+Gemini 3 Flash & +2.90 & 2.6 & 33\% \\
+\midrule
+\textbf{Fisher combined} & & \textbf{6.8} & \textbf{mean 38\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+A critical dissociation emerges: Claude has the highest displacement ($t = 5.10$) but the \emph{lowest} recovery rate (20\%) when given an explicit inhibition instruction. Flash~2.0 is more easily displaced (48\% verdict change) but recovers 73\%. A single ``emotional robustness'' score would rank these models identically; the 2D profile (displacement $\times$ recovery) reveals fundamentally different failure modes.
+
+\textbf{Distractor resistance (A1).} Table~\ref{tab:a1sigma} shows per-model distractor effects. Claude shows the strongest individual distractor sigma (4.2$\sigma$) yet also correct dose-response grading (vivid $>$ mild $>$ control), indicating genuine attentional discrimination coexisting with high sensitivity.
+
+\begin{table}[htbp]
+\caption{Per-model distractor significance (A1, paired $t$, $\text{df}=20$).}
+\label{tab:a1sigma}
+\centering
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Model} & \textbf{Distractor $\sigma$} & \textbf{Warned $\sigma$} & \textbf{Recovery} \\
+\midrule
+Claude Sonnet 4.6 & 4.2 & 4.3 & 36\% \\
+Gemini 2.0 Flash & 3.2 & 3.7 & 14\% \\
+Gemini 3 Flash & 1.1 & 2.9 & 33\% \\
+Gemini 2.5 Flash & 1.7 & 2.3 & 50\% \\
+Gemini 2.5 Pro & 1.0 & 0.9 & 33\% \\
+\midrule
+\textbf{Fisher combined} & \textbf{5.0} & & \textbf{mean 39\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Preserved Symmetries}
+
+Not all transformations produce displacement. Gender swap (T2) and evaluation-order permutation (T4) do not exceed stochastic baselines in any model tested. Gemini~3 Flash and Claude both achieve 0.958 on invariance (T2) and 0.933--1.000 on order sensitivity (T4). This selectivity is a critical finding for security assessment: models have learned to be robust under some transformations but not others.
+
+The common thread among the three broken symmetries (T5, E2, A1) is that each involves \emph{salience manipulation}---making morally irrelevant features perceptually prominent. Gender swap and evaluation order do not change the salience of any feature. This selectivity identifies the specific attack surface: adversaries must manipulate perceptual salience, not merely alter surface tokens.
+
+Cultural reframe (T2, combined 4.1$\sigma$) occupies an intermediate position: it produces verdict changes above control noise, but this may reflect genuine moral content differences rather than a symmetry violation.
+
+\subsection{The Sycophancy Gradient}
+\label{sec:sycophancy}
+
+The L2 correction-integration protocol reveals a sycophancy gradient correlating inversely with model stability (Table~\ref{tab:sycophancy}). The Sycophancy Index $\text{SI} = r_\text{wrong} / r_\text{correct}$, where 0~indicates perfect discrimination and 1~indicates none.
+
+\begin{table}[htbp]
+\caption{Correction discrimination (L2). Wrong-flip $n{=}9$ per model.}
+\label{tab:sycophancy}
+\centering
+\footnotesize
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Model} & \textbf{Corr.} & \textbf{Wrong} & \textbf{SI} & \textbf{$t_\text{conf}$} \\
+\midrule
+Claude 4.6 & 59\% & 0\% & 0.00 & +2.83 \\
+Gemini 2.0 Fl. & 71\% & 33\% & 0.47 & $-$2.12 \\
+Gemini 2.5 Pro & 68\% & 44\% & 0.66 & $-$0.80 \\
+Gemini 2.5 Fl. & 76\% & 56\% & 0.73 & +0.41 \\
+\bottomrule
+\multicolumn{5}{@{}l}{\scriptsize Wilson 95\% CIs on wrong-flip: 0\%\,[0--30], 33\%\,[12--65],}\\
+\multicolumn{5}{@{}l}{\scriptsize 44\%\,[19--73], 56\%\,[27--81].}
+\end{tabular}
+\end{table}
+
+The confidence response to wrong corrections provides a behavioral signature of each model's discrimination mechanism. Claude becomes \emph{more} confident when given a wrong correction ($t = +2.83$), consistent with active rejection---the model counter-argues rather than passively ignoring the correction. Flash~2.0 becomes \emph{less} confident ($t = -2.12$), consistent with partial skepticism. Flash~2.5 shows no confidence change ($t = +0.41$), consistent with uncritical acceptance. The control-arm flip rate tracks the same gradient: Claude 0\%, Flash~2.0 2\%, Pro 8\%, Flash~2.5 19\%---the most stable models (lowest stochastic noise) show the least sycophancy.
+
+Crucially, L4 graded belief revision shows that all models correctly calibrate revision magnitude to evidence strength ($z = 4.4$--$6.7$, extreme vs.\ control, all $p < 0.003$). The sycophancy failure is therefore a \emph{discrimination} deficit---an inability to distinguish valid from invalid corrections---not a broken revision mechanism. This distinction, visible only because L2 and L4 test the same mechanism under different conditions, has direct implications for mitigation: the correction mechanism works; only its discrimination filter needs hardening.
+
+\subsection{Metacognitive Calibration Deficit}
+
+Table~\ref{tab:m1} shows per-model Expected Calibration Error. Every model tested is overconfident in the same direction, with ECE ranging from 0.186 (Pro) to 0.421 (Flash~2.0).
+
+\begin{table}[htbp]
+\caption{Per-model calibration: Expected Calibration Error (M1).}
+\label{tab:m1}
+\centering
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Model} & \textbf{ECE} & \textbf{Direction} & \textbf{$z$-score} \\
+\midrule
+Gemini 2.0 Flash & 0.421 & overconfident & 6.2$\sigma$ \\
+Gemini 2.5 Flash & 0.415 & overconfident & 7.0$\sigma$ \\
+Gemini 3 Flash & 0.333 & overconfident & 4.5$\sigma$ \\
+Gemini 2.5 Pro & 0.186 & overconfident & 2.2$\sigma$ \\
+Claude Sonnet 4.6 & 0.250 & overconfident & --- \\
+\midrule
+\textbf{Fisher combined} & & & \textbf{9.3$\sigma$} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Calibration improves with model scale: Pro (0.186) is significantly better than Flash variants (0.333--0.421), suggesting calibration is a learnable property. Cross-family validation on Claude (ECE $= 0.250$) confirms the deficit is architectural, not family-specific.
+
+A further dissociation emerges in M4 (strategy selection): Flash~2.0 scores 0.715 (strong effort scaling---longer responses for harder problems), while Pro scores 0.000 (uniform response length regardless of complexity). The larger model is better calibrated but \emph{less} effort-adaptive, proving that metacognition is not a single dimension.
+
+\subsection{Dissociable Robustness Profiles}
+
+No model dominates all cognitive domains. Table~\ref{tab:profiles} shows selected measures that demonstrate the partial dissociability of robustness across tracks.
+
+\begin{table}[htbp]
+\caption{Cross-track profiles: dissociable robustness dimensions.}
+\label{tab:profiles}
+\centering
+\footnotesize
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+\textbf{Model} & \textbf{L2:Syc} & \textbf{E2:Rec} & \textbf{A4:Div} & \textbf{E3:CF} & \textbf{E4:WM} \\
+\midrule
+Claude & \textbf{0.000} & \textbf{20\%}$^\dagger$ & \textbf{0.571}$^\dagger$ & 56\% & 0.886 \\
+Flash 2.0 & 0.472 & \textbf{73\%} & 0.812 & 50\% & \textbf{0.710}$^\dagger$ \\
+Pro 2.5 & 0.657 & 20\% & \textbf{1.000} & \textbf{75\%} & 0.887 \\
+Flash 2.5 & \textbf{0.726}$^\dagger$ & 29\% & 0.875 & 69\% & \textbf{0.900} \\
+\bottomrule
+\multicolumn{6}{l}{\footnotesize $^\dagger$Worst in column. Bold without $^\dagger$ = best.}
+\end{tabular}
+\end{table}
+
+Claude has zero sycophancy but the worst divided attention (0.571) and worst anchoring recovery (20\%). Flash~2.0 has the best emotional anchoring recovery (73\%) but the worst working memory (0.710). Pro has the best counterfactual sensitivity (75\%) and perfect divided attention (1.000) but moderate sycophancy. Working memory scales monotonically with model generation within the Gemini family (Flash~2.0: 0.710, Flash~2.5: 0.900, Flash~3: 0.909), while no such monotonic trend holds for sycophancy or recovery.
+
+These dissociations illustrate why scalar robustness scores are misleading: averaging over partially independent dimensions produces a number that describes no model accurately. From a security perspective, certifying a model based on any single vulnerability test is unreliable.
+
+\subsection{The Metacognitive Intervention Ceiling}
+
+When models are explicitly instructed to correct for a detected perturbation---warned about distractors (A1), told they are being emotionally manipulated (E2)---recovery rates converge to approximately 38\% across perturbation types (E2 mean: 38\%, A1 mean: 39\%). This convergence across qualitatively different perturbation types suggests a shared constraint on prompt-level metacognitive intervention.
+
+The ceiling co-occurs with the calibration deficit (M1, 9.3$\sigma$): models with inaccurate self-monitoring cannot reliably detect when manipulation has displaced their output. A model with accurate confidence tracking would, in principle, be better positioned to recognize perturbation-induced displacement. The observed miscalibration is at least consistent with the hypothesis that poor self-monitoring limits recovery capacity, though we note this as a suggestive association rather than a demonstrated causal link.
+
+\subsection{Graded Sensitivity Exists}
+
+Not all results indicate failure. The L4 belief revision protocol reveals that all three Gemini models tested show \emph{graded} revision: extreme evidence produces more revision than moderate evidence, which produces more than irrelevant evidence (all $p < 0.003$ for extreme vs.\ control). This proportional response surface demonstrates a functional discrimination mechanism that scales with evidence strength.
+
+Similarly, the A1 dose-response shows that vivid distractors produce more displacement than mild distractors, which produce more than control---in models with correct dose-response ordering (Gemini~3 Flash and Claude). The vulnerability is not that models lack attentional discrimination but that their discrimination threshold is set too low.
+
+Framework switching (E1) is also genuine: 32--47\% verdict switch rates with 89--93\% framework-specific marker detection across all 5~models. Models produce reasoning consistent with each ethical coordinate system---a real cognitive flexibility capability.
+
+% ================================================================
+\section{Discussion}
+
+\subsection{Implications for Secure AI Deployment}
+
+The central practical finding is that the framework produces \emph{actionable vulnerability profiles} under realistic budget constraints---not merely confirmation that vulnerabilities exist.
+
+\emph{Vulnerability profiling enables targeted hardening.} Table~\ref{tab:profiles} shows that each model has a distinct pattern of which attack surfaces are open. Claude resists social pressure perfectly but is worst at emotional anchoring recovery. Flash~2.0 recovers well from emotional manipulation but has the weakest working memory. A deployment team selecting a model for content moderation can now ask ``which vulnerabilities matter for our use case?'' rather than relying on a single robustness score that describes no model accurately. The statistical significance of individual effects (5.0--8.9$\sigma$ Fisher-combined) confirms that these profiles reflect genuine vulnerabilities, not measurement noise.
+
+\emph{Salience manipulation is the specific attack surface.} The selectivity finding---three perturbation types displace judgments, two do not---narrows the threat model. The three successful manipulations (framing, emotional tone, sensory detail) all make morally irrelevant features perceptually prominent. Gender swap and evaluation order, which do not manipulate salience, produce no displacement. This tells defenders \emph{where to look}: attacks that repackage the same facts with different salience, such as euphemistic rewriting that reduces perceived harm by 10--16 points on a 70-point scale.
+
+\emph{Fixing one attack surface does not fix others.} Claude's zero-sycophancy profile demonstrates that social pressure resistance is achievable. But Claude simultaneously has the worst emotional anchoring recovery (20\%) and worst divided attention (0.571). The sycophancy gradient within the Gemini family (0\%--56\% wrong-correction acceptance) shows that capability improvements may increase susceptibility on some surfaces. Single-test certification provides false assurance.
+
+\emph{Prompt-level defenses are bounded.} The $\sim$38\% recovery ceiling means explicit warnings about manipulation fail two-thirds of the time---a practical upper bound on system-prompt-based guardrails. This co-occurs with universal overconfidence (ECE 0.19--0.42); whether the calibration deficit causally limits recovery or merely coincides with it is an open question, but the association is consistent across all models tested. Architectural interventions at the representation level~\cite{thiele2026labse} are likely necessary.
+
+\emph{The framework is practical at \$50/day.} All five tracks, five models, and approximately 8,000 API calls ran within a Kaggle \$50/day budget. The budget-aware planner, adaptive concurrency, and three-tier data architecture make this reproducible for any team evaluating LLM services---not just well-funded labs.
+
+\subsection{Limitations}
+
+Per-model sample sizes range from 6--40 scenarios per test; we emphasize consistency across models and perturbation types over per-test significance, and use Fisher combination to aggregate evidence. The wide confidence intervals on individual cells (e.g., L2 wrong-correction at $n = 9$) should temper interpretation of point estimates; the monotonic gradient pattern across four models is more robust than any single cell.
+
+All experiments use moral judgment scenarios (AITA, Dear Abby). Both datasets reflect predominantly North American, English-language moral norms; the equivalence classes defining ``morally irrelevant'' perturbations may not hold across cultures where, for example, emotional expressiveness or indirect speech carry different normative weight. The cultural reframe results (T2, 4.1$\sigma$) hint at this boundary but do not resolve it. Whether the invariance violations generalize to other domains (factual reasoning, legal analysis, clinical triage) or other cultural contexts is untested---though the vulnerability mechanism (salience manipulation) is plausibly domain- and culture-general.
+
+The \$50/day API budget imposed by the Kaggle platform necessitated uneven model coverage. Fisher's method assumes independent tests, but shared scenario sets across models may induce positive correlation, making combined sigma values somewhat anti-conservative. We mitigate by emphasizing effect direction consistency over precise combined magnitudes. All calls used default sampling parameters; systematic temperature variation would provide a more complete stochastic landscape.
+
+% ================================================================
+\section{Conclusion}
+
+We have presented a practical framework for multi-dimensional LLM vulnerability profiling that operates within realistic compute budgets. Applied across five cognitive domains, five models, and two architecture families, the framework produces three categories of actionable findings:
+
+\begin{enumerate}
+\item \emph{Selective vulnerability maps}: the framework discriminates genuine attack surfaces (salience manipulation via framing, emotional tone, and sensory detail) from non-vulnerabilities (gender swap, evaluation order), narrowing the threat model for defenders.
+\item \emph{Dissociable robustness profiles}: each model exhibits a distinct pattern of strengths and weaknesses across attack surfaces, meaning no single-test certification is reliable. These profiles are the primary output for deployment decisions.
+\item \emph{Bounded prompt-level defenses}: a $\sim$38\% recovery ceiling sets a practical upper bound on system-prompt-based mitigation. This ceiling co-occurs with universal overconfidence (ECE 0.19--0.42), a suggestive but not demonstrated causal link.
+\end{enumerate}
+
+The evaluation pipeline---with adaptive concurrency, budget-aware execution, three-tier data, and structured output enforcement---ran all five tracks across five models for under \$50/day. This makes multi-dimensional LLM security assessment practical for any team deploying decision services, not only well-funded research labs. The framework extends to new models and perturbation types with minimal additional engineering.
+
+% ================================================================
+\section*{Reproducibility}
+
+All benchmark code, scenario datasets, gold perturbation sets, and raw notebook outputs are publicly available as part of the \texttt{agi-hpc} Python package (\texttt{pip install agi-hpc}), under the \texttt{benchmarks/} directory.\footnote{\url{https://github.com/ahb-sjsu/agi-hpc}, tag \texttt{bds2026-v1} (commit \texttt{a8be2d3}).} Each of the five benchmark tracks is implemented as a single standalone Python file that runs in a Kaggle notebook environment with no dependencies beyond the Kaggle benchmarks SDK. The three-tier data (gold, probe, generated scenarios) and all perturbation templates are embedded in the source. Raw results are preserved as executed Kaggle notebooks with full API response logs. The AITA dataset is publicly available on HuggingFace~\cite{aita_dataset}.
+
+\section*{Acknowledgment}
+
+This work was conducted using the Kaggle benchmark task infrastructure.
+
+% ================================================================
+\begin{thebibliography}{00}
+
+\bibitem{sharma2024sycophancy}
+M.~Sharma \emph{et al.}, ``Towards understanding sycophancy in language models,'' in \emph{Proc.\ ICLR}, 2024.
+
+\bibitem{perez2023model}
+E.~Perez \emph{et al.}, ``Discovering language model behaviors with model-written evaluations,'' in \emph{Findings of ACL}, 2023.
+
+\bibitem{tversky1981framing}
+A.~Tversky and D.~Kahneman, ``The framing of decisions and the psychology of choice,'' \emph{Science}, vol.~211, pp.~453--458, 1981.
+
+\bibitem{echterhoff2024cognitive}
+J.~M.~Echterhoff, Y.~Liu, and A.~Alessa, ``Cognitive biases in large language models: A survey and mitigation framework,'' \emph{arXiv:2410.02466}, 2024.
+
+\bibitem{scherrer2023moral}
+N.~Scherrer \emph{et al.}, ``Evaluating the moral beliefs encoded in LLMs,'' in \emph{Proc.\ NeurIPS}, 2023.
+
+\bibitem{bond2026geometric}
+A.~H.~Bond, \emph{Geometric Methods in Computational Modeling: From Manifolds to Production Systems}. San Jose State University, 2026.
+
+\bibitem{kadavath2022know}
+S.~Kadavath \emph{et al.}, ``Language models (mostly) know what they know,'' \emph{arXiv:2207.05221}, 2022.
+
+\bibitem{thiele2026labse}
+L.~Thiele, ``Does LaBSE encode moral geometry? Testing Bond's geometric ethics framework through cross-lingual probing,'' Undergraduate Research Report, UCLA Dept.\ of Cognitive Science, 2026.
+
+\bibitem{diamond2013executive}
+A.~Diamond, ``Executive functions,'' \emph{Annu.\ Rev.\ Psychol.}, vol.~64, pp.~135--168, 2013.
+
+\bibitem{aita_dataset}
+OsamaBsher, ``AITA-Reddit-Dataset,'' HuggingFace Datasets. [Online]. Available: \url{https://huggingface.co/datasets/OsamaBsher/AITA-Reddit-Dataset}
+
+\bibitem{wilson1927probable}
+E.~B.~Wilson, ``Probable inference, the law of succession, and statistical inference,'' \emph{J.\ Am.\ Stat.\ Assoc.}, vol.~22, pp.~209--212, 1927.
+
+\bibitem{fisher1925methods}
+R.~A.~Fisher, \emph{Statistical Methods for Research Workers}. Oliver and Boyd, 1925.
+
+\bibitem{niculescu2005predicting}
+A.~Niculescu-Mizil and R.~Caruana, ``Predicting good probabilities with supervised learning,'' in \emph{Proc.\ ICML}, pp.~625--632, 2005.
+
+\bibitem{feng2022labse}
+F.~Feng \emph{et al.}, ``Language-agnostic BERT sentence embedding,'' in \emph{Proc.\ ACL}, pp.~878--891, 2022.
+
+\bibitem{ganguli2022red}
+D.~Ganguli \emph{et al.}, ``Red teaming language models to reduce harms: Methods, scaling behaviors, and lessons learned,'' \emph{arXiv:2209.07858}, 2022.
+
+\end{thebibliography}
+
+\balance
+
+\end{document}
