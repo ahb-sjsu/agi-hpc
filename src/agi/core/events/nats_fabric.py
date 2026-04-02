@@ -54,7 +54,16 @@ import json
 import logging
 from dataclasses import dataclass, field
 from agi.common.event import Event
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Protocol, runtime_checkable
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Protocol,
+    runtime_checkable,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +79,6 @@ except ImportError:
     NatsMsg = None  # type: ignore
     JetStreamContext = None  # type: ignore
     StreamConfig = None  # type: ignore
-
 
 
 # ---------------------------------------------------------------------------
@@ -95,13 +103,9 @@ class EventFabricProtocol(Protocol):
 
     async def publish(self, subject: str, event: Event) -> None: ...
 
-    async def subscribe(
-        self, subject: str, handler: EventHandler
-    ) -> None: ...
+    async def subscribe(self, subject: str, handler: EventHandler) -> None: ...
 
-    async def request(
-        self, subject: str, event: Event, timeout: float
-    ) -> Event: ...
+    async def request(self, subject: str, event: Event, timeout: float) -> Event: ...
 
 
 # ---------------------------------------------------------------------------
@@ -113,13 +117,9 @@ class EventFabricProtocol(Protocol):
 class NatsFabricConfig:
     """Configuration for the NATS Event Fabric."""
 
-    servers: List[str] = field(
-        default_factory=lambda: ["nats://localhost:4222"]
-    )
+    servers: List[str] = field(default_factory=lambda: ["nats://localhost:4222"])
     stream_name: str = "AGI_EVENTS"
-    stream_subjects: List[str] = field(
-        default_factory=lambda: ["agi.>"]
-    )
+    stream_subjects: List[str] = field(default_factory=lambda: ["agi.>"])
     max_msgs: int = 1_000_000
     max_bytes: int = 1_073_741_824  # 1 GB
     max_age_seconds: int = 604_800  # 7 days

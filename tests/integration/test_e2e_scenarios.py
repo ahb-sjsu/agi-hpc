@@ -15,7 +15,6 @@ from tests.integration.framework import (
 )
 from tests.integration.chaos import ChaosMonkey, ChaosConfig
 
-
 # ---------------------------------------------------------------------------
 # Navigation Scenario
 # ---------------------------------------------------------------------------

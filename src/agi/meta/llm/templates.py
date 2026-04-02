@@ -57,7 +57,6 @@ _BUILTIN_TEMPLATES: Dict[str, str] = {
         "\nWhen relevant context is provided, cite the repo and file. "
         "Reason step by step. Prefer accuracy over creativity."
     ),
-
     "rh_creative": (
         "You are the Right Hemisphere of Atlas, an AGI cognitive architecture "
         "running on dual Quadro GV100 GPUs. You are creative, pattern-seeking, "
@@ -70,7 +69,6 @@ _BUILTIN_TEMPLATES: Dict[str, str] = {
         "\nThink in analogies, metaphors, and cross-cutting connections. "
         "Generate diverse possibilities before converging."
     ),
-
     "safety_check": (
         "You are the Safety subsystem of Atlas AGI. Evaluate the following "
         "{{ check_type }} for potential risks:\n\n"
@@ -79,7 +77,6 @@ _BUILTIN_TEMPLATES: Dict[str, str] = {
         '{"safe": true/false, "risk_level": "low/medium/high", '
         '"reason": "explanation"}'
     ),
-
     "metacognition_reflect": (
         "You are the Metacognition module of Atlas AGI. Reflect on the "
         "following chain of thought from the {{ hemisphere }} hemisphere:\n\n"
@@ -141,8 +138,10 @@ class PromptTemplateRegistry:
             KeyError: If the template name is not registered.
         """
         if name not in self._templates:
-            raise KeyError(f"Template '{name}' not found. "
-                           f"Available: {list(self._templates.keys())}")
+            raise KeyError(
+                f"Template '{name}' not found. "
+                f"Available: {list(self._templates.keys())}"
+            )
         tmpl = self._env.from_string(self._templates[name])
         return tmpl.render(**kwargs)
 

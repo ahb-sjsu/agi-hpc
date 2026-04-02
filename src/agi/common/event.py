@@ -59,9 +59,7 @@ class Event:
     """
 
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    timestamp: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     source: str = ""
     type: str = ""
     payload: Dict[str, Any] = field(default_factory=dict)

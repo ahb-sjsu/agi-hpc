@@ -51,7 +51,6 @@ except ImportError:
     nats = None
 
 
-
 async def send_and_wait(
     prompt: str,
     request_subject: str,
@@ -97,6 +96,7 @@ async def send_and_wait(
 
     # Also listen for CoT
     cot_data = {}
+
     async def on_cot(msg):
         try:
             event = Event.from_bytes(msg.data)
@@ -104,10 +104,12 @@ async def send_and_wait(
                 cot_data.update(event.payload)
         except Exception:
             pass
+
     cot_sub = await nc.subscribe("agi.lh.internal.cot", cb=on_cot)
 
     # Also listen for telemetry
     telemetry_data = {}
+
     async def on_telemetry(msg):
         try:
             event = Event.from_bytes(msg.data)
@@ -115,13 +117,18 @@ async def send_and_wait(
                 telemetry_data.update(event.payload)
         except Exception:
             pass
+
     telem_sub = await nc.subscribe("agi.meta.monitor.lh", cb=on_telemetry)
 
     # Publish via JetStream
     js = nc.jetstream()
     ack = await js.publish(request_subject, request_event.to_bytes())
-    logger.info("[test] published to %s seq=%d trace=%s",
-                request_subject, ack.seq, expected_trace[:8])
+    logger.info(
+        "[test] published to %s seq=%d trace=%s",
+        request_subject,
+        ack.seq,
+        expected_trace[:8],
+    )
 
     # Wait for response
     t0 = time.perf_counter()
@@ -172,8 +179,12 @@ async def test_chat() -> bool:
         return False
 
     text = result["text"]
-    logger.info("[test] PASS: chat response (%d chars, %d tokens, %.1fs)",
-                len(text), result.get("tokens_used", 0), result.get("_elapsed", 0))
+    logger.info(
+        "[test] PASS: chat response (%d chars, %d tokens, %.1fs)",
+        len(text),
+        result.get("tokens_used", 0),
+        result.get("_elapsed", 0),
+    )
     logger.info("[test] preview: %s", text[:200])
 
     cot = result.get("_cot", {})
@@ -203,9 +214,12 @@ async def test_reason() -> bool:
         logger.error("[test] FAIL: empty response")
         return False
 
-    logger.info("[test] PASS: reason response (%d chars, %d tokens, %.1fs)",
-                len(result["text"]), result.get("tokens_used", 0),
-                result.get("_elapsed", 0))
+    logger.info(
+        "[test] PASS: reason response (%d chars, %d tokens, %.1fs)",
+        len(result["text"]),
+        result.get("tokens_used", 0),
+        result.get("_elapsed", 0),
+    )
     return True
 
 
@@ -225,8 +239,11 @@ async def test_telemetry() -> bool:
 
     telemetry = result.get("_telemetry", {})
     if "requests_processed" in telemetry and "avg_latency_ms" in telemetry:
-        logger.info("[test] PASS: telemetry -- requests=%d avg_latency=%.0fms",
-                    telemetry["requests_processed"], telemetry["avg_latency_ms"])
+        logger.info(
+            "[test] PASS: telemetry -- requests=%d avg_latency=%.0fms",
+            telemetry["requests_processed"],
+            telemetry["avg_latency_ms"],
+        )
         return True
     else:
         logger.warning("[test] WARN: telemetry fields missing, but response received")

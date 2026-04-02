@@ -164,9 +164,7 @@ class RAGSearcher:
 
         # Filter by threshold
         if self._config.score_threshold > 0:
-            results = [
-                r for r in results if r.score >= self._config.score_threshold
-            ]
+            results = [r for r in results if r.score >= self._config.score_threshold]
 
         logger.debug(
             "[rag] query=%r top_k=%d results=%d",
@@ -190,7 +188,5 @@ class RAGSearcher:
 
         parts = []
         for r in results:
-            parts.append(
-                f"[{r.repo}/{r.file}] (relevance: {r.score:.3f})\n{r.text}"
-            )
+            parts.append(f"[{r.repo}/{r.file}] (relevance: {r.score:.3f})\n{r.text}")
         return "\n\n".join(parts)

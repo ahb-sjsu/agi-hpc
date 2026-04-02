@@ -1,4 +1,5 @@
 """Skip integration tests unless NATS is available."""
+
 from __future__ import annotations
 
 import pytest
@@ -16,6 +17,7 @@ def pytest_collection_modifyitems(config, items):
         return
 
     import socket
+
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         s.settimeout(1)

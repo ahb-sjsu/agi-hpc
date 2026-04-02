@@ -13,7 +13,6 @@ from unittest.mock import MagicMock, patch, call
 
 from agi.lh.hpc_deploy import HPCDeployConfig, SlurmLauncher, ApptainerRunner
 
-
 # ---------------------------------------------------------------------------
 # TestHPCDeployConfig
 # ---------------------------------------------------------------------------

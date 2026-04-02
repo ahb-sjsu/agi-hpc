@@ -53,23 +53,59 @@ from agi.meta.llm.config import InferenceConfig, LH_PRESET  # noqa: E402
 from agi.meta.llm.templates import PromptTemplateRegistry  # noqa: E402
 from agi.lh.rag import RAGSearcher, RAGConfig, RAGResult  # noqa: E402
 
-
 # -----------------------------------------------------------------
 # Hemisphere routing (extracted from atlas-rag-server.py)
 # -----------------------------------------------------------------
 
 LH_KEYWORDS = {
-    "explain", "debug", "error", "fix", "how does", "what is", "define",
-    "analyze", "calculate", "prove", "implement", "code", "function",
-    "syntax", "compile", "trace", "step by step", "specifically",
-    "exact", "precise", "correct", "documentation", "api", "reference",
+    "explain",
+    "debug",
+    "error",
+    "fix",
+    "how does",
+    "what is",
+    "define",
+    "analyze",
+    "calculate",
+    "prove",
+    "implement",
+    "code",
+    "function",
+    "syntax",
+    "compile",
+    "trace",
+    "step by step",
+    "specifically",
+    "exact",
+    "precise",
+    "correct",
+    "documentation",
+    "api",
+    "reference",
 }
 
 RH_KEYWORDS = {
-    "brainstorm", "creative", "imagine", "what if", "pattern", "analogy",
-    "design", "vision", "inspire", "explore", "possibilities", "connect",
-    "themes", "big picture", "strategy", "reimagine", "innovate",
-    "compare across", "similarities", "different angle", "metaphor",
+    "brainstorm",
+    "creative",
+    "imagine",
+    "what if",
+    "pattern",
+    "analogy",
+    "design",
+    "vision",
+    "inspire",
+    "explore",
+    "possibilities",
+    "connect",
+    "themes",
+    "big picture",
+    "strategy",
+    "reimagine",
+    "innovate",
+    "compare across",
+    "similarities",
+    "different angle",
+    "metaphor",
 }
 
 
@@ -87,6 +123,7 @@ def classify_hemisphere(text: str) -> str:
 # Configuration
 # -----------------------------------------------------------------
 
+
 @dataclass
 class LHNatsServiceConfig:
     """Configuration for the LH NATS service.
@@ -103,9 +140,7 @@ class LHNatsServiceConfig:
         enable_cot: Whether to publish chain-of-thought traces.
     """
 
-    nats_servers: List[str] = field(
-        default_factory=lambda: ["nats://localhost:4222"]
-    )
+    nats_servers: List[str] = field(default_factory=lambda: ["nats://localhost:4222"])
     llm_base_url: str = "http://localhost:8080"
     llm_timeout: float = 300.0
     llm_model: str = "gemma-4-31b"
@@ -143,6 +178,7 @@ class LHNatsServiceConfig:
 # Telemetry tracker
 # -----------------------------------------------------------------
 
+
 @dataclass
 class LHTelemetry:
     """Accumulates LH service metrics."""
@@ -172,6 +208,7 @@ class LHTelemetry:
 # -----------------------------------------------------------------
 # LH NATS Service
 # -----------------------------------------------------------------
+
 
 class LHNatsService:
     """Left Hemisphere as a NATS-connected cognitive service.
@@ -410,6 +447,7 @@ class LHNatsService:
 # CLI entry point
 # -----------------------------------------------------------------
 
+
 async def run_service(config_path: Optional[str] = None) -> None:
     """Run the LH NATS service until interrupted."""
     if config_path:
@@ -437,7 +475,8 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="AGI-HPC LH NATS Service (Phase 1)")
     parser.add_argument(
-        "--config", "-c",
+        "--config",
+        "-c",
         default=None,
         help="Path to lh_config.yaml",
     )
