@@ -1,1 +1,40 @@
-# TODO lh_config.yaml
+# AGI-HPC Left Hemisphere Configuration
+# Phase 1: LH + LLM Integration on Atlas
+
+lh:
+  # NATS event fabric connection
+  nats:
+    servers:
+      - "nats://localhost:4222"
+
+  # LLM server (Gemma 4 31B via llama-server)
+  llm:
+    base_url: "http://localhost:8080"
+    model: "gemma-4-31b"
+    timeout: 300.0
+
+  # Inference defaults (LH = analytical, precise)
+  inference:
+    temperature: 0.3
+    top_p: 0.90
+    max_tokens: 4096
+
+  # RAG (Retrieval-Augmented Generation)
+  rag:
+    enabled: true
+    db_dsn: "dbname=atlas user=claude"
+    embed_model: "BAAI/bge-m3"
+    embed_device: "cpu"
+    top_k: 6
+    score_threshold: 0.0
+
+  # Chain-of-thought tracing
+  enable_cot: true
+
+  # Port assignments (reference)
+  ports:
+    grpc: 50100
+    llm_backend: 8080
+    rag_server: 8081
+    nats: 4222
+    nats_monitor: 8222
