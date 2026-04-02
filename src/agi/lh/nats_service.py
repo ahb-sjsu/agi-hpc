@@ -46,12 +46,12 @@ try:
 except ImportError:
     yaml = None  # type: ignore
 
-from agi.common.event import Event
-from agi.core.events.nats_fabric import NatsEventFabric, NatsFabricConfig
-from agi.meta.llm.client import LLMClient, CompletionResult
-from agi.meta.llm.config import InferenceConfig, LH_PRESET
-from agi.meta.llm.templates import PromptTemplateRegistry
-from agi.lh.rag import RAGSearcher, RAGConfig, RAGResult
+from agi.common.event import Event  # noqa: E402
+from agi.core.events.nats_fabric import NatsEventFabric, NatsFabricConfig  # noqa: E402
+from agi.meta.llm.client import LLMClient, CompletionResult  # noqa: E402
+from agi.meta.llm.config import InferenceConfig, LH_PRESET  # noqa: E402
+from agi.meta.llm.templates import PromptTemplateRegistry  # noqa: E402
+from agi.lh.rag import RAGSearcher, RAGConfig, RAGResult  # noqa: E402
 
 
 # -----------------------------------------------------------------

@@ -70,7 +70,6 @@ except ImportError:
     JetStreamContext = None  # type: ignore
     StreamConfig = None  # type: ignore
 
-from agi.common.event import Event
 
 
 # ---------------------------------------------------------------------------

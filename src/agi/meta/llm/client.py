@@ -43,7 +43,7 @@ try:
 except ImportError:
     aiohttp = None  # type: ignore
 
-from agi.meta.llm.config import InferenceConfig
+from agi.meta.llm.config import InferenceConfig  # noqa: E402
 
 
 @dataclass
