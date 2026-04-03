@@ -9,30 +9,19 @@ Architecture:
 """
 
 import json
-import logging
 import os
 import re
-import time
 import numpy as np
 from pathlib import Path
 from flask import Flask, request, Response, send_from_directory, jsonify
 import requests
 import psycopg2
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
-log = logging.getLogger("atlas-rag")
-
 LH_URL = "http://localhost:8080"  # Gemma 4 31B - Left Hemisphere (analytical)
 RH_URL = "http://localhost:8082"  # Qwen 32B - Right Hemisphere (creative)
 DB_DSN = "dbname=atlas user=claude"
 STATIC_DIR = Path("/home/claude/atlas-chat")
 TOP_K = 6
-RRF_K = 60  # Reciprocal Rank Fusion constant (standard value)
-HYDE_TIMEOUT = 15  # seconds — Gemma 4 generates ~20 tok/s, so 256 tokens ~= 13s
-HYDE_ENABLED = True  # can be toggled at runtime via env var
 
 app = Flask(__name__)
 
@@ -41,51 +30,6 @@ print("Loading embedding model...")
 from sentence_transformers import SentenceTransformer
 embed_model = SentenceTransformer("BAAI/bge-m3", device="cpu")
 print("  Ready.")
-
-
-# ---------------------------------------------------------------------------
-# BM25 bootstrap — ensure tsv column and GIN index exist
-# ---------------------------------------------------------------------------
-def ensure_bm25_schema():
-    """Add tsvector column and GIN index to chunks table if missing."""
-    try:
-        conn = psycopg2.connect(DB_DSN)
-        conn.autocommit = True
-        with conn.cursor() as cur:
-            # Check if tsv column already exists
-            cur.execute("""
-                SELECT column_name FROM information_schema.columns
-                WHERE table_name = 'chunks' AND column_name = 'tsv'
-            """)
-            if cur.fetchone() is None:
-                log.info("Adding tsv column to chunks table...")
-                cur.execute("ALTER TABLE chunks ADD COLUMN tsv tsvector")
-                log.info("Populating tsv column (this may take a minute)...")
-                cur.execute("UPDATE chunks SET tsv = to_tsvector('english', content)")
-                log.info("Creating GIN index on tsv column...")
-                cur.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_chunks_tsv ON chunks USING GIN (tsv)"
-                )
-                log.info("BM25 schema setup complete.")
-            else:
-                # Ensure any rows with NULL tsv get populated (new rows since last run)
-                cur.execute(
-                    "UPDATE chunks SET tsv = to_tsvector('english', content) WHERE tsv IS NULL"
-                )
-                rows = cur.rowcount
-                if rows:
-                    log.info("Backfilled tsv for %d new chunks.", rows)
-                # Ensure index exists
-                cur.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_chunks_tsv ON chunks USING GIN (tsv)"
-                )
-                log.info("BM25 schema verified OK.")
-        conn.close()
-    except Exception as e:
-        log.error("BM25 schema setup failed: %s", e)
-
-
-ensure_bm25_schema()
 
 LH_SYSTEM = (
     "You are Atlas, an AI research assistant running locally on a workstation "
@@ -150,14 +94,8 @@ def classify_query(text):
     rh_score = sum(1 for kw in RH_KEYWORDS if kw in lower)
     both_score = sum(1 for kw in BOTH_KEYWORDS if kw in lower)
 
-    if both_score >= 1:
-        return "both"
-    elif rh_score > lh_score:
-        return "rh"
-    elif lh_score > rh_score:
-        return "lh"
-    else:
-        return "lh"  # Default to LH
+    # Always use both hemispheres -- they debate and synthesize
+    return "both"
 
 
 REPO_ALIASES = {
@@ -192,263 +130,51 @@ def detect_repo_filter(query):
     return None
 
 
-def hyde_generate(query):
-    """Generate a hypothetical document using HyDE via Gemma 4.
+def search(query, top_k=TOP_K):
+    """Search pgvector for relevant chunks, with repo boosting."""
+    q_emb = embed_model.encode([query], normalize_embeddings=True)[0]
+    emb_str = str(q_emb.tolist())
+    repo_filter = detect_repo_filter(query)
 
-    Returns the hypothetical text, or None on failure / timeout.
-    """
-    if not HYDE_ENABLED:
-        return None
-    try:
-        t0 = time.time()
-        resp = requests.post(
-            f"{LH_URL}/v1/chat/completions",
-            json={
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": (
-                            "You are a concise technical writer. Write a brief, "
-                            "factual paragraph that directly answers the question. "
-                            "Do not hedge or disclaim — just write the answer as if "
-                            "it were an excerpt from documentation."
-                        ),
-                    },
-                    {"role": "user", "content": query},
-                ],
-                "max_tokens": 128,
-                "temperature": 0.3,
-                "stream": False,
-            },
-            timeout=HYDE_TIMEOUT,
-        )
-        elapsed = time.time() - t0
-        result = resp.json()
-        content = (
-            result.get("choices", [{}])[0]
-            .get("message", {})
-            .get("content", "")
-        )
-        if not content:
-            # Gemma 4 sometimes puts output in reasoning_content
-            content = (
-                result.get("choices", [{}])[0]
-                .get("message", {})
-                .get("reasoning_content", "")
-            )
-        log.info("HyDE generated in %.2fs (%d chars)", elapsed, len(content))
-        return content if content else None
-    except requests.Timeout:
-        log.warning("HyDE timed out (>%ds), falling back to raw query", HYDE_TIMEOUT)
-        return None
-    except Exception as e:
-        log.warning("HyDE failed: %s — falling back to raw query", e)
-        return None
-
-
-def dense_search(embedding_str, top_k, repo_filter=None):
-    """Run dense vector search via pgvector. Returns list of (id, repo, file, text, rank)."""
-    results = []
     try:
         conn = psycopg2.connect(DB_DSN)
         with conn.cursor() as cur:
             if repo_filter:
+                # When user mentions a specific repo, search that repo first
                 cur.execute("""
-                    SELECT id, repo, file_path, content,
+                    SELECT repo, file_path, content,
                            1 - (embedding <=> %s::vector) AS score
                     FROM chunks
                     WHERE repo = %s
                     ORDER BY embedding <=> %s::vector
                     LIMIT %s
-                """, (embedding_str, repo_filter, embedding_str, top_k))
-            else:
-                cur.execute("""
-                    SELECT id, repo, file_path, content,
-                           1 - (embedding <=> %s::vector) AS score
-                    FROM chunks
-                    ORDER BY embedding <=> %s::vector
-                    LIMIT %s
-                """, (embedding_str, embedding_str, top_k))
-            for rank, row in enumerate(cur.fetchall(), start=1):
-                results.append({
-                    "id": row[0], "repo": row[1], "file": row[2],
-                    "text": row[3], "dense_score": float(row[4]), "rank": rank,
-                })
+                """, (emb_str, repo_filter, emb_str, top_k))
+                results = [
+                    {"repo": r[0], "file": r[1], "text": r[2], "score": float(r[3])}
+                    for r in cur.fetchall()
+                ]
+                # If we got enough results from the target repo, use them
+                if len(results) >= 3:
+                    conn.close()
+                    return results
+                # Otherwise fall through to global search
+
+            cur.execute("""
+                SELECT repo, file_path, content,
+                       1 - (embedding <=> %s::vector) AS score
+                FROM chunks
+                ORDER BY embedding <=> %s::vector
+                LIMIT %s
+            """, (emb_str, emb_str, top_k))
+            results = [
+                {"repo": r[0], "file": r[1], "text": r[2], "score": float(r[3])}
+                for r in cur.fetchall()
+            ]
         conn.close()
-    except Exception as e:
-        log.error("Dense search error: %s", e)
-    return results
-
-
-def _build_or_tsquery(query):
-    """Build an OR-based tsquery string from natural language.
-
-    plainto_tsquery uses AND between words, which is too strict for search.
-    We want OR so partial matches surface and ts_rank_cd sorts by relevance.
-    """
-    # Strip non-alphanumeric, split into words, filter stopwords via to_tsquery
-    words = re.findall(r'[a-zA-Z0-9_-]+', query)
-    # Filter out very short words (likely stopwords)
-    words = [w for w in words if len(w) > 2]
-    if not words:
-        return None
-    # Build OR-joined tsquery: 'word1' | 'word2' | ...
-    return " | ".join(f"'{w}'" for w in words)
-
-
-def bm25_search(query, top_k, repo_filter=None):
-    """Run BM25 full-text search via PostgreSQL tsvector with OR matching."""
-    results = []
-    or_tsquery = _build_or_tsquery(query)
-    if not or_tsquery:
         return results
-    try:
-        conn = psycopg2.connect(DB_DSN)
-        with conn.cursor() as cur:
-            # Use to_tsquery with OR-joined terms for partial matching
-            # ts_rank_cd ranks by how many terms match and their coverage
-            if repo_filter:
-                cur.execute("""
-                    SELECT id, repo, file_path, content,
-                           ts_rank_cd(tsv, to_tsquery('english', %s)) AS score
-                    FROM chunks
-                    WHERE tsv @@ to_tsquery('english', %s) AND repo = %s
-                    ORDER BY score DESC
-                    LIMIT %s
-                """, (or_tsquery, or_tsquery, repo_filter, top_k))
-            else:
-                cur.execute("""
-                    SELECT id, repo, file_path, content,
-                           ts_rank_cd(tsv, to_tsquery('english', %s)) AS score
-                    FROM chunks
-                    WHERE tsv @@ to_tsquery('english', %s)
-                    ORDER BY score DESC
-                    LIMIT %s
-                """, (or_tsquery, or_tsquery, top_k))
-            for rank, row in enumerate(cur.fetchall(), start=1):
-                results.append({
-                    "id": row[0], "repo": row[1], "file": row[2],
-                    "text": row[3], "bm25_score": float(row[4]), "rank": rank,
-                })
-        conn.close()
     except Exception as e:
-        log.error("BM25 search error: %s", e)
-    return results
-
-
-def reciprocal_rank_fusion(dense_results, bm25_results, k=RRF_K):
-    """Merge two ranked lists using Reciprocal Rank Fusion.
-
-    score(doc) = sum over lists L: 1 / (k + rank_in_L)
-    """
-    scores = {}   # id -> rrf_score
-    docs = {}     # id -> doc dict
-
-    for r in dense_results:
-        rid = r["id"]
-        scores[rid] = scores.get(rid, 0.0) + 1.0 / (k + r["rank"])
-        if rid not in docs:
-            docs[rid] = {
-                "id": rid, "repo": r["repo"], "file": r["file"],
-                "text": r["text"],
-            }
-        docs[rid]["dense_score"] = r.get("dense_score", 0.0)
-        docs[rid]["dense_rank"] = r["rank"]
-
-    for r in bm25_results:
-        rid = r["id"]
-        scores[rid] = scores.get(rid, 0.0) + 1.0 / (k + r["rank"])
-        if rid not in docs:
-            docs[rid] = {
-                "id": rid, "repo": r["repo"], "file": r["file"],
-                "text": r["text"],
-            }
-        docs[rid]["bm25_score"] = r.get("bm25_score", 0.0)
-        docs[rid]["bm25_rank"] = r["rank"]
-
-    # Sort by fused score descending
-    ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-    results = []
-    for rid, fused in ranked:
-        doc = docs[rid]
-        doc["score"] = fused
-        results.append(doc)
-    return results
-
-
-def search(query, top_k=TOP_K):
-    """Hybrid search: HyDE + Dense + BM25 with Reciprocal Rank Fusion."""
-    repo_filter = detect_repo_filter(query)
-    timings = {}
-
-    # --- HyDE: generate hypothetical document and embed it ----
-    t0 = time.time()
-    hyde_text = hyde_generate(query)
-    timings["hyde_gen"] = time.time() - t0
-
-    t0 = time.time()
-    if hyde_text:
-        emb_input = hyde_text
-        log.info("Using HyDE embedding (hypothetical doc)")
-    else:
-        emb_input = query
-        log.info("Using raw query embedding (HyDE skipped)")
-    q_emb = embed_model.encode([emb_input], normalize_embeddings=True)[0]
-    emb_str = str(q_emb.tolist())
-    timings["embed"] = time.time() - t0
-
-    # --- Dense vector search ---
-    # Fetch more candidates so RRF has material to work with
-    fetch_k = top_k * 3
-    t0 = time.time()
-    dense_results = dense_search(emb_str, fetch_k, repo_filter)
-    timings["dense"] = time.time() - t0
-
-    # --- BM25 text search (always on the raw query text) ---
-    t0 = time.time()
-    bm25_results = bm25_search(query, fetch_k, repo_filter)
-    timings["bm25"] = time.time() - t0
-
-    # --- Fallback: if repo-filtered search returned too few, search globally ---
-    if repo_filter and len(dense_results) + len(bm25_results) < 3:
-        log.info("Repo-filtered search too sparse (%d results), falling back to global",
-                 len(dense_results) + len(bm25_results))
-        t0 = time.time()
-        dense_results = dense_search(emb_str, fetch_k, repo_filter=None)
-        timings["dense_fallback"] = time.time() - t0
-        t0 = time.time()
-        bm25_results = bm25_search(query, fetch_k, repo_filter=None)
-        timings["bm25_fallback"] = time.time() - t0
-
-    # --- Reciprocal Rank Fusion ---
-    t0 = time.time()
-    fused = reciprocal_rank_fusion(dense_results, bm25_results)
-    timings["rrf"] = time.time() - t0
-
-    # --- Repo boost: if a repo was mentioned, boost matching results ---
-    if repo_filter:
-        for doc in fused:
-            if doc["repo"] == repo_filter:
-                doc["score"] *= 1.5  # boost matches from mentioned repo
-        fused.sort(key=lambda d: d["score"], reverse=True)
-
-    results = fused[:top_k]
-
-    log.info(
-        "Hybrid search: dense=%d bm25=%d fused=%d top_k=%d | "
-        "timings: hyde=%.2fs embed=%.2fs dense=%.2fs bm25=%.2fs rrf=%.3fs",
-        len(dense_results), len(bm25_results), len(fused), len(results),
-        timings.get("hyde_gen", 0), timings["embed"],
-        timings["dense"], timings["bm25"], timings["rrf"],
-    )
-    for i, r in enumerate(results[:3]):
-        log.info(
-            "  #%d [%.4f] %s/%s  dense_rank=%s bm25_rank=%s",
-            i + 1, r["score"], r["repo"], r["file"],
-            r.get("dense_rank", "-"), r.get("bm25_rank", "-"),
-        )
-
-    return results
+        print(f"RAG search error: {e}")
+        return []
 
 
 def inject_context(messages, hemisphere):
@@ -536,8 +262,9 @@ def chat_completions():
     data["messages"], hemisphere = inject_context(data.get("messages", []), hemisphere)
 
     if hemisphere == "both":
-        # Debate mode: hemispheres take turns arguing
+        # Full 4-round debate: parallel opening -> challenge -> rebuttal -> captain's call
         import json as _json
+        import concurrent.futures
 
         user_query = ""
         for m in reversed(data.get("messages", [])):
@@ -548,42 +275,82 @@ def chat_completions():
         base_msgs = data["messages"]
         debate = []
 
-        # Round 1: Spock opens with analytical take
+        # Round 1: Both answer in parallel
         spock_msgs = list(base_msgs) + [
-            {"role": "user", "content": f"Give your analytical perspective on: {user_query}"}
+            {"role": "user", "content": f"Answer concisely and precisely: {user_query}"}
         ]
-        spock_1 = call_hemisphere(LH_URL, {**data, "messages": spock_msgs, "max_tokens": 512})
-        debate.append(f"**Spock (Analytical):**\n{spock_1}")
-
-        # Round 2: Kirk counters with creative take
         kirk_msgs = [
             {"role": "system", "content": RH_SYSTEM},
         ] + [m for m in base_msgs if m.get("role") != "system"] + [
-            {"role": "user", "content": f"The question was: {user_query}\n\nSpock's analytical take:\n{spock_1}\n\nWhat's your creative counterpoint? Where is Spock being too narrow or missing the bigger picture?"}
+            {"role": "user", "content": f"Answer with creativity and insight: {user_query}"}
         ]
-        kirk_1 = call_hemisphere(RH_URL, {**data, "messages": kirk_msgs, "max_tokens": 512})
-        debate.append(f"**Kirk (Creative):**\n{kirk_1}")
 
-        # Round 3: Spock rebuts
-        spock_msgs_2 = list(base_msgs) + [
-            {"role": "user", "content": f"You said:\n{spock_1}\n\nKirk countered with:\n{kirk_1}\n\nAddress Kirk's points. Where is he right, and where does the evidence disagree?"}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
+            spock_future = ex.submit(call_hemisphere, LH_URL, {**data, "messages": spock_msgs, "max_tokens": 512})
+            kirk_future = ex.submit(call_hemisphere, RH_URL, {**data, "messages": kirk_msgs, "max_tokens": 512})
+            spock_1 = spock_future.result()
+            kirk_1 = kirk_future.result()
+
+        debate.append(f"**Spock (Opening):**\n{spock_1}")
+        debate.append(f"**Kirk (Opening):**\n{kirk_1}")
+
+        # Round 2: Each challenges the other
+        spock_challenge_msgs = list(base_msgs) + [
+            {"role": "user", "content": (
+                f"You said:\n{spock_1}\n\n"
+                f"Kirk countered:\n{kirk_1}\n\n"
+                "Challenge Kirk's reasoning. Where is he wrong, imprecise, or unsupported by evidence? Be direct."
+            )}
         ]
-        spock_2 = call_hemisphere(LH_URL, {**data, "messages": spock_msgs_2, "max_tokens": 512})
-        debate.append(f"**Spock (Rebuttal):**\n{spock_2}")
-
-        # Round 4: Kirk synthesizes
-        kirk_msgs_2 = [
+        kirk_challenge_msgs = [
             {"role": "system", "content": RH_SYSTEM},
         ] + [m for m in base_msgs if m.get("role") != "system"] + [
-            {"role": "user", "content": f"The debate so far:\n\nSpock: {spock_1}\n\nYou: {kirk_1}\n\nSpock's rebuttal: {spock_2}\n\nSynthesize the best insights from both perspectives. What's the bottom line?"}
+            {"role": "user", "content": (
+                f"You said:\n{kirk_1}\n\n"
+                f"Spock's take:\n{spock_1}\n\n"
+                "Challenge Spock's reasoning. Where is he too narrow, missing the bigger picture, or ignoring the human element? Be bold."
+            )}
         ]
-        kirk_2 = call_hemisphere(RH_URL, {**data, "messages": kirk_msgs_2, "max_tokens": 512})
-        debate.append(f"**Kirk (Synthesis):**\n{kirk_2}")
 
-        merged = "\n\n---\n\n".join(debate)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
+            spock_ch_future = ex.submit(call_hemisphere, LH_URL, {**data, "messages": spock_challenge_msgs, "max_tokens": 384})
+            kirk_ch_future = ex.submit(call_hemisphere, RH_URL, {**data, "messages": kirk_challenge_msgs, "max_tokens": 384})
+            spock_2 = spock_ch_future.result()
+            kirk_2 = kirk_ch_future.result()
+
+        debate.append(f"**Spock (Challenge):**\n{spock_2}")
+        debate.append(f"**Kirk (Challenge):**\n{kirk_2}")
+
+        # Round 3: Kirk makes the captain's call
+        captain_msgs = [
+            {"role": "system", "content": RH_SYSTEM},
+        ] + [m for m in base_msgs if m.get("role") != "system"] + [
+            {"role": "user", "content": (
+                f"The user asked: {user_query}\n\n"
+                f"The debate:\n"
+                f"Spock opened: {spock_1}\n"
+                f"You opened: {kirk_1}\n"
+                f"Spock challenged you: {spock_2}\n"
+                f"You challenged Spock: {kirk_2}\n\n"
+                "Give a clear, direct answer to the user's question. Incorporate the strongest "
+                "points from both perspectives naturally -- don't label them as 'Spock said' or 'Kirk said', "
+                "don't use words like 'verdict' or 'synthesis' or 'debate'. Just answer the question "
+                "as if you thought of it yourself. Be concise and authoritative."
+            )}
+        ]
+        final = call_hemisphere(RH_URL, {**data, "messages": captain_msgs, "max_tokens": 1024})
+
+        # Build debate log
+        debate_log = "\n\n---\n\n".join(debate)
+
+        output = (
+            f"{final}\n\n"
+            f"<details class=\"think\"><summary>Hemisphere Debate (4 rounds)</summary>"
+            f"<div class=\"think-content\">\n\n{debate_log}\n\n</div></details>"
+        )
 
         resp_json = {
-            "choices": [{"message": {"role": "assistant", "content": merged}, "finish_reason": "stop"}],
+            "choices": [{"message": {"role": "assistant", "content": output}, "finish_reason": "stop"}],
             "model": "atlas-debate",
         }
         return Response(_json.dumps(resp_json), content_type="application/json")
@@ -768,6 +535,103 @@ def telemetry():
                     "used_gb": round(int(parts[2]) / 1073741824, 1),
                     "available_gb": round(int(parts[6]) / 1073741824, 1),
                 }
+    except Exception:
+        pass
+
+    # Jobs: list tmux sessions with process info
+    data["jobs"] = []
+    try:
+        result = subprocess.run(
+            ["tmux", "ls"], capture_output=True, text=True, timeout=5,
+        )
+        for line in result.stdout.strip().split("\n"):
+            if ":" not in line:
+                continue
+            name = line.split(":")[0].strip()
+            # Get the process running in this tmux session
+            proc_result = subprocess.run(
+                ["tmux", "list-panes", "-t", name, "-F", "#{pane_pid}"],
+                capture_output=True, text=True, timeout=3,
+            )
+            pid = proc_result.stdout.strip()
+            job = {"name": name, "status": "running", "pid": pid, "cpu": "", "mem": "", "gpu": None, "elapsed": ""}
+
+            if pid:
+                # Get child process info (the actual command, not bash)
+                ps_result = subprocess.run(
+                    ["ps", "--ppid", pid, "-o", "pid,pcpu,rss,etime,comm", "--no-headers"],
+                    capture_output=True, text=True, timeout=3,
+                )
+                children = ps_result.stdout.strip().split("\n")
+                if children and children[0]:
+                    parts = children[0].split()
+                    if len(parts) >= 5:
+                        job["pid"] = parts[0]
+                        job["cpu"] = parts[1] + "%"
+                        job["mem"] = str(round(int(parts[2]) / 1024)) + "MB"
+                        job["elapsed"] = parts[3]
+                        job["command"] = parts[4]
+
+            # Map jobs to GPU
+            if name == "spock":
+                job["gpu"] = 0
+                job["description"] = "LH: Gemma 4 31B"
+            elif name == "kirk":
+                job["gpu"] = 1
+                job["description"] = "RH: Qwen 3 32B"
+            elif name == "nats":
+                job["description"] = "NATS JetStream"
+            elif name == "rag":
+                job["description"] = "RAG Server (Hybrid + HyDE)"
+            elif name == "caddy":
+                job["description"] = "HTTPS / Let's Encrypt"
+            elif name == "oauth2":
+                job["description"] = "Google OAuth"
+            elif name == "safety":
+                job["description"] = "Safety Gateway (DEME)"
+            elif name == "memory":
+                job["description"] = "Memory Service"
+            elif name == "portal":
+                job["description"] = "Research Portal"
+            elif name.startswith("dl-"):
+                job["description"] = f"Download: {name[3:]}"
+            elif name.startswith("load-"):
+                job["description"] = f"Loading: {name[5:]}"
+            elif name == "indexer":
+                job["description"] = "RAG Indexer (BGE-M3)"
+            elif name == "train":
+                job["description"] = "Nemotron Training"
+                job["gpu"] = 1
+            elif name == "ethics-embed":
+                job["description"] = "Ethics Corpus Embeddings"
+            else:
+                job["description"] = name
+
+            data["jobs"].append(job)
+    except Exception:
+        pass
+
+    # Publications count
+    try:
+        conn = psycopg2.connect(DB_DSN)
+        with conn.cursor() as cur:
+            try:
+                cur.execute("SELECT COUNT(*) FROM publications")
+                data["memory"]["publications"] = cur.fetchone()[0]
+            except Exception:
+                conn.rollback()
+        conn.close()
+    except Exception:
+        pass
+
+    # Disk usage for archive
+    try:
+        result = subprocess.run(
+            ["du", "-s", "--block-size=1G", "/archive/"],
+            capture_output=True, text=True, timeout=10,
+        )
+        if result.stdout:
+            data["environment"]["archive_gb"] = int(result.stdout.split()[0])
     except Exception:
         pass
 

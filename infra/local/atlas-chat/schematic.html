@@ -3,337 +3,932 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Atlas AGI-HPC — Architecture</title>
+<title>Atlas AGI-HPC — Operations Dashboard</title>
 <style>
+/* ───────────────────────── Reset & Base ───────────────────────── */
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a0e17;color:#e0e6f0;min-height:100vh;overflow-x:hidden}
-.header{display:flex;align-items:center;gap:16px;padding:12px 24px;border-bottom:1px solid #2a3555;background:#131a2b}
-.header h1{font-size:20px;background:linear-gradient(135deg,#4a9eff,#7cc4ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.header .sub{font-size:12px;color:#7a8ba8;margin-left:8px}
-.nav{margin-left:auto;display:flex;gap:12px}
-.nav a{color:#7a8ba8;text-decoration:none;font-size:13px;padding:6px 14px;border-radius:8px;transition:all .2s}
-.nav a:hover,.nav a.active{color:#4a9eff;background:rgba(74,158,255,0.1)}
-.canvas{position:relative;width:100%;height:calc(100vh - 56px);overflow:hidden}
+:root{
+  --bg:#0a0e17;--surface:#131a2b;--surface2:#1a2240;--border:#2a3555;
+  --accent:#4a9eff;--accent-dim:rgba(74,158,255,0.15);
+  --text:#e0e6f0;--text-dim:#7a8ba8;--text-muted:#4a5568;
+  --green:#4ade80;--yellow:#f59e0b;--red:#f87171;--orange:#fb923c;
+  --green-dim:rgba(74,222,128,0.15);--yellow-dim:rgba(245,158,11,0.15);--red-dim:rgba(248,113,113,0.15);
+  --mono:'Cascadia Code','Fira Code','JetBrains Mono',monospace;
+}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 
-/* Subsystem nodes */
-.node{position:absolute;border-radius:12px;padding:12px 16px;min-width:180px;cursor:default;transition:all .3s;z-index:2}
-.node:hover{transform:scale(1.05);z-index:10}
-.node .name{font-size:13px;font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:6px}
-.node .metrics{font-size:11px;color:#7a8ba8;line-height:1.6}
-.node .metrics .val{color:#e0e6f0;font-family:'Cascadia Code',monospace}
-.node .status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.node .status-dot.on{background:#4ade80;box-shadow:0 0 6px rgba(74,222,128,0.5)}
-.node .status-dot.off{background:#6b7280}
-.node .status-dot.planned{background:#f59e0b;animation:blink 2s infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+/* ───────────────────────── Top Bar ───────────────────────── */
+.topbar{
+  display:flex;align-items:center;gap:16px;padding:10px 24px;
+  border-bottom:1px solid var(--border);background:var(--surface);
+  position:sticky;top:0;z-index:100;
+}
+.topbar .logo{display:flex;align-items:center;gap:10px}
+.topbar .logo svg{width:28px;height:28px;flex-shrink:0}
+.topbar .logo h1{font-size:17px;font-weight:700;background:linear-gradient(135deg,var(--accent),#7cc4ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;white-space:nowrap}
+.topbar .logo .subtitle{font-size:11px;color:var(--text-dim);white-space:nowrap;margin-left:4px}
+.topbar .nav{margin-left:auto;display:flex;align-items:center;gap:8px}
+.topbar .nav a{color:var(--text-dim);text-decoration:none;font-size:12px;padding:5px 12px;border-radius:6px;transition:all .2s;white-space:nowrap}
+.topbar .nav a:hover,.topbar .nav a.active{color:var(--accent);background:var(--accent-dim)}
+.topbar .uptime{font-size:11px;color:var(--text-dim);font-family:var(--mono);white-space:nowrap;margin-left:8px}
+.topbar .uptime span{color:var(--green)}
+.topbar .conn-status{width:7px;height:7px;border-radius:50%;margin-left:8px;flex-shrink:0;transition:background .3s}
+.topbar .conn-status.ok{background:var(--green);box-shadow:0 0 6px rgba(74,222,128,0.5)}
+.topbar .conn-status.err{background:var(--red);box-shadow:0 0 6px rgba(248,113,113,0.5)}
 
-.node.active{border:1px solid #4a9eff;background:linear-gradient(135deg,#131a2b,#1a2340);box-shadow:0 0 20px rgba(74,158,255,0.15)}
-.node.planned{border:1px dashed #6b7280;background:#0f1520;opacity:.7}
-.node.core{border:1px solid #f59e0b;background:linear-gradient(135deg,#1a1800,#201d10);box-shadow:0 0 15px rgba(245,158,11,0.1)}
+/* ───────────────────────── Main Grid ───────────────────────── */
+.dashboard{
+  display:grid;
+  grid-template-columns:280px 1fr 300px;
+  grid-template-rows:1fr auto;
+  gap:0;
+  height:calc(100vh - 45px);
+}
+.col-left{grid-column:1;grid-row:1;overflow-y:auto;border-right:1px solid var(--border);padding:12px}
+.col-center{grid-column:2;grid-row:1;overflow-y:auto;padding:16px}
+.col-right{grid-column:3;grid-row:1;overflow-y:auto;border-left:1px solid var(--border);padding:12px}
+.bottom-bar{grid-column:1/4;grid-row:2;border-top:1px solid var(--border);background:var(--surface);padding:8px 24px;display:flex;align-items:center;gap:20px;font-size:11px;color:var(--text-dim);flex-wrap:wrap}
+.bottom-bar .stat{display:flex;align-items:center;gap:5px}
+.bottom-bar .stat .val{color:var(--text);font-family:var(--mono);font-size:11px}
+.bottom-bar .spacer{margin-left:auto}
 
-/* Connection lines (SVG overlay) */
-.connections{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;pointer-events:none}
-.conn-line{stroke:#2a3555;stroke-width:1.5;fill:none}
-.conn-line.active{stroke:#4a9eff;stroke-width:2;opacity:.6}
-.conn-pulse{fill:#4a9eff;opacity:0}
-.conn-pulse.active{animation:flowPulse 3s infinite}
-@keyframes flowPulse{0%{opacity:0;offset-distance:0%}10%{opacity:.8}90%{opacity:.8}100%{opacity:0;offset-distance:100%}}
+/* ───────────────────────── Section Headers ───────────────────────── */
+.section-header{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-dim);margin:12px 0 8px;padding-left:4px}
+.section-header:first-child{margin-top:0}
 
-/* Central bus */
-.bus{position:absolute;border:2px solid #f59e0b;border-radius:16px;background:rgba(245,158,11,0.05);z-index:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#f59e0b;letter-spacing:1px}
+/* ───────────────────────── Subsystem Cards (Left) ───────────────────────── */
+.sub-card{
+  border-radius:8px;padding:10px 12px;margin-bottom:6px;cursor:default;
+  transition:all .3s ease;position:relative;overflow:hidden;
+}
+.sub-card.active{border:1px solid var(--accent);background:linear-gradient(135deg,var(--surface),var(--surface2))}
+.sub-card.degraded{border:1px solid var(--yellow);background:linear-gradient(135deg,var(--surface),#1f1d10)}
+.sub-card.planned{border:1px dashed var(--text-muted);background:var(--surface);opacity:.65}
+.sub-card.core{border:1px solid var(--yellow);background:linear-gradient(135deg,var(--surface),#1a1800)}
+.sub-card:hover{transform:translateX(3px)}
+.sub-card .card-header{display:flex;align-items:center;gap:7px;margin-bottom:4px}
+.sub-card .card-header .name{font-size:12px;font-weight:600}
+.sub-card .card-header .model-tag{font-size:9px;color:var(--accent);background:var(--accent-dim);padding:1px 6px;border-radius:4px;margin-left:auto;font-family:var(--mono)}
+.sub-card .card-metric{font-size:10px;color:var(--text-dim);font-family:var(--mono)}
+.sub-card .card-metric .val{color:var(--text)}
+.status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;display:inline-block}
+.status-dot.on{background:var(--green);box-shadow:0 0 6px rgba(74,222,128,0.5)}
+.status-dot.degraded{background:var(--yellow);box-shadow:0 0 6px rgba(245,158,11,0.5)}
+.status-dot.off{background:var(--text-muted)}
 
-/* Bottom stats bar */
-.stats-bar{position:absolute;bottom:0;left:0;right:0;padding:10px 24px;background:#131a2b;border-top:1px solid #2a3555;display:flex;gap:24px;font-size:11px;color:#7a8ba8;z-index:5}
-.stats-bar .stat{display:flex;align-items:center;gap:6px}
-.stats-bar .stat .val{color:#e0e6f0;font-family:'Cascadia Code',monospace}
+/* Pulse glow on active hemispheres */
+@keyframes pulseGlow{
+  0%,100%{box-shadow:0 0 8px rgba(74,158,255,0.2),inset 0 0 4px rgba(74,158,255,0.05)}
+  50%{box-shadow:0 0 20px rgba(74,158,255,0.45),inset 0 0 8px rgba(74,158,255,0.1)}
+}
+.sub-card.processing{animation:pulseGlow 2s ease-in-out infinite}
 
-/* Legend */
-.legend{position:absolute;top:70px;right:20px;background:#131a2b;border:1px solid #2a3555;border-radius:10px;padding:12px 16px;font-size:11px;z-index:5}
-.legend div{display:flex;align-items:center;gap:8px;margin:4px 0}
+/* ───────────────────────── Center: Metrics ───────────────────────── */
+.metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.metric-panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px}
+.metric-panel.full{grid-column:1/3}
+.metric-panel .panel-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--text-dim);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.metric-panel .panel-title .icon{font-size:13px}
+
+/* GPU Gauges */
+.gpu-row{display:flex;gap:24px;justify-content:center;flex-wrap:wrap}
+.gpu-gauge{text-align:center;flex:1;min-width:200px;max-width:280px}
+.gpu-gauge .gauge-label{font-size:11px;color:var(--text-dim);margin-bottom:8px;font-weight:600}
+.gpu-gauge .gauge-pair{display:flex;gap:16px;justify-content:center;margin-bottom:8px}
+.gauge-svg{width:90px;height:90px}
+.gauge-bg{fill:none;stroke:var(--border);stroke-width:6}
+.gauge-fg{fill:none;stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset .8s ease,stroke .5s ease}
+.gauge-text{font-family:var(--mono);font-size:16px;font-weight:700;fill:var(--text);text-anchor:middle;dominant-baseline:central}
+.gauge-sub{font-family:var(--mono);font-size:7px;fill:var(--text-dim);text-anchor:middle}
+/* VRAM bar */
+.vram-bar-container{margin-top:6px}
+.vram-bar-label{font-size:9px;color:var(--text-dim);display:flex;justify-content:space-between;margin-bottom:3px}
+.vram-bar{height:8px;background:var(--border);border-radius:4px;overflow:hidden}
+.vram-bar-fill{height:100%;border-radius:4px;transition:width .8s ease,background .5s ease}
+
+/* CPU temp bars */
+.cpu-bars{display:flex;flex-direction:column;gap:8px}
+.cpu-bar-row{display:flex;align-items:center;gap:8px}
+.cpu-bar-row .label{font-size:10px;color:var(--text-dim);width:50px;flex-shrink:0}
+.cpu-bar-row .bar-wrap{flex:1;height:10px;background:var(--border);border-radius:5px;overflow:hidden}
+.cpu-bar-row .bar-fill{height:100%;border-radius:5px;transition:width .8s ease,background .5s ease}
+.cpu-bar-row .temp-val{font-size:11px;font-family:var(--mono);width:42px;text-align:right}
+
+/* RAM bar */
+.ram-row{display:flex;align-items:center;gap:10px;margin-top:8px}
+.ram-row .label{font-size:10px;color:var(--text-dim);width:34px;flex-shrink:0}
+.ram-row .bar-wrap{flex:1;height:12px;background:var(--border);border-radius:6px;overflow:hidden}
+.ram-row .bar-fill{height:100%;border-radius:6px;transition:width .8s ease}
+.ram-row .ram-val{font-size:11px;font-family:var(--mono);white-space:nowrap}
+
+/* Sparkline */
+.sparkline-wrap{width:100%;height:80px;position:relative}
+.sparkline-svg{width:100%;height:100%}
+.sparkline-line{fill:none;stroke:var(--accent);stroke-width:1.5}
+.sparkline-area{fill:url(#sparkGrad);opacity:.3}
+.sparkline-stats{display:flex;justify-content:space-between;margin-top:4px}
+.sparkline-stats .ss{font-size:10px;color:var(--text-dim);font-family:var(--mono)}
+.sparkline-stats .ss span{color:var(--text)}
+
+/* Memory tiers */
+.mem-tier{margin-bottom:8px}
+.mem-tier-label{display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px}
+.mem-tier-label .tier-name{color:var(--text-dim)}
+.mem-tier-label .tier-val{color:var(--text);font-family:var(--mono)}
+.mem-tier-bar{height:8px;background:var(--border);border-radius:4px;overflow:hidden}
+.mem-tier-bar .fill{height:100%;border-radius:4px;transition:width .8s ease}
+
+/* ───────────────────────── Right: Activity Feed ───────────────────────── */
+.feed-list{list-style:none;max-height:320px;overflow-y:auto}
+.feed-item{padding:6px 8px;border-bottom:1px solid rgba(42,53,85,0.5);font-size:10px;display:flex;gap:6px;align-items:flex-start}
+.feed-item .feed-time{color:var(--text-muted);font-family:var(--mono);flex-shrink:0;width:48px}
+.feed-item .feed-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.feed-item .feed-msg{color:var(--text-dim);line-height:1.4}
+.feed-item .feed-msg strong{color:var(--text);font-weight:600}
+.feed-item.new{animation:feedSlideIn .3s ease}
+@keyframes feedSlideIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+
+/* Jobs */
+.job-card{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;margin-bottom:6px}
+.job-card .job-name{font-size:11px;font-weight:600;display:flex;align-items:center;gap:6px}
+.job-card .job-detail{font-size:9px;color:var(--text-dim);font-family:var(--mono);margin-top:3px}
+.job-card .job-name .running-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:runPulse 1.5s infinite}
+@keyframes runPulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Hemisphere activity */
+.hemi-activity{display:flex;gap:8px;margin-top:8px}
+.hemi-chip{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px;text-align:center}
+.hemi-chip .hemi-label{font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.hemi-chip .hemi-status{font-size:11px;font-family:var(--mono);font-weight:600}
+.hemi-chip.busy{border-color:var(--accent);background:var(--accent-dim)}
+.hemi-chip.busy .hemi-status{color:var(--accent)}
+.hemi-chip.idle .hemi-status{color:var(--text-muted)}
+
+/* ───────────────────────── Responsive ───────────────────────── */
+@media(max-width:1100px){
+  .dashboard{grid-template-columns:1fr;grid-template-rows:auto auto auto auto}
+  .col-left{grid-column:1;grid-row:1;border-right:none;border-bottom:1px solid var(--border);overflow-y:visible;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:4px}
+  .col-left .section-header{grid-column:1/-1}
+  .col-center{grid-column:1;grid-row:2;border:none}
+  .col-right{grid-column:1;grid-row:3;border-left:none;border-top:1px solid var(--border)}
+  .bottom-bar{grid-column:1;grid-row:4}
+}
+@media(max-width:700px){
+  .metrics-grid{grid-template-columns:1fr}
+  .metric-panel.full{grid-column:1}
+  .topbar .logo .subtitle{display:none}
+  .gpu-row{flex-direction:column;align-items:center}
+}
 </style>
 </head>
 <body>
 
-<div class="header">
-  <h1>Atlas AGI-HPC</h1>
-  <span class="sub">Cognitive Architecture — Live Telemetry</span>
+<!-- ═══════════════════ TOP BAR ═══════════════════ -->
+<div class="topbar">
+  <div class="logo">
+    <svg viewBox="0 0 32 32" fill="none">
+      <circle cx="16" cy="16" r="14" stroke="#4a9eff" stroke-width="1.5" opacity=".3"/>
+      <circle cx="16" cy="16" r="9" stroke="#4a9eff" stroke-width="1.5" opacity=".6"/>
+      <circle cx="16" cy="16" r="4" fill="#4a9eff" opacity=".9"/>
+      <line x1="16" y1="2" x2="16" y2="7" stroke="#4a9eff" stroke-width="1" opacity=".4"/>
+      <line x1="16" y1="25" x2="16" y2="30" stroke="#4a9eff" stroke-width="1" opacity=".4"/>
+      <line x1="2" y1="16" x2="7" y2="16" stroke="#4a9eff" stroke-width="1" opacity=".4"/>
+      <line x1="25" y1="16" x2="30" y2="16" stroke="#4a9eff" stroke-width="1" opacity=".4"/>
+    </svg>
+    <h1>Atlas AGI-HPC</h1>
+    <span class="subtitle">Operations Dashboard</span>
+  </div>
   <div class="nav">
     <a href="/">Chat</a>
     <a href="/schematic.html" class="active">Architecture</a>
+    <a href="/oauth2/sign_out">Logout</a>
+  </div>
+  <div class="uptime">UPTIME <span id="sys-uptime">--:--:--</span></div>
+  <div class="conn-status ok" id="conn-dot" title="Telemetry connection"></div>
+</div>
+
+<!-- ═══════════════════ DASHBOARD GRID ═══════════════════ -->
+<div class="dashboard">
+
+<!-- ─────────────── LEFT COLUMN: Subsystem Status ─────────────── -->
+<div class="col-left">
+  <div class="section-header">Subsystem Status</div>
+
+  <div class="sub-card planned" id="sc-fabric">
+    <div class="card-header"><span class="status-dot off"></span><span class="name">Event Fabric</span></div>
+    <div class="card-metric"><span class="val" id="fabric-metric">--</span></div>
+  </div>
+
+  <div class="sub-card active" id="sc-lh">
+    <div class="card-header"><span class="status-dot on"></span><span class="name">Left Hemisphere</span><span class="model-tag" id="lh-model">--</span></div>
+    <div class="card-metric"><span id="lh-role">--</span> | Slots: <span class="val" id="lh-slots">-</span></div>
+  </div>
+
+  <div class="sub-card active" id="sc-rh">
+    <div class="card-header"><span class="status-dot on"></span><span class="name">Right Hemisphere</span><span class="model-tag" id="rh-model">--</span></div>
+    <div class="card-metric"><span id="rh-role">--</span> | Slots: <span class="val" id="rh-slots">-</span></div>
+  </div>
+
+  <div class="sub-card active" id="sc-memory">
+    <div class="card-header"><span class="status-dot on"></span><span class="name">Memory</span></div>
+    <div class="card-metric"><span class="val" id="mem-summary">--</span></div>
+  </div>
+
+  <div class="sub-card planned" id="sc-safety">
+    <div class="card-header"><span class="status-dot off"></span><span class="name">Safety Gateway</span></div>
+    <div class="card-metric">Vetoes: <span class="val" id="safety-vetoes">0</span></div>
+  </div>
+
+  <div class="sub-card planned" id="sc-meta">
+    <div class="card-header"><span class="status-dot off"></span><span class="name">Metacognition</span></div>
+    <div class="card-metric"><span class="val">Planned</span></div>
+  </div>
+
+  <div class="sub-card active" id="sc-env">
+    <div class="card-header"><span class="status-dot on"></span><span class="name">Environment</span></div>
+    <div class="card-metric">GPUs: <span class="val" id="env-summary">--</span></div>
+  </div>
+
+  <div class="sub-card planned" id="sc-dht">
+    <div class="card-header"><span class="status-dot off"></span><span class="name">DHT / Registry</span></div>
+    <div class="card-metric">Services: <span class="val" id="dht-services">-/-</span></div>
+  </div>
+
+  <div class="sub-card active" id="sc-integration">
+    <div class="card-header"><span class="status-dot on"></span><span class="name">Integration</span></div>
+    <div class="card-metric">Sessions: <span class="val" id="int-sessions">0</span> | Routed: <span class="val" id="int-routed">0</span></div>
+  </div>
+
+  <div class="sub-card core" id="sc-llm">
+    <div class="card-header"><span class="status-dot on"></span><span class="name">LLM Engine</span></div>
+    <div class="card-metric">VRAM: <span class="val" id="llm-vram">--</span></div>
   </div>
 </div>
 
-<div class="canvas" id="canvas">
-  <!-- NATS Event Fabric (central bus) -->
-  <div class="bus" style="left:50%;top:50%;transform:translate(-50%,-50%);width:680px;height:60px">
-    NATS Event Fabric
-    <span style="font-size:10px;font-weight:400;margin-left:8px;color:#b8860b" id="nats-stats"></span>
-  </div>
+<!-- ─────────────── CENTER COLUMN: Real-time Metrics ─────────────── -->
+<div class="col-center">
+  <div class="metrics-grid">
 
-  <!-- Left side: LH, Memory, Safety -->
-  <div class="node active" id="node-lh" style="left:40px;top:60px">
-    <div class="name"><span class="status-dot on"></span>Left Hemisphere</div>
-    <div class="metrics">
-      Mode: <span class="val">Analytical</span><br>
-      Temp: <span class="val">0.3</span> | Top-p: <span class="val">0.9</span><br>
-      Requests: <span class="val" id="lh-reqs">0</span><br>
-      Avg latency: <span class="val" id="lh-lat">—</span>
+    <!-- GPU Gauges -->
+    <div class="metric-panel full">
+      <div class="panel-title"><span class="icon">&#9881;</span> GPU Utilization &amp; Temperature</div>
+      <div class="gpu-row">
+        <div class="gpu-gauge" id="gpu0-gauge">
+          <div class="gauge-label">GPU 0 &mdash; <span id="gpu0-name">Quadro GV100</span></div>
+          <div class="gauge-pair">
+            <svg class="gauge-svg" viewBox="0 0 100 100">
+              <circle class="gauge-bg" cx="50" cy="50" r="40"/>
+              <circle class="gauge-fg" id="gpu0-util-arc" cx="50" cy="50" r="40" stroke="var(--green)" transform="rotate(-90 50 50)" stroke-dasharray="251.3" stroke-dashoffset="251.3"/>
+              <text class="gauge-text" x="50" y="46" id="gpu0-util-text">0%</text>
+              <text class="gauge-sub" x="50" y="60">UTIL</text>
+            </svg>
+            <svg class="gauge-svg" viewBox="0 0 100 100">
+              <circle class="gauge-bg" cx="50" cy="50" r="40"/>
+              <circle class="gauge-fg" id="gpu0-temp-arc" cx="50" cy="50" r="40" stroke="var(--green)" transform="rotate(-90 50 50)" stroke-dasharray="251.3" stroke-dashoffset="251.3"/>
+              <text class="gauge-text" x="50" y="46" id="gpu0-temp-text">--</text>
+              <text class="gauge-sub" x="50" y="60">TEMP</text>
+            </svg>
+          </div>
+          <div class="vram-bar-container">
+            <div class="vram-bar-label"><span>VRAM</span><span id="gpu0-vram-label">-- / -- MB</span></div>
+            <div class="vram-bar"><div class="vram-bar-fill" id="gpu0-vram-fill" style="width:0%;background:var(--accent)"></div></div>
+          </div>
+        </div>
+        <div class="gpu-gauge" id="gpu1-gauge">
+          <div class="gauge-label">GPU 1 &mdash; <span id="gpu1-name">Quadro GV100</span></div>
+          <div class="gauge-pair">
+            <svg class="gauge-svg" viewBox="0 0 100 100">
+              <circle class="gauge-bg" cx="50" cy="50" r="40"/>
+              <circle class="gauge-fg" id="gpu1-util-arc" cx="50" cy="50" r="40" stroke="var(--green)" transform="rotate(-90 50 50)" stroke-dasharray="251.3" stroke-dashoffset="251.3"/>
+              <text class="gauge-text" x="50" y="46" id="gpu1-util-text">0%</text>
+              <text class="gauge-sub" x="50" y="60">UTIL</text>
+            </svg>
+            <svg class="gauge-svg" viewBox="0 0 100 100">
+              <circle class="gauge-bg" cx="50" cy="50" r="40"/>
+              <circle class="gauge-fg" id="gpu1-temp-arc" cx="50" cy="50" r="40" stroke="var(--green)" transform="rotate(-90 50 50)" stroke-dasharray="251.3" stroke-dashoffset="251.3"/>
+              <text class="gauge-text" x="50" y="46" id="gpu1-temp-text">--</text>
+              <text class="gauge-sub" x="50" y="60">TEMP</text>
+            </svg>
+          </div>
+          <div class="vram-bar-container">
+            <div class="vram-bar-label"><span>VRAM</span><span id="gpu1-vram-label">-- / -- MB</span></div>
+            <div class="vram-bar"><div class="vram-bar-fill" id="gpu1-vram-fill" style="width:0%;background:var(--accent)"></div></div>
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
 
-  <div class="node active" id="node-memory" style="left:40px;top:240px">
-    <div class="name"><span class="status-dot on"></span>Memory</div>
-    <div class="metrics">
-      Semantic: <span class="val" id="mem-semantic">0</span> chunks (pgvector)<br>
-      Episodic: <span class="val" id="mem-episodic">0</span> episodes<br>
-      Procedural: <span class="val" id="mem-procedural">0</span> entries<br>
-      DB size: <span class="val" id="mem-dbsize">—</span>
+    <!-- CPU Temps -->
+    <div class="metric-panel">
+      <div class="panel-title"><span class="icon">&#9670;</span> CPU Temperature</div>
+      <div class="cpu-bars">
+        <div class="cpu-bar-row">
+          <span class="label">Pkg 0</span>
+          <div class="bar-wrap"><div class="bar-fill" id="cpu0-bar" style="width:0%;background:var(--green)"></div></div>
+          <span class="temp-val" id="cpu0-val">--</span>
+        </div>
+        <div class="cpu-bar-row">
+          <span class="label">Pkg 1</span>
+          <div class="bar-wrap"><div class="bar-fill" id="cpu1-bar" style="width:0%;background:var(--green)"></div></div>
+          <span class="temp-val" id="cpu1-val">--</span>
+        </div>
+      </div>
+      <!-- RAM -->
+      <div style="margin-top:14px">
+        <div class="panel-title" style="margin-bottom:6px"><span class="icon">&#9638;</span> System Memory</div>
+        <div class="ram-row">
+          <span class="label">RAM</span>
+          <div class="bar-wrap"><div class="bar-fill" id="ram-bar" style="width:0%;background:var(--accent)"></div></div>
+          <span class="ram-val" id="ram-val">--</span>
+        </div>
+      </div>
     </div>
-  </div>
 
-  <div class="node planned" id="node-safety" style="left:40px;top:420px">
-    <div class="name"><span class="status-dot planned"></span>Safety Gateway</div>
-    <div class="metrics">
-      Pipeline: <span class="val">DEME 3-layer</span><br>
-      Reflex: <span class="val" id="safety-reflex">—</span><br>
-      Vetoes: <span class="val" id="safety-vetoes">0</span><br>
-      Audit log: <span class="val" id="safety-audit">0</span> entries
+    <!-- NATS Throughput -->
+    <div class="metric-panel">
+      <div class="panel-title"><span class="icon">&#9656;</span> NATS Throughput</div>
+      <div class="sparkline-wrap">
+        <svg class="sparkline-svg" viewBox="0 0 300 80" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#4a9eff" stop-opacity="0.4"/>
+              <stop offset="100%" stop-color="#4a9eff" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <polyline class="sparkline-area" id="spark-area" points=""/>
+          <polyline class="sparkline-line" id="spark-line" points=""/>
+        </svg>
+      </div>
+      <div class="sparkline-stats">
+        <div class="ss">In: <span id="nats-in">0</span></div>
+        <div class="ss">Out: <span id="nats-out">0</span></div>
+        <div class="ss">Conns: <span id="nats-conns">0</span></div>
+        <div class="ss">JS msgs: <span id="nats-js-msgs">0</span></div>
+      </div>
     </div>
-  </div>
 
-  <!-- Right side: RH, Environment, Metacognition -->
-  <div class="node planned" id="node-rh" style="right:40px;top:60px">
-    <div class="name"><span class="status-dot planned"></span>Right Hemisphere</div>
-    <div class="metrics">
-      Mode: <span class="val">Creative</span><br>
-      Temp: <span class="val">0.8</span> | Top-p: <span class="val">0.95</span><br>
-      Requests: <span class="val" id="rh-reqs">0</span><br>
-      Patterns: <span class="val" id="rh-patterns">—</span>
+    <!-- Memory Tiers -->
+    <div class="metric-panel full">
+      <div class="panel-title"><span class="icon">&#9733;</span> Memory Tiers</div>
+      <div class="mem-tier">
+        <div class="mem-tier-label"><span class="tier-name">L1 &mdash; VRAM KV Cache</span><span class="tier-val" id="tier-l1">--</span></div>
+        <div class="mem-tier-bar"><div class="fill" id="tier-l1-bar" style="width:0%;background:var(--accent)"></div></div>
+      </div>
+      <div class="mem-tier">
+        <div class="mem-tier-label"><span class="tier-name">L3 &mdash; PostgreSQL (chunks + episodes + pubs)</span><span class="tier-val" id="tier-l3">--</span></div>
+        <div class="mem-tier-bar"><div class="fill" id="tier-l3-bar" style="width:0%;background:var(--green)"></div></div>
+      </div>
+      <div class="mem-tier">
+        <div class="mem-tier-label"><span class="tier-name">L4 &mdash; Archive</span><span class="tier-val" id="tier-l4">--</span></div>
+        <div class="mem-tier-bar"><div class="fill" id="tier-l4-bar" style="width:0%;background:var(--yellow)"></div></div>
+      </div>
     </div>
-  </div>
 
-  <div class="node active" id="node-env" style="right:40px;top:240px">
-    <div class="name"><span class="status-dot on"></span>Environment</div>
-    <div class="metrics">
-      GPU 0: <span class="val" id="env-gpu0">—</span><br>
-      GPU 1: <span class="val" id="env-gpu1">—</span><br>
-      CPU: <span class="val" id="env-cpu">—</span><br>
-      RAM: <span class="val" id="env-ram">—</span>
-    </div>
   </div>
-
-  <div class="node planned" id="node-meta" style="right:40px;top:420px">
-    <div class="name"><span class="status-dot planned"></span>Metacognition</div>
-    <div class="metrics">
-      Reflections: <span class="val" id="meta-reflect">0</span><br>
-      Adjustments: <span class="val" id="meta-adjust">0</span><br>
-      LH/RH ratio: <span class="val" id="meta-ratio">—</span><br>
-      Quality: <span class="val" id="meta-quality">—</span>
-    </div>
-  </div>
-
-  <!-- Top center: Integration -->
-  <div class="node active" id="node-integration" style="left:50%;top:10px;transform:translateX(-50%)">
-    <div class="name"><span class="status-dot on"></span>Integration / Orchestrator</div>
-    <div class="metrics">
-      Sessions: <span class="val" id="int-sessions">0</span><br>
-      Routed: <span class="val" id="int-routed">0</span> requests<br>
-      LH: <span class="val" id="int-lh-pct">100%</span> | RH: <span class="val" id="int-rh-pct">0%</span>
-    </div>
-  </div>
-
-  <!-- Bottom center: LLM + DHT -->
-  <div class="node core" id="node-llm" style="left:35%;bottom:80px;transform:translateX(-50%)">
-    <div class="name"><span class="status-dot on"></span>LLM Engine</div>
-    <div class="metrics">
-      Model: <span class="val">Qwen2.5-72B Q5</span><br>
-      VRAM: <span class="val" id="llm-vram">—</span><br>
-      Slots: <span class="val" id="llm-slots">—</span><br>
-      Speed: <span class="val" id="llm-tps">—</span> tok/s
-    </div>
-  </div>
-
-  <div class="node planned" id="node-dht" style="left:65%;bottom:80px;transform:translateX(-50%)">
-    <div class="name"><span class="status-dot planned"></span>DHT / Registry</div>
-    <div class="metrics">
-      Services: <span class="val" id="dht-services">4/10</span> online<br>
-      Config ver: <span class="val">v1.0</span><br>
-      Node: <span class="val">atlas (local)</span>
-    </div>
-  </div>
-
-  <!-- Legend -->
-  <div class="legend">
-    <div><span class="status-dot on" style="display:inline-block"></span> Active</div>
-    <div><span class="status-dot planned" style="display:inline-block"></span> Planned</div>
-    <div style="color:#f59e0b">&#9644; Core infrastructure</div>
-    <div style="color:#4a9eff">&#9644; Subsystem</div>
-  </div>
-
-  <!-- Stats bar -->
-  <div class="stats-bar">
-    <div class="stat">Uptime: <span class="val" id="stat-uptime">—</span></div>
-    <div class="stat">Events/min: <span class="val" id="stat-epm">0</span></div>
-    <div class="stat">Total queries: <span class="val" id="stat-queries">0</span></div>
-    <div class="stat">Repos indexed: <span class="val" id="stat-repos">0</span></div>
-    <div class="stat">Chunks: <span class="val" id="stat-chunks">0</span></div>
-    <div class="stat" style="margin-left:auto">Atlas &#8226; HP Z840 &#8226; Bel Marin Keys, Novato</div>
-  </div>
-
-  <!-- SVG connections -->
-  <svg class="connections" id="connections"></svg>
 </div>
+
+<!-- ─────────────── RIGHT COLUMN: Activity Feed ─────────────── -->
+<div class="col-right">
+  <div class="section-header">Hemisphere Activity</div>
+  <div class="hemi-activity">
+    <div class="hemi-chip idle" id="hemi-lh-chip">
+      <div class="hemi-label">LH / GPU 0</div>
+      <div class="hemi-status" id="hemi-lh-status">Idle</div>
+    </div>
+    <div class="hemi-chip idle" id="hemi-rh-chip">
+      <div class="hemi-label">RH / GPU 1</div>
+      <div class="hemi-status" id="hemi-rh-status">Idle</div>
+    </div>
+  </div>
+
+  <div class="section-header" style="margin-top:16px">Active Jobs</div>
+  <div id="jobs-list">
+    <div class="job-card">
+      <div class="job-name"><span class="running-dot"></span> llama-lh</div>
+      <div class="job-detail">Gemma 4 31B -- left hemisphere inference</div>
+    </div>
+    <div class="job-card">
+      <div class="job-name"><span class="running-dot"></span> llama-rh</div>
+      <div class="job-detail">Qwen 3 32B -- right hemisphere inference</div>
+    </div>
+    <div class="job-card">
+      <div class="job-name"><span class="running-dot"></span> nats-server</div>
+      <div class="job-detail">Event fabric messaging</div>
+    </div>
+    <div class="job-card">
+      <div class="job-name"><span class="running-dot"></span> atlas-chat</div>
+      <div class="job-detail">Web UI + telemetry gateway</div>
+    </div>
+  </div>
+
+  <div class="section-header" style="margin-top:16px">Event Log</div>
+  <ul class="feed-list" id="feed-list"></ul>
+</div>
+
+<!-- ─────────────── BOTTOM BAR ─────────────── -->
+<div class="bottom-bar">
+  <div class="stat">Chunks: <span class="val" id="bot-chunks">--</span></div>
+  <div class="stat">Repos: <span class="val" id="bot-repos">--</span></div>
+  <div class="stat">Episodes: <span class="val" id="bot-episodes">--</span></div>
+  <div class="stat">GPU 0: <span class="val" id="bot-gpu0">--</span></div>
+  <div class="stat">GPU 1: <span class="val" id="bot-gpu1">--</span></div>
+  <div class="stat">Services: <span class="val" id="bot-services">--</span></div>
+  <span class="spacer"></span>
+  <div class="stat">Atlas &bull; HP Z840 &bull; 2x GV100 32 GB &bull; Novato, CA</div>
+</div>
+
+</div><!-- /dashboard -->
 
 <script>
-// Draw connection lines between nodes and the central bus
-function drawConnections() {
-  var svg = document.getElementById('connections');
-  var canvas = document.getElementById('canvas');
-  var bus = document.querySelector('.bus');
-  var busRect = bus.getBoundingClientRect();
-  var canvasRect = canvas.getBoundingClientRect();
+(function(){
+  "use strict";
 
-  var busCx = busRect.left + busRect.width/2 - canvasRect.left;
-  var busCy = busRect.top + busRect.height/2 - canvasRect.top;
-  var busLeft = busRect.left - canvasRect.left;
-  var busRight = busRect.right - canvasRect.left;
-  var busTop = busRect.top - canvasRect.top;
-  var busBottom = busRect.bottom - canvasRect.top;
+  // ─── State ───
+  var prevTelemetry = null;
+  var sparkData = [];          // last 60 NATS in_msgs values
+  var prevNatsIn = null;
+  var prevNatsOut = null;
+  var feedEvents = [];         // last 20 events
+  var natsUptime = null;       // server-reported uptime string
+  var lhBusySince = 0;
+  var rhBusySince = 0;
+  var connOk = true;
+  var CIRC = 2 * Math.PI * 40; // 251.327
 
-  var nodes = document.querySelectorAll('.node');
-  var lines = '';
-
-  nodes.forEach(function(node) {
-    var r = node.getBoundingClientRect();
-    var ncx = r.left + r.width/2 - canvasRect.left;
-    var ncy = r.top + r.height/2 - canvasRect.top;
-
-    // Connect to nearest bus edge
-    var tx, ty;
-    if (ncy < busTop) { tx = Math.max(busLeft, Math.min(busRight, ncx)); ty = busTop; }
-    else if (ncy > busBottom) { tx = Math.max(busLeft, Math.min(busRight, ncx)); ty = busBottom; }
-    else if (ncx < busCx) { tx = busLeft; ty = busCy; }
-    else { tx = busRight; ty = busCy; }
-
-    var isActive = node.classList.contains('active') || node.classList.contains('core');
-    var cls = isActive ? 'conn-line active' : 'conn-line';
-    lines += '<line class="' + cls + '" x1="' + ncx + '" y1="' + ncy + '" x2="' + tx + '" y2="' + ty + '"/>';
-
-    // Animated pulse dot for active connections
-    if (isActive) {
-      lines += '<circle r="3" fill="#4a9eff" opacity="0">' +
-        '<animate attributeName="opacity" values="0;.8;.8;0" dur="3s" repeatCount="indefinite"/>' +
-        '<animateMotion dur="3s" repeatCount="indefinite" path="M' + ncx + ',' + ncy + ' L' + tx + ',' + ty + '"/>' +
-        '</circle>';
-    }
-  });
-
-  svg.innerHTML = lines;
-}
-
-// Fetch telemetry from unified API endpoint
-async function updateTelemetry() {
-  try {
-    var res = await fetch('/api/telemetry');
-    if (!res.ok) return;
-    var t = res.json ? await res.json() : {};
-
-    // Left Hemisphere
-    var lh = t.hemispheres && t.hemispheres.lh || {};
-    if (lh.status === 'online') {
-      document.getElementById('node-lh').className = 'node active';
-      document.getElementById('node-lh').querySelector('.status-dot').className = 'status-dot on';
-      document.getElementById('lh-reqs').textContent = (lh.slots_processing || 0) + ' active';
-    }
-
-    // Right Hemisphere
-    var rh = t.hemispheres && t.hemispheres.rh || {};
-    if (rh.status === 'online') {
-      document.getElementById('node-rh').className = 'node active';
-      document.getElementById('node-rh').querySelector('.status-dot').className = 'status-dot on';
-      document.getElementById('rh-reqs').textContent = (rh.slots_processing || 0) + ' active';
-    }
-
-    // NATS Event Fabric
-    var nats = t.nats || {};
-    var natsEl = document.getElementById('nats-stats');
-    if (nats.status === 'online') {
-      natsEl.textContent = nats.in_msgs + ' msgs | ' + nats.connections + ' conns';
-      if (nats.jetstream) {
-        natsEl.textContent += ' | JS: ' + nats.jetstream.streams + ' streams, ' + nats.jetstream.messages + ' msgs';
-      }
-    } else {
-      natsEl.textContent = 'offline';
-    }
-
-    // Memory
-    var mem = t.memory || {};
-    document.getElementById('mem-semantic').textContent = mem.semantic_chunks + ' chunks';
-    document.getElementById('mem-episodic').textContent = mem.episodic_episodes || 0;
-    document.getElementById('stat-chunks').textContent = mem.semantic_chunks || 0;
-    document.getElementById('stat-repos').textContent = mem.repos || 0;
-
-    // Environment (GPU)
-    var gpus = t.environment && t.environment.gpu || [];
-    gpus.forEach(function(g) {
-      var el = document.getElementById('env-gpu' + g.index);
-      if (el) el.textContent = g.temp + '\u00B0C ' + g.util + '% ' + g.mem_used + '/' + g.mem_total + 'MB';
-    });
-
-    // Environment (CPU)
-    var cpu = t.environment && t.environment.cpu || {};
-    if (cpu.package_temps) {
-      document.getElementById('env-cpu').textContent = cpu.package_temps.map(function(t) { return t + '\u00B0C'; }).join(' / ');
-    }
-
-    // Environment (RAM)
-    var ram = t.environment && t.environment.ram || {};
-    if (ram.total_gb) {
-      document.getElementById('env-ram').textContent = ram.used_gb + ' / ' + ram.total_gb + ' GB';
-    }
-
-    // LLM Engine
-    var llmSlots = 0, llmTotal = 0;
-    if (lh.slots_idle !== undefined) { llmSlots += lh.slots_idle; llmTotal += lh.slots_idle + (lh.slots_processing || 0); }
-    if (rh.slots_idle !== undefined) { llmSlots += rh.slots_idle; llmTotal += rh.slots_idle + (rh.slots_processing || 0); }
-    document.getElementById('llm-slots').textContent = llmSlots + '/' + llmTotal + ' idle';
-    if (gpus.length >= 2) {
-      document.getElementById('llm-vram').textContent = gpus[0].mem_used + ' + ' + gpus[1].mem_used + ' MB';
-    }
-
-    // DHT / Services
-    var dht = t.dht || {};
-    document.getElementById('dht-services').textContent = dht.services_online + '/' + dht.services_total + ' online';
-
-    // Stats bar
-    if (nats.in_msgs) document.getElementById('stat-epm').textContent = nats.in_msgs;
-
-    // Redraw connections (active states may have changed)
-    drawConnections();
-  } catch(e) {
-    console.log('Telemetry error:', e);
+  // ─── Helpers ───
+  function el(id){ return document.getElementById(id); }
+  function fmt(n){ return n == null ? '--' : n.toLocaleString(); }
+  function fmtGB(gb){ return gb != null ? gb.toFixed(1) + ' GB' : '--'; }
+  function tempColor(t){
+    if(t == null) return 'var(--text-muted)';
+    if(t < 70) return 'var(--green)';
+    if(t <= 85) return 'var(--yellow)';
+    return 'var(--red)';
   }
-}
+  function utilColor(u){
+    if(u == null) return 'var(--text-muted)';
+    if(u < 50) return 'var(--green)';
+    if(u <= 80) return 'var(--yellow)';
+    return 'var(--red)';
+  }
+  function now(){ return new Date(); }
+  function timeStr(d){
+    var h = ('0'+d.getHours()).slice(-2);
+    var m = ('0'+d.getMinutes()).slice(-2);
+    var s = ('0'+d.getSeconds()).slice(-2);
+    return h+':'+m+':'+s;
+  }
+  function shortTime(d){
+    var m = ('0'+d.getMinutes()).slice(-2);
+    var s = ('0'+d.getSeconds()).slice(-2);
+    return m+':'+s;
+  }
+  function durationStr(ms){
+    if(ms <= 0) return '';
+    var s = Math.floor(ms/1000);
+    if(s < 60) return s + 's';
+    var m = Math.floor(s/60);
+    s = s % 60;
+    if(m < 60) return m + 'm ' + s + 's';
+    var h = Math.floor(m/60);
+    m = m % 60;
+    return h + 'h ' + m + 'm';
+  }
 
-// Uptime counter
-var startTime = Date.now();
-function updateUptime() {
-  var secs = Math.floor((Date.now() - startTime) / 1000);
-  var h = Math.floor(secs / 3600);
-  var m = Math.floor((secs % 3600) / 60);
-  var s = secs % 60;
-  document.getElementById('stat-uptime').textContent =
-    (h > 0 ? h + 'h ' : '') + m + 'm ' + s + 's';
-}
+  // ─── Gauge updater ───
+  function setGauge(arcId, textId, value, maxVal, colorFn, suffix){
+    var pct = Math.min(value / maxVal, 1);
+    var offset = CIRC * (1 - pct);
+    var arc = el(arcId);
+    var txt = el(textId);
+    if(arc){
+      arc.style.strokeDashoffset = offset;
+      arc.style.stroke = colorFn(value);
+    }
+    if(txt) txt.textContent = value != null ? Math.round(value) + (suffix || '') : '--';
+  }
 
-// Init
-window.addEventListener('load', function() {
-  drawConnections();
-  updateTelemetry();
-  setInterval(updateUptime, 1000);
-  setInterval(updateTelemetry, 10000);
-  window.addEventListener('resize', drawConnections);
-});
+  // ─── Bar updater ───
+  function setBar(barId, pct, color){
+    var b = el(barId);
+    if(b){
+      b.style.width = Math.min(pct, 100) + '%';
+      if(color) b.style.background = color;
+    }
+  }
+
+  // ─── Card status updater ───
+  function setCardStatus(cardId, status){
+    var card = el(cardId);
+    if(!card) return;
+    var dot = card.querySelector('.status-dot');
+    card.classList.remove('active','planned','degraded','core','processing');
+    if(dot) dot.classList.remove('on','off','degraded');
+    if(status === 'online' || status === 'active'){
+      card.classList.add('active');
+      if(dot) dot.classList.add('on');
+    } else if(status === 'degraded'){
+      card.classList.add('degraded');
+      if(dot) dot.classList.add('degraded');
+    } else {
+      card.classList.add('planned');
+      if(dot) dot.classList.add('off');
+    }
+  }
+
+  // ─── Feed logger ───
+  function addFeedEvent(msg, color){
+    feedEvents.unshift({time: now(), msg: msg, color: color || 'var(--accent)'});
+    if(feedEvents.length > 20) feedEvents.pop();
+    renderFeed();
+  }
+
+  function renderFeed(){
+    var list = el('feed-list');
+    if(!list) return;
+    var html = '';
+    for(var i = 0; i < feedEvents.length; i++){
+      var ev = feedEvents[i];
+      html += '<li class="feed-item' + (i === 0 ? ' new' : '') + '">' +
+        '<span class="feed-time">' + shortTime(ev.time) + '</span>' +
+        '<span class="feed-dot" style="background:' + ev.color + '"></span>' +
+        '<span class="feed-msg">' + ev.msg + '</span></li>';
+    }
+    list.innerHTML = html;
+  }
+
+  // ─── Sparkline renderer ───
+  function renderSparkline(){
+    if(sparkData.length < 2) return;
+    var max = 1;
+    for(var i = 0; i < sparkData.length; i++){
+      if(sparkData[i] > max) max = sparkData[i];
+    }
+    max = max * 1.15; // headroom
+    var w = 300, h = 80;
+    var step = w / (59); // 60 points across 300px
+    var pts = '';
+    var areaPts = '';
+    for(var j = 0; j < sparkData.length; j++){
+      var x = j * step;
+      var y = h - (sparkData[j] / max) * (h - 4) - 2;
+      pts += x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+      areaPts += x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+    }
+    // close area path
+    if(sparkData.length > 0){
+      var lastX = ((sparkData.length - 1) * step).toFixed(1);
+      areaPts += lastX + ',' + h + ' 0,' + h;
+    }
+    var lineEl = el('spark-line');
+    var areaEl = el('spark-area');
+    if(lineEl) lineEl.setAttribute('points', pts.trim());
+    if(areaEl) areaEl.setAttribute('points', areaPts.trim());
+  }
+
+  // ─── Detect state changes for feed ───
+  function detectChanges(prev, curr){
+    if(!prev) {
+      addFeedEvent('Dashboard connected to <strong>telemetry API</strong>', 'var(--green)');
+      return;
+    }
+    // Hemisphere status changes
+    var prevLH = prev.hemispheres && prev.hemispheres.lh || {};
+    var currLH = curr.hemispheres && curr.hemispheres.lh || {};
+    var prevRH = prev.hemispheres && prev.hemispheres.rh || {};
+    var currRH = curr.hemispheres && curr.hemispheres.rh || {};
+
+    if(prevLH.status !== currLH.status)
+      addFeedEvent('LH status: <strong>' + (currLH.status || 'unknown') + '</strong>', currLH.status === 'online' ? 'var(--green)' : 'var(--red)');
+    if(prevRH.status !== currRH.status)
+      addFeedEvent('RH status: <strong>' + (currRH.status || 'unknown') + '</strong>', currRH.status === 'online' ? 'var(--green)' : 'var(--red)');
+
+    // Slot activity changes
+    if((prevLH.slots_processing || 0) === 0 && (currLH.slots_processing || 0) > 0)
+      addFeedEvent('LH began <strong>processing</strong>', 'var(--accent)');
+    if((prevLH.slots_processing || 0) > 0 && (currLH.slots_processing || 0) === 0)
+      addFeedEvent('LH returned to <strong>idle</strong>', 'var(--text-dim)');
+    if((prevRH.slots_processing || 0) === 0 && (currRH.slots_processing || 0) > 0)
+      addFeedEvent('RH began <strong>processing</strong>', 'var(--accent)');
+    if((prevRH.slots_processing || 0) > 0 && (currRH.slots_processing || 0) === 0)
+      addFeedEvent('RH returned to <strong>idle</strong>', 'var(--text-dim)');
+
+    // NATS status
+    var prevNats = prev.nats || {};
+    var currNats = curr.nats || {};
+    if(prevNats.status !== currNats.status)
+      addFeedEvent('NATS: <strong>' + (currNats.status || 'unknown') + '</strong>', currNats.status === 'online' ? 'var(--green)' : 'var(--red)');
+    if(prevNats.connections !== currNats.connections && currNats.connections != null)
+      addFeedEvent('NATS connections: <strong>' + currNats.connections + '</strong>', 'var(--accent)');
+
+    // GPU temp warnings
+    var prevGPU = prev.environment && prev.environment.gpu || [];
+    var currGPU = curr.environment && curr.environment.gpu || [];
+    for(var g = 0; g < currGPU.length; g++){
+      var pg = prevGPU[g] || {};
+      var cg = currGPU[g];
+      if(pg.temp <= 85 && cg.temp > 85)
+        addFeedEvent('GPU ' + g + ' temp <strong>critical: ' + cg.temp + '\u00B0C</strong>', 'var(--red)');
+      else if(pg.temp <= 70 && cg.temp > 70)
+        addFeedEvent('GPU ' + g + ' temp <strong>warning: ' + cg.temp + '\u00B0C</strong>', 'var(--yellow)');
+      else if(pg.temp > 70 && cg.temp <= 70)
+        addFeedEvent('GPU ' + g + ' temp <strong>normal: ' + cg.temp + '\u00B0C</strong>', 'var(--green)');
+    }
+
+    // Memory changes
+    var prevMem = prev.memory || {};
+    var currMem = curr.memory || {};
+    if(prevMem.semantic_chunks !== currMem.semantic_chunks && currMem.semantic_chunks != null && prevMem.semantic_chunks != null){
+      var delta = currMem.semantic_chunks - prevMem.semantic_chunks;
+      if(delta > 0) addFeedEvent('Memory: <strong>+' + delta + ' chunks</strong> indexed', 'var(--green)');
+    }
+    if(prevMem.episodic_episodes !== currMem.episodic_episodes && currMem.episodic_episodes != null && prevMem.episodic_episodes != null){
+      var eDelta = currMem.episodic_episodes - prevMem.episodic_episodes;
+      if(eDelta > 0) addFeedEvent('Memory: <strong>+' + eDelta + ' episodes</strong> recorded', 'var(--green)');
+    }
+
+    // DHT services
+    var prevDHT = prev.dht || {};
+    var currDHT = curr.dht || {};
+    if(prevDHT.services_online !== currDHT.services_online && currDHT.services_online != null)
+      addFeedEvent('DHT services online: <strong>' + currDHT.services_online + '/' + currDHT.services_total + '</strong>', 'var(--accent)');
+  }
+
+  // ─── Main update ───
+  function applyTelemetry(t){
+    detectChanges(prevTelemetry, t);
+
+    // ─ Hemispheres ─
+    var lh = t.hemispheres && t.hemispheres.lh || {};
+    var rh = t.hemispheres && t.hemispheres.rh || {};
+
+    // LH card
+    setCardStatus('sc-lh', lh.status);
+    el('lh-model').textContent = lh.model || '--';
+    el('lh-role').textContent = lh.role || '--';
+    var lhSlots = (lh.slots_processing || 0) + '/' + ((lh.slots_idle || 0) + (lh.slots_processing || 0));
+    el('lh-slots').textContent = lhSlots;
+
+    // RH card
+    setCardStatus('sc-rh', rh.status);
+    el('rh-model').textContent = rh.model || '--';
+    el('rh-role').textContent = rh.role || '--';
+    var rhSlots = (rh.slots_processing || 0) + '/' + ((rh.slots_idle || 0) + (rh.slots_processing || 0));
+    el('rh-slots').textContent = rhSlots;
+
+    // Hemisphere pulse when GPU util > 50
+    var gpus = t.environment && t.environment.gpu || [];
+    var gpu0Util = gpus[0] ? gpus[0].util : 0;
+    var gpu1Util = gpus[1] ? gpus[1].util : 0;
+    var lhCard = el('sc-lh');
+    var rhCard = el('sc-rh');
+    if(gpu0Util > 50 || (lh.slots_processing || 0) > 0){
+      lhCard.classList.add('processing');
+    } else {
+      lhCard.classList.remove('processing');
+    }
+    if(gpu1Util > 50 || (rh.slots_processing || 0) > 0){
+      rhCard.classList.add('processing');
+    } else {
+      rhCard.classList.remove('processing');
+    }
+
+    // ─ NATS / Event Fabric ─
+    var nats = t.nats || {};
+    setCardStatus('sc-fabric', nats.status);
+    if(nats.status === 'online'){
+      el('fabric-metric').textContent = fmt(nats.in_msgs) + ' in / ' + fmt(nats.out_msgs) + ' out';
+    } else {
+      el('fabric-metric').textContent = 'Offline';
+    }
+    natsUptime = nats.uptime || null;
+
+    // Sparkline data: msgs/sec delta
+    var currentIn = nats.in_msgs || 0;
+    var currentOut = nats.out_msgs || 0;
+    var msgRate = 0;
+    if(prevNatsIn !== null){
+      msgRate = Math.max(0, (currentIn - prevNatsIn) + (currentOut - prevNatsOut));
+    }
+    prevNatsIn = currentIn;
+    prevNatsOut = currentOut;
+    sparkData.push(msgRate);
+    if(sparkData.length > 60) sparkData.shift();
+    renderSparkline();
+
+    el('nats-in').textContent = fmt(currentIn);
+    el('nats-out').textContent = fmt(currentOut);
+    el('nats-conns').textContent = nats.connections || 0;
+    el('nats-js-msgs').textContent = nats.jetstream ? fmt(nats.jetstream.messages) : '0';
+
+    // ─ Memory ─
+    var mem = t.memory || {};
+    setCardStatus('sc-memory', (mem.semantic_chunks > 0) ? 'online' : 'planned');
+    el('mem-summary').textContent = fmt(mem.semantic_chunks) + ' chunks, ' + fmt(mem.episodic_episodes) + ' episodes';
+
+    // Memory tiers
+    var totalVRAM = 0;
+    var usedVRAM = 0;
+    for(var gi = 0; gi < gpus.length; gi++){
+      totalVRAM += gpus[gi].mem_total || 0;
+      usedVRAM += gpus[gi].mem_used || 0;
+    }
+    el('tier-l1').textContent = fmt(usedVRAM) + ' / ' + fmt(totalVRAM) + ' MB';
+    setBar('tier-l1-bar', totalVRAM > 0 ? (usedVRAM / totalVRAM * 100) : 0, 'var(--accent)');
+
+    var l3Count = (mem.semantic_chunks || 0) + (mem.episodic_episodes || 0) + (mem.repos || 0);
+    el('tier-l3').textContent = fmt(l3Count) + ' records';
+    // Scale: assume ~200k is "full" for visual
+    setBar('tier-l3-bar', Math.min(l3Count / 200000 * 100, 100), 'var(--green)');
+
+    // L4 archive placeholder
+    el('tier-l4').textContent = 'N/A';
+    setBar('tier-l4-bar', 0, 'var(--yellow)');
+
+    // ─ Safety ─
+    var safety = t.safety || {};
+    setCardStatus('sc-safety', safety.status);
+    el('safety-vetoes').textContent = safety.vetoes || 0;
+
+    // ─ Metacognition ─
+    var meta = t.metacognition || {};
+    setCardStatus('sc-meta', meta.status);
+
+    // ─ Environment ─
+    setCardStatus('sc-env', gpus.length > 0 ? 'online' : 'planned');
+    el('env-summary').textContent = gpus.length + ' detected';
+
+    // GPU gauges
+    for(var gIdx = 0; gIdx < 2; gIdx++){
+      var g = gpus[gIdx] || {};
+      var prefix = 'gpu' + gIdx;
+      el(prefix + '-name').textContent = g.name || 'N/A';
+
+      // Util gauge (0-100)
+      setGauge(prefix + '-util-arc', prefix + '-util-text', g.util || 0, 100, utilColor, '%');
+      // Temp gauge (0-100)
+      setGauge(prefix + '-temp-arc', prefix + '-temp-text', g.temp || 0, 100, tempColor, '\u00B0C');
+
+      // VRAM bar
+      var memPct = g.mem_total > 0 ? (g.mem_used / g.mem_total * 100) : 0;
+      el(prefix + '-vram-label').textContent = fmt(g.mem_used) + ' / ' + fmt(g.mem_total) + ' MB';
+      setBar(prefix + '-vram-fill', memPct, memPct > 90 ? 'var(--red)' : memPct > 70 ? 'var(--yellow)' : 'var(--accent)');
+    }
+
+    // CPU temps
+    var cpu = t.environment && t.environment.cpu || {};
+    var temps = cpu.package_temps || [];
+    for(var ci = 0; ci < 2; ci++){
+      var ct = temps[ci];
+      if(ct != null){
+        el('cpu' + ci + '-val').textContent = ct + '\u00B0C';
+        el('cpu' + ci + '-val').style.color = tempColor(ct);
+        setBar('cpu' + ci + '-bar', ct, tempColor(ct));
+      }
+    }
+
+    // RAM
+    var ram = t.environment && t.environment.ram || {};
+    if(ram.total_gb){
+      var ramPct = (ram.used_gb / ram.total_gb) * 100;
+      el('ram-val').textContent = ram.used_gb.toFixed(1) + ' / ' + ram.total_gb.toFixed(1) + ' GB';
+      setBar('ram-bar', ramPct, ramPct > 80 ? 'var(--red)' : ramPct > 60 ? 'var(--yellow)' : 'var(--accent)');
+    }
+
+    // ─ DHT ─
+    var dht = t.dht || {};
+    setCardStatus('sc-dht', dht.status);
+    el('dht-services').textContent = (dht.services_online || 0) + '/' + (dht.services_total || 0);
+
+    // ─ Integration ─
+    var integ = t.integration || {};
+    setCardStatus('sc-integration', (integ.sessions != null) ? 'online' : 'planned');
+    el('int-sessions').textContent = integ.sessions || 0;
+    el('int-routed').textContent = integ.routed || 0;
+
+    // ─ LLM Engine ─
+    setCardStatus('sc-llm', (lh.status === 'online' || rh.status === 'online') ? 'active' : 'planned');
+    el('sc-llm').classList.add('core');
+    el('sc-llm').classList.remove('planned','active');
+    if(gpus.length >= 2){
+      el('llm-vram').textContent = fmt(gpus[0].mem_used) + ' + ' + fmt(gpus[1].mem_used) + ' MB';
+    } else if(gpus.length === 1){
+      el('llm-vram').textContent = fmt(gpus[0].mem_used) + ' MB';
+    }
+
+    // ─ Hemisphere activity chips ─
+    var lhBusy = (lh.slots_processing || 0) > 0;
+    var rhBusy = (rh.slots_processing || 0) > 0;
+
+    var lhChip = el('hemi-lh-chip');
+    var rhChip = el('hemi-rh-chip');
+
+    if(lhBusy){
+      if(!lhBusySince) lhBusySince = Date.now();
+      lhChip.classList.add('busy');
+      lhChip.classList.remove('idle');
+      el('hemi-lh-status').textContent = 'Processing ' + durationStr(Date.now() - lhBusySince);
+    } else {
+      lhBusySince = 0;
+      lhChip.classList.remove('busy');
+      lhChip.classList.add('idle');
+      el('hemi-lh-status').textContent = 'Idle';
+    }
+
+    if(rhBusy){
+      if(!rhBusySince) rhBusySince = Date.now();
+      rhChip.classList.add('busy');
+      rhChip.classList.remove('idle');
+      el('hemi-rh-status').textContent = 'Processing ' + durationStr(Date.now() - rhBusySince);
+    } else {
+      rhBusySince = 0;
+      rhChip.classList.remove('busy');
+      rhChip.classList.add('idle');
+      el('hemi-rh-status').textContent = 'Idle';
+    }
+
+    // ─ Jobs list ─
+    var jobsEl = el('jobs-list');
+    if(t.jobs && t.jobs.length > 0){
+      var html = '';
+      t.jobs.forEach(function(j){
+        var gpuTag = j.gpu !== null ? '<span style="color:var(--accent);font-size:10px">GPU'+j.gpu+'</span>' : '';
+        var cpuTag = j.cpu ? '<span style="color:var(--dim)">'+j.cpu+'</span>' : '';
+        var memTag = j.mem ? '<span style="color:var(--dim)">'+j.mem+'</span>' : '';
+        var timeTag = j.elapsed ? '<span style="color:var(--dim)">'+j.elapsed+'</span>' : '';
+        var dotColor = j.status === 'running' ? 'var(--green)' : 'var(--dim)';
+        html += '<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(42,53,85,0.3);font-size:12px">';
+        html += '<span style="width:6px;height:6px;border-radius:50%;background:'+dotColor+';flex-shrink:0"></span>';
+        html += '<span style="flex:1;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+(j.description||j.name)+'">'+(j.description||j.name)+'</span>';
+        html += gpuTag + ' ' + cpuTag + ' ' + memTag + ' ' + timeTag;
+        html += '</div>';
+      });
+      jobsEl.innerHTML = html;
+    }
+
+    // ─ Bottom bar ─
+    el('bot-chunks').textContent = fmt(mem.semantic_chunks);
+    el('bot-repos').textContent = fmt(mem.repos);
+    el('bot-episodes').textContent = fmt(mem.episodic_episodes);
+    if(t.memory && t.memory.publications) el('bot-episodes').textContent = fmt(t.memory.publications) + ' pubs';
+    el('bot-gpu0').textContent = gpus[0] ? gpus[0].temp + '\u00B0C' : '--';
+    el('bot-gpu1').textContent = gpus[1] ? gpus[1].temp + '\u00B0C' : '--';
+    el('bot-services').textContent = (dht.services_online || 0) + '/' + (dht.services_total || 0);
+
+    // Color-code bottom GPU temps
+    if(gpus[0]) el('bot-gpu0').style.color = tempColor(gpus[0].temp);
+    if(gpus[1]) el('bot-gpu1').style.color = tempColor(gpus[1].temp);
+
+    prevTelemetry = JSON.parse(JSON.stringify(t));
+  }
+
+  // ─── Fetch loop ───
+  async function poll(){
+    try {
+      var res = await fetch('/api/telemetry');
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      var t = await res.json();
+      applyTelemetry(t);
+      if(!connOk){
+        connOk = true;
+        el('conn-dot').classList.add('ok');
+        el('conn-dot').classList.remove('err');
+        addFeedEvent('Telemetry <strong>reconnected</strong>', 'var(--green)');
+      }
+    } catch(e){
+      console.warn('Telemetry poll error:', e);
+      if(connOk){
+        connOk = false;
+        el('conn-dot').classList.remove('ok');
+        el('conn-dot').classList.add('err');
+        addFeedEvent('Telemetry <strong>connection lost</strong>', 'var(--red)');
+      }
+    }
+  }
+
+  // ─── Uptime counter ───
+  var startMs = Date.now();
+  function tickUptime(){
+    var elapsed = Date.now() - startMs;
+    var label;
+    if(natsUptime){
+      label = natsUptime;
+    } else {
+      label = durationStr(elapsed);
+    }
+    el('sys-uptime').textContent = label;
+  }
+
+  // ─── Init ───
+  poll();
+  setInterval(poll, 5000);
+  tickUptime();
+  setInterval(tickUptime, 1000);
+
+})();
 </script>
 </body>
 </html>
