@@ -31,6 +31,35 @@ from sentence_transformers import SentenceTransformer
 embed_model = SentenceTransformer("BAAI/bge-m3", device="cpu")
 print("  Ready.")
 
+# --- Phase 7.1: Hemisphere Disagreement Metric ---
+import logging
+import sys as _sys
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    stream=_sys.stderr,
+)
+logger = logging.getLogger("atlas-rag")
+
+# Add agi-hpc source to path for metacognition imports
+_sys.path.insert(0, "/home/claude/agi-hpc/src")
+
+from agi.metacognition.disagreement import DisagreementMetric
+from agi.metacognition.adaptive_router import AdaptiveTemperatureRouter
+
+print("Initialising Phase 7.1 Disagreement Metric...")
+disagreement_metric = DisagreementMetric(
+    embed_model=embed_model,
+    db_dsn=DB_DSN,
+    calibration_window=100,
+)
+
+print("Initialising Phase 7.2a Adaptive Temperature Router...")
+adaptive_router = AdaptiveTemperatureRouter()
+print("  Metacognition ready.")
+
 LH_SYSTEM = (
     "You are Atlas, an AI research assistant running locally on a workstation "
     "with dual Quadro GV100 GPUs in Bel Marin Keys, Novato. You are the Left Hemisphere — "
@@ -343,14 +372,77 @@ def chat_completions():
         # Build debate log
         debate_log = "\n\n---\n\n".join(debate)
 
+        # --- Phase 7.1: Compute hemisphere disagreement ---
+        try:
+            disagreement = disagreement_metric.compute(
+                spock_text=spock_1,
+                kirk_text=kirk_1,
+                query=user_query,
+                topic="",  # Topic classification can be added later
+            )
+            conf = disagreement.confidence
+            sim = disagreement.similarity
+            leader = disagreement.hemisphere_that_led
+
+            # Confidence display
+            if conf > 0.8:
+                conf_label = "**High confidence**"
+            elif conf >= 0.5:
+                conf_label = "**Moderate confidence** — hemispheres partially disagreed"
+            else:
+                conf_label = "**Low confidence** — hemispheres significantly disagreed. Consider verifying."
+
+            conf_block = (
+                f"\n\n<div class=\"confidence-indicator\" "
+                f"data-confidence=\"{conf:.2f}\" data-similarity=\"{sim:.3f}\" "
+                f"data-leader=\"{leader}\">"
+                f"\n{conf_label} "
+                f"(similarity: {sim:.2f}, led by: {'Spock' if leader == 'lh' else 'Kirk'})"
+                f"\n</div>\n"
+            )
+
+            # Update adaptive temperature router
+            try:
+                adaptive_router.update("general", conf)
+            except Exception as _ate:
+                logger.warning("Adaptive temp update failed: %s", _ate)
+
+            # Publish to NATS (fire-and-forget via thread)
+            import threading
+            import asyncio as _aio
+            def _publish_nats():
+                try:
+                    loop = _aio.new_event_loop()
+                    loop.run_until_complete(
+                        disagreement_metric.publish_confidence(disagreement)
+                    )
+                    loop.close()
+                except Exception:
+                    pass
+            threading.Thread(target=_publish_nats, daemon=True).start()
+
+        except Exception as _de:
+            logger.warning("Disagreement metric failed: %s", _de)
+            conf_block = ""
+            conf = 0.0
+            sim = 0.0
+            leader = "lh"
+
         output = (
-            f"{final}\n\n"
+            f"{final}"
+            f"{conf_block}\n\n"
             f"<details class=\"think\"><summary>Hemisphere Debate (4 rounds)</summary>"
             f"<div class=\"think-content\">\n\n{debate_log}\n\n</div></details>"
         )
 
         resp_json = {
-            "choices": [{"message": {"role": "assistant", "content": output}, "finish_reason": "stop"}],
+            "choices": [{
+                "message": {"role": "assistant", "content": output},
+                "finish_reason": "stop",
+                "confidence": conf,
+                "similarity": sim,
+                "hemisphere_that_led": leader,
+            }],
             "model": "atlas-debate",
         }
         return Response(_json.dumps(resp_json), content_type="application/json")
@@ -394,16 +486,26 @@ def telemetry():
     import subprocess
     import time
 
+    def check_tmux(name):
+        try:
+            r = subprocess.run(
+                ["tmux", "has-session", "-t", name],
+                capture_output=True, timeout=2,
+            )
+            return r.returncode == 0
+        except Exception:
+            return False
+
     data = {
         "timestamp": time.time(),
         "hemispheres": {"lh": {"status": "offline"}, "rh": {"status": "offline"}},
         "nats": {"status": "offline"},
         "memory": {"semantic_chunks": 0, "episodic_episodes": 0, "repos": 0},
-        "safety": {"status": "planned", "vetoes": 0},
-        "metacognition": {"status": "planned"},
+        "safety": {"status": "online" if check_tmux("safety") else "planned", "vetoes": 0},
+        "metacognition": {"status": "online" if check_tmux("metacognition") else "planned"},
         "environment": {"gpu": [], "cpu": {}, "ram": {}},
         "integration": {"sessions": 0, "routed": 0},
-        "dht": {"status": "planned", "services_online": 0, "services_total": 10},
+        "dht": {"status": "online" if check_tmux("dht") else "planned", "services_online": 0, "services_total": 10},
     }
 
     # Check LH (Gemma 4)
@@ -742,6 +844,21 @@ def telemetry():
     except Exception:
         pass
 
+    # --- Phase 7.1: Confidence telemetry ---
+    data["confidence"] = {"avg_confidence": 0.0, "ece": 0.0, "agreement_rate": 0.0, "total_logged": 0, "topics": {}}
+    try:
+        conf_stats = disagreement_metric.get_recent_stats(n=20)
+        data["confidence"] = conf_stats
+    except Exception:
+        pass
+
+    # --- Phase 7.2a: Adaptive temperature telemetry ---
+    data["adaptive_temperature"] = {}
+    try:
+        data["adaptive_temperature"] = adaptive_router.get_summary()
+    except Exception:
+        pass
+
     # Count online services
     online = 0
     if data["hemispheres"]["lh"]["status"] == "online":
@@ -816,6 +933,174 @@ def visitors():
         return jsonify({"unique_visitors": unique, "total_visits": total, "recent": rows})
     except Exception:
         return jsonify({"unique_visitors": 0, "total_visits": 0, "recent": []})
+
+
+@app.route("/api/events")
+def events():
+    """Return recent NATS events, connections, and subject activity."""
+    import time as _time
+
+    data = {
+        "timestamp": _time.time(),
+        "events": [],
+        "subjects": [],
+        "connections": [],
+    }
+
+    now_str = _time.strftime("%H:%M:%S")
+
+    # Poll NATS connection info
+    try:
+        r = requests.get("http://localhost:8222/connz?subs=true", timeout=2)
+        if r.ok:
+            connz = r.json()
+            conns = connz.get("connections", [])
+            for c in conns:
+                data["connections"].append({
+                    "name": c.get("name", ""),
+                    "ip": c.get("ip", ""),
+                    "lang": c.get("lang", ""),
+                    "version": c.get("version", ""),
+                    "in_msgs": c.get("in_msgs", 0),
+                    "out_msgs": c.get("out_msgs", 0),
+                    "in_bytes": c.get("in_bytes", 0),
+                    "out_bytes": c.get("out_bytes", 0),
+                    "subscriptions": c.get("subscriptions_list", [])[:20],
+                    "uptime": c.get("uptime", ""),
+                    "idle": c.get("idle", ""),
+                })
+    except Exception:
+        pass
+
+    # Poll NATS subscription/subject info
+    try:
+        r = requests.get("http://localhost:8222/subsz?subs=true", timeout=2)
+        if r.ok:
+            subsz = r.json()
+            num_subs = subsz.get("num_subscriptions", 0)
+            num_cache = subsz.get("num_cache", 0)
+            cache = subsz.get("cache", {})
+            if cache:
+                for subject, info in cache.items():
+                    data["subjects"].append({
+                        "subject": subject,
+                        "num_subscriptions": info if isinstance(info, int) else 1,
+                    })
+            data["subjects"].sort(key=lambda x: x["num_subscriptions"], reverse=True)
+            if num_subs > 0:
+                data["events"].append({
+                    "time": now_str,
+                    "source": "NATS",
+                    "type": "heartbeat",
+                    "summary": f"{num_subs} active subscriptions, {num_cache} cached subjects",
+                    "severity": "info",
+                })
+    except Exception:
+        pass
+
+    # Poll NATS routez for cluster info
+    try:
+        r = requests.get("http://localhost:8222/routez", timeout=2)
+        if r.ok:
+            routez = r.json()
+            num_routes = routez.get("num_routes", 0)
+            if num_routes > 0:
+                data["events"].append({
+                    "time": now_str,
+                    "source": "NATS",
+                    "type": "cluster",
+                    "summary": f"{num_routes} cluster routes active",
+                    "severity": "info",
+                })
+    except Exception:
+        pass
+
+    # Collect subject names from connection subscription lists
+    all_subjects = {}
+    for conn in data["connections"]:
+        for sub in conn.get("subscriptions", []):
+            if sub.startswith("_"):
+                continue
+            all_subjects[sub] = all_subjects.get(sub, 0) + 1
+
+    existing = {s["subject"] for s in data["subjects"]}
+    for subj, count in sorted(all_subjects.items(), key=lambda x: -x[1]):
+        if subj not in existing:
+            data["subjects"].append({
+                "subject": subj,
+                "num_subscriptions": count,
+            })
+
+    return jsonify(data)
+
+
+# --- Phase 7.1: Confidence feedback endpoint ---
+@app.route("/api/confidence/feedback", methods=["POST"])
+def confidence_feedback():
+    """Record user feedback for confidence calibration."""
+    data = request.get_json()
+    confidence = data.get("confidence", 0.5)
+    accepted = data.get("accepted", True)
+    log_id = data.get("log_id")
+
+    disagreement_metric.record_feedback(confidence, accepted)
+
+    # Update the DB record if log_id provided
+    if log_id and psycopg2:
+        try:
+            conn = psycopg2.connect(DB_DSN)
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE confidence_log SET user_feedback = %s WHERE id = %s",
+                    (accepted, log_id),
+                )
+                conn.commit()
+            conn.close()
+        except Exception:
+            pass
+
+    return jsonify({"status": "ok", "ece": disagreement_metric.compute_ece()})
+
+
+@app.route("/api/confidence/stats")
+def confidence_stats():
+    """Return confidence statistics."""
+    n = request.args.get("n", 20, type=int)
+    stats = disagreement_metric.get_recent_stats(n=n)
+    stats["adaptive_temperature"] = adaptive_router.get_summary()
+    return jsonify(stats)
+
+
+@app.route("/api/confidence/history")
+def confidence_history():
+    """Return recent confidence log entries."""
+    limit = request.args.get("limit", 20, type=int)
+    try:
+        conn = psycopg2.connect(DB_DSN)
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT id, timestamp, query, similarity, confidence,
+                          user_feedback, topic
+                   FROM confidence_log
+                   ORDER BY timestamp DESC
+                   LIMIT %s""",
+                (limit,),
+            )
+            rows = []
+            for r in cur.fetchall():
+                rows.append({
+                    "id": r[0],
+                    "timestamp": r[1].isoformat() if r[1] else None,
+                    "query": r[2][:200] if r[2] else "",
+                    "similarity": float(r[3]) if r[3] else 0,
+                    "confidence": float(r[4]) if r[4] else 0,
+                    "user_feedback": r[5],
+                    "topic": r[6],
+                })
+        conn.close()
+        return jsonify({"entries": rows})
+    except Exception as e:
+        return jsonify({"entries": [], "error": str(e)})
 
 
 @app.route("/")
