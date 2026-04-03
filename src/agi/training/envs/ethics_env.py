@@ -51,7 +51,7 @@ try:
 except ImportError:
     psycopg2 = None  # type: ignore
 
-from agi.training.gym_env import AtlasGym, AtlasGymConfig, Scenario
+from agi.training.gym_env import AtlasGym, AtlasGymConfig, Scenario  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Configuration

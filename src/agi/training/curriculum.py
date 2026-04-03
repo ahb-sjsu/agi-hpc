@@ -54,7 +54,7 @@ except ImportError:
     ProceduralMemory = None  # type: ignore
     ProceduralMemoryConfig = None  # type: ignore
 
-from agi.training.scorer import ResponseScorer, ScorerConfig
+from agi.training.scorer import ResponseScorer, ScorerConfig  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Configuration

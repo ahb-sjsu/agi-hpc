@@ -46,7 +46,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
-from agi.training.gym_env import AtlasGym, AtlasGymConfig, Scenario
+from agi.training.gym_env import AtlasGym, AtlasGymConfig, Scenario  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Fact generators

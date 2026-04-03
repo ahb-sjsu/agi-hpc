@@ -61,17 +61,17 @@ except ImportError:
     LLMClient = None  # type: ignore
     InferenceConfig = None  # type: ignore
 
-from agi.training.curriculum import CurriculumConfig, CurriculumManager
-from agi.training.gym_env import AtlasGym
-from agi.training.scorer import ResponseScorer, ScorerConfig
+from agi.training.curriculum import CurriculumConfig, CurriculumManager  # noqa: E402
+from agi.training.gym_env import AtlasGym  # noqa: E402
+from agi.training.scorer import ResponseScorer, ScorerConfig  # noqa: E402
 
 # Import environment classes
-from agi.training.envs.ethics_env import EthicsEnv, EthicsEnvConfig
-from agi.training.envs.reasoning_env import ReasoningEnv
-from agi.training.envs.coding_env import CodingEnv
-from agi.training.envs.debate_env import DebateEnv
-from agi.training.envs.memory_env import MemoryEnv
-from agi.training.gym_env import AtlasGymConfig
+from agi.training.envs.ethics_env import EthicsEnv, EthicsEnvConfig  # noqa: E402
+from agi.training.envs.reasoning_env import ReasoningEnv  # noqa: E402
+from agi.training.envs.coding_env import CodingEnv  # noqa: E402
+from agi.training.envs.debate_env import DebateEnv  # noqa: E402
+from agi.training.envs.memory_env import MemoryEnv  # noqa: E402
+from agi.training.gym_env import AtlasGymConfig  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Configuration

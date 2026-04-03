@@ -50,8 +50,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
-from agi.training.gym_env import AtlasGym, AtlasGymConfig, Scenario
-from agi.training.scorer import score_code_execution
+from agi.training.gym_env import AtlasGym, AtlasGymConfig, Scenario  # noqa: E402
+from agi.training.scorer import score_code_execution  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Problem definitions
