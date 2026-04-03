@@ -1,0 +1,81 @@
+# AGI-HPC DHT Service Registry Configuration
+# Phase 6: Service Discovery + Config Version Store on Atlas
+
+dht:
+  # Default host for registered services
+  host: "localhost"
+
+  # NATS event fabric connection
+  nats:
+    servers:
+      - "nats://localhost:4222"
+
+  # PostgreSQL for registry + config store persistence
+  postgresql:
+    dsn: "dbname=atlas user=claude"
+
+  # Publish full registry state every N seconds
+  status_interval_s: 30.0
+
+  # Run health checks every N seconds
+  health_check_interval_s: 30.0
+
+  # Seconds without heartbeat before marking service degraded
+  stale_threshold_s: 60.0
+
+  # Heartbeat interval for registered services (client-side)
+  heartbeat_interval_s: 10.0
+
+  # Known services (for startup registration)
+  services:
+    nats:
+      port: 4222
+      metadata:
+        phase: 0
+        layer: "infrastructure"
+    spock:
+      port: 8080
+      metadata:
+        phase: 1
+        layer: "llm"
+        model: "gemma-4-31b"
+        gpu: 0
+    kirk:
+      port: 8082
+      metadata:
+        phase: 1
+        layer: "llm"
+        model: "qwen3-32b"
+        gpu: 1
+    rag:
+      port: 8081
+      metadata:
+        phase: 2
+        layer: "cognitive"
+    memory:
+      port: 50300
+      metadata:
+        phase: 2
+        layer: "cognitive"
+    safety:
+      port: 50055
+      metadata:
+        phase: 3
+        layer: "cognitive"
+    caddy:
+      port: 443
+      metadata:
+        phase: 0
+        layer: "infrastructure"
+    oauth2:
+      port: 4180
+      metadata:
+        phase: 0
+        layer: "infrastructure"
+
+  # Port assignment (reference)
+  ports:
+    service: 50080
+    nats: 4222
+    nats_monitor: 8222
+    postgresql: 5432

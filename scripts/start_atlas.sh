@@ -4,6 +4,7 @@
 #
 # Usage: bash scripts/start_atlas.sh
 #        bash scripts/start_atlas.sh --stop
+#        bash scripts/start_atlas.sh --health
 
 set -e
 
@@ -15,16 +16,155 @@ LOG_DIR="/tmp"
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
 NC='\033[0m'
 
 log() { echo -e "${GREEN}[Atlas]${NC} $1"; }
 warn() { echo -e "${YELLOW}[Atlas]${NC} $1"; }
 err() { echo -e "${RED}[Atlas]${NC} $1"; }
+info() { echo -e "${CYAN}[Atlas]${NC} $1"; }
+
+# ─── Health check mode ────────────────────────────────
+if [ "$1" = "--health" ]; then
+    info "Atlas AI — Health Check"
+    info "============================================="
+
+    # Load environment
+    if [ -f "$ATLAS_HOME/.env" ]; then
+        source "$ATLAS_HOME/.env"
+    fi
+
+    ALL_OK=true
+
+    # Check tmux sessions
+    SESSIONS=$(tmux ls 2>/dev/null | wc -l)
+    info "  tmux sessions: $SESSIONS active"
+
+    # NATS
+    if curl -s http://localhost:8222/healthz >/dev/null 2>&1; then
+        log "  NATS:          healthy (4222)"
+    else
+        err "  NATS:          DOWN"
+        ALL_OK=false
+    fi
+
+    # Spock (Gemma 4)
+    if curl -s http://localhost:8080/health 2>/dev/null | grep -q ok; then
+        log "  Spock (LH):    healthy (8080)"
+    else
+        err "  Spock (LH):    DOWN"
+        ALL_OK=false
+    fi
+
+    # Kirk (Qwen 3)
+    if curl -s http://localhost:8082/health 2>/dev/null | grep -q ok; then
+        log "  Kirk (RH):     healthy (8082)"
+    else
+        err "  Kirk (RH):     DOWN"
+        ALL_OK=false
+    fi
+
+    # RAG Server (Flask app; check if port responds)
+    if curl -s --max-time 3 http://localhost:8081/ >/dev/null 2>&1; then
+        log "  RAG Server:    healthy (8081)"
+    else
+        err "  RAG Server:    DOWN"
+        ALL_OK=false
+    fi
+
+    # PostgreSQL
+    if systemctl is-active --quiet postgresql; then
+        log "  PostgreSQL:    healthy (5432)"
+    else
+        err "  PostgreSQL:    DOWN"
+        ALL_OK=false
+    fi
+
+    # Caddy
+    if tmux has-session -t caddy 2>/dev/null; then
+        log "  Caddy:         healthy (443)"
+    else
+        warn "  Caddy:         not running"
+    fi
+
+    # Memory Service
+    if tmux has-session -t memory 2>/dev/null; then
+        log "  Memory:        running"
+    else
+        warn "  Memory:        not running"
+    fi
+
+    # Safety Gateway
+    if tmux has-session -t safety 2>/dev/null; then
+        log "  Safety:        running"
+    else
+        warn "  Safety:        not running"
+    fi
+
+    # DHT Service
+    if tmux has-session -t dht 2>/dev/null; then
+        log "  DHT Registry:  running"
+    else
+        warn "  DHT Registry:  not running"
+    fi
+
+    # GPUs
+    info ""
+    nvidia-smi --query-gpu=index,name,memory.used,memory.total,temperature.gpu --format=csv,noheader 2>/dev/null | while read line; do
+        info "  GPU: $line"
+    done
+
+    # DHT registry state (if available)
+    DHT_STATUS=$(psql -d atlas -t -c "SELECT name, port, status FROM service_registry ORDER BY name" 2>/dev/null)
+    if [ -n "$DHT_STATUS" ]; then
+        info ""
+        info "  DHT Service Registry:"
+        echo "$DHT_STATUS" | while read line; do
+            if [ -n "$line" ]; then
+                info "    $line"
+            fi
+        done
+    fi
+
+    # Refresh DHT heartbeats for running services
+    if tmux has-session -t dht 2>/dev/null; then
+        PYTHONPATH=$AGI_HOME/src $VENV/python3 -c "
+import asyncio, sys
+sys.path.insert(0, '$AGI_HOME/src')
+
+async def refresh():
+    try:
+        from agi.meta.dht.registry import ServiceRegistry
+        registry = ServiceRegistry(dsn='dbname=atlas user=claude')
+        await registry.init_db()
+        services = {
+            'nats': 4222, 'spock': 8080, 'kirk': 8082, 'rag': 8081,
+            'memory': 50300, 'safety': 50055, 'caddy': 443, 'dht': 50080,
+        }
+        for name, port in services.items():
+            await registry.heartbeat(name)
+        await registry.close()
+    except Exception:
+        pass
+
+asyncio.run(refresh())
+" 2>/dev/null
+        info "  DHT heartbeats refreshed"
+    fi
+
+    info ""
+    if $ALL_OK; then
+        log "All core services healthy."
+    else
+        err "Some core services are DOWN."
+    fi
+    exit 0
+fi
 
 # ─── Stop mode ──────────────────────────────────────────
 if [ "$1" = "--stop" ]; then
     log "Stopping all Atlas services..."
-    for session in nats spock kirk rag oauth2 caddy safety memory indexer; do
+    for session in nats spock kirk rag oauth2 caddy safety memory indexer dht; do
         tmux kill-session -t $session 2>/dev/null && log "  Stopped $session" || true
     done
     log "All services stopped."
@@ -69,6 +209,22 @@ if ! tmux has-session -t nats 2>/dev/null; then
     log "  NATS: started (port 4222, monitoring 8222)"
 else
     log "  NATS: already running"
+fi
+
+# DHT Service Registry (after NATS, before other services)
+if [ -f "$AGI_HOME/src/agi/meta/dht/nats_service.py" ]; then
+    if ! tmux has-session -t dht 2>/dev/null; then
+        tmux new-session -d -s dht \
+            "CUDA_VISIBLE_DEVICES= PYTHONPATH=$AGI_HOME/src $VENV/python3 -m agi.meta.dht.nats_service \
+            --config $AGI_HOME/configs/dht_config.yaml \
+            2>&1 | tee $LOG_DIR/dht_service.log"
+        sleep 2
+        log "  DHT Registry: started (service discovery)"
+    else
+        log "  DHT Registry: already running"
+    fi
+else
+    warn "  DHT Registry: not yet implemented"
 fi
 
 # Caddy (HTTPS reverse proxy)
@@ -173,7 +329,7 @@ fi
 # Memory Service
 if ! tmux has-session -t memory 2>/dev/null; then
     tmux new-session -d -s memory \
-        "CUDA_VISIBLE_DEVICES= $VENV/python3 -m agi.memory.nats_service \
+        "CUDA_VISIBLE_DEVICES= PYTHONPATH=$AGI_HOME/src $VENV/python3 -m agi.memory.nats_service \
         2>&1 | tee $LOG_DIR/memory_service.log"
     sleep 2
     log "  Memory Service: started (episodic + procedural + semantic)"
@@ -185,7 +341,7 @@ fi
 if [ -f "$AGI_HOME/src/agi/safety/nats_service.py" ]; then
     if ! tmux has-session -t safety 2>/dev/null; then
         tmux new-session -d -s safety \
-            "CUDA_VISIBLE_DEVICES= $VENV/python3 -m agi.safety.nats_service \
+            "CUDA_VISIBLE_DEVICES= PYTHONPATH=$AGI_HOME/src $VENV/python3 -m agi.safety.nats_service \
             2>&1 | tee $LOG_DIR/safety_service.log"
         sleep 2
         log "  Safety Gateway: started (DEME pipeline)"
@@ -194,6 +350,49 @@ if [ -f "$AGI_HOME/src/agi/safety/nats_service.py" ]; then
     fi
 else
     warn "  Safety Gateway: not yet implemented"
+fi
+
+# ─── Register services with DHT ──────────────────────
+if tmux has-session -t dht 2>/dev/null; then
+    log ""
+    log "Registering services with DHT..."
+    # Give DHT a moment to be fully ready
+    sleep 1
+
+    # Register known services via direct DB insert (faster than NATS for startup)
+    PYTHONPATH=$AGI_HOME/src $VENV/python3 -c "
+import asyncio
+import sys
+sys.path.insert(0, '$AGI_HOME/src')
+
+async def register_all():
+    try:
+        from agi.meta.dht.registry import ServiceRegistry
+        registry = ServiceRegistry(dsn='dbname=atlas user=claude')  # parsed to kwargs internally
+        await registry.init_db()
+
+        services = {
+            'nats':   (4222,  {'phase': 0, 'layer': 'infrastructure'}),
+            'spock':  (8080,  {'phase': 1, 'layer': 'llm', 'model': 'gemma-4-31b'}),
+            'kirk':   (8082,  {'phase': 1, 'layer': 'llm', 'model': 'qwen3-32b'}),
+            'rag':    (8081,  {'phase': 2, 'layer': 'cognitive'}),
+            'memory': (50300, {'phase': 2, 'layer': 'cognitive'}),
+            'safety': (50055, {'phase': 3, 'layer': 'cognitive'}),
+            'caddy':  (443,   {'phase': 0, 'layer': 'infrastructure'}),
+            'dht':    (50080, {'phase': 6, 'layer': 'infrastructure'}),
+        }
+
+        for name, (port, meta) in services.items():
+            await registry.register(name, port, meta)
+
+        all_svc = await registry.list_all()
+        print(f'  Registered {len(all_svc)} services with DHT')
+        await registry.close()
+    except Exception as e:
+        print(f'  DHT registration warning: {e}')
+
+asyncio.run(register_all())
+" 2>/dev/null || warn "  DHT startup registration skipped (asyncpg not available)"
 fi
 
 # ─── Summary ──────────────────────────────────────────
@@ -209,10 +408,12 @@ log "  Spock (LH):  Gemma 4 31B on GPU 0"
 log "  Kirk  (RH):  Qwen 3 32B on GPU 1"
 log "  Memory:      PostgreSQL + pgvector + PostGIS"
 log "  RAG:         Hybrid search + HyDE over 27 repos"
+log "  DHT:         Service registry + config store"
 log ""
 log "  tmux sessions: $(tmux ls 2>/dev/null | wc -l) active"
 nvidia-smi --query-gpu=index,name,memory.used,memory.total,temperature.gpu --format=csv,noheader 2>/dev/null | while read line; do
     log "  GPU: $line"
 done
 log ""
-log "  Stop all: bash scripts/start_atlas.sh --stop"
+log "  Health:  bash scripts/start_atlas.sh --health"
+log "  Stop:    bash scripts/start_atlas.sh --stop"
