@@ -758,6 +758,66 @@ def telemetry():
     return jsonify(data)
 
 
+@app.before_request
+def log_visitor():
+    """Log authenticated visitors from oauth2-proxy headers."""
+    email = request.headers.get("X-Forwarded-Email", "")
+    user = request.headers.get("X-Forwarded-User", "")
+    if email or user:
+        visitor = email or user
+        path = request.path
+        ip = request.headers.get("X-Real-Ip", request.headers.get("X-Forwarded-For", request.remote_addr))
+        # Only log page views, not API/telemetry polls
+        if not path.startswith("/api/") and not path.startswith("/v1/") and path != "/favicon.ico":
+            try:
+                conn = psycopg2.connect(DB_DSN)
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        CREATE TABLE IF NOT EXISTS visitor_log (
+                            id SERIAL PRIMARY KEY,
+                            timestamp TIMESTAMPTZ DEFAULT NOW(),
+                            email TEXT,
+                            ip TEXT,
+                            path TEXT,
+                            user_agent TEXT
+                        )
+                    """)
+                    cur.execute(
+                        "INSERT INTO visitor_log (email, ip, path, user_agent) VALUES (%s, %s, %s, %s)",
+                        (visitor, ip, path, request.headers.get("User-Agent", "")[:200])
+                    )
+                    conn.commit()
+                conn.close()
+            except Exception as e:
+                logger.debug(f"Visitor log error: {e}")
+
+
+@app.route("/api/visitors")
+def visitors():
+    """Recent visitor log."""
+    try:
+        conn = psycopg2.connect(DB_DSN)
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT timestamp, email, ip, path
+                FROM visitor_log
+                ORDER BY timestamp DESC
+                LIMIT 50
+            """)
+            rows = [
+                {"time": r[0].isoformat(), "email": r[1], "ip": r[2], "path": r[3]}
+                for r in cur.fetchall()
+            ]
+            cur.execute("SELECT COUNT(DISTINCT email) FROM visitor_log")
+            unique = cur.fetchone()[0]
+            cur.execute("SELECT COUNT(*) FROM visitor_log")
+            total = cur.fetchone()[0]
+        conn.close()
+        return jsonify({"unique_visitors": unique, "total_visits": total, "recent": rows})
+    except Exception:
+        return jsonify({"unique_visitors": 0, "total_visits": 0, "recent": []})
+
+
 @app.route("/")
 def serve_index():
     return send_from_directory(STATIC_DIR, "index.html")

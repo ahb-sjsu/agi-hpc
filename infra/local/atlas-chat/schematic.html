@@ -33,6 +33,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .topbar .nav{margin-left:auto;display:flex;align-items:center;gap:8px}
 .topbar .nav a{color:var(--text-dim);text-decoration:none;font-size:12px;padding:5px 12px;border-radius:6px;transition:all .2s;white-space:nowrap}
 .topbar .nav a:hover,.topbar .nav a.active{color:var(--accent);background:var(--accent-dim)}
+.topbar .nav a.logout:hover{color:var(--red);background:var(--red-dim)}
 .topbar .uptime{font-size:11px;color:var(--text-dim);font-family:var(--mono);white-space:nowrap;margin-left:8px}
 .topbar .uptime span{color:var(--green)}
 .topbar .conn-status{width:7px;height:7px;border-radius:50%;margin-left:8px;flex-shrink:0;transition:background .3s}
@@ -198,13 +199,14 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       <line x1="2" y1="16" x2="7" y2="16" stroke="#4a9eff" stroke-width="1" opacity=".4"/>
       <line x1="25" y1="16" x2="30" y2="16" stroke="#4a9eff" stroke-width="1" opacity=".4"/>
     </svg>
-    <h1>Atlas AGI-HPC</h1>
+    <h1>Atlas AI</h1>
     <span class="subtitle">Operations Dashboard</span>
   </div>
   <div class="nav">
     <a href="/">Chat</a>
-    <a href="/schematic.html" class="active">Architecture</a>
-    <a href="/oauth2/sign_out">Logout</a>
+    <a href="/schematic.html" class="active">Dashboard</a>
+    <a href="/events.html">Events</a>
+    <a href="/oauth2/sign_out" class="logout">Logout</a>
   </div>
   <div class="uptime">UPTIME <span id="sys-uptime">--:--:--</span></div>
   <div class="conn-status ok" id="conn-dot" title="Telemetry connection"></div>
