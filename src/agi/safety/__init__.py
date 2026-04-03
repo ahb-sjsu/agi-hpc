@@ -3,32 +3,101 @@
 # Contact: agi.hpc@gmail.com
 #
 # Licensed under the AGI-HPC Responsible AI License v1.0.
+# You may obtain a copy of the License at the root of this repository,
+# or by contacting the author(s).
+#
+# You may use, modify, and distribute this file for non-commercial
+# research and educational purposes, subject to the conditions in
+# the License. Commercial use, high-risk deployments, and autonomous
+# operation in safety-critical domains require separate written
+# permission and must include appropriate safety and governance controls.
+#
+# Unless required by applicable law or agreed to in writing, this
+# software is provided "AS IS", without warranties or conditions
+# of any kind. See the License for the specific language governing
+# permissions and limitations.
 
 """
-Safety subsystem for AGI-HPC.
+Safety Subsystem for AGI-HPC.
 
-Provides three-layer safety architecture:
-- Reflex Layer (<100μs): Hardware-level emergency stops
-- Tactical Layer (10-100ms): ErisML ethical evaluation
-- Strategic Layer: Policy-level governance
+Provides a three-layer safety architecture:
 
-Integration with ErisML provides:
-- Formal ethical reasoning via DEME pipeline
-- Bond Index verification for correlative symmetry
-- Hohfeldian consistency checking
-- Hash-chained decision proofs for audit
+Sprint 1-6 (gRPC-based):
+- SafetyGateway: Plan/action checking via gRPC + ErisML.
+- ErisMLServicer: gRPC service for ethical evaluation.
+- PlanStepToEthicalFacts: Converts plan steps to EthicalFacts.
+
+Phase 3 (NATS-connected, DEME-integrated):
+- SafetyAdapter: Converts chat interactions into EthicalFacts.
+- DemeSafetyGateway: Three-layer check (reflex/tactical/strategic).
+- InputGate: NATS-connected pre-LLM safety filter.
+- OutputGate: NATS-connected post-LLM safety filter.
+- SafetyNatsService: Main service running both gates.
 """
 
-from agi.safety.erisml.service import ErisMLServicer, create_erisml_server
-from agi.safety.erisml.facts_builder import PlanStepToEthicalFacts
-from agi.safety.gateway import SafetyGateway
+from __future__ import annotations
 
 __all__ = [
+    # Sprint 1-6 (gRPC)
+    "SafetyGateway",
     "ErisMLServicer",
     "create_erisml_server",
     "PlanStepToEthicalFacts",
-    "SafetyGateway",
+    # Phase 3 (NATS + DEME)
+    "SafetyAdapter",
+    "DemeSafetyGateway",
+    "SafetyResult",
+    "GatewayConfig",
+    "InputGate",
+    "OutputGate",
+    "SafetyNatsService",
 ]
+
+# Sprint 1-6 gRPC components
+try:
+    from agi.safety.gateway import SafetyGateway
+except ImportError:
+    pass
+
+try:
+    from agi.safety.erisml.service import ErisMLServicer, create_erisml_server
+except ImportError:
+    pass
+
+try:
+    from agi.safety.erisml.facts_builder import PlanStepToEthicalFacts
+except ImportError:
+    pass
+
+# Phase 3: NATS-connected DEME gateway
+try:
+    from agi.safety.adapter import SafetyAdapter
+except ImportError:
+    pass
+
+try:
+    from agi.safety.deme_gateway import (
+        GatewayConfig,
+        SafetyResult,
+    )
+    from agi.safety.deme_gateway import SafetyGateway as DemeSafetyGateway
+except ImportError:
+    pass
+
+try:
+    from agi.safety.input_gate import InputGate
+except ImportError:
+    pass
+
+try:
+    from agi.safety.output_gate import OutputGate
+except ImportError:
+    pass
+
+try:
+    from agi.safety.nats_service import SafetyNatsService
+except ImportError:
+    pass
 
 # Sprint 6: Safety Learning
 try:

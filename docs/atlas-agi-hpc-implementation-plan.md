@@ -272,3 +272,199 @@ The existing flat `chunks` table will be migrated incrementally:
 3. Update chunks with file_id FK references
 4. Drop old string columns (repo, file_path) from chunks
 5. Rebuild indexes
+
+
+## Advanced Retrieval Architecture
+
+Atlas uses a multi-strategy retrieval pipeline that adapts search method to query type.
+
+### Implemented
+
+**Hybrid Search (Dense + Sparse)**
+Combines BGE-M3 embedding similarity (pgvector cosine) with PostgreSQL full-text search (tsvector/BM25).
+Reciprocal Rank Fusion merges results. Catches exact terms that pure embeddings miss.
+
+**HyDE (Hypothetical Document Embeddings)**
+Before searching, the LLM generates a hypothetical answer to the query. That hypothetical is embedded
+and used as the search vector instead of the raw question. Dramatically improves retrieval for
+questions phrased differently from the source material.
+
+**Repo-Aware Filtering**
+When queries mention specific repo names, search is filtered to that repo first before falling
+back to global search.
+
+**Hemisphere-Aware Retrieval**
+- Spock (LH): tight, high-precision results (top_k=4, high similarity threshold)
+- Kirk (RH): diverse, cross-domain results (top_k=8, lower threshold, prefer variety across repos)
+
+### Planned
+
+**Graph RAG (Microsoft method)**
+Build a knowledge graph from all repos. Detect communities (clusters of related concepts).
+Summarize each community. Search summaries for "big picture" questions. The geometric book series,
+ErisML, and AGI-HPC form a natural cross-reference graph.
+
+**ColBERT / Late Interaction**
+Per-token embeddings with MaxSim matching. More precise than single-vector for technical content.
+ColBERT v2 models available as drop-in replacement.
+
+**RAPTOR (Recursive Abstractive Processing)**
+Chunk -> summarize groups -> embed summaries -> tree search. Start at high-level summaries,
+drill down to source chunks. Ideal for book-length documents (geometric series).
+
+**Adaptive Retrieval (Metacognition-driven)**
+The Metacognition subsystem selects retrieval strategy based on query classification:
+- Factual queries -> BM25 keyword search first
+- Conceptual queries -> dense embedding search
+- Cross-domain queries -> Graph RAG
+- Specific repo queries -> filtered search
+- Historical/ethical queries -> temporal-weighted search
+
+**Temporal-Aware Retrieval**
+Ethics corpora span -1200 BCE to 2026 CE. Weight results by temporal relevance:
+- Modern AI ethics questions favor recent texts
+- Virtue ethics questions favor ancient Greek/Confucian sources
+- Comparative ethics questions sample across all periods
+
+**Matryoshka / Multi-Vector Embeddings**
+BGE-M3 supports dense + sparse + multi-vector simultaneously. Currently using dense only.
+Enable all three for better cross-lingual retrieval on the ethics corpora.
+
+### Indexing Strategy
+
+| Scale | Index Type | Use Case |
+|---|---|---|
+| <100K chunks | IVFFlat (current) | Repo RAG, episodic memory |
+| 100K-10M chunks | HNSW | Wikipedia, Gutenberg, ethics corpora |
+| >10M chunks | Partitioned HNSW + BM25 | Full Common Crawl, arXiv |
+
+### Retrieval Flow (Post-Implementation)
+
+```
+User Query
+  -> Metacognition classifies query type
+  -> HyDE: LLM generates hypothetical answer
+  -> Hybrid Search: embed hypothetical + BM25 on raw query
+  -> Hemisphere-aware filtering (precision vs diversity)
+  -> Temporal weighting (if ethics/historical query)
+  -> Repo filtering (if specific repo mentioned)
+  -> Reciprocal Rank Fusion merges all result sets
+  -> Top-K chunks injected into LLM context
+```
+
+
+## Physical Embodiment: JetBot (Jetson Nano)
+
+Atlas has a physical body -- an NVIDIA JetBot built on a Jetson Nano. This enables the
+AGI-HPC Environment subsystem to interact with the real world.
+
+### Architecture
+
+```
+JetBot (Jetson Nano)              Atlas (HP Z840)
+  Camera (CSI)  ──┐               ┌── LH (Gemma 4) - reasoning
+  IMU/sensors   ──┤  NATS over    │── RH (Qwen 3) - creativity
+  Battery/status ─┤  LAN/Tailscale│── Safety Gateway - veto dangerous commands
+                  ├──────────────→├── Memory - episodic + spatial (PostGIS)
+  Left motor   ←──┤               │── Metacognition - battery monitoring
+  Right motor  ←──┤               └── Integration - coordinate all
+  Camera servo ←──┘
+```
+
+### NATS Subjects
+
+```
+agi.env.sensor.camera        # Camera frames (JPEG, downsampled)
+agi.env.sensor.imu           # Orientation, acceleration
+agi.env.sensor.battery       # Battery level, charging status
+agi.env.sensor.obstacle      # Obstacle detection (from camera + ML)
+agi.env.actuator.motor       # Wheel commands {left: float, right: float}
+agi.env.actuator.servo       # Camera pan/tilt
+agi.env.actuator.led         # Status LEDs
+```
+
+### Safety Requirements
+
+Every motor command passes through the Safety Gateway:
+- **Reflex layer**: hard limits on speed, emergency stop on low battery
+- **Tactical layer**: obstacle avoidance veto (don't drive into walls)
+- **Strategic layer**: audit trail of all physical actions
+
+### JetBot Software Stack
+
+- JetPack OS on Jetson Nano (Ubuntu 18.04 + CUDA 10.2)
+- NATS client (lightweight, connects to Atlas NATS server)
+- Camera streaming via GStreamer
+- Motor control via Adafruit MotorHAT library
+- ML inference for obstacle detection runs on Jetson (128 CUDA cores)
+  while high-level reasoning runs on Atlas (2x GV100)
+
+### Competition Angle (G4G)
+
+"Atlas AI inhabits a physical robot with a 3-layer ethical safety firewall
+gating every movement. The robot cannot move without the Safety Gateway's
+approval. Every action is audited with a full decision proof."
+
+Demonstrates: Safety & Trust + Global Resilience + real-world impact
+
+### Implementation Phase
+
+Part of Phase 5 (Environment) -- deferred until JetBot is powered on.
+Requires: NATS client on Jetson, camera streaming pipeline, motor control API.
+
+
+## Self-Directed Learning (Future)
+
+Atlas can autonomously expand its knowledge by consuming free online educational resources.
+
+### Architecture
+
+```
+Metacognition (gap analysis)
+  -> "I lack knowledge about reinforcement learning"
+  -> agi.meta.adjust.curriculum
+
+Curriculum Planner
+  -> Selects: MIT OCW CS234, Khan Academy RL module
+  -> agi.env.actuator.learn
+
+Environment (web actuator)
+  -> Fetches course materials (lecture notes, slides, transcripts)
+  -> Stores raw content to /archive/courses/
+
+RAG Indexer
+  -> Chunks and embeds course material
+  -> Adds to pgvector with course/module metadata
+
+Procedural Memory
+  -> "Completed MIT CS234 Module 3, key concepts: [policy gradient, value function]"
+  -> Tracks curriculum progress
+
+Metacognition (assessment)
+  -> Tests comprehension via self-generated quizzes
+  -> Updates knowledge gap map
+  -> Selects next module
+```
+
+### Open Course Sources
+
+- MIT OpenCourseWare (ocw.mit.edu) -- openly licensed lecture notes + problem sets
+- Khan Academy -- structured curriculum with assessments
+- Stanford Online -- CS229 (ML), CS231n (CV), CS224n (NLP) lecture notes
+- OpenStax -- free peer-reviewed textbooks
+- arXiv (already downloading) -- cutting-edge research papers
+- YouTube transcripts -- free captions on lecture videos
+
+### NATS Subjects
+
+```
+agi.env.actuator.learn           # Fetch course material
+agi.meta.monitor.knowledge       # Knowledge coverage map
+agi.meta.adjust.curriculum       # Select next learning target
+agi.memory.store.procedural      # Record completed modules + scores
+```
+
+### Implementation Phase
+
+Deferred to post-competition. Requires: web actuator (Phase 5), metacognition gap analysis,
+curriculum planning logic, assessment generation.

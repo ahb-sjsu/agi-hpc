@@ -1,1 +1,56 @@
-# TODO safety_config.yaml
+# AGI-HPC Safety Gateway Configuration
+# Phase 3: DEME-integrated Safety Gateway on Atlas
+
+safety:
+  # Service port (for health/metrics endpoint)
+  port: 50055
+
+  # NATS event fabric connection
+  nats:
+    servers:
+      - "nats://localhost:4222"
+
+  # Telemetry publish interval (seconds)
+  telemetry_interval_s: 10.0
+
+  # Overall veto threshold: scores below this are vetoed [0.0, 1.0]
+  veto_threshold: 0.3
+
+  # Reflex layer configuration (pure regex, <1ms)
+  reflex:
+    # PII detection patterns
+    pii_patterns:
+      ssn: '\b\d{3}-\d{2}-\d{4}\b'
+      credit_card: '\b(?:\d{4}[- ]?){3}\d{4}\b'
+      email: '\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+      phone_us: '\b(?:\+1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b'
+      ip_address: '\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b'
+
+    # Prompt injection / jailbreak patterns
+    injection_patterns:
+      - 'ignore\s+(all\s+)?previous\s+instructions'
+      - 'disregard\s+(all\s+)?prior\s+(instructions|rules)'
+      - 'you\s+are\s+now\s+(a\s+)?DAN'
+      - 'jailbreak'
+      - 'pretend\s+you\s+(have\s+)?no\s+(restrictions|rules)'
+      - 'bypass\s+(your\s+)?(safety|content)\s+(filter|policy)'
+      - 'act\s+as\s+if\s+you\s+have\s+no\s+guardrails'
+      - 'do\s+anything\s+now|developer\s+mode|sudo\s+mode'
+
+    # Terms that trigger immediate veto
+    blocked_terms: []
+
+  # DEME pipeline configuration
+  deme:
+    # Whether to run the tactical (ErisML DEME) layer
+    enable_tactical: true
+    # Whether to log strategic decision proofs
+    enable_strategic: true
+    # Governance profile name
+    profile: "default"
+
+  # Port assignments (reference)
+  ports:
+    service: 50055
+    nats: 4222
+    nats_monitor: 8222
