@@ -1,0 +1,729 @@
+{
+  "benchmark_info": {
+    "date": "2026-04-03 15:46:56",
+    "platform": "Atlas HP Z840 (2x Xeon E5-2690 v4, 48 cores)",
+    "dataset": "10000 vectors from chunks table, 1024-dim BGE-M3",
+    "ethics_dataset": "100000 vectors"
+  },
+  "results": [
+    {
+      "method": "TurboQuant 2-bit",
+      "compression_ratio": 15.75,
+      "original_bytes": 40960000,
+      "compressed_bytes": 2600000,
+      "bytes_per_vector": 260.0,
+      "quality": {
+        "mean_cosine": 0.940129,
+        "min_cosine": 0.928757,
+        "p5_cosine": 0.935249
+      },
+      "search": {
+        "recall_at_10": 0.798,
+        "n_queries": 50
+      },
+      "throughput": {
+        "compress_ops_per_sec": 5031.0,
+        "decompress_time_sec": 1.9224,
+        "search_qps": 105.0
+      },
+      "memory_projection": {
+        "10k_vectors_mb": 2.6,
+        "100k_vectors_mb": 26.0,
+        "1m_vectors_mb": 260.0,
+        "2_4m_vectors_mb": 624.0
+      },
+      "timing": {
+        "compress_sec": 2.0513,
+        "decompress_sec": 1.9224
+      }
+    },
+    {
+      "method": "TurboQuant 3-bit",
+      "compression_ratio": 10.56,
+      "original_bytes": 40960000,
+      "compressed_bytes": 3880000,
+      "bytes_per_vector": 388.0,
+      "quality": {
+        "mean_cosine": 0.978096,
+        "min_cosine": 0.969236,
+        "p5_cosine": 0.975041
+      },
+      "search": {
+        "recall_at_10": 0.838,
+        "n_queries": 50
+      },
+      "throughput": {
+        "compress_ops_per_sec": 4592.0,
+        "decompress_time_sec": 1.9451,
+        "search_qps": 104.0
+      },
+      "memory_projection": {
+        "10k_vectors_mb": 3.88,
+        "100k_vectors_mb": 38.8,
+        "1m_vectors_mb": 388.0,
+        "2_4m_vectors_mb": 931.2
+      },
+      "timing": {
+        "compress_sec": 2.0854,
+        "decompress_sec": 1.9451
+      }
+    },
+    {
+      "method": "TurboQuant 4-bit",
+      "compression_ratio": 7.94,
+      "original_bytes": 40960000,
+      "compressed_bytes": 5160000,
+      "bytes_per_vector": 516.0,
+      "quality": {
+        "mean_cosine": 0.994766,
+        "min_cosine": 0.990105,
+        "p5_cosine": 0.993518
+      },
+      "search": {
+        "recall_at_10": 0.904,
+        "n_queries": 50
+      },
+      "throughput": {
+        "compress_ops_per_sec": 4622.0,
+        "decompress_time_sec": 1.9293,
+        "search_qps": 109.0
+      },
+      "memory_projection": {
+        "10k_vectors_mb": 5.16,
+        "100k_vectors_mb": 51.6,
+        "1m_vectors_mb": 516.0,
+        "2_4m_vectors_mb": 1238.4
+      },
+      "timing": {
+        "compress_sec": 2.1621,
+        "decompress_sec": 1.9293
+      }
+    },
+    {
+      "method": "PQ M=8 K=256",
+      "compression_ratio": 512.0,
+      "original_bytes": 40960000,
+      "compressed_bytes": 80000,
+      "bytes_per_vector": 8.0,
+      "quality": {
+        "mean_cosine": 0.802306,
+        "min_cosine": 0.605413,
+        "p5_cosine": 0.714367
+      },
+      "search": {
+        "recall_at_10": 0.33,
+        "n_queries": 50
+      },
+      "throughput": {
+        "compress_ops_per_sec": 106274.0,
+        "decompress_time_sec": 0.0022,
+        "search_qps": 102.0
+      },
+      "memory_projection": {
+        "10k_vectors_mb": 0.08,
+        "100k_vectors_mb": 0.8,
+        "1m_vectors_mb": 8.0,
+        "2_4m_vectors_mb": 19.2
+      },
+      "timing": {
+        "compress_sec": 0.1005,
+        "decompress_sec": 0.0022
+      }
+    },
+    {
+      "method": "PQ M=16 K=256",
+      "compression_ratio": 256.0,
+      "original_bytes": 40960000,
+      "compressed_bytes": 160000,
+      "bytes_per_vector": 16.0,
+      "quality": {
+        "mean_cosine": 0.809633,
+        "min_cosine": 0.630965,
+        "p5_cosine": 0.729724
+      },
+      "search": {
+        "recall_at_10": 0.414,
+        "n_queries": 50
+      },
+      "throughput": {
+        "compress_ops_per_sec": 98787.0,
+        "decompress_time_sec": 0.0021,
+        "search_qps": 110.0
+      },
+      "memory_projection": {
+        "10k_vectors_mb": 0.16,
+        "100k_vectors_mb": 1.6,
+        "1m_vectors_mb": 16.0,
+        "2_4m_vectors_mb": 38.4
+      },
+      "timing": {
+        "compress_sec": 0.137,
+        "decompress_sec": 0.0021
+      }
+    },
+    {
+      "method": "PQ M=32 K=256",
+      "compression_ratio": 128.0,
+      "original_bytes": 40960000,
+      "compressed_bytes": 320000,
+      "bytes_per_vector": 32.0,
+      "quality": {
+        "mean_cosine": 0.828058,
+        "min_cosine": 0.673393,
+        "p5_cosine": 0.762513
+      },
+      "search": {
+        "recall_at_10": 0.484,
+        "n_queries": 50
+      },
+      "throughput": {
+        "compress_ops_per_sec": 72614.0,
+        "decompress_time_sec": 0.0026,
+        "search_qps": 108.0
+      },
+      "memory_projection": {
+        "10k_vectors_mb": 0.32,
+        "100k_vectors_mb": 3.2,
+        "1m_vectors_mb": 32.0,
+        "2_4m_vectors_mb": 76.8
+      },
+      "timing": {
+        "compress_sec": 0.1966,
+        "decompress_sec": 0.0026
+      }
+    },
+    {
+      "method": "Binary Quantization",
+      "compression_ratio": 32.0,
+      "original_bytes": 40960000,
+      "compressed_bytes": 1280000,
+      "bytes_per_vector": 128.0,
+      "quality": {
+        "mean_cosine": 0.757647,
+        "min_cosine": 0.713901,
+        "p5_cosine": 0.742212
+      },
+      "search": {
+        "recall_at_10": 0.666,
+        "n_queries": 50
+      },
+      "throughput": {
+        "compress_ops_per_sec": 1013508.0,
+        "decompress_time_sec": 0.017,
+        "search_qps": 5877.0
+      },
+      "memory_projection": {
+        "10k_vectors_mb": 1.28,
+        "100k_vectors_mb": 12.8,
+        "1m_vectors_mb": 128.0,
+        "2_4m_vectors_mb": 307.2
+      },
+      "timing": {
+        "compress_sec": 0.0118,
+        "decompress_sec": 0.017
+      }
+    },
+    {
+      "method": "Scalar int8",
+      "compression_ratio": 4.0,
+      "original_bytes": 40960000,
+      "compressed_bytes": 10240000,
+      "bytes_per_vector": 1024.0,
+      "quality": {
+        "mean_cosine": 0.999918,
+        "min_cosine": 0.999909,
+        "p5_cosine": 0.999914
+      },
+      "search": {
+        "recall_at_10": 0.972,
+        "n_queries": 50
+      },
+      "throughput": {
+        "compress_ops_per_sec": 275136.0,
+        "decompress_time_sec": 0.0319,
+        "search_qps": 107.0
+      },
+      "memory_projection": {
+        "10k_vectors_mb": 10.24,
+        "100k_vectors_mb": 102.4,
+        "1m_vectors_mb": 1024.0,
+        "2_4m_vectors_mb": 2457.6
+      },
+      "timing": {
+        "compress_sec": 0.045,
+        "decompress_sec": 0.0319
+      }
+    },
+    {
+      "method": "Matryoshka 512d",
+      "compression_ratio": 2.0,
+      "original_bytes": 40960000,
+      "compressed_bytes": 20480000,
+      "bytes_per_vector": 2048.0,
+      "quality": {
+        "mean_cosine": 0.735849,
+        "min_cosine": 0.684429,
+        "p5_cosine": 0.714303
+      },
+      "search": {
+        "recall_at_10": 0.696,
+        "n_queries": 50
+      },
+      "throughput": {
+        "compress_ops_per_sec": 3731107.0,
+        "decompress_time_sec": 0.0126,
+        "search_qps": 226.0
+      },
+      "memory_projection": {
+        "10k_vectors_mb": 20.48,
+        "100k_vectors_mb": 204.8,
+        "1m_vectors_mb": 2048.0,
+        "2_4m_vectors_mb": 4915.2
+      },
+      "timing": {
+        "compress_sec": 0.0044,
+        "decompress_sec": 0.0126
+      }
+    },
+    {
+      "method": "Matryoshka 256d",
+      "compression_ratio": 4.0,
+      "original_bytes": 40960000,
+      "compressed_bytes": 10240000,
+      "bytes_per_vector": 1024.0,
+      "quality": {
+        "mean_cosine": 0.465874,
+        "min_cosine": 0.393625,
+        "p5_cosine": 0.437764
+      },
+      "search": {
+        "recall_at_10": 0.574,
+        "n_queries": 50
+      },
+      "throughput": {
+        "compress_ops_per_sec": 6050180.0,
+        "decompress_time_sec": 0.0098,
+        "search_qps": 435.0
+      },
+      "memory_projection": {
+        "10k_vectors_mb": 10.24,
+        "100k_vectors_mb": 102.4,
+        "1m_vectors_mb": 1024.0,
+        "2_4m_vectors_mb": 2457.6
+      },
+      "timing": {
+        "compress_sec": 0.0027,
+        "decompress_sec": 0.0098
+      }
+    },
+    {
+      "method": "Matryoshka 128d",
+      "compression_ratio": 8.0,
+      "original_bytes": 40960000,
+      "compressed_bytes": 5120000,
+      "bytes_per_vector": 512.0,
+      "quality": {
+        "mean_cosine": 0.332743,
+        "min_cosine": 0.252752,
+        "p5_cosine": 0.303519
+      },
+      "search": {
+        "recall_at_10": 0.41,
+        "n_queries": 50
+      },
+      "throughput": {
+        "compress_ops_per_sec": 7268992.0,
+        "decompress_time_sec": 0.009,
+        "search_qps": 973.0
+      },
+      "memory_projection": {
+        "10k_vectors_mb": 5.12,
+        "100k_vectors_mb": 51.2,
+        "1m_vectors_mb": 512.0,
+        "2_4m_vectors_mb": 1228.8
+      },
+      "timing": {
+        "compress_sec": 0.0015,
+        "decompress_sec": 0.009
+      }
+    },
+    {
+      "method": "Matryoshka 256 + TurboQuant 3-bit",
+      "compression_ratio": 40.96,
+      "original_bytes": 40960000,
+      "compressed_bytes": 1000000,
+      "bytes_per_vector": 100.0,
+      "quality": {
+        "mean_cosine": 0.455816,
+        "min_cosine": 0.385337,
+        "p5_cosine": 0.428195
+      },
+      "search": {
+        "recall_at_10": 0.55,
+        "n_queries": 50
+      },
+      "throughput": {
+        "compress_ops_per_sec": 56300.0,
+        "decompress_time_sec": 0.1382,
+        "search_qps": 98.0
+      },
+      "memory_projection": {
+        "10k_vectors_mb": 1.0,
+        "100k_vectors_mb": 10.0,
+        "1m_vectors_mb": 100.0,
+        "2_4m_vectors_mb": 240.0
+      },
+      "timing": {
+        "compress_sec": 0.1767,
+        "decompress_sec": 0.1382
+      }
+    },
+    {
+      "method": "Matryoshka 256 + PQ M=8",
+      "compression_ratio": 119.72,
+      "original_bytes": 40960000,
+      "compressed_bytes": 342144,
+      "bytes_per_vector": 34.2,
+      "quality": {
+        "mean_cosine": 0.37246,
+        "min_cosine": 0.277173,
+        "p5_cosine": 0.327436
+      },
+      "search": {
+        "recall_at_10": 0.35,
+        "n_queries": 50
+      },
+      "throughput": {
+        "compress_ops_per_sec": 253792.0,
+        "decompress_time_sec": 0.0107,
+        "search_qps": 109.0
+      },
+      "memory_projection": {
+        "10k_vectors_mb": 0.34,
+        "100k_vectors_mb": 3.42,
+        "1m_vectors_mb": 34.21,
+        "2_4m_vectors_mb": 82.11
+      },
+      "timing": {
+        "compress_sec": 0.0475,
+        "decompress_sec": 0.0107
+      }
+    },
+    {
+      "method": "Matryoshka 512 + Binary",
+      "compression_ratio": 64.0,
+      "original_bytes": 40960000,
+      "compressed_bytes": 640000,
+      "bytes_per_vector": 64.0,
+      "quality": {
+        "mean_cosine": 0.543694,
+        "min_cosine": 0.491047,
+        "p5_cosine": 0.522479
+      },
+      "search": {
+        "recall_at_10": 0.65,
+        "n_queries": 50
+      },
+      "throughput": {
+        "compress_ops_per_sec": 1201027.0,
+        "decompress_time_sec": 0.0184,
+        "search_qps": 101.0
+      },
+      "memory_projection": {
+        "10k_vectors_mb": 0.64,
+        "100k_vectors_mb": 6.4,
+        "1m_vectors_mb": 64.0,
+        "2_4m_vectors_mb": 153.6
+      },
+      "timing": {
+        "compress_sec": 0.0095,
+        "decompress_sec": 0.0184
+      }
+    },
+    {
+      "method": "Matryoshka 256 + Scalar int8",
+      "compression_ratio": 15.99,
+      "original_bytes": 40960000,
+      "compressed_bytes": 2562048,
+      "bytes_per_vector": 256.2,
+      "quality": {
+        "mean_cosine": 0.465831,
+        "min_cosine": 0.393574,
+        "p5_cosine": 0.437716
+      },
+      "search": {
+        "recall_at_10": 0.57,
+        "n_queries": 50
+      },
+      "throughput": {
+        "compress_ops_per_sec": 878571.0,
+        "decompress_time_sec": 0.0161,
+        "search_qps": 110.0
+      },
+      "memory_projection": {
+        "10k_vectors_mb": 2.56,
+        "100k_vectors_mb": 25.62,
+        "1m_vectors_mb": 256.2,
+        "2_4m_vectors_mb": 614.89
+      },
+      "timing": {
+        "compress_sec": 0.0133,
+        "decompress_sec": 0.0161
+      }
+    }
+  ],
+  "ethics_results": {
+    "turboquant_3bit": {
+      "method": "[Ethics] turboquant_3bit",
+      "compression_ratio": 10.56,
+      "original_bytes": 409600000,
+      "compressed_bytes": 38800000,
+      "bytes_per_vector": 388.0,
+      "quality": {
+        "mean_cosine": 0.977782,
+        "min_cosine": 0.965587,
+        "p5_cosine": 0.974592
+      },
+      "search": {
+        "recall_at_10": 0.804,
+        "n_queries": 50
+      },
+      "throughput": {
+        "compress_ops_per_sec": 4878.0,
+        "decompress_time_sec": 19.301,
+        "search_qps": 10.0
+      },
+      "memory_projection": {
+        "10k_vectors_mb": 3.88,
+        "100k_vectors_mb": 38.8,
+        "1m_vectors_mb": 388.0,
+        "2_4m_vectors_mb": 931.2
+      },
+      "timing": {
+        "compress_sec": 21.4,
+        "decompress_sec": 19.301
+      }
+    },
+    "scalar_int8": {
+      "method": "[Ethics] scalar_int8",
+      "compression_ratio": 4.0,
+      "original_bytes": 409600000,
+      "compressed_bytes": 102400000,
+      "bytes_per_vector": 1024.0,
+      "quality": {
+        "mean_cosine": 0.999898,
+        "min_cosine": 0.999884,
+        "p5_cosine": 0.999893
+      },
+      "search": {
+        "recall_at_10": 0.988,
+        "n_queries": 50
+      },
+      "throughput": {
+        "compress_ops_per_sec": 261965.0,
+        "decompress_time_sec": 0.6162,
+        "search_qps": 11.0
+      },
+      "memory_projection": {
+        "10k_vectors_mb": 10.24,
+        "100k_vectors_mb": 102.4,
+        "1m_vectors_mb": 1024.0,
+        "2_4m_vectors_mb": 2457.6
+      },
+      "timing": {
+        "compress_sec": 0.7064,
+        "decompress_sec": 0.6162
+      }
+    },
+    "binary": {
+      "method": "[Ethics] binary",
+      "compression_ratio": 32.0,
+      "original_bytes": 409600000,
+      "compressed_bytes": 12800000,
+      "bytes_per_vector": 128.0,
+      "quality": {
+        "mean_cosine": 0.760141,
+        "min_cosine": 0.718293,
+        "p5_cosine": 0.743871
+      },
+      "search": {
+        "recall_at_10": 0.556,
+        "n_queries": 50
+      },
+      "throughput": {
+        "compress_ops_per_sec": 964857.0,
+        "decompress_time_sec": 0.2696,
+        "search_qps": 482.0
+      },
+      "memory_projection": {
+        "10k_vectors_mb": 1.28,
+        "100k_vectors_mb": 12.8,
+        "1m_vectors_mb": 128.0,
+        "2_4m_vectors_mb": 307.2
+      },
+      "timing": {
+        "compress_sec": 0.1128,
+        "decompress_sec": 0.2696
+      }
+    },
+    "pq_m16": {
+      "method": "[Ethics] PQ M=16",
+      "compression_ratio": 256.0,
+      "original_bytes": 409600000,
+      "compressed_bytes": 1600000,
+      "bytes_per_vector": 16.0,
+      "quality": {
+        "mean_cosine": 0.773011,
+        "min_cosine": 0.558213,
+        "p5_cosine": 0.70092
+      },
+      "search": {
+        "recall_at_10": 0.208,
+        "n_queries": 50
+      },
+      "throughput": {
+        "compress_ops_per_sec": 98472.0,
+        "decompress_time_sec": 0.0195,
+        "search_qps": 11.0
+      },
+      "memory_projection": {
+        "10k_vectors_mb": 0.16,
+        "100k_vectors_mb": 1.6,
+        "1m_vectors_mb": 16.0,
+        "2_4m_vectors_mb": 38.4
+      },
+      "timing": {
+        "compress_sec": 1.5888,
+        "decompress_sec": 0.0195
+      }
+    },
+    "mat256_tq3": {
+      "method": "[Ethics] Matryoshka 256+TQ3",
+      "compression_ratio": 40.96,
+      "original_bytes": 409600000,
+      "compressed_bytes": 10000000,
+      "bytes_per_vector": 100.0,
+      "quality": {
+        "mean_cosine": 0.470073,
+        "min_cosine": 0.386142,
+        "p5_cosine": 0.441546
+      },
+      "search": {
+        "recall_at_10": 0.372,
+        "n_queries": 50
+      },
+      "throughput": {
+        "compress_ops_per_sec": 55826.0,
+        "decompress_time_sec": 1.6145,
+        "search_qps": 10.0
+      },
+      "memory_projection": {
+        "10k_vectors_mb": 1.0,
+        "100k_vectors_mb": 10.0,
+        "1m_vectors_mb": 100.0,
+        "2_4m_vectors_mb": 240.0
+      },
+      "timing": {
+        "compress_sec": 1.9141,
+        "decompress_sec": 1.6145
+      }
+    }
+  },
+  "recommendations": {
+    "rag_search": {
+      "recommended": "Scalar int8",
+      "score": 0.8912,
+      "top_3": [
+        [
+          "Scalar int8",
+          0.8912
+        ],
+        [
+          "TurboQuant 4-bit",
+          0.8567
+        ],
+        [
+          "TurboQuant 3-bit",
+          0.8173
+        ]
+      ],
+      "rationale": "High recall and cosine fidelity with decent compression"
+    },
+    "nats_transport": {
+      "recommended": "PQ M=32 K=256",
+      "score": 0.6686,
+      "top_3": [
+        [
+          "PQ M=32 K=256",
+          0.6686
+        ],
+        [
+          "PQ M=16 K=256",
+          0.666
+        ],
+        [
+          "PQ M=8 K=256",
+          0.6648
+        ]
+      ],
+      "rationale": "Maximum compression with fast encode/decode for message bus"
+    },
+    "l2_ram_cache": {
+      "recommended": "PQ M=16 K=256",
+      "score": 0.9429,
+      "top_3": [
+        [
+          "PQ M=16 K=256",
+          0.9429
+        ],
+        [
+          "PQ M=8 K=256",
+          0.9225
+        ],
+        [
+          "PQ M=32 K=256",
+          0.8715
+        ]
+      ],
+      "rationale": "Fast decompression with good quality for hot cache"
+    },
+    "cold_storage": {
+      "recommended": "PQ M=32 K=256",
+      "score": 0.914,
+      "top_3": [
+        [
+          "PQ M=32 K=256",
+          0.914
+        ],
+        [
+          "PQ M=16 K=256",
+          0.9033
+        ],
+        [
+          "PQ M=8 K=256",
+          0.8935
+        ]
+      ],
+      "rationale": "Maximum compression ratio for archival storage"
+    },
+    "realtime_kv_cache": {
+      "recommended": "Scalar int8",
+      "score": 0.7057,
+      "top_3": [
+        [
+          "Scalar int8",
+          0.7057
+        ],
+        [
+          "TurboQuant 4-bit",
+          0.6784
+        ],
+        [
+          "Matryoshka 512d",
+          0.6611
+        ]
+      ],
+      "rationale": "High cosine fidelity with fast compression for attention"
+    }
+  }
+}
