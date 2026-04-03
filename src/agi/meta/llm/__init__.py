@@ -34,6 +34,7 @@ __all__ = [
     "RH_PRESET",
     "PromptTemplateRegistry",
     "TurboQuantKV",
+    "TurboQuantKVCache",
     "CompressedKV",
 ]
 
@@ -45,6 +46,10 @@ except ImportError:
     pass
 
 try:
-    from agi.meta.llm.turboquant_kv import CompressedKV, TurboQuantKV
+    from agi.meta.llm.turboquant_kv import (
+        CompressedKV,
+        TurboQuantKV,
+        TurboQuantKVCache,
+    )
 except ImportError:
     pass

@@ -20,9 +20,9 @@
 """
 TurboQuant KV cache compression for LLM inference.
 
-Reduces KV cache memory by ~6x (3-bit) to ~10.7x (2-bit), enabling
-longer context windows on VRAM-constrained GPUs such as the Quadro
-GV100 (32 GB, Volta / compute 7.0).
+Reduces KV cache memory by ~5.1x (3-bit) to ~7.9x (2-bit) with
+bit-packing, enabling longer context windows on VRAM-constrained GPUs
+such as the Quadro GV100 (32 GB, Volta / compute 7.0).
 
 Algorithm adapted from Theory Radar's TurboBeam (turbo_beam.py) which
 implements Zandieh et al. "Sub-linear Memory Inference via PolarQuant
@@ -33,7 +33,7 @@ and QJL" (ICLR 2026):
      hypersphere where coordinates are approximately i.i.d. Gaussian.
   2. Optimal Lloyd-Max scalar quantizer maps each rotated coordinate
      to a *b*-bit index using precomputed centroids for N(0, 1/sqrt(d)).
-  3. Store only the uint8 index array + per-vector L2 norm.
+  3. Bit-pack indices (8 x 3-bit = 3 bytes) + per-vector L2 norm.
 
 The key difference from beam-search quantization is that KV cache
 compression must preserve attention-pattern accuracy (cosine similarity
@@ -42,7 +42,12 @@ of key/query dot products), not just candidate rankings.  Empirically,
 
 Target model dimensions (Gemma 4 27B):
   - n_heads=16, n_kv_heads=16, head_dim=256
-  - 8K context at fp16: ~2.0 GB KV cache -> ~340 MB at 3-bit
+  - 8K context at fp16: ~2.0 GB KV cache -> ~340 MB at 3-bit (packed)
+
+Provides three main components:
+  - ``TurboQuantKV``: stateless compress/decompress with optional bit-packing
+  - ``TurboQuantKVCache``: streaming KV cache with hot/cold tiered storage
+  - CuPy CUDA RawKernels for GPU-accelerated bit-packing (optional)
 
 Standalone module -- does not depend on the Theory Radar codebase.
 """
@@ -53,7 +58,7 @@ import logging
 import math
 import time
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -66,6 +71,168 @@ try:
 except ImportError:
     cp = None  # type: ignore[assignment]
     _HAS_CUPY = False
+
+
+# ------------------------------------------------------------------ #
+# CuPy CUDA RawKernels for GPU-accelerated bit-packing               #
+# Volta compatible (compute 7.0)                                      #
+# ------------------------------------------------------------------ #
+
+_PACK_KERNEL_3BIT_SRC = r"""
+extern "C" __global__
+void pack_3bit(const unsigned char* indices, unsigned char* packed,
+               int n) {
+    // Each thread packs 8 x 3-bit values into 3 bytes (24 bits).
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if (idx * 8 >= n) return;
+
+    int src = idx * 8;
+    int dst = idx * 3;
+
+    // Read 8 values (each 0..7, i.e. 3 bits)
+    unsigned int v0 = (src + 0 < n) ? indices[src + 0] : 0;
+    unsigned int v1 = (src + 1 < n) ? indices[src + 1] : 0;
+    unsigned int v2 = (src + 2 < n) ? indices[src + 2] : 0;
+    unsigned int v3 = (src + 3 < n) ? indices[src + 3] : 0;
+    unsigned int v4 = (src + 4 < n) ? indices[src + 4] : 0;
+    unsigned int v5 = (src + 5 < n) ? indices[src + 5] : 0;
+    unsigned int v6 = (src + 6 < n) ? indices[src + 6] : 0;
+    unsigned int v7 = (src + 7 < n) ? indices[src + 7] : 0;
+
+    // Pack into 24 bits = 3 bytes, LSB first:
+    //   byte0: v0[2:0] | v1[2:0] | v2[1:0]  (bits 0-7)
+    //   byte1: v2[2]   | v3[2:0] | v4[2:0] | v5[0]  (bits 8-15)
+    //   byte2: v5[2:1] | v6[2:0] | v7[2:0]  (bits 16-23)
+    unsigned int bits24 = (v0)
+                        | (v1 << 3)
+                        | (v2 << 6)
+                        | (v3 << 9)
+                        | (v4 << 12)
+                        | (v5 << 15)
+                        | (v6 << 18)
+                        | (v7 << 21);
+
+    packed[dst + 0] = (unsigned char)(bits24 & 0xFF);
+    packed[dst + 1] = (unsigned char)((bits24 >> 8) & 0xFF);
+    packed[dst + 2] = (unsigned char)((bits24 >> 16) & 0xFF);
+}
+"""
+
+_UNPACK_KERNEL_3BIT_SRC = r"""
+extern "C" __global__
+void unpack_3bit(const unsigned char* packed, unsigned char* indices,
+                 int n) {
+    // Each thread unpacks 3 bytes into 8 x 3-bit values.
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if (idx * 8 >= n) return;
+
+    int src = idx * 3;
+    int dst = idx * 8;
+
+    unsigned int b0 = packed[src + 0];
+    unsigned int b1 = packed[src + 1];
+    unsigned int b2 = packed[src + 2];
+    unsigned int bits24 = b0 | (b1 << 8) | (b2 << 16);
+
+    if (dst + 0 < n) indices[dst + 0] = (unsigned char)( bits24        & 0x7);
+    if (dst + 1 < n) indices[dst + 1] = (unsigned char)((bits24 >>  3) & 0x7);
+    if (dst + 2 < n) indices[dst + 2] = (unsigned char)((bits24 >>  6) & 0x7);
+    if (dst + 3 < n) indices[dst + 3] = (unsigned char)((bits24 >>  9) & 0x7);
+    if (dst + 4 < n) indices[dst + 4] = (unsigned char)((bits24 >> 12) & 0x7);
+    if (dst + 5 < n) indices[dst + 5] = (unsigned char)((bits24 >> 15) & 0x7);
+    if (dst + 6 < n) indices[dst + 6] = (unsigned char)((bits24 >> 18) & 0x7);
+    if (dst + 7 < n) indices[dst + 7] = (unsigned char)((bits24 >> 21) & 0x7);
+}
+"""
+
+_PACK_KERNEL_2BIT_SRC = r"""
+extern "C" __global__
+void pack_2bit(const unsigned char* indices, unsigned char* packed,
+               int n) {
+    // Each thread packs 4 x 2-bit values into 1 byte.
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if (idx * 4 >= n) return;
+
+    int src = idx * 4;
+    unsigned int v0 = (src + 0 < n) ? indices[src + 0] : 0;
+    unsigned int v1 = (src + 1 < n) ? indices[src + 1] : 0;
+    unsigned int v2 = (src + 2 < n) ? indices[src + 2] : 0;
+    unsigned int v3 = (src + 3 < n) ? indices[src + 3] : 0;
+
+    packed[idx] = (unsigned char)(v0 | (v1 << 2) | (v2 << 4) | (v3 << 6));
+}
+"""
+
+_UNPACK_KERNEL_2BIT_SRC = r"""
+extern "C" __global__
+void unpack_2bit(const unsigned char* packed, unsigned char* indices,
+                 int n) {
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if (idx * 4 >= n) return;
+
+    int dst = idx * 4;
+    unsigned int byte_val = packed[idx];
+
+    if (dst + 0 < n) indices[dst + 0] = (unsigned char)( byte_val       & 0x3);
+    if (dst + 1 < n) indices[dst + 1] = (unsigned char)((byte_val >> 2) & 0x3);
+    if (dst + 2 < n) indices[dst + 2] = (unsigned char)((byte_val >> 4) & 0x3);
+    if (dst + 3 < n) indices[dst + 3] = (unsigned char)((byte_val >> 6) & 0x3);
+}
+"""
+
+_PACK_KERNEL_4BIT_SRC = r"""
+extern "C" __global__
+void pack_4bit(const unsigned char* indices, unsigned char* packed,
+               int n) {
+    // Each thread packs 2 x 4-bit values into 1 byte.
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if (idx * 2 >= n) return;
+
+    int src = idx * 2;
+    unsigned int v0 = (src + 0 < n) ? indices[src + 0] : 0;
+    unsigned int v1 = (src + 1 < n) ? indices[src + 1] : 0;
+
+    packed[idx] = (unsigned char)(v0 | (v1 << 4));
+}
+"""
+
+_UNPACK_KERNEL_4BIT_SRC = r"""
+extern "C" __global__
+void unpack_4bit(const unsigned char* packed, unsigned char* indices,
+                 int n) {
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if (idx * 2 >= n) return;
+
+    int dst = idx * 2;
+    unsigned int byte_val = packed[idx];
+
+    if (dst + 0 < n) indices[dst + 0] = (unsigned char)( byte_val       & 0xF);
+    if (dst + 1 < n) indices[dst + 1] = (unsigned char)((byte_val >> 4) & 0xF);
+}
+"""
+
+# Lazy-compiled kernel cache (only compiled on first use when CuPy available)
+_gpu_kernels: Dict[str, object] = {}
+
+
+def _get_gpu_kernel(name: str) -> object:
+    """Lazily compile and cache a CuPy RawKernel."""
+    if name in _gpu_kernels:
+        return _gpu_kernels[name]
+    if not _HAS_CUPY:
+        raise RuntimeError("CuPy not available for GPU kernels")
+    src_map = {
+        "pack_3bit": (_PACK_KERNEL_3BIT_SRC, "pack_3bit"),
+        "unpack_3bit": (_UNPACK_KERNEL_3BIT_SRC, "unpack_3bit"),
+        "pack_2bit": (_PACK_KERNEL_2BIT_SRC, "pack_2bit"),
+        "unpack_2bit": (_UNPACK_KERNEL_2BIT_SRC, "unpack_2bit"),
+        "pack_4bit": (_PACK_KERNEL_4BIT_SRC, "pack_4bit"),
+        "unpack_4bit": (_UNPACK_KERNEL_4BIT_SRC, "unpack_4bit"),
+    }
+    src, func_name = src_map[name]
+    kernel = cp.RawKernel(src, func_name)
+    _gpu_kernels[name] = kernel
+    return kernel
 
 
 # ------------------------------------------------------------------ #
@@ -105,19 +272,28 @@ class CompressedKV:
 
     Attributes:
         indices: uint8 array of quantisation bin indices.
-            Shape matches the original tensor shape (batch, n_heads,
-            seq_len, head_dim) but dtype is uint8.
+            When ``packed=False``: shape matches the original tensor
+            shape ``(batch, n_heads, seq_len, head_dim)`` with dtype
+            uint8 (one index per byte).
+            When ``packed=True``: flat uint8 byte array with indices
+            bit-packed (e.g. 8 x 3-bit = 3 bytes).
         norms: L2 norms of the original vectors along ``head_dim``.
-            Shape is (batch, n_heads, seq_len).
+            Shape is ``(batch, n_heads, seq_len)``.
         bits: Number of quantisation bits (2, 3, or 4).
-        original_dtype: The dtype of the tensor before compression,
-            so we can reconstruct to the same precision.
+        original_dtype: The dtype of the tensor before compression.
+        packed: Whether indices are bit-packed.
+        n_values: Total number of index values (needed for unpacking
+            when ``packed=True``).
+        shape: Original index array shape before packing.
     """
 
-    indices: np.ndarray  # uint8  (B, H, S, D)
+    indices: np.ndarray  # uint8 (packed or unpacked)
     norms: np.ndarray  # float32 (B, H, S)
     bits: int
     original_dtype: np.dtype = field(default_factory=lambda: np.dtype("float32"))
+    packed: bool = False
+    n_values: int = 0
+    shape: Tuple[int, ...] = ()
 
     def nbytes(self) -> int:
         """Total memory consumed by the compressed representation."""
@@ -269,15 +445,229 @@ class TurboQuantKV:
         return xp.einsum("...d,de->...e", y, self._Pi)
 
     # ------------------------------------------------------------------ #
+    # Bit-packing                                                         #
+    # ------------------------------------------------------------------ #
+
+    def _pack_bits(self, indices: np.ndarray) -> np.ndarray:
+        """Pack *b*-bit indices into bytes.
+
+        For 3-bit: 8 values into 3 bytes (24 bits = 8 x 3).
+        For 2-bit: 4 values into 1 byte (8 bits  = 4 x 2).
+        For 4-bit: 2 values into 1 byte (8 bits  = 2 x 4).
+
+        Args:
+            indices: Flat uint8 array of quantisation bin indices.
+
+        Returns:
+            Packed uint8 byte array.
+        """
+        if self._gpu:
+            return self._pack_bits_gpu(indices)
+        return self._pack_bits_cpu(indices)
+
+    def _unpack_bits(self, packed: np.ndarray, n_values: int) -> np.ndarray:
+        """Unpack bytes back to *b*-bit indices.
+
+        Args:
+            packed: Packed uint8 byte array from :meth:`_pack_bits`.
+            n_values: Number of original index values (needed because
+                the last group may have been zero-padded).
+
+        Returns:
+            Flat uint8 array of ``n_values`` indices.
+        """
+        if self._gpu:
+            return self._unpack_bits_gpu(packed, n_values)
+        return self._unpack_bits_cpu(packed, n_values)
+
+    # -- CPU (NumPy) implementations ---------------------------------- #
+
+    def _pack_bits_cpu(self, indices: np.ndarray) -> np.ndarray:
+        """CPU bit-packing using NumPy vectorised operations."""
+        flat = indices.ravel().astype(np.uint32)
+        n = len(flat)
+
+        if self.bits == 2:
+            # 4 values per byte
+            pad = (4 - n % 4) % 4
+            if pad:
+                flat = np.concatenate([flat, np.zeros(pad, dtype=np.uint32)])
+            flat = flat.reshape(-1, 4)
+            packed = (
+                flat[:, 0] | (flat[:, 1] << 2) | (flat[:, 2] << 4) | (flat[:, 3] << 6)
+            )
+            return packed.astype(np.uint8)
+
+        elif self.bits == 3:
+            # 8 values -> 3 bytes (24 bits)
+            pad = (8 - n % 8) % 8
+            if pad:
+                flat = np.concatenate([flat, np.zeros(pad, dtype=np.uint32)])
+            flat = flat.reshape(-1, 8)
+            bits24 = (
+                flat[:, 0]
+                | (flat[:, 1] << 3)
+                | (flat[:, 2] << 6)
+                | (flat[:, 3] << 9)
+                | (flat[:, 4] << 12)
+                | (flat[:, 5] << 15)
+                | (flat[:, 6] << 18)
+                | (flat[:, 7] << 21)
+            )
+            b0 = (bits24 & 0xFF).astype(np.uint8)
+            b1 = ((bits24 >> 8) & 0xFF).astype(np.uint8)
+            b2 = ((bits24 >> 16) & 0xFF).astype(np.uint8)
+            packed = np.column_stack([b0, b1, b2]).ravel()
+            return packed
+
+        elif self.bits == 4:
+            # 2 values per byte
+            pad = (2 - n % 2) % 2
+            if pad:
+                flat = np.concatenate([flat, np.zeros(pad, dtype=np.uint32)])
+            flat = flat.reshape(-1, 2)
+            packed = flat[:, 0] | (flat[:, 1] << 4)
+            return packed.astype(np.uint8)
+
+        else:
+            raise ValueError(f"Unsupported bits={self.bits} for packing")
+
+    def _unpack_bits_cpu(self, packed: np.ndarray, n_values: int) -> np.ndarray:
+        """CPU bit-unpacking using NumPy vectorised operations."""
+        packed = packed.ravel()
+
+        if self.bits == 2:
+            # Each byte -> 4 values
+            b = packed.astype(np.uint32)
+            v0 = b & 0x3
+            v1 = (b >> 2) & 0x3
+            v2 = (b >> 4) & 0x3
+            v3 = (b >> 6) & 0x3
+            out = np.column_stack([v0, v1, v2, v3]).ravel()
+            return out[:n_values].astype(np.uint8)
+
+        elif self.bits == 3:
+            # Every 3 bytes -> 8 values
+            packed = packed.reshape(-1, 3)
+            b0 = packed[:, 0].astype(np.uint32)
+            b1 = packed[:, 1].astype(np.uint32)
+            b2 = packed[:, 2].astype(np.uint32)
+            bits24 = b0 | (b1 << 8) | (b2 << 16)
+            v0 = bits24 & 0x7
+            v1 = (bits24 >> 3) & 0x7
+            v2 = (bits24 >> 6) & 0x7
+            v3 = (bits24 >> 9) & 0x7
+            v4 = (bits24 >> 12) & 0x7
+            v5 = (bits24 >> 15) & 0x7
+            v6 = (bits24 >> 18) & 0x7
+            v7 = (bits24 >> 21) & 0x7
+            out = np.column_stack([v0, v1, v2, v3, v4, v5, v6, v7]).ravel()
+            return out[:n_values].astype(np.uint8)
+
+        elif self.bits == 4:
+            # Each byte -> 2 values
+            b = packed.astype(np.uint32)
+            v0 = b & 0xF
+            v1 = (b >> 4) & 0xF
+            out = np.column_stack([v0, v1]).ravel()
+            return out[:n_values].astype(np.uint8)
+
+        else:
+            raise ValueError(f"Unsupported bits={self.bits} for unpacking")
+
+    # -- GPU (CuPy) implementations ----------------------------------- #
+
+    def _pack_bits_gpu(self, indices: np.ndarray) -> np.ndarray:
+        """GPU bit-packing using CuPy RawKernels."""
+        xp = cp
+        flat = indices.ravel()
+        n = len(flat)
+
+        if self.bits == 2:
+            groups = (n + 3) // 4
+            pad = groups * 4 - n
+            if pad:
+                flat = xp.concatenate([flat, xp.zeros(pad, dtype=xp.uint8)])
+            packed = xp.empty(groups, dtype=xp.uint8)
+            kernel = _get_gpu_kernel("pack_2bit")
+            threads = 256
+            blocks = (groups + threads - 1) // threads
+            kernel((blocks,), (threads,), (flat, packed, n))
+            return packed
+
+        elif self.bits == 3:
+            groups = (n + 7) // 8
+            pad = groups * 8 - n
+            if pad:
+                flat = xp.concatenate([flat, xp.zeros(pad, dtype=xp.uint8)])
+            packed = xp.empty(groups * 3, dtype=xp.uint8)
+            kernel = _get_gpu_kernel("pack_3bit")
+            threads = 256
+            blocks = (groups + threads - 1) // threads
+            kernel((blocks,), (threads,), (flat, packed, n))
+            return packed
+
+        elif self.bits == 4:
+            groups = (n + 1) // 2
+            pad = groups * 2 - n
+            if pad:
+                flat = xp.concatenate([flat, xp.zeros(pad, dtype=xp.uint8)])
+            packed = xp.empty(groups, dtype=xp.uint8)
+            kernel = _get_gpu_kernel("pack_4bit")
+            threads = 256
+            blocks = (groups + threads - 1) // threads
+            kernel((blocks,), (threads,), (flat, packed, n))
+            return packed
+
+        else:
+            raise ValueError(f"Unsupported bits={self.bits} for GPU packing")
+
+    def _unpack_bits_gpu(self, packed: np.ndarray, n_values: int) -> np.ndarray:
+        """GPU bit-unpacking using CuPy RawKernels."""
+        xp = cp
+
+        if self.bits == 2:
+            groups = len(packed)
+            indices = xp.empty(groups * 4, dtype=xp.uint8)
+            kernel = _get_gpu_kernel("unpack_2bit")
+            threads = 256
+            blocks = (groups + threads - 1) // threads
+            kernel((blocks,), (threads,), (packed, indices, n_values))
+            return indices[:n_values]
+
+        elif self.bits == 3:
+            groups = len(packed) // 3
+            indices = xp.empty(groups * 8, dtype=xp.uint8)
+            kernel = _get_gpu_kernel("unpack_3bit")
+            threads = 256
+            blocks = (groups + threads - 1) // threads
+            kernel((blocks,), (threads,), (packed, indices, n_values))
+            return indices[:n_values]
+
+        elif self.bits == 4:
+            groups = len(packed)
+            indices = xp.empty(groups * 2, dtype=xp.uint8)
+            kernel = _get_gpu_kernel("unpack_4bit")
+            threads = 256
+            blocks = (groups + threads - 1) // threads
+            kernel((blocks,), (threads,), (packed, indices, n_values))
+            return indices[:n_values]
+
+        else:
+            raise ValueError(f"Unsupported bits={self.bits} for GPU unpacking")
+
+    # ------------------------------------------------------------------ #
     # Public API                                                          #
     # ------------------------------------------------------------------ #
 
-    def compress(self, tensor: np.ndarray) -> CompressedKV:
+    def compress(self, tensor: np.ndarray, packed: bool = False) -> CompressedKV:
         """Quantise a KV tensor to *b*-bit indices + per-vector norms.
 
         Args:
             tensor: KV cache tensor of shape (batch, n_heads, seq_len,
                 head_dim) in any float dtype.
+            packed: If True, bit-pack indices for maximum compression
+                (e.g. ~5.1x for 3-bit instead of ~2x with uint8).
 
         Returns:
             A :class:`CompressedKV` container holding uint8 indices and
@@ -302,11 +692,28 @@ class TurboQuantKV:
         # Scalar quantise each coordinate using precomputed boundaries
         indices = xp.searchsorted(self.boundaries, x_rot).astype(xp.uint8)
 
+        if packed:
+            idx_shape = tuple(int(s) for s in indices.shape)
+            n_values = int(np.prod(idx_shape))
+            packed_indices = self._pack_bits(indices)
+            return CompressedKV(
+                indices=self._to_numpy(packed_indices),
+                norms=self._to_numpy(norms.astype(xp.float32)),
+                bits=self.bits,
+                original_dtype=np.dtype(original_dtype),
+                packed=True,
+                n_values=n_values,
+                shape=idx_shape,
+            )
+
         return CompressedKV(
             indices=self._to_numpy(indices),
             norms=self._to_numpy(norms.astype(xp.float32)),
             bits=self.bits,
             original_dtype=np.dtype(original_dtype),
+            packed=False,
+            n_values=int(np.prod(indices.shape)),
+            shape=tuple(int(s) for s in indices.shape),
         )
 
     def decompress(self, compressed: CompressedKV) -> np.ndarray:
@@ -321,7 +728,13 @@ class TurboQuantKV:
         """
         xp = cp if self._gpu else np
 
-        indices = self._to_device(compressed.indices)
+        if compressed.packed:
+            packed_dev = self._to_device(compressed.indices)
+            flat_indices = self._unpack_bits(packed_dev, compressed.n_values)
+            indices = flat_indices.reshape(compressed.shape)
+        else:
+            indices = self._to_device(compressed.indices)
+
         norms = self._to_device(compressed.norms)
 
         # Look up centroid values
@@ -339,23 +752,30 @@ class TurboQuantKV:
     # Convenience methods                                                 #
     # ------------------------------------------------------------------ #
 
-    def compression_ratio(self) -> float:
-        """Actual compression ratio for fp16 originals (uint8 storage).
+    def compression_ratio(self, packed: bool = False) -> float:
+        """Compression ratio for fp16 originals.
 
-        Current implementation stores one uint8 per coordinate plus a
-        float32 norm per vector.  For fp16 originals this gives ~2x.
+        When ``packed=False`` (legacy): stores one uint8 per coordinate
+        plus a float32 norm per vector.  For fp16 originals this gives
+        ~2x.
 
-        With bit-packing (future optimisation) the ratio would be
-        16 / (bits + 32/head_dim) -- e.g. ~5.1x for 3-bit at head_dim=256.
+        When ``packed=True``: stores *b* bits per coordinate (bit-packed)
+        plus a float32 norm per vector.  For 3-bit at head_dim=256 this
+        gives ~5.1x.
+
+        Args:
+            packed: If True, calculate ratio with bit-packing.
 
         Returns:
-            Compression ratio (original / compressed) for current uint8
-            storage.
+            Compression ratio (original / compressed).
         """
-        # uint8 index per coordinate = 1 byte.  fp16 original = 2 bytes.
-        # Plus per-vector norm overhead: 4 bytes / head_dim per element.
-        bytes_per_element_compressed = 1.0 + 4.0 / self.head_dim
         bytes_per_element_original = 2.0  # fp16
+        if packed:
+            # b bits per coordinate + norm overhead
+            bytes_per_element_compressed = self.bits / 8.0 + 4.0 / self.head_dim
+        else:
+            # uint8 (1 byte) per coordinate + norm overhead
+            bytes_per_element_compressed = 1.0 + 4.0 / self.head_dim
         return bytes_per_element_original / bytes_per_element_compressed
 
     def theoretical_compression_ratio(self) -> float:
@@ -421,3 +841,257 @@ class TurboQuantKV:
             "ratio": round(original_gb / max(compressed_gb, 1e-9), 2),
             "saved_gb": round(original_gb - compressed_gb, 3),
         }
+
+
+# ------------------------------------------------------------------ #
+# Streaming KV cache with tiered hot/cold storage                     #
+# ------------------------------------------------------------------ #
+
+
+class TurboQuantKVCache:
+    """Manages a growing KV cache during autoregressive inference.
+
+    Implements a two-tier memory hierarchy:
+
+    - **L1 (hot window)**: The most recent ``hot_window`` tokens are
+      stored uncompressed in VRAM for zero-latency attention.
+    - **L2 (cold storage)**: Older tokens are bit-packed at *b*-bit
+      precision, achieving ~5x compression.  Decompressed on demand
+      when the attention window extends into cold storage.
+
+    This is designed to sit between the model's attention mechanism
+    and VRAM, transparently compressing the KV cache as context grows.
+
+    Usage::
+
+        cache = TurboQuantKVCache(head_dim=256, n_heads=16, bits=3)
+        for token in tokens:
+            k, v = model.forward_one(token)
+            cache.append(k, v)        # auto-compresses old entries
+            keys = cache.get_keys(0, cache.length)
+            values = cache.get_values(0, cache.length)
+            # ... use keys/values for attention ...
+
+    Args:
+        head_dim: Dimension of each attention head.
+        n_heads: Number of key/value heads.
+        bits: Quantisation width (2, 3, or 4).
+        hot_window: Number of recent tokens kept uncompressed.
+        use_gpu: Whether to use CuPy for compression.
+        device_id: CUDA device ordinal.
+        seed: Random seed for reproducibility.
+    """
+
+    def __init__(
+        self,
+        head_dim: int = 128,
+        n_heads: int = 32,
+        bits: int = 3,
+        hot_window: int = 512,
+        use_gpu: bool = True,
+        device_id: int = 0,
+        seed: Optional[int] = None,
+    ) -> None:
+        self.head_dim = head_dim
+        self.n_heads = n_heads
+        self.bits = bits
+        self.hot_window = hot_window
+
+        # The underlying stateless compressor
+        self._tq = TurboQuantKV(
+            head_dim=head_dim,
+            n_heads=n_heads,
+            bits=bits,
+            use_gpu=use_gpu,
+            device_id=device_id,
+            seed=seed,
+        )
+
+        # L1 hot buffers: list of (key, value) tensors each of shape
+        # (1, n_heads, 1, head_dim) -- one per token
+        self._hot_keys: List[np.ndarray] = []
+        self._hot_values: List[np.ndarray] = []
+
+        # L2 cold storage: list of CompressedKV chunks
+        self._cold_keys: List[CompressedKV] = []
+        self._cold_values: List[CompressedKV] = []
+        self._cold_lengths: List[int] = []  # seq_len per cold chunk
+
+        # Total tokens stored
+        self._total_len: int = 0
+
+    @property
+    def length(self) -> int:
+        """Total number of tokens in the cache (cold + hot)."""
+        return self._total_len
+
+    @property
+    def cold_length(self) -> int:
+        """Number of tokens in cold (compressed) storage."""
+        return sum(self._cold_lengths)
+
+    @property
+    def hot_length(self) -> int:
+        """Number of tokens in the hot (uncompressed) window."""
+        return len(self._hot_keys)
+
+    def append(self, key: np.ndarray, value: np.ndarray) -> None:
+        """Add a new KV pair for one token.
+
+        If the hot window exceeds ``hot_window`` tokens, the oldest
+        entries are compressed and moved to cold storage.
+
+        Args:
+            key: Key tensor of shape ``(1, n_heads, 1, head_dim)`` or
+                ``(n_heads, head_dim)``.
+            value: Value tensor with the same shape convention.
+        """
+        # Normalise to (1, n_heads, 1, head_dim)
+        if key.ndim == 2:
+            key = key[np.newaxis, :, np.newaxis, :]
+        if value.ndim == 2:
+            value = value[np.newaxis, :, np.newaxis, :]
+
+        self._hot_keys.append(key)
+        self._hot_values.append(value)
+        self._total_len += 1
+
+        # Check if we need to flush hot window to cold storage
+        if len(self._hot_keys) > self.hot_window:
+            self._flush_to_cold()
+
+    def _flush_to_cold(self) -> None:
+        """Compress half of the hot window and move to cold storage.
+
+        We flush the oldest half to amortise compression cost and
+        avoid compressing on every single token.
+        """
+        n_flush = len(self._hot_keys) // 2
+        if n_flush == 0:
+            return
+
+        # Concatenate along seq_len axis -> (1, n_heads, n_flush, head_dim)
+        keys_to_flush = np.concatenate(self._hot_keys[:n_flush], axis=2)
+        values_to_flush = np.concatenate(self._hot_values[:n_flush], axis=2)
+
+        # Compress with bit-packing
+        compressed_k = self._tq.compress(keys_to_flush, packed=True)
+        compressed_v = self._tq.compress(values_to_flush, packed=True)
+
+        self._cold_keys.append(compressed_k)
+        self._cold_values.append(compressed_v)
+        self._cold_lengths.append(n_flush)
+
+        # Remove flushed entries from hot buffers
+        self._hot_keys = self._hot_keys[n_flush:]
+        self._hot_values = self._hot_values[n_flush:]
+
+    def get_keys(self, start: int, end: int) -> np.ndarray:
+        """Get key tensors for token positions ``[start, end)``.
+
+        Decompresses cold-storage entries on demand.
+
+        Args:
+            start: Start position (inclusive).
+            end: End position (exclusive).
+
+        Returns:
+            Key tensor of shape ``(1, n_heads, end-start, head_dim)``.
+        """
+        return self._get_range(self._cold_keys, self._hot_keys, start, end)
+
+    def get_values(self, start: int, end: int) -> np.ndarray:
+        """Get value tensors for token positions ``[start, end)``.
+
+        Decompresses cold-storage entries on demand.
+
+        Args:
+            start: Start position (inclusive).
+            end: End position (exclusive).
+
+        Returns:
+            Value tensor of shape ``(1, n_heads, end-start, head_dim)``.
+        """
+        return self._get_range(self._cold_values, self._hot_values, start, end)
+
+    def _get_range(
+        self,
+        cold_chunks: List[CompressedKV],
+        hot_entries: List[np.ndarray],
+        start: int,
+        end: int,
+    ) -> np.ndarray:
+        """Retrieve a range of KV tensors spanning cold and hot storage."""
+        parts: List[np.ndarray] = []
+        cold_total = self.cold_length
+        pos = 0
+
+        # Walk through cold chunks
+        for i, chunk_len in enumerate(self._cold_lengths):
+            chunk_start = pos
+            chunk_end = pos + chunk_len
+
+            if end <= chunk_start:
+                break
+            if start < chunk_end:
+                # This chunk overlaps with the requested range
+                local_start = max(0, start - chunk_start)
+                local_end = min(chunk_len, end - chunk_start)
+                decompressed = self._tq.decompress(cold_chunks[i])
+                parts.append(decompressed[:, :, local_start:local_end, :])
+
+            pos = chunk_end
+
+        # Walk through hot entries
+        hot_global_start = cold_total
+        for j, entry in enumerate(hot_entries):
+            entry_pos = hot_global_start + j
+            if entry_pos >= end:
+                break
+            if entry_pos >= start:
+                parts.append(entry.astype(np.float32))
+
+        if not parts:
+            return np.zeros((1, self.n_heads, 0, self.head_dim), dtype=np.float32)
+
+        return np.concatenate(parts, axis=2)
+
+    def memory_stats(self) -> Dict[str, float]:
+        """Return memory usage statistics in bytes.
+
+        Returns:
+            Dict with ``cold_bytes``, ``hot_bytes``, ``total_bytes``,
+            ``uncompressed_equivalent_bytes``, ``effective_ratio``.
+        """
+        cold_bytes = sum(c.nbytes() for c in self._cold_keys) + sum(
+            c.nbytes() for c in self._cold_values
+        )
+
+        hot_bytes = sum(
+            k.nbytes + v.nbytes
+            for k, v in zip(self._hot_keys, self._hot_values, strict=False)
+        )
+
+        total_bytes = cold_bytes + hot_bytes
+
+        # What it would cost uncompressed (float32)
+        uncompressed = (
+            self._total_len * self.n_heads * self.head_dim * 4 * 2  # float32  # K + V
+        )
+
+        return {
+            "cold_bytes": float(cold_bytes),
+            "hot_bytes": float(hot_bytes),
+            "total_bytes": float(total_bytes),
+            "uncompressed_equivalent_bytes": float(uncompressed),
+            "effective_ratio": float(uncompressed) / max(total_bytes, 1),
+        }
+
+    def clear(self) -> None:
+        """Reset the cache to empty state."""
+        self._hot_keys.clear()
+        self._hot_values.clear()
+        self._cold_keys.clear()
+        self._cold_values.clear()
+        self._cold_lengths.clear()
+        self._total_len = 0
