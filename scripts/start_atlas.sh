@@ -161,6 +161,32 @@ asyncio.run(refresh())
     exit 0
 fi
 
+
+# ─── Maintenance mode ──────────────────────────────────
+if [ "$1" = "--maintenance" ] || [ "$1" = "--maint" ]; then
+    log "Atlas AI — Entering Maintenance Mode"
+    
+    # Save original index.html
+    [ ! -f "$ATLAS_HOME/atlas-chat/index.html.bak" ] && \
+        cp "$ATLAS_HOME/atlas-chat/index.html" "$ATLAS_HOME/atlas-chat/index.html.bak"
+    
+    # Write maintenance page
+    cat > "$ATLAS_HOME/atlas-chat/index.html" << 'MHTML'
+<!DOCTYPE html><html><head><title>Atlas AI - Maintenance</title><meta name="viewport" content="width=device-width,initial-scale=1.0"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:system-ui;background:#0a0e17;color:#e0e6f0;height:100vh;display:flex;align-items:center;justify-content:center}.c{background:#131a2b;border:1px solid #2a3555;border-radius:16px;padding:40px;text-align:center;max-width:500px;width:90%}h1{font-size:28px;background:linear-gradient(135deg,#4a9eff,#7cc4ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}p{color:#7a8ba8;margin:12px 0;font-size:14px}.s{display:inline-block;padding:6px 16px;background:rgba(245,158,11,0.15);border:1px solid #f59e0b;border-radius:20px;color:#f59e0b;font-size:13px;margin-top:16px}a{color:#4a9eff}</style></head><body><div class="c"><div style="font-size:48px;margin-bottom:16px">&#9881;</div><h1>Atlas AI</h1><p>Currently offline for scheduled maintenance.</p><div class="s">&#9202; Back soon</div><p style="margin-top:20px;font-size:12px"><a href="/schematic.html">Dashboard</a> | <a href="/events.html">Events</a></p></div></body></html>
+MHTML
+    
+    # Kill LLM servers
+    for s in spock kirk; do tmux kill-session -t $s 2>/dev/null && log "  Stopped $s"; done
+    
+    # Keep RAG for dashboard
+    tmux has-session -t rag 2>/dev/null || \
+        tmux new-session -d -s rag "CUDA_VISIBLE_DEVICES= $VENV/python3 $ATLAS_HOME/atlas-rag-server.py 2>&1 | tee $LOG_DIR/rag_server.log"
+    
+    log "  GPUs freed. Dashboard still accessible."
+    log "  Exit maintenance: bash scripts/start_atlas.sh"
+    exit 0
+fi
+
 # ─── Stop mode ──────────────────────────────────────────
 if [ "$1" = "--stop" ]; then
     log "Stopping all Atlas services..."
@@ -170,6 +196,9 @@ if [ "$1" = "--stop" ]; then
     log "All services stopped."
     exit 0
 fi
+
+# Restore from maintenance if needed
+[ -f "$ATLAS_HOME/atlas-chat/index.html.bak" ] && mv "$ATLAS_HOME/atlas-chat/index.html.bak" "$ATLAS_HOME/atlas-chat/index.html"
 
 # ─── Pre-flight checks ─────────────────────────────────
 log "Atlas AI — Starting AGI-HPC Cognitive Architecture"
