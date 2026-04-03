@@ -56,16 +56,19 @@ class HPCConfig:
     """
 
     enable_ucx: bool = field(
-        default_factory=lambda: os.getenv("AGI_DHT_UCX_ENABLED", "false").lower()
-        == "true"
+        default_factory=lambda: (
+            os.getenv("AGI_DHT_UCX_ENABLED", "false").lower() == "true"
+        )
     )
     enable_shm: bool = field(
-        default_factory=lambda: os.getenv("AGI_DHT_SHM_ENABLED", "true").lower()
-        == "true"
+        default_factory=lambda: (
+            os.getenv("AGI_DHT_SHM_ENABLED", "true").lower() == "true"
+        )
     )
     numa_aware: bool = field(
-        default_factory=lambda: os.getenv("AGI_DHT_NUMA_AWARE", "false").lower()
-        == "true"
+        default_factory=lambda: (
+            os.getenv("AGI_DHT_NUMA_AWARE", "false").lower() == "true"
+        )
     )
     batch_size: int = field(
         default_factory=lambda: int(os.getenv("AGI_DHT_BATCH_SIZE", "100"))

@@ -106,8 +106,7 @@ class PromptTemplateRegistry:
     def __init__(self) -> None:
         if Environment is None:
             raise RuntimeError(
-                "jinja2 is required but not installed. "
-                "Install with: pip install jinja2"
+                "jinja2 is required but not installed. Install with: pip install jinja2"
             )
         self._env = Environment(loader=BaseLoader())
         self._templates: Dict[str, str] = dict(_BUILTIN_TEMPLATES)
