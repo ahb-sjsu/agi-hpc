@@ -52,8 +52,8 @@ jobs:
       # -----------------------------
       - name: Install dev tools
         run: |
-          pip install black==24.4.2
-          pip install ruff==0.14.8
+          pip install black==26.1.0
+          pip install ruff==0.15.0
 
 
 
