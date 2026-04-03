@@ -1,0 +1,65 @@
+# AtlasGym Training Configuration
+# Gymnasium-compatible training framework for AGI-HPC
+
+training:
+  # NATS event fabric
+  nats:
+    servers:
+      - "nats://localhost:4222"
+    enabled: false
+
+  # LLM server (for generating Atlas responses during training)
+  llm:
+    base_url: "http://localhost:8080"
+    model: "gemma-4-31b"
+    timeout: 300.0
+
+  # PostgreSQL (training results + ethics chunks)
+  postgresql:
+    dsn: "dbname=atlas user=claude"
+
+  # Store training episodes in episodic memory
+  episodic_storage: true
+
+  # Curriculum management
+  curriculum:
+    promote_threshold: 0.80   # Success rate to promote (over window)
+    demote_threshold: 0.40    # Success rate to demote (over window)
+    window_size: 20           # Number of attempts in the evaluation window
+    max_level: 4
+    min_level: 1
+
+  # Environment-specific settings
+  environments:
+    ethics:
+      db_dsn: "dbname=atlas user=claude"
+      # ethics_chunks table: 102K chunks across traditions
+      # Traditions: greek, latin, hebrew, buddhist, islamic, chinese,
+      #             un_declarations, dear_abby
+
+    reasoning:
+      # All problems are generated programmatically
+      # No external data dependencies
+
+    coding:
+      sandbox_timeout: 5      # Seconds before code execution is killed
+      # Sandbox: restricted PATH, no network, no filesystem writes
+
+    debate:
+      # Tests dual-hemisphere (Spock vs Kirk) synthesis
+      # No external dependencies
+
+    memory:
+      # Multi-turn fact recall
+      # No external dependencies
+
+  # Scoring
+  scoring:
+    # Score normalisation: all scores are [0.0, 1.0]
+    # Scores >= 0.7 count as "success" for curriculum purposes
+    success_threshold: 0.7
+
+  # Runner defaults
+  runner:
+    default_episodes: 10
+    log_interval: 1           # Log every N episodes

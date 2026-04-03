@@ -424,6 +424,12 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     </div>
   </div>
 
+  <div class="section-header" style="margin-top:16px">Training</div>
+  <div id="training-status" style="font-size:12px;color:var(--dim);padding:4px 0">No active training</div>
+
+  <div class="section-header" style="margin-top:16px">AtlasGym</div>
+  <div id="gym-status" style="font-size:12px;color:var(--dim);padding:4px 0">No training data</div>
+
   <div class="section-header" style="margin-top:16px">Event Log</div>
   <ul class="feed-list" id="feed-list"></ul>
 </div>
@@ -867,6 +873,82 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
         html += '</div>';
       });
       jobsEl.innerHTML = html;
+    }
+
+    // ─ Training status ─
+    var trainEl = el('training-status');
+    if(t.training && t.training.active){
+      var ttype = t.training.type || 'unknown';
+      var prog = t.training.progress || '';
+      trainEl.innerHTML = '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'
+        + '<span style="width:6px;height:6px;border-radius:50%;background:var(--accent);animation:pulse 1.5s infinite"></span>'
+        + '<strong style="color:var(--text)">' + ttype + '</strong></div>'
+        + '<div style="font-size:11px;color:var(--dim);word-break:break-all">' + prog + '</div>';
+    } else {
+      trainEl.innerHTML = '<span style="color:var(--dim)">Idle (next: midnight PST)</span>';
+    }
+
+    // ─ AtlasGym ─
+    var gymEl = el('gym-status');
+    if(t.gym && t.gym.total_episodes > 0){
+      var html = '<div style="display:flex;justify-content:space-between;margin-bottom:6px">'
+        + '<span style="color:var(--text)">Episodes: <strong>' + t.gym.total_episodes + '</strong></span>'
+        + '<span style="color:' + (t.gym.streak > 3 ? 'var(--green)' : 'var(--dim)') + '">\uD83D\uDD25 Streak: ' + t.gym.streak + '</span>'
+        + '</div>';
+
+      // Environment cards
+      var envs = t.gym.environments || {};
+      for(var ename in envs){
+        var e = envs[ename];
+        var barWidth = Math.round(e.avg_score * 100);
+        var barColor = e.avg_score > 0.7 ? 'var(--green)' : e.avg_score > 0.4 ? '#f59e0b' : 'var(--red)';
+
+        html += '<div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:6px;padding:6px 8px;margin:4px 0">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
+        html += '<span style="font-size:12px;color:var(--text);font-weight:600">' + ename + '</span>';
+        html += '<span style="font-size:10px;color:var(--accent)">L' + e.level + ' \u2022 ' + e.episodes + ' eps</span>';
+        html += '</div>';
+
+        // Score bar
+        html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">';
+        html += '<div style="flex:1;height:5px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden">';
+        html += '<div style="width:' + barWidth + '%;height:100%;background:' + barColor + ';border-radius:3px;transition:width 0.8s"></div></div>';
+        html += '<span style="font-size:11px;color:var(--text);min-width:35px;text-align:right">' + (e.avg_score*100).toFixed(0) + '%</span>';
+        html += '</div>';
+
+        // Sparkline of recent scores
+        if(e.recent_scores && e.recent_scores.length > 1){
+          var pts = e.recent_scores.slice().reverse();
+          var svgW = 120, svgH = 20;
+          var step = svgW / (pts.length - 1 || 1);
+          var path = pts.map(function(s, i){ return (i*step).toFixed(1) + ',' + (svgH - s*svgH).toFixed(1); }).join(' ');
+          html += '<svg width="' + svgW + '" height="' + svgH + '" style="display:block;margin-top:2px">';
+          html += '<polyline points="' + path + '" fill="none" stroke="' + barColor + '" stroke-width="1.5" opacity="0.7"/>';
+          html += '</svg>';
+        }
+
+        // Min/max range
+        html += '<div style="font-size:10px;color:var(--dim)">Range: ' + (e.min_score*100).toFixed(0) + '% - ' + (e.max_score*100).toFixed(0) + '%</div>';
+        html += '</div>';
+      }
+
+      // Recent episodes
+      if(t.gym.recent && t.gym.recent.length > 0){
+        html += '<div style="margin-top:8px;font-size:11px;color:var(--dim)">Recent:</div>';
+        t.gym.recent.slice(0, 5).forEach(function(r){
+          var dot = r.score >= 0.7 ? 'var(--green)' : r.score >= 0.4 ? '#f59e0b' : 'var(--red)';
+          html += '<div style="display:flex;align-items:center;gap:4px;padding:2px 0;font-size:11px;border-bottom:1px solid rgba(42,53,85,0.2)">';
+          html += '<span style="width:5px;height:5px;border-radius:50%;background:' + dot + ';flex-shrink:0"></span>';
+          html += '<span style="color:var(--dim);width:50px">' + r.env + '</span>';
+          html += '<span style="color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (r.scenario || '').substring(0, 40) + '</span>';
+          html += '<span style="color:var(--text)">' + (r.score*100).toFixed(0) + '%</span>';
+          html += '</div>';
+        });
+      }
+
+      gymEl.innerHTML = html;
+    } else {
+      gymEl.innerHTML = '<span style="color:var(--dim)">No training data yet</span>';
     }
 
     // ─ Bottom bar ─

@@ -635,6 +635,113 @@ def telemetry():
     except Exception:
         pass
 
+    # Training metrics
+    data["training"] = {"active": False, "type": None, "progress": None}
+    try:
+        # Check if training is running
+        result = subprocess.run(
+            ["tmux", "has-session", "-t", "train"],
+            capture_output=True, timeout=3,
+        )
+        if result.returncode == 0:
+            data["training"]["active"] = True
+            # Check which type
+            ps_result = subprocess.run(
+                ["tmux", "capture-pane", "-t", "train", "-p"],
+                capture_output=True, text=True, timeout=3,
+            )
+            pane = ps_result.stdout
+            if "ethics" in pane.lower() or "finetune" in pane.lower():
+                data["training"]["type"] = "ethics-finetune"
+            elif "nemotron" in pane.lower():
+                data["training"]["type"] = "nemotron"
+            # Extract progress from last line with % or step info
+            for line in reversed(pane.split("\n")):
+                if "%" in line or "it/s" in line or "s/it" in line:
+                    data["training"]["progress"] = line.strip()[-120:]
+                    break
+    except Exception:
+        pass
+
+    # AtlasGym training results
+    data["gym"] = {"total_episodes": 0, "environments": {}, "recent": [], "streak": 0}
+    try:
+        conn = psycopg2.connect(DB_DSN)
+        with conn.cursor() as cur:
+            try:
+                cur.execute("SELECT COUNT(*) FROM training_results")
+                data["gym"]["total_episodes"] = cur.fetchone()[0]
+
+                # Per-environment stats
+                cur.execute("""
+                    SELECT env_name, COUNT(*),
+                           ROUND(AVG(score)::numeric, 3),
+                           ROUND(MIN(score)::numeric, 3),
+                           ROUND(MAX(score)::numeric, 3),
+                           MAX(timestamp)
+                    FROM training_results
+                    GROUP BY env_name
+                """)
+                for r in cur.fetchall():
+                    # Get level from metadata
+                    cur.execute(
+                        "SELECT metadata->>'level' FROM training_results "
+                        "WHERE env_name = %s ORDER BY timestamp DESC LIMIT 1", (r[0],)
+                    )
+                    level_row = cur.fetchone()
+                    level = int(level_row[0]) if level_row and level_row[0] else 1
+
+                    # Recent trend (last 10 scores)
+                    cur.execute(
+                        "SELECT score FROM training_results WHERE env_name = %s "
+                        "ORDER BY timestamp DESC LIMIT 10", (r[0],)
+                    )
+                    recent_scores = [float(row[0]) for row in cur.fetchall()]
+
+                    data["gym"]["environments"][r[0]] = {
+                        "episodes": r[1],
+                        "avg_score": float(r[2]) if r[2] else 0,
+                        "min_score": float(r[3]) if r[3] else 0,
+                        "max_score": float(r[4]) if r[4] else 0,
+                        "last_active": r[5].isoformat() if r[5] else None,
+                        "level": level,
+                        "recent_scores": recent_scores,
+                    }
+
+                # Last 10 episodes across all envs
+                cur.execute("""
+                    SELECT env_name, score, metadata->>'level',
+                           LEFT(scenario, 80), timestamp
+                    FROM training_results
+                    ORDER BY timestamp DESC LIMIT 10
+                """)
+                for r in cur.fetchall():
+                    data["gym"]["recent"].append({
+                        "env": r[0],
+                        "score": float(r[1]) if r[1] else 0,
+                        "level": int(r[2]) if r[2] else 1,
+                        "scenario": r[3],
+                        "time": r[4].isoformat() if r[4] else None,
+                    })
+
+                # Current streak (consecutive scores > 0.7)
+                cur.execute(
+                    "SELECT score FROM training_results ORDER BY timestamp DESC LIMIT 50"
+                )
+                streak = 0
+                for row in cur.fetchall():
+                    if float(row[0]) >= 0.7:
+                        streak += 1
+                    else:
+                        break
+                data["gym"]["streak"] = streak
+
+            except Exception:
+                conn.rollback()
+        conn.close()
+    except Exception:
+        pass
+
     # Count online services
     online = 0
     if data["hemispheres"]["lh"]["status"] == "online":
