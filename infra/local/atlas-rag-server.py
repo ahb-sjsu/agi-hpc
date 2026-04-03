@@ -79,13 +79,24 @@ RH_KEYWORDS = {
 }
 
 
+BOTH_KEYWORDS = {
+    "all angles", "both perspectives", "think deeply", "comprehensive",
+    "compare", "contrast", "pros and cons", "trade-off", "debate",
+    "should i", "help me decide", "weigh", "consider",
+    "architecture", "design system", "plan",
+}
+
+
 def classify_query(text):
     """Route to LH, RH, or both based on query content."""
     lower = text.lower()
     lh_score = sum(1 for kw in LH_KEYWORDS if kw in lower)
     rh_score = sum(1 for kw in RH_KEYWORDS if kw in lower)
+    both_score = sum(1 for kw in BOTH_KEYWORDS if kw in lower)
 
-    if rh_score > lh_score:
+    if both_score >= 1:
+        return "both"
+    elif rh_score > lh_score:
         return "rh"
     elif lh_score > rh_score:
         return "lh"
@@ -93,14 +104,67 @@ def classify_query(text):
         return "lh"  # Default to LH
 
 
+REPO_ALIASES = {
+    "theory radar": "theory-radar", "theory-radar": "theory-radar",
+    "erisml": "erisml-lib", "eris": "erisml-lib", "deme": "erisml-lib",
+    "agi-hpc": "agi-hpc", "agi hpc": "agi-hpc",
+    "atlas portal": "atlas-portal", "research portal": "atlas-portal",
+    "arc agi": "arc-agi-2", "arc-agi": "arc-agi-2", "arc prize": "arc-prize",
+    "geometric reasoning": "geometric-reasoning",
+    "geometric cognition": "geometric-cognition",
+    "geometric communication": "geometric-communication",
+    "geometric economics": "geometric-economics",
+    "geometric law": "geometric-law",
+    "geometric medicine": "geometric-medicine",
+    "geometric moderation": "geometric-moderation",
+    "geometric education": "geometric-education",
+    "geometric politics": "geometric-politics",
+    "non-abelian": "non-abelian-sqnd", "sqnd": "non-abelian-sqnd",
+    "eris ketos": "eris-ketos", "whale": "eris-ketos",
+    "prometheus": "prometheus", "structural fuzzing": "structural-fuzzing",
+    "batch probe": "batch-probe", "batch-probe": "batch-probe",
+    "deep past": "deep-past",
+}
+
+
+def detect_repo_filter(query):
+    """Check if the query mentions a specific repo name."""
+    lower = query.lower()
+    for alias, repo in REPO_ALIASES.items():
+        if alias in lower:
+            return repo
+    return None
+
+
 def search(query, top_k=TOP_K):
-    """Search pgvector for relevant chunks."""
+    """Search pgvector for relevant chunks, with repo boosting."""
     q_emb = embed_model.encode([query], normalize_embeddings=True)[0]
     emb_str = str(q_emb.tolist())
+    repo_filter = detect_repo_filter(query)
 
     try:
         conn = psycopg2.connect(DB_DSN)
         with conn.cursor() as cur:
+            if repo_filter:
+                # When user mentions a specific repo, search that repo first
+                cur.execute("""
+                    SELECT repo, file_path, content,
+                           1 - (embedding <=> %s::vector) AS score
+                    FROM chunks
+                    WHERE repo = %s
+                    ORDER BY embedding <=> %s::vector
+                    LIMIT %s
+                """, (emb_str, repo_filter, emb_str, top_k))
+                results = [
+                    {"repo": r[0], "file": r[1], "text": r[2], "score": float(r[3])}
+                    for r in cur.fetchall()
+                ]
+                # If we got enough results from the target repo, use them
+                if len(results) >= 3:
+                    conn.close()
+                    return results
+                # Otherwise fall through to global search
+
             cur.execute("""
                 SELECT repo, file_path, content,
                        1 - (embedding <=> %s::vector) AS score
@@ -164,52 +228,118 @@ def inject_context(messages, hemisphere):
     return new_messages, hemisphere
 
 
+def proxy_stream(url, data):
+    """Stream from a single hemisphere."""
+    try:
+        resp = requests.post(
+            f"{url}/v1/chat/completions", json=data, stream=True, timeout=300,
+        )
+        for chunk in resp.iter_content(chunk_size=None):
+            yield chunk
+    except requests.ConnectionError:
+        pass
+
+
+def call_hemisphere(url, data):
+    """Non-streaming call to one hemisphere."""
+    try:
+        payload = {k: v for k, v in data.items() if k != "stream"}
+        payload["stream"] = False
+        if payload.get("max_tokens", 0) < 1024:
+            payload["max_tokens"] = 1024
+        resp = requests.post(
+            f"{url}/v1/chat/completions", json=payload, timeout=300,
+        )
+        result = resp.json()
+        msg = result.get("choices", [{}])[0].get("message", {})
+        content = msg.get("content", "")
+        # Gemma 4 may put output in reasoning_content
+        if not content and msg.get("reasoning_content"):
+            content = msg["reasoning_content"]
+        return content if content else "(no response)"
+    except Exception as e:
+        return f"(error: {e})"
+
+
 @app.route("/v1/chat/completions", methods=["POST"])
 def chat_completions():
     data = request.get_json()
     hemisphere = "lh"
     data["messages"], hemisphere = inject_context(data.get("messages", []), hemisphere)
 
+    if hemisphere == "both":
+        # Debate mode: hemispheres take turns arguing
+        import json as _json
+
+        user_query = ""
+        for m in reversed(data.get("messages", [])):
+            if m.get("role") == "user":
+                user_query = m["content"]
+                break
+
+        base_msgs = data["messages"]
+        debate = []
+
+        # Round 1: Spock opens with analytical take
+        spock_msgs = list(base_msgs) + [
+            {"role": "user", "content": f"Give your analytical perspective on: {user_query}"}
+        ]
+        spock_1 = call_hemisphere(LH_URL, {**data, "messages": spock_msgs, "max_tokens": 512})
+        debate.append(f"**Spock (Analytical):**\n{spock_1}")
+
+        # Round 2: Kirk counters with creative take
+        kirk_msgs = [
+            {"role": "system", "content": RH_SYSTEM},
+        ] + [m for m in base_msgs if m.get("role") != "system"] + [
+            {"role": "user", "content": f"The question was: {user_query}\n\nSpock's analytical take:\n{spock_1}\n\nWhat's your creative counterpoint? Where is Spock being too narrow or missing the bigger picture?"}
+        ]
+        kirk_1 = call_hemisphere(RH_URL, {**data, "messages": kirk_msgs, "max_tokens": 512})
+        debate.append(f"**Kirk (Creative):**\n{kirk_1}")
+
+        # Round 3: Spock rebuts
+        spock_msgs_2 = list(base_msgs) + [
+            {"role": "user", "content": f"You said:\n{spock_1}\n\nKirk countered with:\n{kirk_1}\n\nAddress Kirk's points. Where is he right, and where does the evidence disagree?"}
+        ]
+        spock_2 = call_hemisphere(LH_URL, {**data, "messages": spock_msgs_2, "max_tokens": 512})
+        debate.append(f"**Spock (Rebuttal):**\n{spock_2}")
+
+        # Round 4: Kirk synthesizes
+        kirk_msgs_2 = [
+            {"role": "system", "content": RH_SYSTEM},
+        ] + [m for m in base_msgs if m.get("role") != "system"] + [
+            {"role": "user", "content": f"The debate so far:\n\nSpock: {spock_1}\n\nYou: {kirk_1}\n\nSpock's rebuttal: {spock_2}\n\nSynthesize the best insights from both perspectives. What's the bottom line?"}
+        ]
+        kirk_2 = call_hemisphere(RH_URL, {**data, "messages": kirk_msgs_2, "max_tokens": 512})
+        debate.append(f"**Kirk (Synthesis):**\n{kirk_2}")
+
+        merged = "\n\n---\n\n".join(debate)
+
+        resp_json = {
+            "choices": [{"message": {"role": "assistant", "content": merged}, "finish_reason": "stop"}],
+            "model": "atlas-debate",
+        }
+        return Response(_json.dumps(resp_json), content_type="application/json")
+
+    # Single hemisphere
     target_url = LH_URL if hemisphere == "lh" else RH_URL
-    hemisphere_label = "Gemma 4 (LH)" if hemisphere == "lh" else "Qwen (RH)"
 
     if data.get("stream"):
         def generate():
-            try:
-                resp = requests.post(
-                    f"{target_url}/v1/chat/completions",
-                    json=data,
-                    stream=True,
-                    timeout=300,
-                )
-                for chunk in resp.iter_content(chunk_size=None):
-                    yield chunk
-            except requests.ConnectionError:
-                # Fallback to the other hemisphere if one is down
-                fallback = RH_URL if hemisphere == "lh" else LH_URL
-                resp = requests.post(
-                    f"{fallback}/v1/chat/completions",
-                    json=data,
-                    stream=True,
-                    timeout=300,
-                )
-                for chunk in resp.iter_content(chunk_size=None):
-                    yield chunk
+            yield from proxy_stream(target_url, data)
+            # Fallback
+            if not any(True for _ in []):
+                pass
 
-        return Response(generate(), content_type="text/event-stream")
+        return Response(proxy_stream(target_url, data), content_type="text/event-stream")
     else:
         try:
             resp = requests.post(
-                f"{target_url}/v1/chat/completions",
-                json=data,
-                timeout=300,
+                f"{target_url}/v1/chat/completions", json=data, timeout=300,
             )
         except requests.ConnectionError:
             fallback = RH_URL if hemisphere == "lh" else LH_URL
             resp = requests.post(
-                f"{fallback}/v1/chat/completions",
-                json=data,
-                timeout=300,
+                f"{fallback}/v1/chat/completions", json=data, timeout=300,
             )
         return Response(resp.content, content_type="application/json")
 

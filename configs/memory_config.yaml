@@ -1,1 +1,41 @@
-# TODO memory_config.yaml
+# AGI-HPC Memory Service Configuration
+# Phase 2: Three-Tier Memory Subsystem on Atlas
+
+memory:
+  # Service port for health/metrics
+  port: 50300
+
+  # NATS event fabric connection
+  nats:
+    servers:
+      - "nats://localhost:4222"
+
+  # PostgreSQL (episodic + semantic memory)
+  postgresql:
+    dsn: "dbname=atlas user=claude"
+
+  # Embedding model (shared by semantic + episodic)
+  embedding:
+    model: "BAAI/bge-m3"
+    device: "cpu"
+
+  # Semantic memory (wraps existing RAG / chunks table)
+  semantic_top_k: 6
+
+  # Episodic memory (conversation history)
+  episodic_recall_n: 10
+
+  # Procedural memory (SQLite-backed)
+  procedural:
+    db_path: "/home/claude/agi-hpc/data/procedural.db"
+    seed: true
+
+  # Port assignments (reference)
+  ports:
+    service: 50300
+    semantic_grpc: 50053
+    episodic_grpc: 50052
+    procedural_grpc: 50054
+    nats: 4222
+    nats_monitor: 8222
+    postgresql: 5432
