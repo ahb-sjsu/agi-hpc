@@ -68,6 +68,7 @@ logger = logging.getLogger(__name__)
 # Thermal reading (inline — no dependency on batch_probe install)
 # ---------------------------------------------------------------------------
 
+
 def _read_cpu_temp() -> Optional[float]:
     """Read highest CPU package temperature."""
     try:
@@ -76,6 +77,7 @@ def _read_cpu_temp() -> Optional[float]:
         )
         temps = []
         import re
+
         for line in out.splitlines():
             if "Package" in line:
                 m = re.search(r"\+(\d+\.?\d*)", line)
@@ -90,6 +92,7 @@ def _read_cpu_temp() -> Optional[float]:
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class JobQueueConfig:
     """Configuration for the thermal job queue."""
@@ -102,14 +105,13 @@ class JobQueueConfig:
     settle_time: float = 10.0
     work_dir: str = "/home/claude/agi-hpc"
     log_dir: str = "/tmp/atlas-jobs"
-    nats_servers: List[str] = field(
-        default_factory=lambda: ["nats://localhost:4222"]
-    )
+    nats_servers: List[str] = field(default_factory=lambda: ["nats://localhost:4222"])
 
 
 # ---------------------------------------------------------------------------
 # Job tracking
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Job:
@@ -146,6 +148,7 @@ class Job:
 # Job Queue Engine
 # ---------------------------------------------------------------------------
 
+
 class ThermalJobQueue:
     """Thermal-managed job queue with SIGSTOP/SIGCONT throttling."""
 
@@ -178,9 +181,14 @@ class ThermalJobQueue:
         temp = _read_cpu_temp()
         return temp is not None and temp >= self.config.critical_temp
 
-    def submit(self, name: str, cmd: List[str], gpu: Optional[int] = None,
-               max_threads: Optional[int] = None,
-               env: Optional[Dict[str, str]] = None) -> Job:
+    def submit(
+        self,
+        name: str,
+        cmd: List[str],
+        gpu: Optional[int] = None,
+        max_threads: Optional[int] = None,
+        env: Optional[Dict[str, str]] = None,
+    ) -> Job:
         """Submit a job to the queue."""
         job = Job(
             name=name,
@@ -225,7 +233,11 @@ class ThermalJobQueue:
         temp = _read_cpu_temp() or 0
         logger.info(
             "[jobs] LAUNCHED: %s (pid=%d, gpu=%s, temp=%.0f°C, %d active)",
-            job.name, job.process.pid, job.gpu, temp, len(self.active),
+            job.name,
+            job.process.pid,
+            job.gpu,
+            temp,
+            len(self.active),
         )
 
     def _reap(self) -> List[Job]:
@@ -244,7 +256,10 @@ class ThermalJobQueue:
                 elapsed = job.finished_at - (job.started_at or job.finished_at)
                 logger.info(
                     "[jobs] %s: %s (exit=%d, elapsed=%.0fs)",
-                    job.status.upper(), name, job.return_code, elapsed,
+                    job.status.upper(),
+                    name,
+                    job.return_code,
+                    elapsed,
                 )
         return done
 
@@ -256,8 +271,11 @@ class ThermalJobQueue:
                     os.kill(job.process.pid, signal.SIGSTOP)
                     self.paused_pids.add(job.process.pid)
                     job.status = "paused"
-                    logger.warning("[jobs] PAUSED: %s (pid=%d) — thermal emergency",
-                                   name, job.process.pid)
+                    logger.warning(
+                        "[jobs] PAUSED: %s (pid=%d) — thermal emergency",
+                        name,
+                        job.process.pid,
+                    )
                 except ProcessLookupError:
                     pass
 
@@ -310,12 +328,19 @@ class ThermalJobQueue:
             "cpu_temp": temp,
             "can_launch": self.can_launch,
             "jobs": (
-                [{"name": j.name, "status": j.status} for j in self.queue] +
-                [{"name": j.name, "status": j.status,
-                  "pid": j.process.pid if j.process else None,
-                  "gpu": j.gpu,
-                  "elapsed": int(time.time() - j.started_at) if j.started_at else 0}
-                 for j in self.active.values()]
+                [{"name": j.name, "status": j.status} for j in self.queue]
+                + [
+                    {
+                        "name": j.name,
+                        "status": j.status,
+                        "pid": j.process.pid if j.process else None,
+                        "gpu": j.gpu,
+                        "elapsed": (
+                            int(time.time() - j.started_at) if j.started_at else 0
+                        ),
+                    }
+                    for j in self.active.values()
+                ]
             ),
         }
 
@@ -323,6 +348,7 @@ class ThermalJobQueue:
 # ---------------------------------------------------------------------------
 # NATS Service
 # ---------------------------------------------------------------------------
+
 
 async def run_service(config: JobQueueConfig) -> None:
     """Main NATS-connected job queue service."""
@@ -335,8 +361,10 @@ async def run_service(config: JobQueueConfig) -> None:
     nc = await nats.connect(servers=config.nats_servers)
     queue = ThermalJobQueue(config)
 
-    logger.info("[jobs] Thermal job queue started (target=%.0f°C, thermal-throttled, no concurrency cap)",
-                config.target_temp)
+    logger.info(
+        "[jobs] Thermal job queue started (target=%.0f°C, thermal-throttled, no concurrency cap)",
+        config.target_temp,
+    )
 
     # Subscribe to job submissions
     async def on_submit(msg):
@@ -349,10 +377,16 @@ async def run_service(config: JobQueueConfig) -> None:
                 max_threads=data.get("max_threads"),
                 env=data.get("env", {}),
             )
-            await nc.publish("agi.jobs.accepted", json.dumps({
-                "name": job.name, "status": "queued",
-                "queue_depth": len(queue.queue),
-            }).encode())
+            await nc.publish(
+                "agi.jobs.accepted",
+                json.dumps(
+                    {
+                        "name": job.name,
+                        "status": "queued",
+                        "queue_depth": len(queue.queue),
+                    }
+                ).encode(),
+            )
         except Exception as e:
             logger.error("[jobs] Bad submission: %s", e)
 
@@ -378,20 +412,25 @@ async def run_service(config: JobQueueConfig) -> None:
         except NotImplementedError:
             pass
 
-    await nc.publish("agi.jobs.start", json.dumps({
-        "event": "service_started",
-        "target_temp": config.target_temp,
-        "max_concurrent": config.max_concurrent,
-    }).encode())
+    await nc.publish(
+        "agi.jobs.start",
+        json.dumps(
+            {
+                "event": "service_started",
+                "target_temp": config.target_temp,
+                "max_concurrent": config.max_concurrent,
+            }
+        ).encode(),
+    )
 
     while running:
         done = queue.tick()
 
         # Publish completion events
         for job in done:
-            await nc.publish("agi.jobs.complete", json.dumps(
-                job.to_dict(), default=str
-            ).encode())
+            await nc.publish(
+                "agi.jobs.complete", json.dumps(job.to_dict(), default=str).encode()
+            )
 
         await asyncio.sleep(config.poll_interval)
 
@@ -404,6 +443,7 @@ async def run_service(config: JobQueueConfig) -> None:
 # ---------------------------------------------------------------------------
 # CLI entry point
 # ---------------------------------------------------------------------------
+
 
 def main():
     import argparse

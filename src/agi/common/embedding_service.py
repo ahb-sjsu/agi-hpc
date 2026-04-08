@@ -163,9 +163,7 @@ class SharedEmbedder:
             texts = [texts]
 
         with self._encode_lock:
-            embeddings = self._model.encode(
-                texts, normalize_embeddings=normalize
-            )
+            embeddings = self._model.encode(texts, normalize_embeddings=normalize)
 
         embeddings = np.asarray(embeddings, dtype=np.float32)
         return embeddings[0] if single else embeddings
@@ -224,12 +222,14 @@ def create_app():
 
     @app.route("/health", methods=["GET"])
     def health():
-        return jsonify({
-            "status": "ok",
-            "model": embedder._model_name,
-            "dim": embedder.dim,
-            "pca_dim": embedder.pca_dim,
-        })
+        return jsonify(
+            {
+                "status": "ok",
+                "model": embedder._model_name,
+                "dim": embedder.dim,
+                "pca_dim": embedder.pca_dim,
+            }
+        )
 
     @app.route("/encode", methods=["POST"])
     def encode():
@@ -249,12 +249,14 @@ def create_app():
         if embeddings.ndim == 1:
             embeddings = embeddings[np.newaxis, :]
 
-        return jsonify({
-            "embeddings": embeddings.tolist(),
-            "dim": embeddings.shape[1],
-            "n": len(texts),
-            "pca": use_pca and embedder.has_pca,
-        })
+        return jsonify(
+            {
+                "embeddings": embeddings.tolist(),
+                "dim": embeddings.shape[1],
+                "n": len(texts),
+                "pca": use_pca and embedder.has_pca,
+            }
+        )
 
     return app
 

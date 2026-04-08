@@ -41,8 +41,7 @@ def _mock_episodes():
             "id": "aaaa-1111-2222-3333",
             "user_message": "Should AI be allowed to make medical triage decisions?",
             "atlas_response": (
-                "This is a complex ethical question "
-                "involving autonomy..."
+                "This is a complex ethical question " "involving autonomy..."
             ),
             "hemisphere": "both",
             "safety_flags": {

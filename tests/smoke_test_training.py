@@ -8,7 +8,6 @@ import sys
 sys.path.insert(0, "/home/claude/agi-hpc/src")
 
 
-
 def main() -> None:
     print("=" * 60)
     print("SMOKE TEST: AtlasGym Environments")

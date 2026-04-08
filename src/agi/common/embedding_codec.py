@@ -99,8 +99,8 @@ class EmbeddingCodec:
             with open(pca_path, "rb") as f:
                 self._pca_data = pickle.load(f)
             pca_dim = self._pca_data["n_components"]
-            self._pca_components = (
-                self._pca_data["components"].T.astype(np.float32)
+            self._pca_components = self._pca_data["components"].T.astype(
+                np.float32
             )  # (1024, pca_dim)
             self._pca_mean = self._pca_data["mean"].astype(np.float32)
             self._tq_pca = TurboQuantPGVector(dim=pca_dim, bits=bits, seed=seed)
@@ -114,18 +114,14 @@ class EmbeddingCodec:
         else:
             self._tq = TurboQuantPGVector(dim=dim, bits=bits, seed=seed)
             self._mode = "tq_only"
-            logger.info(
-                "[embedding-codec] tq_only mode: %dd -> TQ%d-bit", dim, bits
-            )
+            logger.info("[embedding-codec] tq_only mode: %dd -> TQ%d-bit", dim, bits)
 
     @property
     def mode(self) -> str:
         """Current compression mode: 'passthrough', 'tq_only', or 'pca_tq'."""
         return self._mode
 
-    def compress(
-        self, embedding: Union[np.ndarray, List[float]]
-    ) -> Dict[str, Any]:
+    def compress(self, embedding: Union[np.ndarray, List[float]]) -> Dict[str, Any]:
         """Compress an embedding vector for transport.
 
         Args:
@@ -167,9 +163,7 @@ class EmbeddingCodec:
             "bits": compressed.bits,
         }
 
-    def decompress(
-        self, data: Union[Dict[str, Any], List[float]]
-    ) -> np.ndarray:
+    def decompress(self, data: Union[Dict[str, Any], List[float]]) -> np.ndarray:
         """Decompress an embedding from transport format.
 
         Handles both compressed (dict with "_tq") and raw (list) formats,
@@ -233,7 +227,9 @@ class EmbeddingCodec:
         import json
 
         raw = json.dumps({"embedding": list(map(float, embedding))}).encode()
-        compressed = json.dumps({"embedding": self.compress(np.asarray(embedding))}).encode()
+        compressed = json.dumps(
+            {"embedding": self.compress(np.asarray(embedding))}
+        ).encode()
 
         return {
             "raw_bytes": len(raw),

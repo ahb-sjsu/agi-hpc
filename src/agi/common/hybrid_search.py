@@ -306,7 +306,9 @@ class WikiIndex:
                     self._keywords.setdefault(word, []).append(slug)
 
         self._loaded = True
-        logger.info("[wiki] loaded %d articles from %s", len(self._articles), self.wiki_dir)
+        logger.info(
+            "[wiki] loaded %d articles from %s", len(self._articles), self.wiki_dir
+        )
         return len(self._articles)
 
     def lookup(self, query: str, top_k: int = 3) -> List[WikiArticle]:
@@ -338,7 +340,9 @@ class WikiIndex:
             return []
 
         ranked = sorted(slug_scores.items(), key=lambda x: -x[1])
-        return [self._articles[slug] for slug, _ in ranked[:top_k] if slug in self._articles]
+        return [
+            self._articles[slug] for slug, _ in ranked[:top_k] if slug in self._articles
+        ]
 
     @property
     def article_count(self) -> int:

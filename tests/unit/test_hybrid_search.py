@@ -15,7 +15,6 @@ from agi.common.hybrid_search import (
     _split_identifier,
 )
 
-
 # ------------------------------------------------------------------ #
 # Reciprocal Rank Fusion                                              #
 # ------------------------------------------------------------------ #
@@ -29,10 +28,12 @@ class TestRRF:
 
     def test_two_agreeing_lists(self) -> None:
         """Same ranking in both lists should amplify scores."""
-        scores = reciprocal_rank_fusion([
-            ["a", "b", "c"],
-            ["a", "b", "c"],
-        ])
+        scores = reciprocal_rank_fusion(
+            [
+                ["a", "b", "c"],
+                ["a", "b", "c"],
+            ]
+        )
         assert list(scores.keys())[0] == "a"
         # Score of "a" should be 2 * 1/(60+1) = 2/61
         expected_a = 2 * (1.0 / 61)
@@ -40,10 +41,12 @@ class TestRRF:
 
     def test_two_disagreeing_lists(self) -> None:
         """Different rankings should produce merged results."""
-        scores = reciprocal_rank_fusion([
-            ["a", "b", "c"],
-            ["c", "b", "a"],
-        ])
+        scores = reciprocal_rank_fusion(
+            [
+                ["a", "b", "c"],
+                ["c", "b", "a"],
+            ]
+        )
         # All three docs get very similar scores:
         # "a": rank 0 + rank 2 = 1/61 + 1/63
         # "b": rank 1 + rank 1 = 2/62
@@ -55,10 +58,12 @@ class TestRRF:
 
     def test_disjoint_lists(self) -> None:
         """Non-overlapping lists should include all docs."""
-        scores = reciprocal_rank_fusion([
-            ["a", "b"],
-            ["c", "d"],
-        ])
+        scores = reciprocal_rank_fusion(
+            [
+                ["a", "b"],
+                ["c", "d"],
+            ]
+        )
         assert len(scores) == 4
 
     def test_empty_list(self) -> None:
@@ -72,11 +77,13 @@ class TestRRF:
         assert scores_k1["a"] > scores_k100["a"]
 
     def test_three_way_fusion(self) -> None:
-        scores = reciprocal_rank_fusion([
-            ["a", "b", "c"],
-            ["b", "c", "a"],
-            ["c", "a", "b"],
-        ])
+        scores = reciprocal_rank_fusion(
+            [
+                ["a", "b", "c"],
+                ["b", "c", "a"],
+                ["c", "a", "b"],
+            ]
+        )
         # All docs appear at all ranks, but with different distributions
         assert len(scores) == 3
         # All should have similar scores (each appears once at each rank)

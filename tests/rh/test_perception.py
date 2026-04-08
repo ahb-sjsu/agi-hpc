@@ -2,7 +2,6 @@
 Unit tests for the RH Perception module.
 """
 
-
 from agi.rh.perception import Perception
 
 

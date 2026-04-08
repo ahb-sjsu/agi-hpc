@@ -6,7 +6,6 @@
 
 """Tests for agi.core.dht.security module."""
 
-
 import pytest
 
 from agi.core.dht.security import (

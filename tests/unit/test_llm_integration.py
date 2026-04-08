@@ -6,7 +6,6 @@
 
 """Tests for agi.core.llm.integration module."""
 
-
 from agi.core.llm.integration import (
     LLMIntegrationConfig,
     LHPlannerIntegration,

@@ -59,14 +59,15 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from agi.dreaming.consolidator import ConsolidatorConfig, MemoryConsolidator
 
-
 # ---------------------------------------------------------------------------
 # NATS integration
 # ---------------------------------------------------------------------------
 
+
 async def _publish(nc, subject: str, data: dict) -> None:
     """Publish a JSON message to NATS."""
     import json
+
     payload = json.dumps(data, default=str).encode()
     await nc.publish(subject, payload)
 
@@ -74,13 +75,16 @@ async def _publish(nc, subject: str, data: dict) -> None:
 async def _connect_nats(servers: list[str]):
     """Connect to NATS with retry."""
     import nats
+
     for attempt in range(10):
         try:
             nc = await nats.connect(servers=servers)
             logger.info("[dream-svc] Connected to NATS: %s", servers)
             return nc
         except Exception as e:
-            logger.warning("[dream-svc] NATS connect attempt %d failed: %s", attempt + 1, e)
+            logger.warning(
+                "[dream-svc] NATS connect attempt %d failed: %s", attempt + 1, e
+            )
             await asyncio.sleep(5)
     raise RuntimeError("Failed to connect to NATS after 10 attempts")
 
@@ -88,6 +92,7 @@ async def _connect_nats(servers: list[str]):
 # ---------------------------------------------------------------------------
 # Scheduling
 # ---------------------------------------------------------------------------
+
 
 def _should_dream(
     last_dream: float,
@@ -116,6 +121,7 @@ def _should_dream(
 # ---------------------------------------------------------------------------
 # Main service
 # ---------------------------------------------------------------------------
+
 
 async def run_service(config: ConsolidatorConfig, nats_servers: list[str]) -> None:
     """Main service loop."""
@@ -147,11 +153,15 @@ async def run_service(config: ConsolidatorConfig, nats_servers: list[str]) -> No
             pass  # Windows
 
     logger.info("[dream-svc] Dreaming service started — waiting for idle periods")
-    await _publish(nc, "agi.dreaming.start", {
-        "event": "service_started",
-        "wiki_dir": config.wiki_dir,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    })
+    await _publish(
+        nc,
+        "agi.dreaming.start",
+        {
+            "event": "service_started",
+            "wiki_dir": config.wiki_dir,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
+    )
 
     while running:
         should, reason = _should_dream(last_dream)
@@ -172,46 +182,61 @@ async def run_service(config: ConsolidatorConfig, nats_servers: list[str]) -> No
 
 async def _run_dream_cycle(nc, consolidator: MemoryConsolidator) -> None:
     """Execute one dream cycle and publish events."""
-    await _publish(nc, "agi.dreaming.start", {
-        "event": "cycle_started",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    })
+    await _publish(
+        nc,
+        "agi.dreaming.start",
+        {
+            "event": "cycle_started",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
+    )
 
     try:
         result = await consolidator.run_cycle()
 
         # Publish per-article events
         # (the consolidator logs them, but we also publish to NATS)
-        await _publish(nc, "agi.dreaming.complete", {
-            "event": "cycle_complete",
-            "episodes_processed": result.episodes_processed,
-            "clusters_found": result.clusters_found,
-            "articles_created": result.articles_created,
-            "articles_updated": result.articles_updated,
-            "dream_insights": result.dream_insights,
-            "duration_seconds": round(result.duration_seconds, 1),
-            "errors": result.errors,
-            "timestamp": result.timestamp.isoformat(),
-        })
+        await _publish(
+            nc,
+            "agi.dreaming.complete",
+            {
+                "event": "cycle_complete",
+                "episodes_processed": result.episodes_processed,
+                "clusters_found": result.clusters_found,
+                "articles_created": result.articles_created,
+                "articles_updated": result.articles_updated,
+                "dream_insights": result.dream_insights,
+                "duration_seconds": round(result.duration_seconds, 1),
+                "errors": result.errors,
+                "timestamp": result.timestamp.isoformat(),
+            },
+        )
 
     except Exception as e:
         logger.error("[dream-svc] Dream cycle failed: %s", e, exc_info=True)
-        await _publish(nc, "agi.dreaming.complete", {
-            "event": "cycle_failed",
-            "error": str(e),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        })
+        await _publish(
+            nc,
+            "agi.dreaming.complete",
+            {
+                "event": "cycle_failed",
+                "error": str(e),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            },
+        )
 
 
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
+
 def main():
     parser = argparse.ArgumentParser(description="Atlas Dreaming Service")
     parser.add_argument("--config", default=None, help="YAML config file")
     parser.add_argument("--wiki-dir", default="/home/claude/agi-hpc/wiki")
-    parser.add_argument("--llm-url", default="http://localhost:8082")  # Id (fast, 25.9 tok/s)
+    parser.add_argument(
+        "--llm-url", default="http://localhost:8082"
+    )  # Id (fast, 25.9 tok/s)
     parser.add_argument("--nats", default="nats://localhost:4222")
     parser.add_argument("--idle-trigger", type=int, default=3600)
     parser.add_argument("-v", "--verbose", action="store_true")

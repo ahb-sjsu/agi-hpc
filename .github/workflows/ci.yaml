@@ -29,7 +29,7 @@ jobs:
         run: ruff check src/ tests/ --select F --ignore F401 --extend-exclude "*/__init__.py"
 
       - name: Format check (black)
-        run: black --check src/ tests/
+        run: black --check src/ tests/ --exclude "proto_gen"
 
       - name: Unit tests
         run: pytest tests/unit/ -v --tb=short -q --ignore=tests/unit/test_safety_proto.py --ignore=tests/unit/test_erisml_proto.py -k "not proto"

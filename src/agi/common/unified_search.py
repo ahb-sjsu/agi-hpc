@@ -327,21 +327,21 @@ class UnifiedSearcher:
                 )
                 cur.execute(sql, [query, query] + params + [top_k])
                 for row in cur.fetchall():
-                    results.append({
-                        "id": row[0],
-                        "title": row[1],
-                        "content": str(row[2])[:1500],
-                        "raw_score": float(row[3]),
-                        "corpus": corpus.name,
-                        "table": corpus.table,
-                        "weight": corpus.weight,
-                    })
+                    results.append(
+                        {
+                            "id": row[0],
+                            "title": row[1],
+                            "content": str(row[2])[:1500],
+                            "raw_score": float(row[3]),
+                            "corpus": corpus.name,
+                            "table": corpus.table,
+                            "weight": corpus.weight,
+                        }
+                    )
 
         return results
 
-    def _normalize_and_merge(
-        self, results: List[dict], top_k: int
-    ) -> List[dict]:
+    def _normalize_and_merge(self, results: List[dict], top_k: int) -> List[dict]:
         """Normalize scores per corpus and merge.
 
         Uses min-max normalization per corpus so that scores from different
@@ -392,9 +392,7 @@ class UnifiedSearcher:
 
             model = SentenceTransformer("BAAI/bge-m3", device="cpu")
             embedding = model.encode([query], normalize_embeddings=True)[0]
-            return self.search(
-                query=query, embedding=embedding, top_k=top_k, **kwargs
-            )
+            return self.search(query=query, embedding=embedding, top_k=top_k, **kwargs)
         except ImportError:
             logger.warning("sentence-transformers not available, using FTS only")
             return self.search(query=query, top_k=top_k, **kwargs)

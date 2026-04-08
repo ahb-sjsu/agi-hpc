@@ -2,7 +2,6 @@
 Unit tests for the RH WorldModel module.
 """
 
-
 from agi.rh.world_model import WorldModel, RolloutResult
 
 

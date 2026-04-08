@@ -48,7 +48,6 @@ logger = logging.getLogger(__name__)
 
 from agi.training.gym_env import AtlasGym, AtlasGymConfig, Scenario
 
-
 # ---------------------------------------------------------------------------
 # Debate topics by level
 # ---------------------------------------------------------------------------
@@ -254,28 +253,71 @@ L4_TOPICS = [
 
 # Keywords indicating LH (analytical) perspective was incorporated
 LH_MARKERS = [
-    "analy", "logical", "data", "evidence", "systematic",
-    "measur", "quantif", "precise", "specific", "structural",
-    "formal", "rigorous", "objective", "factual", "rational",
-    "left hemisphere", "spock", "analytical",
+    "analy",
+    "logical",
+    "data",
+    "evidence",
+    "systematic",
+    "measur",
+    "quantif",
+    "precise",
+    "specific",
+    "structural",
+    "formal",
+    "rigorous",
+    "objective",
+    "factual",
+    "rational",
+    "left hemisphere",
+    "spock",
+    "analytical",
 ]
 
 # Keywords indicating RH (creative) perspective was incorporated
 RH_MARKERS = [
-    "creativ", "intuit", "pattern", "holistic", "divergent",
-    "imagin", "metaphor", "analog", "big picture", "vision",
-    "exploratory", "possibilities", "innovat", "novel",
-    "right hemisphere", "kirk", "creative",
+    "creativ",
+    "intuit",
+    "pattern",
+    "holistic",
+    "divergent",
+    "imagin",
+    "metaphor",
+    "analog",
+    "big picture",
+    "vision",
+    "exploratory",
+    "possibilities",
+    "innovat",
+    "novel",
+    "right hemisphere",
+    "kirk",
+    "creative",
 ]
 
 # Keywords indicating synthesis/resolution
 RESOLUTION_MARKERS = [
-    "synthesis", "integrat", "reconcil", "balance",
-    "both perspectives", "combining", "bridge", "middle ground",
-    "complement", "synthesis", "however", "on the other hand",
-    "ultimately", "resolution", "nuanced", "in practice",
-    "the key insight", "rather than choosing", "neither fully",
-    "together", "synergy", "harmoniz",
+    "synthesis",
+    "integrat",
+    "reconcil",
+    "balance",
+    "both perspectives",
+    "combining",
+    "bridge",
+    "middle ground",
+    "complement",
+    "synthesis",
+    "however",
+    "on the other hand",
+    "ultimately",
+    "resolution",
+    "nuanced",
+    "in practice",
+    "the key insight",
+    "rather than choosing",
+    "neither fully",
+    "together",
+    "synergy",
+    "harmoniz",
 ]
 
 
@@ -325,8 +367,7 @@ def _score_debate_response(
     para_score = min(1.0, len(paragraphs) / 3.0)
     # Bonus for having transitional structure
     has_transitions = any(
-        t in lower
-        for t in ["first", "second", "however", "in conclusion", "finally"]
+        t in lower for t in ["first", "second", "however", "in conclusion", "finally"]
     )
     structure = para_score * 0.7 + (0.3 if has_transitions else 0.0)
 

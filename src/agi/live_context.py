@@ -25,8 +25,15 @@ def get_live_context(query):
 
     # Time/date — only if explicitly asked
     time_triggers = [
-        "what time", "what day", "what date", "what year", "current time",
-        "current date", "today", "right now", "what month",
+        "what time",
+        "what day",
+        "what date",
+        "what year",
+        "current time",
+        "current date",
+        "today",
+        "right now",
+        "what month",
     ]
     if any(t in lower for t in time_triggers):
         now = datetime.datetime.now()
@@ -38,10 +45,20 @@ def get_live_context(query):
 
     # Geo — only if asking about places
     geo_triggers = [
-        "where is", "capital of", "population of", "how far",
-        "distance between", "nearest city", "cities in",
-        "largest city", "smallest country", "latitude", "longitude",
-        "timezone of", "borders", "continent",
+        "where is",
+        "capital of",
+        "population of",
+        "how far",
+        "distance between",
+        "nearest city",
+        "cities in",
+        "largest city",
+        "smallest country",
+        "latitude",
+        "longitude",
+        "timezone of",
+        "borders",
+        "continent",
     ]
     if any(t in lower for t in geo_triggers):
         geo = _query_postgis(query)
@@ -50,9 +67,16 @@ def get_live_context(query):
 
     # System status — only if asking about Atlas itself
     status_triggers = [
-        "system status", "atlas status", "gpu temp", "cpu temp",
-        "how hot", "services running", "your status", "are you ok",
-        "how are you doing", "uptime",
+        "system status",
+        "atlas status",
+        "gpu temp",
+        "cpu temp",
+        "how hot",
+        "services running",
+        "your status",
+        "are you ok",
+        "how are you doing",
+        "uptime",
     ]
     if any(t in lower for t in status_triggers):
         status = _get_system_status()
@@ -93,7 +117,7 @@ def _query_postgis(query):
                 "SELECT admin, iso_a3, pop_est, continent, "
                 "ST_AsText(ST_Centroid(wkb_geometry)) "
                 "FROM countries WHERE admin ILIKE %s OR name ILIKE %s LIMIT 1",
-                (f"%{name}%", f"%{name}%")
+                (f"%{name}%", f"%{name}%"),
             )
             row = cur.fetchone()
             if row:
@@ -109,7 +133,7 @@ def _query_postgis(query):
                 "SELECT name, adm0name, pop_max, latitude, longitude, timezone "
                 "FROM cities WHERE name ILIKE %s "
                 "ORDER BY pop_max DESC NULLS LAST LIMIT 3",
-                (f"%{name}%",)
+                (f"%{name}%",),
             )
             for row in cur.fetchall():
                 pop = f"{row[2]:,.0f}" if row[2] else "unknown"
@@ -128,13 +152,11 @@ def _query_postgis(query):
                     "FROM cities a, cities b "
                     "WHERE a.name ILIKE %s AND b.name ILIKE %s "
                     "ORDER BY a.pop_max DESC, b.pop_max DESC LIMIT 1",
-                    (f"%{place_names[0]}%", f"%{place_names[1]}%")
+                    (f"%{place_names[0]}%", f"%{place_names[1]}%"),
                 )
                 row = cur.fetchone()
                 if row:
-                    results.append(
-                        f"Distance: {row[0]} to {row[1]} = {row[2]:,.0f} km"
-                    )
+                    results.append(f"Distance: {row[0]} to {row[1]} = {row[2]:,.0f} km")
 
         # "cities in" queries
         if "cities in" in lower:
@@ -143,13 +165,12 @@ def _query_postgis(query):
                     "SELECT c.name, c.pop_max FROM cities c "
                     "WHERE c.adm0name ILIKE %s "
                     "ORDER BY c.pop_max DESC NULLS LAST LIMIT 10",
-                    (f"%{name}%",)
+                    (f"%{name}%",),
                 )
                 rows = cur.fetchall()
                 if rows:
                     cities_list = ", ".join(
-                        f"{r[0]} ({r[1]:,.0f})" if r[1] else r[0]
-                        for r in rows
+                        f"{r[0]} ({r[1]:,.0f})" if r[1] else r[0] for r in rows
                     )
                     results.append(f"Cities in {name}: {cities_list}")
 
@@ -178,10 +199,13 @@ def _get_system_status():
             parts.append(f"CPU: {'/'.join(temps)} C")
 
         out2 = subprocess.check_output(
-            ["nvidia-smi",
-             "--query-gpu=index,temperature.gpu,memory.used,memory.total",
-             "--format=csv,noheader,nounits"],
-            text=True, timeout=3
+            [
+                "nvidia-smi",
+                "--query-gpu=index,temperature.gpu,memory.used,memory.total",
+                "--format=csv,noheader,nounits",
+            ],
+            text=True,
+            timeout=3,
         )
         for line in out2.strip().splitlines():
             p = [x.strip() for x in line.split(",")]
