@@ -162,6 +162,18 @@ are detected, injects metacognitive warnings into the debate prompts —
 recovering ~33% of displaced verdicts. Scores distractor intensity on a
 graded scale: none → mild → vivid (matching benchmark dose-response design).
 
+**Divine Council (Minsky, 1986; Mercier & Sperber, 2011):**
+The Ego is not a single mediator but a council of four specialized sub-agents
+running in parallel on CPU (each a Gemma 4 E4B instance, ~6GB RAM):
+- **Judge** — Impartial evaluator, scores correctness and logic
+- **Advocate** — Devil's advocate, challenges consensus, finds flaws
+- **Synthesizer** — Integration expert, merges perspectives into coherent answer
+- **Ethicist** — Moral compass, flags bias/harm/fairness concerns
+
+All four deliberate simultaneously on every complex query. The Advocate always
+challenges (preventing groupthink). The Ethicist can veto consensus if ethical
+concerns arise. With 221GB free RAM, the council adds minimal overhead.
+
 **Executive Function (Miyake et al., 2000):**
 The prefrontal cortex of the architecture. Before any reasoning begins, the
 executive function analyzes the query and decides:

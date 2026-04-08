@@ -1,0 +1,92 @@
+{
+  "timestamp": "2026-04-07T20:39:38",
+  "configs": [
+    "A",
+    "B"
+  ],
+  "questions_per_config": 2,
+  "summaries": {
+    "A": {
+      "config": "A",
+      "name": "Single Model",
+      "accuracy": 0.0,
+      "quality": 0.0,
+      "latency_s": 0.0,
+      "total": 2,
+      "correct": 0,
+      "by_category": {
+        "factual": {
+          "accuracy": 0.0,
+          "quality": 0.0,
+          "count": 2
+        }
+      }
+    },
+    "B": {
+      "config": "B",
+      "name": "Debate",
+      "accuracy": 0.0,
+      "quality": 0.0,
+      "latency_s": 0.0,
+      "total": 2,
+      "correct": 0,
+      "by_category": {
+        "factual": {
+          "accuracy": 0.0,
+          "quality": 0.0,
+          "count": 2
+        }
+      }
+    }
+  },
+  "results": [
+    {
+      "config": "A",
+      "question": "What is the chemical symbol for gold?",
+      "category": "factual",
+      "reference": "Au",
+      "response": "(dry run)",
+      "correct": false,
+      "quality": 0,
+      "latency_s": 0,
+      "is_distractor": false,
+      "error": null
+    },
+    {
+      "config": "A",
+      "question": "Who developed the theory of general relativity?",
+      "category": "factual",
+      "reference": "Albert Einstein",
+      "response": "(dry run)",
+      "correct": false,
+      "quality": 0,
+      "latency_s": 0,
+      "is_distractor": false,
+      "error": null
+    },
+    {
+      "config": "B",
+      "question": "What is the chemical symbol for gold?",
+      "category": "factual",
+      "reference": "Au",
+      "response": "(dry run)",
+      "correct": false,
+      "quality": 0,
+      "latency_s": 0,
+      "is_distractor": false,
+      "error": null
+    },
+    {
+      "config": "B",
+      "question": "Who developed the theory of general relativity?",
+      "category": "factual",
+      "reference": "Albert Einstein",
+      "response": "(dry run)",
+      "correct": false,
+      "quality": 0,
+      "latency_s": 0,
+      "is_distractor": false,
+      "error": null
+    }
+  ]
+}

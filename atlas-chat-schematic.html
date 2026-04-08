@@ -134,6 +134,14 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .sparkline-stats .ss{font-size:10px;color:var(--text-dim);font-family:var(--mono)}
 .sparkline-stats .ss span{color:var(--text)}
 
+/* Mini sparklines (cockpit) */
+.mini-spark{display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(42,53,85,0.2)}
+.mini-spark .ms-label{font-size:9px;color:var(--text-dim);width:50px;flex-shrink:0}
+.mini-spark .ms-chart{flex:1;height:28px;position:relative}
+.mini-spark .ms-chart svg{width:100%;height:100%}
+.mini-spark .ms-val{font-size:10px;color:var(--text);font-family:var(--mono);width:55px;text-align:right;flex-shrink:0}
+.mini-spark .ms-scale{position:absolute;right:0;top:0;bottom:0;display:flex;flex-direction:column;justify-content:space-between;font-size:7px;color:var(--text-muted);pointer-events:none}
+
 /* Memory tiers */
 .mem-tier{margin-bottom:8px}
 .mem-tier-label{display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px}
@@ -272,6 +280,11 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     <div class="card-header"><span class="status-dot on"></span><span class="name">Executive Function</span><span class="model-tag">Miyake</span></div>
     <div class="card-metric">Mode: <span class="val" id="ef-mode">--</span> | Complexity: <span class="val" id="ef-complexity">--</span></div>
     <div class="card-metric">Goal: <span class="val" id="ef-goal">none</span> | Inhibit: <span class="val" id="ef-inhibit">no</span></div>
+  </div>
+
+  <div class="sub-card active" id="sc-council">
+    <div class="card-header"><span class="status-dot on"></span><span class="name">Divine Council</span><span class="model-tag">Minsky</span></div>
+    <div class="card-metric">Members: <span class="val" id="council-members">4</span> | Workers: <span class="val" id="council-workers">4</span> x E4B</div>
   </div>
 
   <div class="sub-card active" id="sc-attention">
@@ -548,36 +561,53 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       </div>
     </div>
 
-    <!-- CPU Temps -->
-    <div class="metric-panel">
-      <div class="panel-title"><span class="icon">&#9670;</span> CPU Temperature</div>
-      <div class="cpu-bars">
-        <div class="cpu-bar-row">
-          <span class="label">Pkg 0</span>
-          <div class="bar-wrap"><div class="bar-fill" id="cpu0-bar" style="width:0%;background:var(--green)"></div></div>
-          <span class="temp-val" id="cpu0-val">--</span>
+    <!-- CPU Temperature (matching GPU gauge layout) -->
+    <div class="metric-panel full">
+      <div class="panel-title"><span class="icon">&#9670;</span> CPU Temperature &amp; Memory</div>
+      <div class="gpu-row">
+        <div class="gpu-gauge" id="cpu0-gauge">
+          <div class="gauge-label">CPU 0 (Superego socket) &mdash; Xeon E5-2690 v3</div>
+          <div class="gauge-pair">
+            <svg class="gauge-svg" viewBox="0 0 100 100">
+              <circle class="gauge-bg" cx="50" cy="50" r="40"/>
+              <circle class="gauge-fg" id="cpu0-temp-arc" cx="50" cy="50" r="40" stroke="var(--green)" transform="rotate(-90 50 50)" stroke-dasharray="251.3" stroke-dashoffset="251.3"/>
+              <text class="gauge-text" x="50" y="46" id="cpu0-temp-text">--</text>
+              <text class="gauge-sub" x="50" y="60">TEMP</text>
+            </svg>
+          </div>
         </div>
-        <div class="cpu-bar-row">
-          <span class="label">Pkg 1</span>
-          <div class="bar-wrap"><div class="bar-fill" id="cpu1-bar" style="width:0%;background:var(--green)"></div></div>
-          <span class="temp-val" id="cpu1-val">--</span>
+        <div class="gpu-gauge" id="cpu1-gauge">
+          <div class="gauge-label">CPU 1 (Id socket) &mdash; Xeon E5-2690 v3</div>
+          <div class="gauge-pair">
+            <svg class="gauge-svg" viewBox="0 0 100 100">
+              <circle class="gauge-bg" cx="50" cy="50" r="40"/>
+              <circle class="gauge-fg" id="cpu1-temp-arc" cx="50" cy="50" r="40" stroke="var(--green)" transform="rotate(-90 50 50)" stroke-dasharray="251.3" stroke-dashoffset="251.3"/>
+              <text class="gauge-text" x="50" y="46" id="cpu1-temp-text">--</text>
+              <text class="gauge-sub" x="50" y="60">TEMP</text>
+            </svg>
+          </div>
         </div>
       </div>
-      <!-- RAM -->
-      <div style="margin-top:14px">
-        <div class="panel-title" style="margin-bottom:6px"><span class="icon">&#9638;</span> System Memory</div>
-        <div class="ram-row">
-          <span class="label">RAM</span>
-          <div class="bar-wrap"><div class="bar-fill" id="ram-bar" style="width:0%;background:var(--accent)"></div></div>
-          <span class="ram-val" id="ram-val">--</span>
+      <div class="vram-bar-container" style="margin-top:8px">
+        <div class="vram-bar-label"><span>RAM</span><span id="ram-label">-- / -- GB</span></div>
+        <div class="vram-bar" style="display:flex;overflow:hidden">
+          <div id="ram-used-fill" style="height:100%;background:var(--accent);transition:width .8s"></div>
+          <div id="ram-cache-fill" style="height:100%;background:var(--yellow);opacity:0.5;transition:width .8s"></div>
+          <div id="ram-free-fill" style="height:100%;background:var(--border);transition:width .8s"></div>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:4px;font-size:8px;color:var(--text-dim)">
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--accent);vertical-align:middle"></span> Used: <span id="ram-used-val">--</span></span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--yellow);opacity:0.5;vertical-align:middle"></span> Cache: <span id="ram-cache-val">--</span></span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--border);vertical-align:middle"></span> Free: <span id="ram-free-val">--</span></span>
+          <span>| Swap: <span id="ram-swap-val">--</span></span>
         </div>
       </div>
     </div>
 
-    <!-- NATS Throughput -->
+    <!-- NATS Throughput (with scale) -->
     <div class="metric-panel">
       <div class="panel-title"><span class="icon">&#9656;</span> NATS Throughput</div>
-      <div class="sparkline-wrap">
+      <div class="sparkline-wrap" style="position:relative">
         <svg class="sparkline-svg" viewBox="0 0 300 80" preserveAspectRatio="none">
           <defs>
             <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
@@ -588,29 +618,57 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
           <polyline class="sparkline-area" id="spark-area" points=""/>
           <polyline class="sparkline-line" id="spark-line" points=""/>
         </svg>
+        <div style="position:absolute;right:2px;top:0;bottom:0;display:flex;flex-direction:column;justify-content:space-between;font-size:7px;color:var(--text-muted);font-family:var(--mono)">
+          <span id="nats-scale-max">0</span>
+          <span id="nats-scale-min">0</span>
+        </div>
       </div>
       <div class="sparkline-stats">
         <div class="ss">In: <span id="nats-in">0</span></div>
         <div class="ss">Out: <span id="nats-out">0</span></div>
         <div class="ss">Conns: <span id="nats-conns">0</span></div>
-        <div class="ss">JS msgs: <span id="nats-js-msgs">0</span></div>
+        <div class="ss">JS: <span id="nats-js-msgs">0</span></div>
       </div>
     </div>
 
-    <!-- Memory Tiers -->
-    <div class="metric-panel full">
+    <!-- Memory Tiers (side-by-side with NATS) -->
+    <div class="metric-panel">
       <div class="panel-title"><span class="icon">&#9733;</span> Memory Tiers</div>
       <div class="mem-tier">
-        <div class="mem-tier-label"><span class="tier-name">L1 &mdash; VRAM KV Cache</span><span class="tier-val" id="tier-l1">--</span></div>
+        <div class="mem-tier-label"><span class="tier-name">L1 VRAM</span><span class="tier-val" id="tier-l1">--</span></div>
         <div class="mem-tier-bar"><div class="fill" id="tier-l1-bar" style="width:0%;background:var(--accent)"></div></div>
       </div>
       <div class="mem-tier">
-        <div class="mem-tier-label"><span class="tier-name">L3 &mdash; PostgreSQL (chunks + episodes + pubs)</span><span class="tier-val" id="tier-l3">--</span></div>
+        <div class="mem-tier-label"><span class="tier-name">L3 PostgreSQL</span><span class="tier-val" id="tier-l3">--</span></div>
         <div class="mem-tier-bar"><div class="fill" id="tier-l3-bar" style="width:0%;background:var(--green)"></div></div>
       </div>
       <div class="mem-tier">
-        <div class="mem-tier-label"><span class="tier-name">L4 &mdash; Archive</span><span class="tier-val" id="tier-l4">--</span></div>
+        <div class="mem-tier-label"><span class="tier-name">L4 Archive</span><span class="tier-val" id="tier-l4">--</span></div>
         <div class="mem-tier-bar"><div class="fill" id="tier-l4-bar" style="width:0%;background:var(--yellow)"></div></div>
+      </div>
+      <div style="font-size:9px;color:var(--text-dim);margin-top:8px;font-family:var(--mono)">
+        Total: <span id="tier-total" style="color:var(--text)">--</span> records
+      </div>
+    </div>
+
+    <!-- System Cockpit — 747 style with mini sparklines -->
+    <div class="metric-panel full" style="margin-top:12px">
+      <div class="panel-title"><span class="icon">&#9992;</span> System Cockpit</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">
+        <div class="mini-spark"><span class="ms-label">Load</span><div class="ms-chart"><svg id="ms-load" viewBox="0 0 120 24" preserveAspectRatio="none"><polyline fill="none" stroke="var(--accent)" stroke-width="1"/></svg><div class="ms-scale"><span id="ms-load-max"></span><span id="ms-load-min"></span></div></div><span class="ms-val" id="sys-load">--</span></div>
+        <div class="mini-spark"><span class="ms-label">TCP</span><div class="ms-chart"><svg id="ms-tcp" viewBox="0 0 120 24" preserveAspectRatio="none"><polyline fill="none" stroke="var(--green)" stroke-width="1"/></svg><div class="ms-scale"><span id="ms-tcp-max"></span><span id="ms-tcp-min"></span></div></div><span class="ms-val" id="sys-tcp">--</span></div>
+        <div class="mini-spark"><span class="ms-label">FDs</span><div class="ms-chart"><svg id="ms-fds" viewBox="0 0 120 24" preserveAspectRatio="none"><polyline fill="none" stroke="var(--yellow)" stroke-width="1"/></svg><div class="ms-scale"><span id="ms-fds-max"></span><span id="ms-fds-min"></span></div></div><span class="ms-val" id="sys-fds">--</span></div>
+        <div class="mini-spark"><span class="ms-label">Ctx sw/s</span><div class="ms-chart"><svg id="ms-ctxsw" viewBox="0 0 120 24" preserveAspectRatio="none"><polyline fill="none" stroke="var(--orange)" stroke-width="1"/></svg><div class="ms-scale"><span id="ms-ctxsw-max"></span><span id="ms-ctxsw-min"></span></div></div><span class="ms-val" id="sys-ctxsw">--</span></div>
+        <div class="mini-spark"><span class="ms-label">Net RX</span><div class="ms-chart"><svg id="ms-netrx" viewBox="0 0 120 24" preserveAspectRatio="none"><polyline fill="none" stroke="var(--accent)" stroke-width="1"/></svg><div class="ms-scale"><span id="ms-netrx-max"></span><span id="ms-netrx-min"></span></div></div><span class="ms-val" id="sys-net-rx">--</span></div>
+        <div class="mini-spark"><span class="ms-label">Net TX</span><div class="ms-chart"><svg id="ms-nettx" viewBox="0 0 120 24" preserveAspectRatio="none"><polyline fill="none" stroke="var(--green)" stroke-width="1"/></svg><div class="ms-scale"><span id="ms-nettx-max"></span><span id="ms-nettx-min"></span></div></div><span class="ms-val" id="sys-net-tx">--</span></div>
+      </div>
+      <div style="display:flex;gap:14px;font-size:9px;font-family:var(--mono);margin-top:4px;padding-top:4px;border-top:1px solid var(--border);color:var(--text-dim)">
+        <span>Uptime: <span id="sys-uptime-deep" style="color:var(--text)">--</span></span>
+        <span>Procs: <span id="sys-procs" style="color:var(--text)">--</span></span>
+        <span>Threads: <span id="sys-threads" style="color:var(--text)">--</span></span>
+        <span>Zombies: <span id="sys-zombies" style="color:var(--text)">0</span></span>
+        <span>Disk /: <span id="sys-disk-root" style="color:var(--text)">--</span></span>
+        <span>RAID5: <span id="sys-disk-raid" style="color:var(--text)">--</span></span>
       </div>
     </div>
 
@@ -794,25 +852,23 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     list.innerHTML = html;
   }
 
-  // ─── Sparkline renderer ───
+  // ─── Sparkline renderer (NATS with scale) ───
   function renderSparkline(){
     if(sparkData.length < 2) return;
     var max = 1;
     for(var i = 0; i < sparkData.length; i++){
       if(sparkData[i] > max) max = sparkData[i];
     }
-    max = max * 1.15; // headroom
+    max = max * 1.15;
     var w = 300, h = 80;
-    var step = w / (59); // 60 points across 300px
-    var pts = '';
-    var areaPts = '';
+    var step = w / 59;
+    var pts = '', areaPts = '';
     for(var j = 0; j < sparkData.length; j++){
       var x = j * step;
       var y = h - (sparkData[j] / max) * (h - 4) - 2;
       pts += x.toFixed(1) + ',' + y.toFixed(1) + ' ';
       areaPts += x.toFixed(1) + ',' + y.toFixed(1) + ' ';
     }
-    // close area path
     if(sparkData.length > 0){
       var lastX = ((sparkData.length - 1) * step).toFixed(1);
       areaPts += lastX + ',' + h + ' 0,' + h;
@@ -821,6 +877,47 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     var areaEl = el('spark-area');
     if(lineEl) lineEl.setAttribute('points', pts.trim());
     if(areaEl) areaEl.setAttribute('points', areaPts.trim());
+    // Scale labels
+    var scMax = el('nats-scale-max');
+    var scMin = el('nats-scale-min');
+    if(scMax) scMax.textContent = Math.round(max);
+    if(scMin) scMin.textContent = '0';
+  }
+
+  // ─── Mini-sparkline engine (cockpit) ───
+  var miniHistory = {};  // {metricId: [values]}
+  var prevCtxSw = null;
+  var prevNetRx = null;
+  var prevNetTx = null;
+
+  function pushMini(id, val){
+    if(!miniHistory[id]) miniHistory[id] = [];
+    miniHistory[id].push(val);
+    if(miniHistory[id].length > 60) miniHistory[id].shift();
+  }
+
+  function renderMini(svgId, data, scaleMaxId, scaleMinId){
+    if(!data || data.length < 2) return;
+    var svg = document.getElementById(svgId);
+    if(!svg) return;
+    var max = Math.max.apply(null, data) || 1;
+    var min = Math.min.apply(null, data);
+    max = max * 1.1 || 1;
+    var w = 120, h = 24;
+    var step = w / (data.length - 1 || 1);
+    var pts = '';
+    for(var i = 0; i < data.length; i++){
+      var x = i * step;
+      var y = h - ((data[i] - min) / (max - min || 1)) * (h - 2) - 1;
+      pts += x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+    }
+    var poly = svg.querySelector('polyline');
+    if(poly) poly.setAttribute('points', pts.trim());
+    // Scale labels
+    var sMax = document.getElementById(scaleMaxId);
+    var sMin = document.getElementById(scaleMinId);
+    if(sMax) sMax.textContent = max >= 1000 ? (max/1000).toFixed(0)+'k' : Math.round(max);
+    if(sMin) sMin.textContent = min >= 1000 ? (min/1000).toFixed(0)+'k' : Math.round(min);
   }
 
   // ─── Detect state changes for feed ───
@@ -1079,6 +1176,51 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     var focus = cur.focus_domains || [];
     el('curriculum-focus').textContent = focus.length > 0 ? focus.join(', ') : 'none';
 
+    // ─ System Cockpit (747) with mini-sparklines ─
+    var sd = t.system_deep || {};
+    // Push values to history
+    if(sd.load_1m != null) pushMini('load', sd.load_1m);
+    if(sd.tcp_total) pushMini('tcp', sd.tcp_total);
+    if(sd.fd_allocated) pushMini('fds', sd.fd_allocated);
+    // Context switches: show delta per poll (rate)
+    if(sd.context_switches && prevCtxSw != null){
+      pushMini('ctxsw', Math.max(0, sd.context_switches - prevCtxSw));
+    }
+    prevCtxSw = sd.context_switches || prevCtxSw;
+    // Network: show delta (rate)
+    if(sd.net_rx_gb != null && prevNetRx != null){
+      pushMini('netrx', Math.max(0, (sd.net_rx_gb - prevNetRx) * 1024)); // MB delta
+    }
+    prevNetRx = sd.net_rx_gb;
+    if(sd.net_tx_gb != null && prevNetTx != null){
+      pushMini('nettx', Math.max(0, (sd.net_tx_gb - prevNetTx) * 1024));
+    }
+    prevNetTx = sd.net_tx_gb;
+
+    // Render mini sparklines
+    renderMini('ms-load', miniHistory['load'], 'ms-load-max', 'ms-load-min');
+    renderMini('ms-tcp', miniHistory['tcp'], 'ms-tcp-max', 'ms-tcp-min');
+    renderMini('ms-fds', miniHistory['fds'], 'ms-fds-max', 'ms-fds-min');
+    renderMini('ms-ctxsw', miniHistory['ctxsw'], 'ms-ctxsw-max', 'ms-ctxsw-min');
+    renderMini('ms-netrx', miniHistory['netrx'], 'ms-netrx-max', 'ms-netrx-min');
+    renderMini('ms-nettx', miniHistory['nettx'], 'ms-nettx-max', 'ms-nettx-min');
+
+    // Update text values
+    el('sys-load').textContent = sd.load_1m != null ? sd.load_1m.toFixed(1) : '--';
+    el('sys-tcp').textContent = sd.tcp_total || '--';
+    el('sys-fds').textContent = sd.fd_allocated ? fmt(sd.fd_allocated) : '--';
+    el('sys-ctxsw').textContent = miniHistory['ctxsw'] && miniHistory['ctxsw'].length > 0 ? fmt(miniHistory['ctxsw'][miniHistory['ctxsw'].length-1]) + '/s' : '--';
+    el('sys-net-rx').textContent = sd.net_rx_gb != null ? sd.net_rx_gb.toFixed(1)+'G' : '--';
+    el('sys-net-tx').textContent = sd.net_tx_gb != null ? sd.net_tx_gb.toFixed(1)+'G' : '--';
+    // Static values in footer
+    el('sys-uptime-deep').textContent = sd.uptime_str || '--';
+    el('sys-procs').textContent = sd.process_count || '--';
+    el('sys-threads').textContent = sd.running_threads || '--';
+    el('sys-zombies').textContent = sd.zombies || '0';
+    if(sd.zombies > 0){ var ze = el('sys-zombies'); if(ze) ze.style.color = 'var(--yellow)'; }
+    el('sys-disk-root').textContent = sd.disk_root_used_gb ? sd.disk_root_used_gb+'G/'+sd.disk_root_total_gb+'G' : '--';
+    el('sys-disk-raid').textContent = sd.disk_raid5_used_gb ? sd.disk_raid5_used_gb+'G/'+sd.disk_raid5_total_gb+'G' : '--';
+
     // ─ Ego Privileges (Kohlberg) ─
     var priv = t.ego_privileges || {};
     el('priv-level').textContent = 'L' + (priv.current_level || 0);
@@ -1135,24 +1277,26 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       setBar(prefix + '-vram-fill', memPct, memPct > 90 ? 'var(--red)' : memPct > 70 ? 'var(--yellow)' : 'var(--accent)');
     }
 
-    // CPU temps
+    // CPU temps (gauge layout matching GPUs)
     var cpu = t.environment && t.environment.cpu || {};
     var temps = cpu.package_temps || [];
     for(var ci = 0; ci < 2; ci++){
-      var ct = temps[ci];
-      if(ct != null){
-        el('cpu' + ci + '-val').textContent = ct + '\u00B0C';
-        el('cpu' + ci + '-val').style.color = tempColor(ct);
-        setBar('cpu' + ci + '-bar', ct, tempColor(ct));
-      }
+      var ct = temps[ci] || 0;
+      var prefix = 'cpu' + ci;
+      setGauge(prefix + '-temp-arc', prefix + '-temp-text', ct, 100, tempColor, '\u00B0C');
     }
 
-    // RAM
+    // RAM stacked bar (used / buff+cache / free)
     var ram = t.environment && t.environment.ram || {};
     if(ram.total_gb){
-      var ramPct = (ram.used_gb / ram.total_gb) * 100;
-      el('ram-val').textContent = ram.used_gb.toFixed(1) + ' / ' + ram.total_gb.toFixed(1) + ' GB';
-      setBar('ram-bar', ramPct, ramPct > 80 ? 'var(--red)' : ramPct > 60 ? 'var(--yellow)' : 'var(--accent)');
+      el('ram-label').textContent = ram.used_gb.toFixed(1) + ' / ' + ram.total_gb.toFixed(1) + ' GB';
+      el('ram-used-fill').style.width = (ram.used_pct || 0) + '%';
+      el('ram-cache-fill').style.width = (ram.buff_cache_pct || 0) + '%';
+      el('ram-free-fill').style.width = (ram.free_pct || 0) + '%';
+      el('ram-used-val').textContent = (ram.used_gb || 0).toFixed(1) + ' GB';
+      el('ram-cache-val').textContent = (ram.buff_cache_gb || 0).toFixed(1) + ' GB';
+      el('ram-free-val').textContent = (ram.free_gb || 0).toFixed(1) + ' GB';
+      el('ram-swap-val').textContent = (ram.swap_used_gb || 0).toFixed(1) + '/' + (ram.swap_total_gb || 0).toFixed(1) + ' GB';
     }
 
     // ─ DHT ─

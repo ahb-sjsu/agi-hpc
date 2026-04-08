@@ -69,15 +69,155 @@ def _get_cpu():
 
 def _get_ram():
     out = _run(["free", "-b"])
+    result = {}
     for line in out.split("\n"):
         if line.startswith("Mem:"):
             p = line.split()
-            return {
-                "total_gb": round(int(p[1]) / 1073741824, 1),
-                "used_gb": round(int(p[2]) / 1073741824, 1),
-                "available_gb": round(int(p[6]) / 1073741824, 1),
+            total = int(p[1])
+            used = int(p[2])
+            free = int(p[3])
+            shared = int(p[4])
+            buff_cache = int(p[5])
+            available = int(p[6])
+            g = 1073741824
+            result = {
+                "total_gb": round(total / g, 1),
+                "used_gb": round(used / g, 1),
+                "free_gb": round(free / g, 1),
+                "shared_gb": round(shared / g, 1),
+                "buff_cache_gb": round(buff_cache / g, 1),
+                "available_gb": round(available / g, 1),
+                # Percentages for stacked bar
+                "used_pct": round(used / total * 100, 1),
+                "buff_cache_pct": round(buff_cache / total * 100, 1),
+                "free_pct": round(free / total * 100, 1),
             }
-    return {}
+        elif line.startswith("Swap:"):
+            p = line.split()
+            g = 1073741824
+            result["swap_total_gb"] = round(int(p[1]) / g, 1)
+            result["swap_used_gb"] = round(int(p[2]) / g, 1)
+    return result
+
+
+def _get_system_deep():
+    """Deep system metrics — 747 cockpit data."""
+    result = {}
+
+    # File descriptors
+    try:
+        fd = _run(["cat", "/proc/sys/fs/file-nr"])
+        parts = fd.split()
+        if len(parts) >= 3:
+            result["fd_allocated"] = int(parts[0])
+            result["fd_max"] = int(parts[2])
+    except Exception:
+        pass
+
+    # TCP/UDP connections
+    try:
+        ss = _run(["ss", "-s"])
+        for line in ss.split("\n"):
+            if "TCP:" in line:
+                import re
+
+                nums = re.findall(r"(\d+)", line)
+                if len(nums) >= 3:
+                    result["tcp_total"] = int(nums[0])
+                    result["tcp_estab"] = int(nums[1])
+                    result["tcp_closed"] = int(nums[2])
+    except Exception:
+        pass
+
+    # Load average
+    try:
+        la = _run(["cat", "/proc/loadavg"])
+        parts = la.split()
+        if len(parts) >= 3:
+            result["load_1m"] = float(parts[0])
+            result["load_5m"] = float(parts[1])
+            result["load_15m"] = float(parts[2])
+            result["running_threads"] = parts[3]
+    except Exception:
+        pass
+
+    # Context switches
+    try:
+        stat = _run(["cat", "/proc/stat"])
+        for line in stat.split("\n"):
+            if line.startswith("ctxt"):
+                result["context_switches"] = int(line.split()[1])
+            elif line.startswith("processes"):
+                result["total_forks"] = int(line.split()[1])
+    except Exception:
+        pass
+
+    # Disk usage
+    try:
+        df = _run(["df", "-BG", "/", "/mnt/raid5"])
+        for line in df.split("\n")[1:]:
+            parts = line.split()
+            if len(parts) >= 5:
+                mount = parts[-1]
+                key = "root" if mount == "/" else "raid5"
+                result[f"disk_{key}_total_gb"] = int(
+                    parts[1].rstrip("G")
+                )
+                result[f"disk_{key}_used_gb"] = int(
+                    parts[2].rstrip("G")
+                )
+                result[f"disk_{key}_avail_gb"] = int(
+                    parts[3].rstrip("G")
+                )
+                result[f"disk_{key}_pct"] = parts[4]
+    except Exception:
+        pass
+
+    # Network I/O (bytes since boot)
+    try:
+        net = _run(["cat", "/proc/net/dev"])
+        for line in net.split("\n"):
+            if "eno1" in line or "eth0" in line:
+                parts = line.split(":")
+                if len(parts) == 2:
+                    nums = parts[1].split()
+                    result["net_rx_gb"] = round(
+                        int(nums[0]) / 1073741824, 2
+                    )
+                    result["net_tx_gb"] = round(
+                        int(nums[8]) / 1073741824, 2
+                    )
+    except Exception:
+        pass
+
+    # Uptime
+    try:
+        up = _run(["cat", "/proc/uptime"])
+        secs = float(up.split()[0])
+        days = int(secs // 86400)
+        hours = int((secs % 86400) // 3600)
+        result["uptime_days"] = days
+        result["uptime_hours"] = hours
+        result["uptime_str"] = f"{days}d {hours}h"
+    except Exception:
+        pass
+
+    # Process/thread counts
+    try:
+        import os
+
+        result["process_count"] = len(os.listdir("/proc"))
+    except Exception:
+        pass
+
+    # Zombie count
+    try:
+        z = _run(["bash", "-c", "ps aux | awk '{print $8}' | grep -c Z"])
+        result["zombies"] = int(z) if z else 0
+    except Exception:
+        result["zombies"] = 0
+
+    return result
 
 
 def _get_db_counts():
@@ -271,6 +411,73 @@ def _get_jobs():
             job["description"] = f"Download: {name[3:]}"
 
         jobs.append(job)
+
+    # Add systemd-managed services (not in tmux)
+    tmux_names = {j["name"] for j in jobs}
+    systemd_services = [
+        ("atlas-superego", "Superego: Gemma 4 31B", 0),
+        ("atlas-id", "Id: Qwen 3 32B", 1),
+        ("atlas-ego", "Ego: Gemma 4 E4B", None),
+        ("atlas-rag-server", "RAG Server", None),
+        ("atlas-nats", "NATS JetStream", None),
+        ("atlas-telemetry", "Telemetry", None),
+        ("atlas-watchdog", "Watchdog", None),
+    ]
+    for svc, desc, gpu in systemd_services:
+        # Skip if already in tmux
+        short = svc.replace("atlas-", "")
+        if short in tmux_names or svc in tmux_names:
+            continue
+        # Check if systemd service is active
+        try:
+            r = subprocess.run(
+                ["systemctl", "is-active", svc],
+                capture_output=True,
+                text=True,
+                timeout=2,
+            )
+            if r.stdout.strip() == "active":
+                job = {
+                    "name": short,
+                    "status": "running",
+                    "description": desc,
+                }
+                if gpu is not None:
+                    job["gpu"] = gpu
+                # Get process stats
+                pid_out = _run(
+                    [
+                        "systemctl",
+                        "show",
+                        svc,
+                        "--property=MainPID",
+                        "--value",
+                    ]
+                )
+                if pid_out and pid_out != "0":
+                    ps = _run(
+                        [
+                            "ps",
+                            "-p",
+                            pid_out,
+                            "-o",
+                            "pcpu,rss,etime",
+                            "--no-headers",
+                        ]
+                    )
+                    if ps:
+                        parts = ps.split()
+                        if len(parts) >= 3:
+                            job["cpu"] = parts[0] + "%"
+                            job["mem"] = (
+                                str(round(int(parts[1]) / 1024))
+                                + "MB"
+                            )
+                            job["elapsed"] = parts[2]
+                jobs.append(job)
+        except Exception:
+            pass
+
     return jobs
 
 
@@ -478,6 +685,7 @@ def build_telemetry():
             "current_level": 0,
             "level_name": "READ_ONLY",
         },
+        "system_deep": _get_system_deep(),
         "attention": rag_data.get("attention", {"checks": 0, "last_intensity": "none"}),
         "training": _get_training_stats(),
         "dreaming": _get_dreaming_stats(),
