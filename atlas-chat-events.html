@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atlas AI — Event Log</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0e17;--surface:#131a2b;--surface2:#1a2240;--border:#2a3555;
+  --accent:#4a9eff;--accent-dim:rgba(74,158,255,0.15);
+  --text:#e0e6f0;--text-dim:#7a8ba8;--text-muted:#4a5568;
+  --green:#4ade80;--yellow:#f59e0b;--red:#f87171;--orange:#fb923c;
+  --green-dim:rgba(74,222,128,0.15);--yellow-dim:rgba(245,158,11,0.15);--red-dim:rgba(248,113,113,0.15);--orange-dim:rgba(251,146,60,0.15);
+  --mono:'Cascadia Code','Fira Code','JetBrains Mono',monospace;
+}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* ── Top Bar ── */
+.topbar{
+  display:flex;align-items:center;gap:16px;padding:10px 24px;
+  border-bottom:1px solid var(--border);background:var(--surface);
+  position:sticky;top:0;z-index:100;flex-shrink:0;
+}
+.topbar .logo{display:flex;align-items:center;gap:10px}
+.topbar .logo svg{width:28px;height:28px;flex-shrink:0}
+.topbar .logo h1{font-size:17px;font-weight:700;background:linear-gradient(135deg,var(--accent),#7cc4ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;white-space:nowrap}
+.topbar .nav{margin-left:auto;display:flex;align-items:center;gap:8px}
+.topbar .nav a{color:var(--text-dim);text-decoration:none;font-size:12px;padding:5px 12px;border-radius:6px;transition:all .2s;white-space:nowrap}
+.topbar .nav a:hover,.topbar .nav a.active{color:var(--accent);background:var(--accent-dim)}
+.topbar .nav a.logout:hover{color:var(--red);background:var(--red-dim)}
+.topbar .conn-status{width:7px;height:7px;border-radius:50%;margin-left:8px;flex-shrink:0;transition:background .3s}
+.topbar .conn-status.ok{background:var(--green);box-shadow:0 0 6px rgba(74,222,128,0.5)}
+.topbar .conn-status.err{background:var(--red);box-shadow:0 0 6px rgba(248,113,113,0.5)}
+
+/* ── Layout ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.controls{display:flex;align-items:center;gap:12px;padding:12px 24px;border-bottom:1px solid var(--border);background:var(--surface);flex-wrap:wrap}
+.controls select,.controls input{background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 10px;font-size:12px;font-family:inherit;outline:none;transition:border-color .2s}
+.controls select:focus,.controls input:focus{border-color:var(--accent)}
+.controls select{min-width:140px;cursor:pointer}
+.controls input{flex:1;min-width:200px;max-width:400px}
+.controls input::placeholder{color:var(--text-muted)}
+.controls .control-group{display:flex;align-items:center;gap:8px}
+.controls label{font-size:11px;color:var(--text-dim);white-space:nowrap;cursor:pointer;display:flex;align-items:center;gap:5px}
+.controls .count{font-size:11px;color:var(--text-muted);font-family:var(--mono);margin-left:auto}
+.toggle-btn{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);padding:5px 12px;font-size:11px;cursor:pointer;transition:all .2s;font-family:inherit;white-space:nowrap}
+.toggle-btn:hover{border-color:var(--accent);color:var(--text)}
+.toggle-btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+.clear-btn{background:none;border:1px solid var(--border);border-radius:6px;color:var(--text-muted);padding:5px 12px;font-size:11px;cursor:pointer;transition:all .2s;font-family:inherit}
+.clear-btn:hover{border-color:var(--red);color:var(--red)}
+
+/* ── Content Area ── */
+.content{flex:1;display:flex;gap:0;overflow:hidden}
+.event-log-wrap{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.event-log{flex:1;overflow-y:auto;padding:0}
+.sidebar{width:280px;border-left:1px solid var(--border);overflow-y:auto;padding:12px;flex-shrink:0;background:var(--surface)}
+
+/* ── Event Rows ── */
+.event-row{display:flex;align-items:flex-start;gap:0;padding:6px 24px;border-bottom:1px solid rgba(42,53,85,0.3);font-size:12px;transition:background .15s;animation:rowIn .2s ease}
+.event-row:hover{background:rgba(74,158,255,0.04)}
+@keyframes rowIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.event-row .ev-time{width:90px;flex-shrink:0;color:var(--text-muted);font-family:var(--mono);font-size:11px;padding-top:1px}
+.event-row .ev-source{width:80px;flex-shrink:0;font-weight:600;font-size:11px;font-family:var(--mono)}
+.event-row .ev-type{width:90px;flex-shrink:0;font-size:10px;padding:2px 8px;border-radius:4px;text-align:center;font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
+.event-row .ev-summary{flex:1;color:var(--text-dim);line-height:1.5;min-width:0;word-break:break-word}
+
+/* Severity colors */
+.sev-info .ev-type{color:var(--text-dim);background:var(--surface2)}
+.sev-success .ev-type{color:var(--green);background:var(--green-dim)}
+.sev-warning .ev-type{color:var(--yellow);background:var(--yellow-dim)}
+.sev-error .ev-type{color:var(--red);background:var(--red-dim)}
+.sev-info .ev-source{color:var(--text-dim)}
+.sev-success .ev-source{color:var(--green)}
+.sev-warning .ev-source{color:var(--yellow)}
+.sev-error .ev-source{color:var(--red)}
+
+/* ── Sidebar: NATS Subjects ── */
+.sidebar-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-dim);margin-bottom:10px}
+.subject-item{padding:6px 8px;border-bottom:1px solid rgba(42,53,85,0.4);font-size:11px;display:flex;align-items:center;gap:8px}
+.subject-item .subj-name{font-family:var(--mono);color:var(--text-dim);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.subject-item .subj-count{font-family:var(--mono);color:var(--accent);font-size:10px;flex-shrink:0}
+.subject-item .subj-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.subject-item .subj-dot.active{background:var(--green);box-shadow:0 0 4px rgba(74,222,128,0.4)}
+.subject-item .subj-dot.idle{background:var(--text-muted)}
+
+/* Connection list */
+.conn-item{padding:6px 8px;border-bottom:1px solid rgba(42,53,85,0.4);font-size:10px;display:flex;flex-direction:column;gap:2px}
+.conn-item .conn-name{font-family:var(--mono);color:var(--text);font-weight:600;font-size:11px}
+.conn-item .conn-detail{color:var(--text-muted);font-family:var(--mono)}
+
+/* ── Status bar ── */
+.status-bar{padding:6px 24px;border-top:1px solid var(--border);background:var(--surface);display:flex;align-items:center;gap:16px;font-size:11px;color:var(--text-dim);flex-shrink:0}
+.status-bar .stat{display:flex;align-items:center;gap:4px}
+.status-bar .stat .val{color:var(--text);font-family:var(--mono)}
+.status-bar .spacer{margin-left:auto}
+
+/* ── Empty state ── */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:12px;color:var(--text-muted);padding:40px}
+.empty-state svg{width:48px;height:48px;opacity:0.4}
+.empty-state p{font-size:13px}
+
+/* ── Responsive ── */
+@media(max-width:900px){
+  .sidebar{display:none}
+  .controls{padding:8px 12px}
+  .event-row{padding:6px 12px}
+  .event-row .ev-time{width:60px;font-size:10px}
+  .event-row .ev-source{width:50px;font-size:10px}
+  .event-row .ev-type{width:70px;font-size:9px;padding:2px 4px}
+  .status-bar{padding:6px 12px;flex-wrap:wrap}
+}
+@media(max-width:600px){
+  .topbar{padding:8px 12px;gap:8px}
+  .topbar .logo h1{font-size:15px}
+  .topbar .nav a{font-size:11px;padding:4px 8px}
+  .controls{gap:6px}
+  .controls select,.controls input{font-size:11px;padding:5px 8px}
+  .controls input{max-width:none;min-width:0}
+  .event-row{flex-wrap:wrap;gap:4px}
+  .event-row .ev-time{width:auto}
+  .event-row .ev-source{width:auto}
+  .event-row .ev-type{width:auto}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ TOP BAR ═══════════════════ -->
+<div class="topbar">
+  <div class="logo">
+    <svg viewBox="0 0 32 32" fill="none">
+      <circle cx="16" cy="16" r="14" stroke="#4a9eff" stroke-width="1.5" opacity=".3"/>
+      <circle cx="16" cy="16" r="9" stroke="#4a9eff" stroke-width="1.5" opacity=".6"/>
+      <circle cx="16" cy="16" r="4" fill="#4a9eff" opacity=".9"/>
+      <line x1="16" y1="2" x2="16" y2="7" stroke="#4a9eff" stroke-width="1" opacity=".4"/>
+      <line x1="16" y1="25" x2="16" y2="30" stroke="#4a9eff" stroke-width="1" opacity=".4"/>
+      <line x1="2" y1="16" x2="7" y2="16" stroke="#4a9eff" stroke-width="1" opacity=".4"/>
+      <line x1="25" y1="16" x2="30" y2="16" stroke="#4a9eff" stroke-width="1" opacity=".4"/>
+    </svg>
+    <h1>Atlas AI</h1>
+  </div>
+  <div class="nav">
+    <a href="/">Chat</a>
+    <a href="/schematic.html">Dashboard</a>
+    <a href="/events.html" class="active">Events</a>
+    <a href="/oauth2/sign_out" class="logout">Logout</a>
+  </div>
+  <div class="conn-status ok" id="conn-dot" title="Telemetry connection"></div>
+</div>
+
+<!-- ═══════════════════ CONTROLS ═══════════════════ -->
+<div class="controls">
+  <div class="control-group">
+    <select id="filter-source">
+      <option value="">All Subsystems</option>
+      <option value="LH">LH (Left Hemisphere)</option>
+      <option value="RH">RH (Right Hemisphere)</option>
+      <option value="NATS">NATS</option>
+      <option value="Memory">Memory</option>
+      <option value="Safety">Safety</option>
+      <option value="Metacognition">Metacognition</option>
+      <option value="Integration">Integration</option>
+      <option value="Environment">Environment</option>
+      <option value="DHT">DHT</option>
+      <option value="RAG">RAG</option>
+    </select>
+    <select id="filter-severity">
+      <option value="">All Levels</option>
+      <option value="info">Info</option>
+      <option value="success">Success</option>
+      <option value="warning">Warning</option>
+      <option value="error">Error</option>
+    </select>
+  </div>
+  <input type="text" id="search-box" placeholder="Search events...">
+  <div class="control-group">
+    <button class="toggle-btn active" id="auto-scroll-btn" onclick="toggleAutoScroll()">Auto-scroll</button>
+    <button class="clear-btn" onclick="clearEvents()">Clear</button>
+  </div>
+  <div class="count" id="event-count">0 events</div>
+</div>
+
+<!-- ═══════════════════ CONTENT ═══════════════════ -->
+<div class="main">
+  <div class="content">
+    <div class="event-log-wrap">
+      <div class="event-log" id="event-log">
+        <div class="empty-state" id="empty-state">
+          <svg viewBox="0 0 48 48" fill="none">
+            <rect x="6" y="10" width="36" height="28" rx="3" stroke="#4a9eff" stroke-width="1.5" opacity="0.4"/>
+            <line x1="12" y1="18" x2="28" y2="18" stroke="#4a9eff" stroke-width="1.5" opacity="0.3"/>
+            <line x1="12" y1="24" x2="36" y2="24" stroke="#4a9eff" stroke-width="1.5" opacity="0.3"/>
+            <line x1="12" y1="30" x2="22" y2="30" stroke="#4a9eff" stroke-width="1.5" opacity="0.3"/>
+          </svg>
+          <p>Waiting for events...</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-title">NATS Subjects</div>
+      <div id="subjects-list">
+        <div style="font-size:11px;color:var(--text-muted);padding:8px">Loading...</div>
+      </div>
+
+      <div class="sidebar-title" style="margin-top:20px">Connections</div>
+      <div id="connections-list">
+        <div style="font-size:11px;color:var(--text-muted);padding:8px">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <div class="stat">NATS: <span class="val" id="sb-nats">--</span></div>
+    <div class="stat">Msgs In: <span class="val" id="sb-msgs-in">--</span></div>
+    <div class="stat">Msgs Out: <span class="val" id="sb-msgs-out">--</span></div>
+    <div class="stat">Conns: <span class="val" id="sb-conns">--</span></div>
+    <div class="stat">JetStream Streams: <span class="val" id="sb-streams">--</span></div>
+    <div class="spacer"></div>
+    <div class="stat">Last poll: <span class="val" id="sb-last-poll">--</span></div>
+  </div>
+</div>
+
+<script>
+var MAX_EVENTS = 200;
+var POLL_INTERVAL = 5000;
+var autoScroll = true;
+var allEvents = [];
+var prevTelemetry = null;
+var prevEvents = null;
+var pollTimer = null;
+var eventSeq = 0;
+
+// ── Helpers ──
+function ts(){
+  var d = new Date();
+  return d.toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+function fmtNum(n){
+  if(n>=1e6) return (n/1e6).toFixed(1)+'M';
+  if(n>=1e3) return (n/1e3).toFixed(1)+'K';
+  return String(n);
+}
+
+function escapeHtml(s){
+  var d=document.createElement('div');d.textContent=s;return d.innerHTML;
+}
+
+// ── Event management ──
+function addEvent(evt){
+  allEvents.push(evt);
+  if(allEvents.length > MAX_EVENTS * 2){
+    allEvents = allEvents.slice(-MAX_EVENTS);
+  }
+  renderEvent(evt);
+  trimRendered();
+  updateCount();
+}
+
+function renderEvent(evt){
+  var log = document.getElementById('event-log');
+  var empty = document.getElementById('empty-state');
+  if(empty) empty.remove();
+
+  // Check filters
+  if(!matchesFilters(evt)) return;
+
+  var row = document.createElement('div');
+  row.className = 'event-row sev-' + (evt.severity || 'info');
+  row.dataset.seq = evt.seq;
+  row.dataset.source = evt.source || '';
+  row.dataset.severity = evt.severity || 'info';
+  row.innerHTML =
+    '<div class="ev-time">' + escapeHtml(evt.time || '') + '</div>' +
+    '<div class="ev-source">' + escapeHtml(evt.source || '') + '</div>' +
+    '<div class="ev-type">' + escapeHtml(evt.type || '') + '</div>' +
+    '<div class="ev-summary">' + escapeHtml(evt.summary || '') + '</div>';
+  log.appendChild(row);
+
+  if(autoScroll){
+    log.scrollTop = log.scrollHeight;
+  }
+}
+
+function trimRendered(){
+  var log = document.getElementById('event-log');
+  while(log.children.length > MAX_EVENTS){
+    log.removeChild(log.firstChild);
+  }
+}
+
+function matchesFilters(evt){
+  var srcFilter = document.getElementById('filter-source').value;
+  var sevFilter = document.getElementById('filter-severity').value;
+  var searchVal = document.getElementById('search-box').value.toLowerCase();
+
+  if(srcFilter && evt.source !== srcFilter) return false;
+  if(sevFilter && evt.severity !== sevFilter) return false;
+  if(searchVal){
+    var haystack = ((evt.source||'')+(evt.type||'')+(evt.summary||'')).toLowerCase();
+    if(haystack.indexOf(searchVal) === -1) return false;
+  }
+  return true;
+}
+
+function refilter(){
+  var log = document.getElementById('event-log');
+  log.innerHTML = '';
+  var visible = 0;
+  for(var i = Math.max(0, allEvents.length - MAX_EVENTS); i < allEvents.length; i++){
+    if(matchesFilters(allEvents[i])){
+      renderEvent(allEvents[i]);
+      visible++;
+    }
+  }
+  if(visible === 0){
+    log.innerHTML = '<div class="empty-state" id="empty-state"><svg viewBox="0 0 48 48" fill="none"><rect x="6" y="10" width="36" height="28" rx="3" stroke="#4a9eff" stroke-width="1.5" opacity="0.4"/><line x1="12" y1="18" x2="28" y2="18" stroke="#4a9eff" stroke-width="1.5" opacity="0.3"/><line x1="12" y1="24" x2="36" y2="24" stroke="#4a9eff" stroke-width="1.5" opacity="0.3"/><line x1="12" y1="30" x2="22" y2="30" stroke="#4a9eff" stroke-width="1.5" opacity="0.3"/></svg><p>No matching events</p></div>';
+  }
+  updateCount();
+}
+
+function updateCount(){
+  var log = document.getElementById('event-log');
+  var visible = log.querySelectorAll('.event-row').length;
+  document.getElementById('event-count').textContent = visible + ' / ' + allEvents.length + ' events';
+}
+
+function clearEvents(){
+  allEvents = [];
+  var log = document.getElementById('event-log');
+  log.innerHTML = '<div class="empty-state" id="empty-state"><svg viewBox="0 0 48 48" fill="none"><rect x="6" y="10" width="36" height="28" rx="3" stroke="#4a9eff" stroke-width="1.5" opacity="0.4"/><line x1="12" y1="18" x2="28" y2="18" stroke="#4a9eff" stroke-width="1.5" opacity="0.3"/><line x1="12" y1="24" x2="36" y2="24" stroke="#4a9eff" stroke-width="1.5" opacity="0.3"/><line x1="12" y1="30" x2="22" y2="30" stroke="#4a9eff" stroke-width="1.5" opacity="0.3"/></svg><p>Waiting for events...</p></div>';
+  updateCount();
+}
+
+function toggleAutoScroll(){
+  autoScroll = !autoScroll;
+  var btn = document.getElementById('auto-scroll-btn');
+  btn.classList.toggle('active', autoScroll);
+  if(autoScroll){
+    var log = document.getElementById('event-log');
+    log.scrollTop = log.scrollHeight;
+  }
+}
+
+// ── Filter listeners ──
+document.getElementById('filter-source').addEventListener('change', refilter);
+document.getElementById('filter-severity').addEventListener('change', refilter);
+var searchTimeout;
+document.getElementById('search-box').addEventListener('input', function(){
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(refilter, 200);
+});
+
+// ── Derive events from telemetry diff ──
+function deriveEventsFromTelemetry(data, prev){
+  var events = [];
+  var now = ts();
+
+  // LH status change
+  if(prev){
+    var lhPrev = prev.hemispheres && prev.hemispheres.lh ? prev.hemispheres.lh.status : 'offline';
+    var lhNow = data.hemispheres && data.hemispheres.lh ? data.hemispheres.lh.status : 'offline';
+    if(lhPrev !== lhNow){
+      events.push({time:now,source:'LH',type:lhNow==='online'?'online':'offline',summary:'Left Hemisphere (Gemma 4) is now '+lhNow, severity:lhNow==='online'?'success':'error'});
+    }
+    // LH processing
+    var lhProc = data.hemispheres && data.hemispheres.lh ? (data.hemispheres.lh.slots_processing||0) : 0;
+    var lhProcPrev = prev.hemispheres && prev.hemispheres.lh ? (prev.hemispheres.lh.slots_processing||0) : 0;
+    if(lhProc > 0 && lhProcPrev === 0){
+      events.push({time:now,source:'LH',type:'request',summary:'Processing inference request', severity:'info'});
+    } else if(lhProc === 0 && lhProcPrev > 0){
+      events.push({time:now,source:'LH',type:'response',summary:'Inference complete, slot idle', severity:'success'});
+    }
+
+    // RH status change
+    var rhPrev = prev.hemispheres && prev.hemispheres.rh ? prev.hemispheres.rh.status : 'offline';
+    var rhNow = data.hemispheres && data.hemispheres.rh ? data.hemispheres.rh.status : 'offline';
+    if(rhPrev !== rhNow){
+      events.push({time:now,source:'RH',type:rhNow==='online'?'online':'offline',summary:'Right Hemisphere (Qwen 3) is now '+rhNow, severity:rhNow==='online'?'success':'error'});
+    }
+    // RH processing
+    var rhProc = data.hemispheres && data.hemispheres.rh ? (data.hemispheres.rh.slots_processing||0) : 0;
+    var rhProcPrev = prev.hemispheres && prev.hemispheres.rh ? (prev.hemispheres.rh.slots_processing||0) : 0;
+    if(rhProc > 0 && rhProcPrev === 0){
+      events.push({time:now,source:'RH',type:'request',summary:'Processing inference request', severity:'info'});
+    } else if(rhProc === 0 && rhProcPrev > 0){
+      events.push({time:now,source:'RH',type:'response',summary:'Inference complete, slot idle', severity:'success'});
+    }
+
+    // NATS status
+    var natsPrev = prev.nats ? prev.nats.status : 'offline';
+    var natsNow = data.nats ? data.nats.status : 'offline';
+    if(natsPrev !== natsNow){
+      events.push({time:now,source:'NATS',type:natsNow==='online'?'online':'offline',summary:'NATS JetStream is now '+natsNow, severity:natsNow==='online'?'success':'error'});
+    }
+    // NATS message volume
+    var inPrev = prev.nats ? (prev.nats.in_msgs||0) : 0;
+    var inNow = data.nats ? (data.nats.in_msgs||0) : 0;
+    var delta = inNow - inPrev;
+    if(delta > 0){
+      events.push({time:now,source:'NATS',type:'traffic',summary:delta+' messages received since last poll', severity:'info'});
+    }
+
+    // GPU temperature warnings
+    if(data.environment && data.environment.gpu){
+      for(var g=0;g<data.environment.gpu.length;g++){
+        var gpu = data.environment.gpu[g];
+        var prevGpu = prev.environment && prev.environment.gpu && prev.environment.gpu[g];
+        if(gpu.temp >= 85){
+          events.push({time:now,source:'Environment',type:'thermal',summary:'GPU '+gpu.index+' ('+gpu.name+') at '+gpu.temp+'\u00B0C — HIGH', severity:'error'});
+        } else if(gpu.temp >= 75){
+          if(!prevGpu || prevGpu.temp < 75){
+            events.push({time:now,source:'Environment',type:'thermal',summary:'GPU '+gpu.index+' ('+gpu.name+') at '+gpu.temp+'\u00B0C — warm', severity:'warning'});
+          }
+        }
+      }
+    }
+
+    // CPU temperature warnings
+    if(data.environment && data.environment.cpu && data.environment.cpu.max_temp){
+      var cpuMax = data.environment.cpu.max_temp;
+      var prevCpuMax = prev.environment && prev.environment.cpu ? (prev.environment.cpu.max_temp||0) : 0;
+      if(cpuMax >= 90 && prevCpuMax < 90){
+        events.push({time:now,source:'Environment',type:'thermal',summary:'CPU package at '+cpuMax.toFixed(0)+'\u00B0C — CRITICAL', severity:'error'});
+      } else if(cpuMax >= 80 && prevCpuMax < 80){
+        events.push({time:now,source:'Environment',type:'thermal',summary:'CPU package at '+cpuMax.toFixed(0)+'\u00B0C — warm', severity:'warning'});
+      }
+    }
+
+    // Training events
+    if(data.training && data.training.active && (!prev.training || !prev.training.active)){
+      events.push({time:now,source:'Integration',type:'training',summary:'Training job started: '+(data.training.type||'unknown'), severity:'info'});
+    } else if(prev.training && prev.training.active && data.training && !data.training.active){
+      events.push({time:now,source:'Integration',type:'training',summary:'Training job completed', severity:'success'});
+    }
+
+    // Memory changes
+    var memPrev = prev.memory ? (prev.memory.semantic_chunks||0) : 0;
+    var memNow = data.memory ? (data.memory.semantic_chunks||0) : 0;
+    if(memNow !== memPrev && memPrev > 0){
+      var memDelta = memNow - memPrev;
+      events.push({time:now,source:'Memory',type:'update',summary:'Semantic chunks: '+fmtNum(memNow)+' ('+((memDelta>0)?'+':'')+memDelta+')', severity:'info'});
+    }
+  } else {
+    // First poll — generate initial status
+    if(data.hemispheres){
+      if(data.hemispheres.lh && data.hemispheres.lh.status==='online'){
+        events.push({time:now,source:'LH',type:'online',summary:'Left Hemisphere online — '+(data.hemispheres.lh.model||'Gemma 4'), severity:'success'});
+      }
+      if(data.hemispheres.rh && data.hemispheres.rh.status==='online'){
+        events.push({time:now,source:'RH',type:'online',summary:'Right Hemisphere online — '+(data.hemispheres.rh.model||'Qwen 3'), severity:'success'});
+      }
+    }
+    if(data.nats && data.nats.status==='online'){
+      events.push({time:now,source:'NATS',type:'online',summary:'NATS JetStream online, uptime: '+(data.nats.uptime||'--'), severity:'success'});
+    }
+    if(data.memory && data.memory.semantic_chunks > 0){
+      events.push({time:now,source:'Memory',type:'status',summary:fmtNum(data.memory.semantic_chunks)+' semantic chunks across '+data.memory.repos+' repos', severity:'info'});
+    }
+    if(data.dht){
+      events.push({time:now,source:'DHT',type:'status',summary:data.dht.services_online+'/'+data.dht.services_total+' services online', severity:'info'});
+    }
+    events.push({time:now,source:'Integration',type:'heartbeat',summary:'Event log connected, polling every '+POLL_INTERVAL/1000+'s', severity:'success'});
+  }
+
+  return events;
+}
+
+// ── NATS sidebar rendering ──
+function renderNATSSidebar(eventsData, telemetryData){
+  var subjectsList = document.getElementById('subjects-list');
+  var connsList = document.getElementById('connections-list');
+
+  // Render subjects from /api/events
+  if(eventsData && eventsData.subjects && eventsData.subjects.length > 0){
+    var html = '';
+    for(var i=0;i<eventsData.subjects.length;i++){
+      var s = eventsData.subjects[i];
+      var isActive = s.num_subscriptions > 0;
+      html += '<div class="subject-item">' +
+        '<div class="subj-dot '+(isActive?'active':'idle')+'"></div>' +
+        '<div class="subj-name" title="'+escapeHtml(s.subject)+'">'+escapeHtml(s.subject)+'</div>' +
+        '<div class="subj-count">'+fmtNum(s.num_subscriptions)+' sub'+(s.num_subscriptions!==1?'s':'')+'</div>' +
+        '</div>';
+    }
+    subjectsList.innerHTML = html;
+  } else {
+    subjectsList.innerHTML = '<div style="font-size:11px;color:var(--text-muted);padding:8px">No subjects detected</div>';
+  }
+
+  // Render connections
+  if(eventsData && eventsData.connections && eventsData.connections.length > 0){
+    var chtml = '';
+    for(var j=0;j<eventsData.connections.length;j++){
+      var c = eventsData.connections[j];
+      chtml += '<div class="conn-item">' +
+        '<div class="conn-name">'+escapeHtml(c.name || c.ip || 'unnamed')+'</div>' +
+        '<div class="conn-detail">'+escapeHtml(c.lang||'')+' | in: '+fmtNum(c.in_msgs||0)+' out: '+fmtNum(c.out_msgs||0)+'</div>' +
+        '</div>';
+    }
+    connsList.innerHTML = chtml;
+  } else {
+    connsList.innerHTML = '<div style="font-size:11px;color:var(--text-muted);padding:8px">No connections</div>';
+  }
+}
+
+// ── Status bar ──
+function updateStatusBar(telemetry, eventsData){
+  var nats = telemetry.nats || {};
+  document.getElementById('sb-nats').textContent = nats.status || 'offline';
+  document.getElementById('sb-msgs-in').textContent = fmtNum(nats.in_msgs || 0);
+  document.getElementById('sb-msgs-out').textContent = fmtNum(nats.out_msgs || 0);
+  document.getElementById('sb-conns').textContent = String(nats.connections || 0);
+  document.getElementById('sb-streams').textContent = (nats.jetstream ? String(nats.jetstream.streams) : '--');
+  document.getElementById('sb-last-poll').textContent = ts();
+}
+
+// ── Polling ──
+async function poll(){
+  var connDot = document.getElementById('conn-dot');
+  try{
+    // Fetch both endpoints in parallel
+    var results = await Promise.allSettled([
+      fetch('/api/telemetry').then(function(r){return r.json()}),
+      fetch('/api/events').then(function(r){return r.json()})
+    ]);
+
+    var telemetry = results[0].status === 'fulfilled' ? results[0].value : null;
+    var eventsData = results[1].status === 'fulfilled' ? results[1].value : null;
+
+    connDot.className = 'conn-status ok';
+
+    if(telemetry){
+      // Derive events from telemetry changes
+      var derived = deriveEventsFromTelemetry(telemetry, prevTelemetry);
+      for(var i=0;i<derived.length;i++){
+        derived[i].seq = ++eventSeq;
+        addEvent(derived[i]);
+      }
+      prevTelemetry = telemetry;
+      updateStatusBar(telemetry, eventsData);
+    }
+
+    // Add events from /api/events endpoint
+    if(eventsData && eventsData.events){
+      for(var j=0;j<eventsData.events.length;j++){
+        var e = eventsData.events[j];
+        e.seq = ++eventSeq;
+        addEvent(e);
+      }
+    }
+
+    // Update sidebar
+    renderNATSSidebar(eventsData, telemetry);
+
+  } catch(err){
+    connDot.className = 'conn-status err';
+    addEvent({
+      seq: ++eventSeq,
+      time: ts(),
+      source: 'Integration',
+      type: 'error',
+      summary: 'Poll failed: ' + err.message,
+      severity: 'error'
+    });
+  }
+}
+
+// ── Init ──
+poll();
+pollTimer = setInterval(poll, POLL_INTERVAL);
+
+// Pause auto-scroll when user scrolls up manually
+document.getElementById('event-log').addEventListener('scroll', function(){
+  var el = this;
+  var atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+  if(!atBottom && autoScroll){
+    autoScroll = false;
+    document.getElementById('auto-scroll-btn').classList.remove('active');
+  }
+});
+</script>
+</body>
+</html>

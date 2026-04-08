@@ -2,8 +2,7 @@
 Unit tests for the LH Planner module.
 """
 
-import pytest
-from agi.lh.planner import Planner, PlanGraph, PlanStep
+from agi.lh.planner import PlanGraph, PlanStep
 
 
 class TestPlannerGeneration:

@@ -19,7 +19,7 @@ import logging
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Dict, Generic, Optional, TypeVar, Callable, Any
+from typing import Dict, Generic, Optional, TypeVar, Any
 from contextlib import contextmanager
 
 import grpc

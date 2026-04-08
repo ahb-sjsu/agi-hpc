@@ -4,7 +4,7 @@
 import pytest
 from unittest.mock import MagicMock, AsyncMock
 from dataclasses import dataclass
-from typing import List, Dict, Any
+from typing import List, Any
 
 # ---------------------------------------------------------------------------
 # Mock Memory Clients

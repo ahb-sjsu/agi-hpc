@@ -37,7 +37,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import struct
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from agi.common.config_loader import load_config
 from agi.core.events.fabric import EventFabric
@@ -54,7 +54,7 @@ from agi.proto_gen.memory_pb2_grpc import (
     add_SemanticServiceServicer_to_server,
 )
 
-from agi.memory.semantic.client import SemanticMemoryClient, Fact
+from agi.memory.semantic.client import SemanticMemoryClient
 from agi.memory.semantic.qdrant_store import QdrantVectorStore, QdrantConfig
 from agi.memory.semantic.embedders.base import EmbeddingModel
 

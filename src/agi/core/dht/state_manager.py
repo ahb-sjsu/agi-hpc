@@ -34,12 +34,11 @@ Usage:
 
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
+from typing import Any, Callable, Dict, Optional, TypeVar
 
 from agi.core.dht.client import DHTClient, DHTConfig
 from agi.core.dht.ring import Node

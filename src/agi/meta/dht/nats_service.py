@@ -60,7 +60,7 @@ except ImportError:
 
 from agi.common.event import Event  # noqa: E402
 from agi.core.events.nats_fabric import NatsEventFabric, NatsFabricConfig  # noqa: E402
-from agi.meta.dht.registry import ServiceInfo, ServiceRegistry  # noqa: E402
+from agi.meta.dht.registry import ServiceRegistry  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Configuration

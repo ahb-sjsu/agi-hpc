@@ -10,13 +10,10 @@ from agi.lh.observability import (
     set_context,
     clear_context,
     request_context,
-    StructuredLogAdapter,
-    get_structured_logger,
     Counter,
     Histogram,
     Gauge,
     LHMetrics,
-    metrics,
     track_request,
     track_llm_call,
 )

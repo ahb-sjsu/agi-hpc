@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atlas AI</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0e17;--surface:#131a2b;--surface2:#1a2340;--border:#2a3555;--text:#e0e6f0;--dim:#7a8ba8;--accent:#4a9eff;--glow:rgba(74,158,255,0.15);--user-bg:#1e3a5f;--atlas-bg:#1a2340;--green:#4ade80}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column}
+.header{display:flex;align-items:center;gap:16px;padding:16px 24px;border-bottom:1px solid var(--border);background:var(--surface)}
+.logo svg{width:48px;height:48px}
+.header-text h1{font-size:22px;font-weight:600;letter-spacing:.5px;background:linear-gradient(135deg,var(--accent),#7cc4ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header-text .sub{font-size:12px;color:var(--dim);margin-top:2px}
+.status{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.badge{padding:4px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;font-size:11px;color:var(--dim);white-space:nowrap}
+.chat{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px}
+.msg{display:flex;gap:12px;max-width:800px;width:100%;margin:0 auto;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1}}
+.msg.user{flex-direction:row-reverse}
+.av{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.av.a{background:var(--glow);border:1px solid var(--accent)}
+.av.u{background:var(--user-bg);border:1px solid #2a5080}
+.bub{padding:12px 16px;border-radius:14px;line-height:1.6;font-size:14px;max-width:85%;word-wrap:break-word;overflow-wrap:break-word;overflow-x:hidden}
+.msg.atlas .bub{background:var(--atlas-bg);border:1px solid var(--border);border-top-left-radius:4px}
+.msg.user .bub{background:var(--user-bg);border:1px solid #2a5080;border-top-right-radius:4px}
+.bub code{background:rgba(0,0,0,.3);padding:2px 6px;border-radius:4px;font-family:'Cascadia Code','Fira Code',monospace;font-size:13px}
+.bub pre{background:rgba(0,0,0,.4);padding:12px;border-radius:8px;overflow-x:auto;margin:8px 0;font-family:'Cascadia Code','Fira Code',monospace;font-size:13px}
+.think{margin:10px 0;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.think summary{padding:10px 14px;cursor:pointer;color:var(--accent);font-size:13px;font-weight:600;background:rgba(74,158,255,.08);display:flex;align-items:center;gap:8px;list-style:none;-webkit-user-select:none;user-select:none}
+.think summary::-webkit-details-marker{display:none}
+.think summary::before{content:'';width:14px;height:14px;border:2px solid var(--accent);border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0}
+.think summary::after{content:'\25BC';margin-left:auto;font-size:10px;transition:transform .3s}
+.think[open] summary::before{animation:none;width:0;height:0;border:none;margin:0}
+.think[open] summary::after{transform:rotate(180deg)}
+.think-content{padding:10px 14px;font-size:13px;color:var(--dim);max-height:40vh;overflow-y:auto;opacity:.85;line-height:1.6}
+.think-content hr{border:none;border-top:1px solid var(--border);margin:12px 0}
+.think-content strong{color:var(--text)}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:768px){
+  .think{margin:8px -2px;border-radius:8px}
+  .think summary{padding:12px 14px;font-size:14px}
+  .think-content{font-size:12px;padding:8px 10px;max-height:50vh;word-break:break-word;overflow-wrap:break-word}
+  .think-content pre{white-space:pre-wrap;word-break:break-all;max-width:100%}
+  .think-content strong{display:block;margin-top:8px}
+  .bub{overflow-x:hidden;max-width:calc(100vw - 60px)}
+}
+.typing span{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin:0 2px;animation:typ 1.2s infinite}
+.typing span:nth-child(2){animation-delay:.2s}
+.typing span:nth-child(3){animation-delay:.4s}
+@keyframes typ{0%,100%{opacity:.3;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}
+.tps{font-size:11px;color:var(--dim);margin-top:6px}
+.welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:16px;padding:40px;text-align:center}
+.welcome svg{width:80px;height:80px;opacity:.8}
+.welcome h2{font-size:28px;background:linear-gradient(135deg,var(--accent),#7cc4ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.welcome p{color:var(--dim);max-width:500px;line-height:1.6}
+.sugs{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px}
+.sug{padding:8px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--dim);font-size:13px;cursor:pointer;transition:all .2s}
+.sug:hover{background:var(--glow);border-color:var(--accent);color:var(--text)}
+.input-area{padding:16px 24px;border-top:1px solid var(--border);background:var(--surface)}
+.input-row{max-width:800px;margin:0 auto;display:flex;gap:10px}
+#input{flex:1;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:14px;font-family:inherit;outline:none;resize:none;min-height:44px;max-height:120px;transition:border-color .2s}
+#input:focus{border-color:var(--accent)}
+#input::placeholder{color:var(--dim)}
+#send{padding:0 20px;background:var(--accent);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap}
+#send:hover{background:#5aabff}
+#send:disabled{opacity:.4;cursor:not-allowed}
+.foot{text-align:center;font-size:11px;color:var(--dim);margin-top:8px;opacity:.6}
+@media(max-width:768px){
+  .header{padding:8px 10px;gap:6px}
+  .logo svg{width:28px;height:28px}
+  .logo{display:flex;align-items:center}
+  .header-text h1{font-size:16px}
+  .header-text .sub{display:none}
+  .status{display:none}
+  .badge{display:none}
+  .header-nav{gap:3px !important}
+  .header-nav a{font-size:11px !important;padding:3px 8px !important}
+  .chat{padding:8px;padding-bottom:70px}
+  .msg{gap:6px;max-width:100%}
+  .av{width:24px;height:24px;font-size:11px;border-radius:6px}
+  .bub{padding:8px 10px;font-size:13px;max-width:92%;border-radius:12px}
+  .bub code{font-size:11px}
+  .bub pre{font-size:11px;padding:8px;margin:4px 0}
+  .input-area{position:fixed;bottom:0;left:0;right:0;padding:8px 10px;z-index:100;background:var(--surface);border-top:1px solid var(--border)}
+  .input-row{gap:6px;max-width:100%}
+  #input{padding:10px;font-size:16px;min-height:44px;border-radius:10px;-webkit-appearance:none}
+  #send{padding:0 16px;font-size:14px;border-radius:10px;min-height:44px}
+  .foot{display:none}
+  .welcome{padding:20px}
+  .welcome svg{width:48px;height:48px}
+  .welcome h2{font-size:20px}
+  .welcome p{font-size:12px;max-width:300px}
+  .sugs{flex-direction:column;align-items:stretch}
+  .sug{padding:10px 14px;font-size:13px;text-align:left}
+  .tps{font-size:10px}
+  .think summary{font-size:11px;padding:4px 8px}
+  .think-content{font-size:11px;padding:6px 8px;max-height:150px}
+}
+@media(max-width:380px){
+  .header-text h1{font-size:14px}
+  .header-nav a{font-size:10px !important;padding:2px 6px !important}
+  #input{font-size:16px}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <svg viewBox="0 0 32 32" fill="none" style="width:28px;height:28px">
+      <circle cx="16" cy="16" r="14" stroke="#4a9eff" stroke-width="1.5" opacity=".3"/>
+      <circle cx="16" cy="16" r="9" stroke="#4a9eff" stroke-width="1.5" opacity=".6"/>
+      <circle cx="16" cy="16" r="4" fill="#4a9eff" opacity=".9"/>
+      <line x1="16" y1="2" x2="16" y2="7" stroke="#4a9eff" stroke-width="1" opacity=".4"/>
+      <line x1="16" y1="25" x2="16" y2="30" stroke="#4a9eff" stroke-width="1" opacity=".4"/>
+      <line x1="2" y1="16" x2="7" y2="16" stroke="#4a9eff" stroke-width="1" opacity=".4"/>
+      <line x1="25" y1="16" x2="30" y2="16" stroke="#4a9eff" stroke-width="1" opacity=".4"/>
+    </svg>
+  </div>
+  <div class="header-text">
+    <h1>Atlas AI</h1>
+    <div class="sub">Local AI Research Assistant</div>
+  </div>
+  <div class="status">
+    <div class="dot"></div>
+    <span>Online</span>
+  </div>
+  <nav class="header-nav" style="display:flex;align-items:center;gap:6px;margin-left:auto">
+    <a href="/" style="color:#4a9eff;text-decoration:none;font-size:12px;padding:5px 12px;border-radius:6px;background:rgba(74,158,255,0.15)">Chat</a>
+    <a href="/schematic.html" style="color:#7a8ba8;text-decoration:none;font-size:12px;padding:5px 12px;border-radius:6px;transition:all .2s" onmouseover="this.style.color='#4a9eff';this.style.background='rgba(74,158,255,0.15)'" onmouseout="this.style.color='#7a8ba8';this.style.background='none'">Dashboard</a>
+    <a href="/events.html" style="color:#7a8ba8;text-decoration:none;font-size:12px;padding:5px 12px;border-radius:6px;transition:all .2s" onmouseover="this.style.color='#4a9eff';this.style.background='rgba(74,158,255,0.15)'" onmouseout="this.style.color='#7a8ba8';this.style.background='none'">Events</a>
+    <a href="/oauth2/sign_out" style="color:#7a8ba8;text-decoration:none;font-size:12px;padding:5px 12px;border-radius:6px;transition:all .2s" onmouseover="this.style.color='#f87171';this.style.background='rgba(248,113,113,0.15)'" onmouseout="this.style.color='#7a8ba8';this.style.background='none'">Logout</a>
+  </nav>
+  <div class="badge" id="header-badge">LH: Gemma 4 &#8226; RH: Qwen 3 &#8226; Loading...</div>
+</div>
+
+<div class="chat" id="chat">
+  <div class="welcome" id="welcome">
+    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <defs><linearGradient id="wg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#4a9eff;stop-opacity:0.9"/><stop offset="100%" style="stop-color:#1a4a8a;stop-opacity:0.9"/></linearGradient></defs>
+      <circle cx="50" cy="50" r="44" fill="none" stroke="url(#wg)" stroke-width="2" opacity="0.6"/>
+      <circle cx="50" cy="20" r="4" fill="#4a9eff"/><circle cx="25" cy="40" r="4" fill="#4a9eff"/>
+      <circle cx="75" cy="40" r="4" fill="#4a9eff"/><circle cx="35" cy="65" r="4" fill="#4a9eff"/>
+      <circle cx="65" cy="65" r="4" fill="#4a9eff"/><circle cx="50" cy="50" r="6" fill="#7cc4ff"/>
+      <line x1="50" y1="20" x2="50" y2="50" stroke="#4a9eff" stroke-width="1.5" opacity="0.4"/>
+      <line x1="25" y1="40" x2="50" y2="50" stroke="#4a9eff" stroke-width="1.5" opacity="0.4"/>
+      <line x1="75" y1="40" x2="50" y2="50" stroke="#4a9eff" stroke-width="1.5" opacity="0.4"/>
+      <line x1="35" y1="65" x2="50" y2="50" stroke="#4a9eff" stroke-width="1.5" opacity="0.4"/>
+      <line x1="65" y1="65" x2="50" y2="50" stroke="#4a9eff" stroke-width="1.5" opacity="0.4"/>
+      <ellipse cx="50" cy="50" rx="38" ry="14" fill="none" stroke="#4a9eff" stroke-width="1" opacity="0.3" transform="rotate(-25 50 50)"/>
+    </svg>
+    <h2>Ask Atlas anything</h2>
+    <p>Running locally on dual Quadro GV100s in Bel Marin Keys, Novato. No cloud. No telemetry. Just 72 billion parameters with RAG over 37 research repositories.</p>
+    <div class="sugs">
+      <div class="sug" onclick="askSug(this)">What projects are in the archive?</div>
+      <div class="sug" onclick="askSug(this)">Explain the AGI-HPC architecture</div>
+      <div class="sug" onclick="askSug(this)">What is Theory Radar?</div>
+      <div class="sug" onclick="askSug(this)">Show me the ErisML safety gates</div>
+    </div>
+  </div>
+</div>
+
+<div class="input-area">
+  <div class="input-row">
+    <textarea id="input" rows="1" placeholder="Ask Atlas..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
+    <button id="send" onclick="send()">Send</button>
+  </div>
+  <div class="foot">Atlas &#8226; Qwen2.5-72B-Instruct &#8226; RAG over ahb-sjsu repos &#8226; HP Z840 &#8226; Bel Marin Keys, Novato</div>
+</div>
+
+<script>
+var SYS="You are Atlas, an AI research assistant running locally on a workstation with dual Quadro GV100 GPUs in Bel Marin Keys, Novato. You were set up by researchers working on AGI, geometric reasoning, and cognitive architectures. You are knowledgeable, curious, and have a dry wit. You take pride in running locally \u2014 no cloud, no surveillance, just raw silicon and math. Keep responses concise but show personality. You are not corporate. When relevant, reference the hardware you run on.";
+var msgs=[{role:"system",content:SYS}];
+var busy=false;
+
+function askSug(el){document.getElementById("input").value=el.textContent;send()}
+
+function fmt(t){
+  // Protect HTML tags (details, summary, div) from br conversion
+  var protected=[];
+  t=t.replace(/<(details|summary|\/details|\/summary|div|\/div)[^>]*>/gi,function(m){
+    protected.push(m);return'\x00PROT'+(protected.length-1)+'\x00';
+  });
+  t=t.replace(/```(\w*)\n?([\s\S]*?)```/g,"<pre><code>$2</code></pre>");
+  t=t.replace(/`([^`]+)`/g,"<code>$1</code>");
+  t=t.replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>");
+  t=t.replace(/---/g,"<hr>");
+  t=t.replace(/\n/g,"<br>");
+  // Restore protected tags
+  t=t.replace(/\x00PROT(\d+)\x00/g,function(_,i){return protected[parseInt(i)];});
+  return t;
+}
+
+function addMsg(role,content){
+  var w=document.getElementById("welcome");
+  if(w)w.remove();
+  var c=document.getElementById("chat");
+  var d=document.createElement("div");
+  d.className="msg "+(role==="user"?"user":"atlas");
+  var icon=role==="user"?"\u25CB":"\u2B21";
+  var ac=role==="user"?"u":"a";
+  d.innerHTML='<div class="av '+ac+'">'+icon+'</div><div class="bub">'+fmt(content)+'</div>';
+  c.appendChild(d);
+  c.scrollTop=c.scrollHeight;
+  return d;
+}
+
+async function send(){
+  var inp=document.getElementById("input");
+  var text=inp.value.trim();
+  if(!text||busy)return;
+  inp.value="";inp.style.height="auto";
+  busy=true;document.getElementById("send").disabled=true;
+
+  addMsg("user",text);
+  msgs.push({role:"user",content:text});
+
+  var c=document.getElementById("chat");
+  var td=document.createElement("div");
+  td.className="msg atlas";td.id="typing";
+  td.innerHTML='<div class="av a">\u2B21</div><div class="bub"><div class="typing"><span></span><span></span><span></span></div></div>';
+  c.appendChild(td);c.scrollTop=c.scrollHeight;
+
+  try{
+    var t0=performance.now();
+    var res=await fetch("/v1/chat/completions",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({model:"atlas",messages:msgs,max_tokens:2048,stream:true})
+    });
+    td.remove();
+    var md=addMsg("atlas","");
+    var bub=md.querySelector(".bub");
+    var full="",tc=0,thinking=false;
+
+    var ct=res.headers.get("content-type")||"";
+    if(ct.includes("application/json")){
+      // Non-streaming response (dual hemisphere "both" mode)
+      var j=await res.json();
+      full=j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content||"";
+      tc=full.split(" ").length;
+      bub.innerHTML=fmt(full);
+      c.scrollTop=c.scrollHeight;
+    } else {
+      // Streaming SSE response
+      var reader=res.body.getReader();
+      var dec=new TextDecoder();
+
+      while(true){
+        var{done,value}=await reader.read();
+        if(done)break;
+        var chunk=dec.decode(value);
+        var lines=chunk.split("\n");
+        for(var i=0;i<lines.length;i++){
+          if(!lines[i].startsWith("data: "))continue;
+          var data=lines[i].slice(6);
+          if(data==="[DONE]")continue;
+          try{
+            var p=JSON.parse(data);
+            var d0=p.choices&&p.choices[0]&&p.choices[0].delta;
+            if(d0&&d0.reasoning_content&&!thinking){thinking=true;full+='<details class="think"><summary>Thinking...</summary><div class="think-content">';}
+            if(d0&&d0.content&&thinking){thinking=false;full+='</div></details>';}
+            var delta=d0&&(d0.content||(d0.reasoning_content?d0.reasoning_content:''));
+            if(delta){full+=delta;tc++;bub.innerHTML=fmt(full);c.scrollTop=c.scrollHeight;}
+          }catch(e){}
+        }
+      }
+    }
+
+    var elapsed=(performance.now()-t0)/1000;
+    var tps=(tc/elapsed).toFixed(1);
+    var info=document.createElement("div");
+    info.className="tps";
+    info.textContent=tc+" tokens \u2022 "+tps+" tok/s \u2022 "+elapsed.toFixed(1)+"s";
+    bub.appendChild(info);
+    msgs.push({role:"assistant",content:full});
+  }catch(err){
+    td.remove();addMsg("atlas","Error: "+err.message);
+  }
+  busy=false;document.getElementById("send").disabled=false;
+  document.getElementById("input").focus();
+}
+// Update header badge with live stats
+async function updateBadge(){
+  try{
+    var r=await fetch('/api/telemetry');
+    if(!r.ok)return;
+    var t=await r.json();
+    var repos=t.memory&&t.memory.repos||0;
+    var chunks=t.memory&&t.memory.semantic_chunks||0;
+    var ethics=t.memory&&t.memory.ethics_chunks||0;
+    var pubs=t.memory&&t.memory.publications||0;
+    var badge=document.getElementById('header-badge');
+    if(badge){
+      var parts=['LH: Gemma 4','RH: Qwen 3'];
+      if(repos)parts.push(repos+' repos');
+      if(chunks)parts.push((chunks/1000).toFixed(0)+'K chunks');
+      if(ethics)parts.push((ethics/1000).toFixed(0)+'K ethics');
+      if(pubs)parts.push((pubs/1000).toFixed(0)+'K pubs');
+      badge.textContent=parts.join(' \u2022 ');
+    }
+  }catch(e){}
+}
+updateBadge();
+setInterval(updateBadge,30000);
+</script>
+</body>
+</html>

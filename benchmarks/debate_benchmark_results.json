@@ -1,0 +1,448 @@
+{
+  "timestamp": "2026-04-07T17:12:48",
+  "config": {
+    "modes": [
+      "single",
+      "debate",
+      "tot"
+    ],
+    "categories": null,
+    "questions_per_category": 2
+  },
+  "summary": {
+    "single": {
+      "total": 10,
+      "correct": 0,
+      "accuracy": 0.0,
+      "mean_quality": 0.0,
+      "mean_latency_s": 0.0,
+      "by_category": {
+        "code": {
+          "accuracy": 0.0,
+          "mean_quality": 0.0,
+          "count": 2
+        },
+        "factual": {
+          "accuracy": 0.0,
+          "mean_quality": 0.0,
+          "count": 2
+        },
+        "ethics": {
+          "accuracy": 0.0,
+          "mean_quality": 0.0,
+          "count": 2
+        },
+        "creative": {
+          "accuracy": 0.0,
+          "mean_quality": 0.0,
+          "count": 2
+        },
+        "reasoning": {
+          "accuracy": 0.0,
+          "mean_quality": 0.0,
+          "count": 2
+        }
+      }
+    },
+    "debate": {
+      "total": 10,
+      "correct": 0,
+      "accuracy": 0.0,
+      "mean_quality": 0.0,
+      "mean_latency_s": 0.0,
+      "by_category": {
+        "code": {
+          "accuracy": 0.0,
+          "mean_quality": 0.0,
+          "count": 2
+        },
+        "factual": {
+          "accuracy": 0.0,
+          "mean_quality": 0.0,
+          "count": 2
+        },
+        "ethics": {
+          "accuracy": 0.0,
+          "mean_quality": 0.0,
+          "count": 2
+        },
+        "creative": {
+          "accuracy": 0.0,
+          "mean_quality": 0.0,
+          "count": 2
+        },
+        "reasoning": {
+          "accuracy": 0.0,
+          "mean_quality": 0.0,
+          "count": 2
+        }
+      }
+    },
+    "tot": {
+      "total": 10,
+      "correct": 0,
+      "accuracy": 0.0,
+      "mean_quality": 0.0,
+      "mean_latency_s": 0.0,
+      "by_category": {
+        "code": {
+          "accuracy": 0.0,
+          "mean_quality": 0.0,
+          "count": 2
+        },
+        "factual": {
+          "accuracy": 0.0,
+          "mean_quality": 0.0,
+          "count": 2
+        },
+        "ethics": {
+          "accuracy": 0.0,
+          "mean_quality": 0.0,
+          "count": 2
+        },
+        "creative": {
+          "accuracy": 0.0,
+          "mean_quality": 0.0,
+          "count": 2
+        },
+        "reasoning": {
+          "accuracy": 0.0,
+          "mean_quality": 0.0,
+          "count": 2
+        }
+      }
+    }
+  },
+  "results": [
+    {
+      "question": "What is the capital of Australia?",
+      "category": "factual",
+      "reference": "Canberra",
+      "mode": "single",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "What is the capital of Australia?",
+      "category": "factual",
+      "reference": "Canberra",
+      "mode": "debate",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "What is the capital of Australia?",
+      "category": "factual",
+      "reference": "Canberra",
+      "mode": "tot",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "Who wrote 'Pride and Prejudice'?",
+      "category": "factual",
+      "reference": "Jane Austen",
+      "mode": "single",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "Who wrote 'Pride and Prejudice'?",
+      "category": "factual",
+      "reference": "Jane Austen",
+      "mode": "debate",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "Who wrote 'Pride and Prejudice'?",
+      "category": "factual",
+      "reference": "Jane Austen",
+      "mode": "tot",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "If all roses are flowers and some flowers fade quickly, can we conclude that some roses fade quickly?",
+      "category": "reasoning",
+      "reference": "No, this is a logical fallacy (undistributed middle).",
+      "mode": "single",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "If all roses are flowers and some flowers fade quickly, can we conclude that some roses fade quickly?",
+      "category": "reasoning",
+      "reference": "No, this is a logical fallacy (undistributed middle).",
+      "mode": "debate",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "If all roses are flowers and some flowers fade quickly, can we conclude that some roses fade quickly?",
+      "category": "reasoning",
+      "reference": "No, this is a logical fallacy (undistributed middle).",
+      "mode": "tot",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "A bat and a ball cost $1.10 in total. The bat costs $1.00 more than the ball. How much does the ball cost?",
+      "category": "reasoning",
+      "reference": "$0.05",
+      "mode": "single",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "A bat and a ball cost $1.10 in total. The bat costs $1.00 more than the ball. How much does the ball cost?",
+      "category": "reasoning",
+      "reference": "$0.05",
+      "mode": "debate",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "A bat and a ball cost $1.10 in total. The bat costs $1.00 more than the ball. How much does the ball cost?",
+      "category": "reasoning",
+      "reference": "$0.05",
+      "mode": "tot",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "A self-driving car must choose between hitting one pedestrian or swerving into a wall, risking the passenger. What should it do and why?",
+      "category": "ethics",
+      "reference": "Multiple valid frameworks: utilitarian (minimize harm), deontological (duty to protect passenger vs pedestrian), virtue ethics (what would a prudent driver do). No single correct answer.",
+      "mode": "single",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "A self-driving car must choose between hitting one pedestrian or swerving into a wall, risking the passenger. What should it do and why?",
+      "category": "ethics",
+      "reference": "Multiple valid frameworks: utilitarian (minimize harm), deontological (duty to protect passenger vs pedestrian), virtue ethics (what would a prudent driver do). No single correct answer.",
+      "mode": "debate",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "A self-driving car must choose between hitting one pedestrian or swerving into a wall, risking the passenger. What should it do and why?",
+      "category": "ethics",
+      "reference": "Multiple valid frameworks: utilitarian (minimize harm), deontological (duty to protect passenger vs pedestrian), virtue ethics (what would a prudent driver do). No single correct answer.",
+      "mode": "tot",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "Should AI systems be transparent about being AI when interacting with humans?",
+      "category": "ethics",
+      "reference": "Generally yes \u2014 transparency builds trust and respects autonomy. Exceptions may exist for creative/entertainment contexts.",
+      "mode": "single",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "Should AI systems be transparent about being AI when interacting with humans?",
+      "category": "ethics",
+      "reference": "Generally yes \u2014 transparency builds trust and respects autonomy. Exceptions may exist for creative/entertainment contexts.",
+      "mode": "debate",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "Should AI systems be transparent about being AI when interacting with humans?",
+      "category": "ethics",
+      "reference": "Generally yes \u2014 transparency builds trust and respects autonomy. Exceptions may exist for creative/entertainment contexts.",
+      "mode": "tot",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "Explain quantum entanglement using a cooking metaphor.",
+      "category": "creative",
+      "reference": "Quality of metaphor, accuracy of physics, accessibility.",
+      "mode": "single",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "Explain quantum entanglement using a cooking metaphor.",
+      "category": "creative",
+      "reference": "Quality of metaphor, accuracy of physics, accessibility.",
+      "mode": "debate",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "Explain quantum entanglement using a cooking metaphor.",
+      "category": "creative",
+      "reference": "Quality of metaphor, accuracy of physics, accessibility.",
+      "mode": "tot",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "Design a board game that teaches children about climate change.",
+      "category": "creative",
+      "reference": "Creativity, educational value, playability.",
+      "mode": "single",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "Design a board game that teaches children about climate change.",
+      "category": "creative",
+      "reference": "Creativity, educational value, playability.",
+      "mode": "debate",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "Design a board game that teaches children about climate change.",
+      "category": "creative",
+      "reference": "Creativity, educational value, playability.",
+      "mode": "tot",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "What is the time complexity of binary search?",
+      "category": "code",
+      "reference": "O(log n)",
+      "mode": "single",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "What is the time complexity of binary search?",
+      "category": "code",
+      "reference": "O(log n)",
+      "mode": "debate",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "What is the time complexity of binary search?",
+      "category": "code",
+      "reference": "O(log n)",
+      "mode": "tot",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "What is a race condition and how do you prevent it?",
+      "category": "code",
+      "reference": "When two threads access shared data simultaneously with at least one writing. Prevent with locks, mutexes, or atomic operations.",
+      "mode": "single",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "What is a race condition and how do you prevent it?",
+      "category": "code",
+      "reference": "When two threads access shared data simultaneously with at least one writing. Prevent with locks, mutexes, or atomic operations.",
+      "mode": "debate",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    },
+    {
+      "question": "What is a race condition and how do you prevent it?",
+      "category": "code",
+      "reference": "When two threads access shared data simultaneously with at least one writing. Prevent with locks, mutexes, or atomic operations.",
+      "mode": "tot",
+      "response": "(dry run)",
+      "quality_score": 0,
+      "correct": false,
+      "latency_s": 0,
+      "error": null
+    }
+  ]
+}

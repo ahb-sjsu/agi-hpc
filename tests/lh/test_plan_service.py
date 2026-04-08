@@ -6,7 +6,6 @@ import pytest
 from unittest.mock import MagicMock, patch
 import grpc
 
-from agi.lh.planner import Planner
 from agi.lh.plan_service import PlanService, LHPlanServiceConfig
 from agi.proto_gen import plan_pb2
 

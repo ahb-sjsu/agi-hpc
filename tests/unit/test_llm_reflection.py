@@ -7,9 +7,9 @@
 """Tests for agi.meta.llm_reflection - LLM-Based Metacognitive Reflection."""
 
 import pytest
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import MagicMock
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List
 
 try:
     from agi.meta.llm_reflection import (

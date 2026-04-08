@@ -36,10 +36,9 @@ import time
 import uuid
 from concurrent import futures
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Callable, Any
+from typing import Dict, List, Optional, Any
 
 import grpc
-from grpc import aio
 
 from agi.core.dht.ring import HashRing, Node
 from agi.core.dht.storage import (
@@ -47,7 +46,6 @@ from agi.core.dht.storage import (
     StorageEntry,
     InMemoryBackend,
     RedisBackend,
-    create_backend,
 )
 
 logger = logging.getLogger(__name__)

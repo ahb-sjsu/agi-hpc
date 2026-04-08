@@ -7,7 +7,6 @@
 """Tests for agi.core.dht.hpc module."""
 
 import os
-import pytest
 from unittest.mock import patch
 
 from agi.core.dht.hpc import HPCConfig

@@ -8,14 +8,11 @@
 
 import time
 import pytest
-from unittest.mock import patch
 
 from agi.core.dht.observability import (
     SpanContext,
     DHTTracer,
     DHTMetrics,
-    dht_metrics,
-    dht_tracer,
     track_dht_operation,
 )
 

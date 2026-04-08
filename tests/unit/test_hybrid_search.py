@@ -3,16 +3,12 @@
 
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
 
-import numpy as np
-import pytest
 
 from agi.common.hybrid_search import (
     HybridSearcher,
     SearchResult,
-    WikiArticle,
     WikiIndex,
     extract_keywords,
     reciprocal_rank_fusion,

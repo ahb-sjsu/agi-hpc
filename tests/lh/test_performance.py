@@ -10,11 +10,9 @@ The source module is a Sprint 6 stub. These tests define the expected
 LRUCache and AsyncBatcher API.
 """
 
-import asyncio
 import time
 import pytest
-from unittest.mock import MagicMock, AsyncMock
-from dataclasses import dataclass, field
+from unittest.mock import AsyncMock
 from typing import Any, Dict, Optional
 
 try:

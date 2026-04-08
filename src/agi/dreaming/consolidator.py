@@ -41,7 +41,6 @@ Usage::
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import json
 import logging
@@ -50,7 +49,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import aiohttp
 
@@ -580,7 +579,7 @@ def _list_existing_slugs(wiki_dir: Path) -> List[str]:
 def _update_wiki_index(wiki_dir: Path) -> None:
     """Regenerate the wiki index.md with all articles."""
     slugs = sorted(_list_existing_slugs(wiki_dir))
-    lines = [f"# AGI-HPC Wiki\n", f"\n*{len(slugs)} articles*\n"]
+    lines = ["# AGI-HPC Wiki\n", f"\n*{len(slugs)} articles*\n"]
     for slug in slugs:
         path = wiki_dir / f"{slug}.md"
         # Read first heading for title

@@ -8,13 +8,11 @@ Unit tests for the LLM adapters and LLM planner.
 import json
 import os
 import pytest
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 from agi.lh.llm import (
-    LLMAdapter,
     LLMConfig,
     LLMResponse,
-    BaseLLMAdapter,
     create_adapter,
     OllamaAdapter,
     AnthropicAdapter,
@@ -22,7 +20,7 @@ from agi.lh.llm import (
     LLMPlanner,
     LLMPlannerConfig,
 )
-from agi.lh.planner import PlanGraph, PlanStep
+from agi.lh.planner import PlanGraph
 from agi.proto_gen import plan_pb2
 
 # ---------------------------------------------------------------------------

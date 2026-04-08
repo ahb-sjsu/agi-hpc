@@ -3,11 +3,10 @@ Pytest fixtures for LH unit tests.
 """
 
 import pytest
-from unittest.mock import MagicMock, patch
 from dataclasses import dataclass
 from typing import Optional, List
 
-from agi.lh.planner import Planner, PlanGraph, PlanStep
+from agi.lh.planner import Planner
 from agi.proto_gen import plan_pb2
 
 

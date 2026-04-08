@@ -17,7 +17,7 @@ import os
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict, Any, Protocol, runtime_checkable
+from typing import Optional, Dict, Any, Protocol, runtime_checkable
 
 logger = logging.getLogger(__name__)
 

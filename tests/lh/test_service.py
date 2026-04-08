@@ -1,6 +1,5 @@
 """Tests for LH service module."""
 
-import pytest
 import sys
 from unittest.mock import MagicMock, patch
 

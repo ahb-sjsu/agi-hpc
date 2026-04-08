@@ -37,15 +37,15 @@ import asyncio
 import logging
 import time
 from collections import deque
-from dataclasses import dataclass, field
-from typing import Any, Deque, Dict, List, Optional
+from dataclasses import dataclass
+from typing import Deque, Optional
 
 logger = logging.getLogger(__name__)
 
 from agi.common.event import Event  # noqa: E402
-from agi.core.events.nats_fabric import NatsEventFabric, NatsFabricConfig  # noqa: E402
-from agi.meta.llm.client import LLMClient, CompletionResult  # noqa: E402
-from agi.meta.llm.config import InferenceConfig, LH_PRESET  # noqa: E402
+from agi.core.events.nats_fabric import NatsEventFabric  # noqa: E402
+from agi.meta.llm.client import LLMClient  # noqa: E402
+from agi.meta.llm.config import InferenceConfig  # noqa: E402
 
 # -----------------------------------------------------------------
 # Configuration

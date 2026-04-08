@@ -42,12 +42,12 @@ import logging
 import time
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Any, Deque, Dict, List, Optional
+from typing import Any, Deque, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
 from agi.common.event import Event  # noqa: E402
-from agi.core.events.nats_fabric import NatsEventFabric, NatsFabricConfig  # noqa: E402
+from agi.core.events.nats_fabric import NatsEventFabric  # noqa: E402
 
 # -----------------------------------------------------------------
 # Metrics Store

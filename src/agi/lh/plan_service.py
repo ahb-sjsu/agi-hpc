@@ -22,11 +22,10 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Optional, List
+from typing import Optional
 
 import grpc
 
-from agi.core.api.grpc_server import GRPCServer  # used by LH main service
 from agi.core.events.fabric import EventFabric
 from agi.proto_gen import plan_pb2, plan_pb2_grpc
 

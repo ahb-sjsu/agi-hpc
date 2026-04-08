@@ -5,7 +5,7 @@ These tests verify the full LH pipeline with mocked downstream services.
 """
 
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 import grpc
 
 from agi.lh.planner import Planner, PlanGraph

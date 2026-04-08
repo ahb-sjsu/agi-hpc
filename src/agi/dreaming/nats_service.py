@@ -40,7 +40,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
-import os
 import signal
 import sys
 import time
@@ -68,7 +67,6 @@ from agi.dreaming.consolidator import ConsolidatorConfig, MemoryConsolidator
 async def _publish(nc, subject: str, data: dict) -> None:
     """Publish a JSON message to NATS."""
     import json
-    import nats
     payload = json.dumps(data, default=str).encode()
     await nc.publish(subject, payload)
 

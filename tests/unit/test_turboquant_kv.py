@@ -42,7 +42,6 @@ import numpy as np
 import pytest
 
 from agi.meta.llm.turboquant_kv import (
-    CompressedKV,
     TurboQuantKV,
     TurboQuantKVCache,
 )

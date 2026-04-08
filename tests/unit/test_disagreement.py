@@ -26,7 +26,6 @@ from unittest.mock import MagicMock
 import numpy as np
 
 from agi.metacognition.disagreement import (
-    CalibrationPair,
     DisagreementMetric,
     DisagreementResult,
 )

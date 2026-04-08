@@ -28,7 +28,7 @@ import time
 from concurrent import futures
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import grpc
 

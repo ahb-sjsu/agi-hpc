@@ -37,8 +37,8 @@ from __future__ import annotations
 import logging
 import time
 from collections import deque
-from dataclasses import dataclass, field
-from typing import Deque, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import Deque, List, Optional
 
 import numpy as np
 

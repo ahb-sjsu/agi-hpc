@@ -29,11 +29,10 @@ Wraps llama-server (or any OpenAI-compatible endpoint) with:
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, AsyncIterator, Dict, List, Optional
 
 logger = logging.getLogger(__name__)

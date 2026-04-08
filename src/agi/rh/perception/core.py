@@ -40,7 +40,7 @@ It can later wrap real models (YOLO, SAM, CLIP, ViT, etc.).
 from __future__ import annotations
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
 

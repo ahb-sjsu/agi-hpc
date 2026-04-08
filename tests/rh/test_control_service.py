@@ -4,9 +4,9 @@ Unit tests for the RH ControlService module.
 
 import pytest
 import numpy as np
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import MagicMock, AsyncMock
 
-from agi.rh.control_service import ControlService, ControlConfig, ActionResult
+from agi.rh.control_service import ControlService, ActionResult
 from agi.proto_gen import plan_pb2
 
 

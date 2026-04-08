@@ -31,16 +31,15 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass, field
-from typing import Callable, Iterator, List, Optional, Type, Union
+from dataclasses import dataclass
+from typing import Callable, List, Optional, Union
 
-from agi.core.llm.config import LLMConfig, get_default_model
-from agi.core.llm.providers.base import BaseProvider, LLMProvider
+from agi.core.llm.config import LLMConfig
+from agi.core.llm.providers.base import LLMProvider
 from agi.core.llm.types import (
     CompletionRequest,
     LLMResponse,
     Message,
-    StreamChunk,
     StreamingResponse,
 )
 

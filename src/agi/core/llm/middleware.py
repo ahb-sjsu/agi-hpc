@@ -38,9 +38,9 @@ import threading
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
 
-from agi.core.llm.types import CompletionRequest, LLMResponse, Message
+from agi.core.llm.types import CompletionRequest, LLMResponse
 
 logger = logging.getLogger(__name__)
 

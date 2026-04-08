@@ -53,7 +53,7 @@ import numpy as np
 from agi.proto_gen import plan_pb2
 
 if TYPE_CHECKING:
-    from agi.env import Environment, StepResult
+    from agi.env import Environment
 
 logger = logging.getLogger(__name__)
 

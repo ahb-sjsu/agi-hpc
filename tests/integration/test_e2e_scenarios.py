@@ -6,7 +6,6 @@
 
 """End-to-end scenario tests for AGI-HPC Sprint 6."""
 
-import pytest
 from unittest.mock import MagicMock, AsyncMock
 
 from tests.integration.framework import (

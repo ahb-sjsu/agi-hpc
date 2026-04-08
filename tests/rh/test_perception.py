@@ -2,8 +2,6 @@
 Unit tests for the RH Perception module.
 """
 
-import pytest
-import numpy as np
 
 from agi.rh.perception import Perception
 

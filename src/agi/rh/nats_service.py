@@ -52,7 +52,7 @@ except ImportError:
 
 from agi.common.event import Event  # noqa: E402
 from agi.core.events.nats_fabric import NatsEventFabric, NatsFabricConfig  # noqa: E402
-from agi.meta.llm.client import LLMClient, CompletionResult  # noqa: E402
+from agi.meta.llm.client import LLMClient  # noqa: E402
 from agi.meta.llm.config import InferenceConfig, RH_PRESET  # noqa: E402
 from agi.meta.llm.templates import PromptTemplateRegistry  # noqa: E402
 

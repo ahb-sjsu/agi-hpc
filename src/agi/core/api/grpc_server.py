@@ -36,7 +36,7 @@ import signal
 import threading
 from concurrent import futures
 from dataclasses import dataclass, field
-from typing import Callable, Iterable, List, Optional, Sequence
+from typing import Callable, Iterable, Optional, Sequence
 
 import grpc
 

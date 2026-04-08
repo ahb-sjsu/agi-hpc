@@ -5,13 +5,12 @@ These tests verify the RH pipeline integrates correctly with LH and Safety.
 """
 
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
-import asyncio
+from unittest.mock import MagicMock, AsyncMock
 import numpy as np
 
 from agi.rh.perception import Perception
 from agi.rh.world_model import WorldModel
-from agi.rh.control_service import ControlService, ControlConfig, ActionResult
+from agi.rh.control_service import ControlService, ActionResult
 from agi.proto_gen import plan_pb2
 
 # ---------------------------------------------------------------------------

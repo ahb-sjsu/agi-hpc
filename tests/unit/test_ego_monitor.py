@@ -77,7 +77,7 @@ class TestObserve:
         # Only one round of HTTP calls
         # First observe hits multiple endpoints; second should be cached
         first_call_count = mock_get.call_count
-        state3 = monitor.observe(cache_ttl_s=60)
+        _ = monitor.observe(cache_ttl_s=60)
         assert mock_get.call_count == first_call_count  # no new calls
 
     def test_with_telemetry_response(self, monitor) -> None:

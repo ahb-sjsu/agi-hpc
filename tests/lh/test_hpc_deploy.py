@@ -8,8 +8,7 @@
 
 import subprocess
 
-import pytest
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 from agi.lh.hpc_deploy import HPCDeployConfig, SlurmLauncher, ApptainerRunner
 

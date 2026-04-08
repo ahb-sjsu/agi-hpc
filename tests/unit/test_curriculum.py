@@ -22,7 +22,6 @@
 from __future__ import annotations
 
 from collections import deque
-from unittest.mock import MagicMock, patch
 
 from agi.training.curriculum import (
     CurriculumConfig,

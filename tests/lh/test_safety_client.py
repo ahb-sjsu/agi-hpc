@@ -1,7 +1,6 @@
 """Tests for SafetyClient."""
 
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from agi.lh.safety_client import SafetyClient, SafetyResult
 

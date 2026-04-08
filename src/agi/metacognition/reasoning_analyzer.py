@@ -23,10 +23,9 @@ This module analyzes reasoning traces from the LH planner to:
 from __future__ import annotations
 
 import logging
-import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 

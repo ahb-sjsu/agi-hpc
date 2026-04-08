@@ -6,7 +6,6 @@
 
 """Tests for agi.rh.control.robot_interface module."""
 
-import pytest
 import numpy as np
 
 from agi.rh.control.robot_interface import (

@@ -868,11 +868,11 @@ class DungeonMaster:
         domains_covered: List[str] = []
 
         # Analyze knowledge gaps before training
-        gap_context = ""
+        _ = ""  # gap_context reserved for future use
         if self._planner is not None:
             try:
                 self._current_plan = self._planner.analyze()
-                gap_context = self._planner.format_for_dm(self._current_plan)
+                self._planner.format_for_dm(self._current_plan)
                 if self._current_plan.gaps:
                     logger.info(
                         "[dungeon-master] %d knowledge gaps detected. " "Focus: %s",

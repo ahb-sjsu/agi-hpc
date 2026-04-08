@@ -1,7 +1,6 @@
 """Tests for MemoryClient and memory dataclasses."""
 
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from agi.lh.memory_client import (
     MemoryClient,

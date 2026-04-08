@@ -34,7 +34,6 @@ from __future__ import annotations
 
 import asyncio
 from agi.common.event import Event
-import json
 import logging
 import sys
 import time

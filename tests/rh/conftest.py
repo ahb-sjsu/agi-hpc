@@ -4,14 +4,12 @@ Pytest fixtures for RH (Right Hemisphere) unit tests.
 
 import pytest
 from unittest.mock import MagicMock, AsyncMock
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
 
 import numpy as np
 
 from agi.rh.perception import Perception
-from agi.rh.world_model import WorldModel, RolloutResult
-from agi.rh.control_service import ControlService, ControlConfig, ActionResult
+from agi.rh.world_model import WorldModel
+from agi.rh.control_service import ControlService, ControlConfig
 from agi.proto_gen import plan_pb2
 
 # ---------------------------------------------------------------------------

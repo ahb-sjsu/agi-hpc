@@ -16,7 +16,7 @@ import hashlib
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Optional, Protocol, runtime_checkable
+from typing import List, Protocol, runtime_checkable
 
 logger = logging.getLogger(__name__)
 

@@ -6,7 +6,6 @@
 
 """Tests for agi.core.llm.integration module."""
 
-import pytest
 
 from agi.core.llm.integration import (
     LLMIntegrationConfig,

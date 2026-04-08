@@ -6,8 +6,6 @@
 
 """Tests for agi.core.dht.security module."""
 
-import os
-import tempfile
 
 import pytest
 

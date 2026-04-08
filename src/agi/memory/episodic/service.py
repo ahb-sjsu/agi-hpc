@@ -34,11 +34,9 @@ Now integrated with:
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import time
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -60,8 +58,6 @@ from agi.memory.episodic.client import EpisodicMemoryClient
 from agi.memory.episodic.postgres_store import (
     PostgresEpisodicStore,
     PostgresConfig,
-    Episode,
-    EpisodeStep,
     EpisodeEvent as EpisodeEventData,
 )
 
