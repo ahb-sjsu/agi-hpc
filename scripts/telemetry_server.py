@@ -390,7 +390,10 @@ def _get_jobs():
         desc_map = {
             "spock": ("Superego: Gemma 4 31B", 0),
             "kirk": ("Id: Qwen 3 32B", 1),
-            "ego": ("Ego: Gemma 4 E4B", None),
+            "ego": ("Council Judge: Gemma 4 E4B", None),
+            "tot-worker-0": ("Council Advocate: E4B", None),
+            "tot-worker-1": ("Council Synthesizer: E4B", None),
+            "tot-worker-2": ("Council Ethicist: E4B", None),
             "nats": ("NATS JetStream", None),
             "rag": ("RAG Server", None),
             "caddy": ("HTTPS / Let's Encrypt", None),
@@ -417,7 +420,7 @@ def _get_jobs():
     systemd_services = [
         ("atlas-superego", "Superego: Gemma 4 31B", 0),
         ("atlas-id", "Id: Qwen 3 32B", 1),
-        ("atlas-ego", "Ego: Gemma 4 E4B", None),
+        ("atlas-ego", "Council Judge: Gemma 4 E4B", None),
         ("atlas-rag-server", "RAG Server", None),
         ("atlas-nats", "NATS JetStream", None),
         ("atlas-telemetry", "Telemetry", None),
@@ -659,7 +662,7 @@ def build_telemetry():
             "ego": {
                 "status": services["ego"],
                 "model": "Gemma 4 E4B",
-                "role": "Ego (arbiter/DM)",
+                "role": "Divine Council (4 x E4B)",
             },
         },
         "nats": _get_nats(),

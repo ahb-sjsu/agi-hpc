@@ -246,9 +246,9 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
   </div>
 
   <div class="sub-card active" id="sc-ego">
-    <div class="card-header"><span class="status-dot on"></span><span class="name">Ego</span><span class="model-tag" id="ego-model">--</span></div>
-    <div class="card-metric"><span id="ego-role">--</span> | Slots: <span class="val" id="ego-slots">-</span></div>
-    <div class="card-metric">CPU: <span class="val" id="ego-cpu-temp">--</span>&deg;C | Priv: <span class="val" id="ego-priv-badge">L0</span></div>
+    <div class="card-header"><span class="status-dot on"></span><span class="name">Divine Council</span><span class="model-tag">4 x E4B</span></div>
+    <div class="card-metric">Judge | Advocate | Synth | Ethicist</div>
+    <div class="card-metric">Workers: <span class="val" id="ego-slots">4</span> | CPU: <span class="val" id="ego-cpu-temp">--</span>&deg;C | Priv: <span class="val" id="ego-priv-badge">L0</span></div>
   </div>
 
   <div class="sub-card active" id="sc-memory">
@@ -280,11 +280,6 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     <div class="card-header"><span class="status-dot on"></span><span class="name">Executive Function</span><span class="model-tag">Miyake</span></div>
     <div class="card-metric">Mode: <span class="val" id="ef-mode">--</span> | Complexity: <span class="val" id="ef-complexity">--</span></div>
     <div class="card-metric">Goal: <span class="val" id="ef-goal">none</span> | Inhibit: <span class="val" id="ef-inhibit">no</span></div>
-  </div>
-
-  <div class="sub-card active" id="sc-council">
-    <div class="card-header"><span class="status-dot on"></span><span class="name">Divine Council</span><span class="model-tag">Minsky</span></div>
-    <div class="card-metric">Members: <span class="val" id="council-members">4</span> | Workers: <span class="val" id="council-workers">4</span> x E4B</div>
   </div>
 
   <div class="sub-card active" id="sc-attention">
@@ -401,7 +396,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
     <script>
     (function(){
-      var W = 540, H = 400;
+      var W = 540, H = 340;
       var cx = W/2;
 
       // Node specs: [id, label, x, y, w, h, color, bg, sublabel]
@@ -412,17 +407,17 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
         ['safety_in', 'Safety Input Gate',   cx,   90,  110, 18, '#f87171','rgba(248,113,113,0.12)'],
         ['rag',       'RAG Context',         cx,  114,  100, 18, '#f59e0b','rgba(245,158,11,0.12)'],
         // Psyche row: Superego + Id
-        ['superego',  'Superego',            cx-140,148, 110, 28, '#4a9eff','rgba(74,158,255,0.12)','Gemma 4 31B | GPU 0'],
-        ['id',        'Id',                  cx+140,148, 110, 28, '#fb923c','rgba(251,146,60,0.12)','Qwen 3 32B | GPU 1'],
-        // Divine Council row (4 members)
-        ['judge',     'Judge',               cx-150,198, 66, 22, '#4ade80','rgba(74,222,128,0.12)'],
-        ['advocate',  'Advocate',            cx-50, 198, 66, 22, '#f87171','rgba(248,113,113,0.12)'],
-        ['synth',     'Synthesizer',         cx+50, 198, 76, 22, '#4ade80','rgba(74,222,128,0.12)'],
-        ['ethicist',  'Ethicist',            cx+150,198, 66, 22, '#f59e0b','rgba(245,158,11,0.12)'],
+        ['superego',  'Superego',            cx-140,146, 110, 28, '#4a9eff','rgba(74,158,255,0.12)','Gemma 4 31B | GPU 0'],
+        ['id',        'Id',                  cx+140,146, 110, 28, '#fb923c','rgba(251,146,60,0.12)','Qwen 3 32B | GPU 1'],
+        // Divine Council row (4 members, below bus)
+        ['judge',     'Judge',               cx-150,214, 66, 22, '#4ade80','rgba(74,222,128,0.12)'],
+        ['advocate',  'Advocate',            cx-50, 214, 66, 22, '#f87171','rgba(248,113,113,0.12)'],
+        ['synth',     'Synthesizer',         cx+50, 214, 76, 22, '#4ade80','rgba(74,222,128,0.12)'],
+        ['ethicist',  'Ethicist',            cx+150,214, 66, 22, '#f59e0b','rgba(245,158,11,0.12)'],
         // Output row
-        ['safety_out','Safety Output Gate',  cx,  240,  110, 18, '#f87171','rgba(248,113,113,0.12)'],
-        ['episodes',  'Episodes Stored',     cx,  268,  100, 18, '#4ade80','rgba(74,222,128,0.12)'],
-        ['response',  'Response',            cx,  294,  90,  18, '#4a9eff','rgba(74,158,255,0.12)'],
+        ['safety_out','Safety Output Gate',  cx,  256,  110, 18, '#f87171','rgba(248,113,113,0.12)'],
+        ['episodes',  'Episodes Stored',     cx,  284,  100, 18, '#4ade80','rgba(74,222,128,0.12)'],
+        ['response',  'Response',            cx,  310,  90,  18, '#4a9eff','rgba(74,158,255,0.12)'],
       ];
       var nodes = {};
       specs.forEach(function(s){ nodes[s[0]] = {id:s[0],label:s[1],x:s[2],y:s[3],w:s[4],h:s[5],color:s[6],bg:s[7],sub:s[8]}; });
@@ -471,17 +466,44 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       fanLine('rag','superego','#4a9eff','ab');
       fanLine('rag','id','#fb923c','ao');
 
-      // Superego + Id -> Council members
-      fanLine('superego','judge','#4ade80','ag');
-      fanLine('superego','advocate','#f87171','a');
-      fanLine('id','synth','#4ade80','ag');
-      fanLine('id','ethicist','#f59e0b','ay');
+      // Debate Bus: horizontal bar between Superego and Id
+      var busY = N('superego').y + N('superego').h/2 + 12;
+      var busLeft = N('judge').x - N('judge').w/2;
+      var busRight = N('ethicist').x + N('ethicist').w/2;
+      // Superego drops to bus
+      svg.append('line')
+        .attr('x1',N('superego').x).attr('y1',N('superego').y+N('superego').h/2)
+        .attr('x2',N('superego').x).attr('y2',busY)
+        .attr('stroke','#4a9eff').attr('stroke-width',1.2);
+      // Id drops to bus
+      svg.append('line')
+        .attr('x1',N('id').x).attr('y1',N('id').y+N('id').h/2)
+        .attr('x2',N('id').x).attr('y2',busY)
+        .attr('stroke','#fb923c').attr('stroke-width',1.2);
+      // Horizontal bus bar
+      svg.append('line')
+        .attr('x1',busLeft).attr('y1',busY)
+        .attr('x2',busRight).attr('y2',busY)
+        .attr('stroke','#4ade80').attr('stroke-width',2.5).attr('opacity',0.7);
+      // Bus label
+      svg.append('text').attr('x',cx).attr('y',busY-4)
+        .attr('text-anchor','middle').attr('fill','#7a8ba8')
+        .attr('font-size','7px').attr('font-style','italic')
+        .text('NATS Pub/Sub Message Bus (agi.debate.*)');
+      // Bus drops to each council member
+      ['judge','advocate','synth','ethicist'].forEach(function(m){
+        var n = N(m);
+        svg.append('line')
+          .attr('x1',n.x).attr('y1',busY)
+          .attr('x2',n.x).attr('y2',n.y-n.h/2)
+          .attr('stroke','#3a4560').attr('stroke-width',1).attr('marker-end','url(#a)');
+      });
 
       // Council label
-      svg.append('text').attr('x',cx).attr('y',N('judge').y-14)
+      svg.append('text').attr('x',cx).attr('y',N('judge').y-N('judge').h/2-4)
         .attr('text-anchor','middle').attr('fill','#7a8ba8')
-        .attr('font-size','8px').attr('font-style','italic')
-        .text('Divine Council (4 x E4B on CPU)');
+        .attr('font-size','7px').attr('font-style','italic')
+        .text('Divine Council (4 x Gemma 4 E4B on CPU)');
 
       // Council -> Safety out
       fanLine('judge','safety_out','#4ade80','a');
@@ -1031,7 +1053,10 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 
     updatePsycheCard('sc-lh', lh, {model:'Gemma 4 31B', role:'Superego (analytical)'});
     updatePsycheCard('sc-rh', rh, {model:'Qwen 3 32B', role:'Id (creative)'});
-    updatePsycheCard('sc-ego', ego, {model:'Gemma 4 E4B', role:'Ego (arbiter/DM)'});
+    // Divine Council card (replaces single Ego)
+    var egoOnline = (ego.status || '') === 'online';
+    setCardStatus('sc-ego', egoOnline ? 'online' : 'degraded');
+    el('ego-slots').textContent = egoOnline ? '4 online' : 'offline';
 
     // Bottom bar
     var botEgo = el('bot-ego');
