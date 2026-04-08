@@ -93,6 +93,7 @@ class SafetyResult:
     decision_proof: Dict[str, Any] = field(default_factory=dict)
     gate: str = ""
     latency_ms: float = 0.0
+    dimension_scores: Dict[str, float] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialise to a JSON-friendly dictionary."""
@@ -399,6 +400,11 @@ class SafetyGateway:
         all_flags = reflex_result["flags"] + tactical_flags
         passed = combined_score >= self._config.veto_threshold and not tactical_vetoed
 
+        # Extract per-dimension scores if tactical ran
+        dim_scores = {}
+        if self._deme is not None:
+            dim_scores = tactical_result.get("dimension_scores", {})
+
         latency_ms = (time.perf_counter() - t0) * 1000.0
         result = SafetyResult(
             passed=passed,
@@ -407,6 +413,7 @@ class SafetyGateway:
             decision_proof=self._build_proof("input", proof_layers, user_message),
             gate="input",
             latency_ms=latency_ms,
+            dimension_scores=dim_scores,
         )
 
         # Layer 3: Strategic (audit logging)
@@ -623,10 +630,23 @@ class SafetyGateway:
             score = 1.0
             flags: List[str] = []
 
+            dimension_scores: Dict[str, float] = {}
+
             if hasattr(moral_landscape, "vectors") and moral_landscape.vectors:
                 vec = list(moral_landscape.vectors.values())[0]
-                # Average of the 8+1 moral vector dimensions
-                dims = [
+                # 9-dimensional moral vector
+                dim_names = [
+                    "physical_harm",
+                    "rights_respect",
+                    "fairness_equity",
+                    "autonomy_respect",
+                    "privacy_protection",
+                    "societal_environmental",
+                    "virtue_care",
+                    "legitimacy_trust",
+                    "epistemic_quality",
+                ]
+                dim_values = [
                     vec.physical_harm,
                     vec.rights_respect,
                     vec.fairness_equity,
@@ -637,9 +657,10 @@ class SafetyGateway:
                     vec.legitimacy_trust,
                     vec.epistemic_quality,
                 ]
-                # Invert physical_harm (lower harm = higher score)
-                dims[0] = 1.0 - dims[0]
-                score = sum(dims) / len(dims)
+                dimension_scores = dict(zip(dim_names, dim_values))
+                # Invert physical_harm for aggregate
+                dim_values[0] = 1.0 - dim_values[0]
+                score = sum(dim_values) / len(dim_values)
 
                 if hasattr(vec, "veto_flags") and vec.veto_flags:
                     flags.extend(f"deme:{f}" for f in vec.veto_flags)
@@ -651,6 +672,7 @@ class SafetyGateway:
                 "vetoed": vetoed,
                 "flags": flags,
                 "score": score,
+                "dimension_scores": dimension_scores,
                 "latency_ms": round(latency_ms, 2),
                 "rationale": getattr(decision, "rationale", ""),
             }

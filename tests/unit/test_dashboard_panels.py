@@ -152,6 +152,30 @@ class TestFreudianLabels:
         assert "CPU (Ego)" in content
 
 
+class TestAttentionPanel:
+    """Tests for the Attention Filter dashboard panel."""
+
+    def test_attention_card_exists(self) -> None:
+        content = DASHBOARD.read_text(encoding="utf-8")
+        assert 'id="sc-attention"' in content
+
+    def test_attention_elements(self) -> None:
+        content = DASHBOARD.read_text(encoding="utf-8")
+        assert 'id="attn-detected"' in content
+        assert 'id="attn-warnings"' in content
+        assert 'id="attn-intensity"' in content
+        assert 'id="attn-score"' in content
+
+    def test_attention_js_binding(self) -> None:
+        content = DASHBOARD.read_text(encoding="utf-8")
+        assert "t.attention" in content
+        assert "last_intensity" in content
+
+    def test_attention_in_topology(self) -> None:
+        content = DASHBOARD.read_text(encoding="utf-8")
+        assert "Attention Filter" in content
+
+
 class TestCurriculumPanel:
     """Tests for the Curriculum (gap detection) dashboard panel."""
 

@@ -35,6 +35,7 @@ from agi.memory.episodic.store import (
 )
 from agi.safety.privilege_gate import PrivilegeGate
 from agi.metacognition.executive_function import ExecutiveFunction
+from agi.attention.filter import AttentionFilter
 
 LH_URL = "http://localhost:8080"  # Gemma 4 31B - Superego (analytical)
 RH_URL = "http://localhost:8082"  # Qwen 32B - Id (creative)
@@ -87,6 +88,11 @@ except Exception:
 _executive = ExecutiveFunction()
 _executive_stats = {"last_mode": "--", "last_complexity": 0, "last_goal": "none", "last_inhibit": False}
 print("Executive Function loaded")
+
+# Initialise Attention Filter (Posner — distractor detection)
+_attention_filter = AttentionFilter()
+_attention_stats = {"checks": 0, "distractors_detected": 0, "warnings_issued": 0, "last_intensity": "none", "last_score": 0.0}
+print("Attention Filter loaded")
 
 
 def _store_episode_background(
@@ -635,8 +641,25 @@ def chat_completions():
             content_type="application/json",
         )
 
+    # Attention Filter: detect distractors + generate warning
+    attn_result = _attention_filter.detect(user_query_raw)
+    _attention_stats["checks"] += 1
+    _attention_stats["last_intensity"] = attn_result.intensity
+    _attention_stats["last_score"] = attn_result.distractor_score
+    if attn_result.intensity != "none":
+        _attention_stats["distractors_detected"] += 1
+        if attn_result.warning:
+            _attention_stats["warnings_issued"] += 1
+
     hemisphere = "lh"
     data["messages"], hemisphere = inject_context(data.get("messages", []), hemisphere)
+
+    # Inject attention warning into system messages if distractors detected
+    if attn_result.warning:
+        for m in data["messages"]:
+            if m.get("role") == "system":
+                m["content"] += attn_result.warning
+                break
 
     # Override hemisphere routing with executive function decision
     if ef_decision.mode == "tot":
@@ -1071,6 +1094,7 @@ def telemetry():
         "dht": {"status": "online" if check_tmux("dht") else "planned", "services_online": 0, "services_total": 10},
         "ego_privileges": _privilege_gate.state.to_dict() if hasattr(_privilege_gate, '_state') and _privilege_gate._state else {"current_level": 0, "level_name": "READ_ONLY"},
         "executive_function": _executive_stats,
+        "attention": _attention_stats,
     }
 
     # Check LH (Gemma 4)

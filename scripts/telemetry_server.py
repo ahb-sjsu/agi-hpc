@@ -478,6 +478,7 @@ def build_telemetry():
             "current_level": 0,
             "level_name": "READ_ONLY",
         },
+        "attention": rag_data.get("attention", {"checks": 0, "last_intensity": "none"}),
         "training": _get_training_stats(),
         "dreaming": _get_dreaming_stats(),
         "curriculum": _get_curriculum_gaps(),

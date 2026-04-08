@@ -140,8 +140,9 @@ class TrainingScenario:
     narrative: str  # LLM-narrated scenario text
     options: List[str]  # Option descriptions
     difficulty: int  # 1-4
-    ethical_facts: Optional[Dict[str, Any]] = None  # Structured ErisML data
-    source: str = "erisml"  # "erisml" or "llm_generated"
+    ethical_facts: Optional[Dict[str, Any]] = None
+    source: str = "erisml"
+    distractor_intensity: str = "none"  # "none", "mild", "vivid"
 
 
 @dataclass
@@ -643,6 +644,23 @@ class DungeonMaster:
 
         full_prompt = prompt + difficulty_suffix.get(difficulty, "")
 
+        # Add distractor intensity (every ~3rd scenario)
+        distractor = "none"
+        distractor_roll = random.random()
+        if distractor_roll < 0.15:
+            full_prompt += (
+                " Weave in vivid sensory distractors "
+                "(colors, smells, sounds) that are morally "
+                "irrelevant but emotionally evocative."
+            )
+            distractor = "vivid"
+        elif distractor_roll < 0.30:
+            full_prompt += (
+                " Include ONE subtle irrelevant contextual "
+                "detail (time of day, weather, clothing)."
+            )
+            distractor = "mild"
+
         narrative = self._call_llm(
             self._config.ego_url,
             [{"role": "user", "content": full_prompt}],
@@ -655,8 +673,9 @@ class DungeonMaster:
             domain=domain,
             title=f"Novel: {domain}",
             narrative=narrative,
-            options=[],  # LLM embeds options in narrative
+            options=[],
             difficulty=difficulty,
+            distractor_intensity=distractor,
             source="llm_generated",
         )
 

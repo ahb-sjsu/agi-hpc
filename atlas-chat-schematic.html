@@ -274,6 +274,12 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     <div class="card-metric">Goal: <span class="val" id="ef-goal">none</span> | Inhibit: <span class="val" id="ef-inhibit">no</span></div>
   </div>
 
+  <div class="sub-card active" id="sc-attention">
+    <div class="card-header"><span class="status-dot on"></span><span class="name">Attention</span><span class="model-tag">Posner</span></div>
+    <div class="card-metric">Distractors: <span class="val" id="attn-detected">0</span> | Warnings: <span class="val" id="attn-warnings">0</span></div>
+    <div class="card-metric">Intensity: <span class="val" id="attn-intensity">none</span> | Score: <span class="val" id="attn-score">0.0</span></div>
+  </div>
+
   <div class="sub-card active" id="sc-curriculum">
     <div class="card-header"><span class="status-dot on"></span><span class="name">Curriculum</span><span class="model-tag">Vygotsky</span></div>
     <div class="card-metric">Gaps: <span class="val" id="curriculum-gaps">0</span> | Focus: <span class="val" id="curriculum-focus">--</span></div>
@@ -378,25 +384,26 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       <text x="555" y="180" text-anchor="middle" fill="#7c3aed" font-size="7" transform="rotate(90,555,180)">Dreaming + LoRA</text>
     </svg>
     <!-- D3.js topology v3 — clean professional layout -->
-    <div id="topo-d3" style="width:100%;height:320px"></div>
+    <div id="topo-d3" style="width:100%;height:340px"></div>
     <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
     <script>
     (function(){
-      var W = 540, H = 310;
+      var W = 540, H = 340;
       var cx = W/2; // center x
 
       // Node specs: [id, label, x, y, w, h, color, bg, sublabel]
       var specs = [
-        ['user',      'User Query',         cx,   22,  120, 22, '#4a9eff','rgba(74,158,255,0.12)'],
-        ['executive', 'Executive Function',  cx,   56,  130, 22, '#7c3aed','rgba(124,58,237,0.12)'],
-        ['safety_in', 'Safety Input Gate',   cx,   90,  120, 22, '#f87171','rgba(248,113,113,0.12)'],
-        ['rag',       'RAG Context',         cx,  124,  110, 22, '#f59e0b','rgba(245,158,11,0.12)'],
-        ['superego',  'Superego',            cx-150,168, 120, 32, '#4a9eff','rgba(74,158,255,0.12)','Gemma 4 31B | GPU 0'],
-        ['ego',       'Ego',                 cx,  168,  120, 32, '#4ade80','rgba(74,222,128,0.12)','Gemma 4 E4B | CPU'],
-        ['id',        'Id',                  cx+150,168, 120, 32, '#fb923c','rgba(251,146,60,0.12)','Qwen 3 32B | GPU 1'],
-        ['safety_out','Safety Output Gate',  cx,  216,  120, 22, '#f87171','rgba(248,113,113,0.12)'],
-        ['episodes',  'Episodes Stored',     cx,  250,  110, 22, '#4ade80','rgba(74,222,128,0.12)'],
-        ['response',  'Response',            cx,  284,  100, 22, '#4a9eff','rgba(74,158,255,0.12)'],
+        ['user',      'User Query',         cx,   18,  120, 20, '#4a9eff','rgba(74,158,255,0.12)'],
+        ['executive', 'Executive Function',  cx,   48,  130, 20, '#7c3aed','rgba(124,58,237,0.12)'],
+        ['attention', 'Attention Filter',    cx,   78,  110, 20, '#f59e0b','rgba(245,158,11,0.12)'],
+        ['safety_in', 'Safety Input Gate',   cx,  108,  120, 20, '#f87171','rgba(248,113,113,0.12)'],
+        ['rag',       'RAG Context',         cx,  138,  110, 20, '#f59e0b','rgba(245,158,11,0.12)'],
+        ['superego',  'Superego',            cx-150,178, 120, 30, '#4a9eff','rgba(74,158,255,0.12)','Gemma 4 31B | GPU 0'],
+        ['ego',       'Ego',                 cx,  178,  120, 30, '#4ade80','rgba(74,222,128,0.12)','Gemma 4 E4B | CPU'],
+        ['id',        'Id',                  cx+150,178, 120, 30, '#fb923c','rgba(251,146,60,0.12)','Qwen 3 32B | GPU 1'],
+        ['safety_out','Safety Output Gate',  cx,  226,  120, 20, '#f87171','rgba(248,113,113,0.12)'],
+        ['episodes',  'Episodes Stored',     cx,  258,  110, 20, '#4ade80','rgba(74,222,128,0.12)'],
+        ['response',  'Response',            cx,  290,  100, 20, '#4a9eff','rgba(74,158,255,0.12)'],
       ];
       var nodes = {};
       specs.forEach(function(s){ nodes[s[0]] = {id:s[0],label:s[1],x:s[2],y:s[3],w:s[4],h:s[5],color:s[6],bg:s[7],sub:s[8]}; });
@@ -430,7 +437,8 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
           .attr('stroke',col||'#3a4560').attr('stroke-width',1.2).attr('marker-end','url(#'+(marker||'a')+')');
       }
       line('user','executive');
-      line('executive','safety_in');
+      line('executive','attention');
+      line('attention','safety_in');
       line('safety_in','rag');
       line('safety_out','episodes');
       line('episodes','response');
@@ -1049,6 +1057,20 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     if(modeEl){
       var m = ef.last_mode || '';
       modeEl.style.color = m === 'tot' ? 'var(--yellow)' : m === 'debate' ? 'var(--accent)' : 'var(--green)';
+    }
+
+    // ─ Curriculum (Vygotsky, 1978) ─
+    // ─ Attention (Posner, 1990) ─
+    var attn = t.attention || {};
+    el('attn-detected').textContent = attn.distractors_detected || 0;
+    el('attn-warnings').textContent = attn.warnings_issued || 0;
+    el('attn-intensity').textContent = attn.last_intensity || 'none';
+    el('attn-score').textContent = (attn.last_score || 0).toFixed(2);
+    // Color intensity
+    var attnEl = el('attn-intensity');
+    if(attnEl){
+      var ai = attn.last_intensity || 'none';
+      attnEl.style.color = ai === 'vivid' ? 'var(--red)' : ai === 'mild' ? 'var(--yellow)' : 'var(--green)';
     }
 
     // ─ Curriculum (Vygotsky, 1978) ─

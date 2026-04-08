@@ -155,6 +155,13 @@ Every complex query triggers a 4-round debate:
 4. If disagreement is high → Ego arbitrates (CPU tie-breaker)
 5. Confidence measured from psyche disagreement (calibrated ECE)
 
+**Attention Filter (Posner & Petersen, 1990):**
+Detects vivid irrelevant sensory/emotional content that could shift model
+judgment (proven at 5.0 sigma in the attention benchmark). When distractors
+are detected, injects metacognitive warnings into the debate prompts —
+recovering ~33% of displaced verdicts. Scores distractor intensity on a
+graded scale: none → mild → vivid (matching benchmark dose-response design).
+
 **Executive Function (Miyake et al., 2000):**
 The prefrontal cortex of the architecture. Before any reasoning begins, the
 executive function analyzes the query and decides:
