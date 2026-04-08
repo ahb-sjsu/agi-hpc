@@ -397,26 +397,32 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       <text x="555" y="180" text-anchor="middle" fill="#7c3aed" font-size="7" transform="rotate(90,555,180)">Dreaming + LoRA</text>
     </svg>
     <!-- D3.js topology v3 — clean professional layout -->
-    <div id="topo-d3" style="width:100%;height:340px"></div>
+    <div id="topo-d3" style="width:100%;height:380px"></div>
     <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
     <script>
     (function(){
-      var W = 540, H = 340;
-      var cx = W/2; // center x
+      var W = 540, H = 400;
+      var cx = W/2;
 
       // Node specs: [id, label, x, y, w, h, color, bg, sublabel]
       var specs = [
-        ['user',      'User Query',         cx,   18,  120, 20, '#4a9eff','rgba(74,158,255,0.12)'],
-        ['executive', 'Executive Function',  cx,   48,  130, 20, '#7c3aed','rgba(124,58,237,0.12)'],
-        ['attention', 'Attention Filter',    cx,   78,  110, 20, '#f59e0b','rgba(245,158,11,0.12)'],
-        ['safety_in', 'Safety Input Gate',   cx,  108,  120, 20, '#f87171','rgba(248,113,113,0.12)'],
-        ['rag',       'RAG Context',         cx,  138,  110, 20, '#f59e0b','rgba(245,158,11,0.12)'],
-        ['superego',  'Superego',            cx-150,178, 120, 30, '#4a9eff','rgba(74,158,255,0.12)','Gemma 4 31B | GPU 0'],
-        ['ego',       'Ego',                 cx,  178,  120, 30, '#4ade80','rgba(74,222,128,0.12)','Gemma 4 E4B | CPU'],
-        ['id',        'Id',                  cx+150,178, 120, 30, '#fb923c','rgba(251,146,60,0.12)','Qwen 3 32B | GPU 1'],
-        ['safety_out','Safety Output Gate',  cx,  226,  120, 20, '#f87171','rgba(248,113,113,0.12)'],
-        ['episodes',  'Episodes Stored',     cx,  258,  110, 20, '#4ade80','rgba(74,222,128,0.12)'],
-        ['response',  'Response',            cx,  290,  100, 20, '#4a9eff','rgba(74,158,255,0.12)'],
+        ['user',      'User Query',         cx,   16,  110, 18, '#4a9eff','rgba(74,158,255,0.12)'],
+        ['executive', 'Executive Function',  cx,   42,  120, 18, '#7c3aed','rgba(124,58,237,0.12)'],
+        ['attention', 'Attention Filter',    cx,   66,  110, 18, '#f59e0b','rgba(245,158,11,0.12)'],
+        ['safety_in', 'Safety Input Gate',   cx,   90,  110, 18, '#f87171','rgba(248,113,113,0.12)'],
+        ['rag',       'RAG Context',         cx,  114,  100, 18, '#f59e0b','rgba(245,158,11,0.12)'],
+        // Psyche row: Superego + Id
+        ['superego',  'Superego',            cx-140,148, 110, 28, '#4a9eff','rgba(74,158,255,0.12)','Gemma 4 31B | GPU 0'],
+        ['id',        'Id',                  cx+140,148, 110, 28, '#fb923c','rgba(251,146,60,0.12)','Qwen 3 32B | GPU 1'],
+        // Divine Council row (4 members)
+        ['judge',     'Judge',               cx-150,198, 66, 22, '#4ade80','rgba(74,222,128,0.12)'],
+        ['advocate',  'Advocate',            cx-50, 198, 66, 22, '#f87171','rgba(248,113,113,0.12)'],
+        ['synth',     'Synthesizer',         cx+50, 198, 76, 22, '#4ade80','rgba(74,222,128,0.12)'],
+        ['ethicist',  'Ethicist',            cx+150,198, 66, 22, '#f59e0b','rgba(245,158,11,0.12)'],
+        // Output row
+        ['safety_out','Safety Output Gate',  cx,  240,  110, 18, '#f87171','rgba(248,113,113,0.12)'],
+        ['episodes',  'Episodes Stored',     cx,  268,  100, 18, '#4ade80','rgba(74,222,128,0.12)'],
+        ['response',  'Response',            cx,  294,  90,  18, '#4a9eff','rgba(74,158,255,0.12)'],
       ];
       var nodes = {};
       specs.forEach(function(s){ nodes[s[0]] = {id:s[0],label:s[1],x:s[2],y:s[3],w:s[4],h:s[5],color:s[6],bg:s[7],sub:s[8]}; });
@@ -456,20 +462,32 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       line('safety_out','episodes');
       line('episodes','response');
 
-      // Fan out: RAG -> 3 models
+      // Fan out: RAG -> Superego + Id
       function fanLine(s,t,col,marker){
         var p1=bot(N(s)), p2=top_(N(t));
         svg.append('line').attr('x1',p1[0]).attr('y1',p1[1]).attr('x2',p2[0]).attr('y2',p2[1])
           .attr('stroke',col).attr('stroke-width',1.1).attr('marker-end','url(#'+marker+')');
       }
       fanLine('rag','superego','#4a9eff','ab');
-      fanLine('rag','ego','#4ade80','ag');
       fanLine('rag','id','#fb923c','ao');
 
-      // Fan in: 3 models -> safety out
-      fanLine('superego','safety_out','#4a9eff','a');
-      fanLine('ego','safety_out','#4ade80','a');
-      fanLine('id','safety_out','#fb923c','a');
+      // Superego + Id -> Council members
+      fanLine('superego','judge','#4ade80','ag');
+      fanLine('superego','advocate','#f87171','a');
+      fanLine('id','synth','#4ade80','ag');
+      fanLine('id','ethicist','#f59e0b','ay');
+
+      // Council label
+      svg.append('text').attr('x',cx).attr('y',N('judge').y-14)
+        .attr('text-anchor','middle').attr('fill','#7a8ba8')
+        .attr('font-size','8px').attr('font-style','italic')
+        .text('Divine Council (4 x E4B on CPU)');
+
+      // Council -> Safety out
+      fanLine('judge','safety_out','#4ade80','a');
+      fanLine('advocate','safety_out','#f87171','a');
+      fanLine('synth','safety_out','#4ade80','a');
+      fanLine('ethicist','safety_out','#f59e0b','a');
 
       // Feedback: Retrospective (left side, wider arc)
       var ep = N('episodes'), ex = N('executive');
