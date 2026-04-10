@@ -171,8 +171,7 @@ Where Theory Radar uses F1 score as the evaluation metric, Security Radar uses a
 
 ### Computing Resources
 - **Atlas Workstation**: 2x Quadro GV100 32GB, 252GB RAM, 48 CPU threads. Demonstrated capability for GPU beam search (Theory Radar), LLM inference (Atlas AI with 7 concurrent models), and large-scale vector operations (TurboQuant Pro on 3.3M vectors).
-- **SJSU HPC**: 2x P100 16GB for larger-scale experiments.
-- **Kaggle/Cloud**: For Blackwell GPU access if needed for larger models.
+- **Kaggle/Cloud**: Blackwell GPU access (96GB) for larger models if needed.
 
 ### Software
 - **Theory Radar**: Existing GPU beam search engine (Python/PyTorch, ~8,000 LOC). Directly adaptable for attack pattern enumeration.
