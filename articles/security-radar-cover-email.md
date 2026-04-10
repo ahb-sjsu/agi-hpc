@@ -20,7 +20,7 @@ I'm Andrew Bond, a Senior IEEE Member (since 1989) and independent AI researcher
 - Theory Radar: working GPU beam search engine with meta-learned pruning (88-99% elimination, zero false negatives within the enumerated space). 31-dataset benchmark, IEEE TAI submission.
 - Atlas AI: multi-model cognitive architecture with 3-layer safety pipeline, running 7 LLM instances on local hardware. Live demo at atlas-sjsu.duckdns.org.
 - TurboQuant Pro: open-source compression toolkit on PyPI (v0.7.0), demonstrating production-quality systems engineering.
-- 37 years of systems engineering at AT&T.
+- 20+ years of systems engineering at AT&T, Cisco Systems, and Fujitsu Network Communications.
 
 **What I'm requesting:**
 - Glasswing API access for the evaluation pipeline (Claude Mythos or equivalent)

@@ -167,7 +167,7 @@ Where Theory Radar uses F1 score as the evaluation metric, Security Radar uses a
 ## 6. Team and Resources
 
 ### Personnel
-- **Andrew H. Bond** (PI): GPU beam search (Theory Radar), distributed AI systems (Atlas AI), embedding compression (TurboQuant Pro). IEEE Senior Member since 1989. 37 years of systems engineering experience at AT&T.
+- **Andrew H. Bond** (PI): GPU beam search (Theory Radar), distributed AI systems (Atlas AI), embedding compression (TurboQuant Pro). IEEE Senior Member since 1989. 20+ years of systems engineering experience at AT&T, Cisco Systems, and Fujitsu Network Communications.
 
 ### Computing Resources
 - **Atlas Workstation**: 2x Quadro GV100 32GB, 252GB RAM, 48 CPU threads. Demonstrated capability for GPU beam search (Theory Radar), LLM inference (Atlas AI with 7 concurrent models), and large-scale vector operations (TurboQuant Pro on 3.3M vectors).

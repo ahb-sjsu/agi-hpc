@@ -1,90 +1,98 @@
-# Atlas AI: A Local Cognitive Architecture That Trains, Dreams, and Grows
+# Atlas AI: A Cognitive Architecture That Thinks, Debates, Dreams, and Grows — On One Workstation
 
 ## Subtitle
-A safety-gated, multi-model reasoning system with biological memory consolidation and graduated autonomy — running entirely on one workstation, powered by Gemma 4.
+Seven Gemma 4 instances orchestrated as a Freudian psyche with adversarial deliberation, three-layer safety, biological memory consolidation, and self-calibrating confidence — entirely local, zero cloud.
 
 ---
 
-### What Atlas Is
-
-Atlas is a multi-model AI system that runs on a single workstation with no cloud dependency. It routes queries through a structured debate between an analytical model and a creative model, checks every input and output against a three-layer safety pipeline, stores conversations as episodic memories, and consolidates those memories into a growing knowledge base during scheduled offline cycles — a process we call dreaming. It is a working system with 250 passing tests, a live public demo, and 13 integrated subsystems.
-
 ### The Problem
 
-Safety and access remain largely separate concerns in deployed AI. Most safety work focuses on cloud-hosted models behind APIs, while local deployment efforts rarely include formal ethical evaluation. Privacy-sensitive domains — clinics, legal practices, research labs — face a hard tradeoff: use powerful cloud AI and lose control of data, or run local models and lose safety infrastructure.
+A rural clinic in Appalachia needs AI to help triage patients. A legal aid nonprofit in East Oakland needs to search case law. A school in Fresno's Central Valley needs an adaptive tutor. They all face the same wall: cloud AI means sending private data to someone else's servers, and local AI means no safety infrastructure, no audit trail, no self-improvement.
 
-Atlas is our attempt to solve both at once on accessible hardware.
+Atlas proves these aren't competing priorities. It runs the full stack — seven LLM instances, three-layer safety pipeline, episodic memory, daily training, and dreaming consolidation — on a single $2K used workstation with zero cloud dependency.
 
-### Architecture: Three Models, One Psyche
+### Architecture: Seven Gemma 4 Instances, One Psyche
 
-Atlas orchestrates three LLM instances in a design that, after implementation, we recognized maps onto Freud's structural model of the psyche. We use this as an explanatory interface — a way to name and reason about the components — not as a scientific claim. The underlying engineering is a concrete orchestration pipeline with measurable behavior:
+Atlas orchestrates seven LLM instances via llama.cpp in a design that maps onto Freud's structural model of the psyche:
 
-- **Superego** (Gemma 4 31B, GPU 0): Analytical reasoning. Applies ethical frameworks, cites evidence, produces precise responses. Runs via llama.cpp at 2.2 tok/s on a Quadro GV100.
-- **Id** (Qwen 3 32B, GPU 1): Creative reasoning. Considers human impact, challenges assumptions, generates alternatives. Runs at 25.9 tok/s on the second GV100.
-- **Ego** (Gemma 4 E4B, CPU): Mediator and trainer. Arbitrates when the first two disagree, generates training scenarios, evaluates debate quality. Runs on 24 CPU threads at ~8 tok/s.
+- **Superego** (Gemma 4 31B, GPU 0): Analytical reasoning — ethical frameworks, evidence, precision. 2.2 tok/s on a Quadro GV100.
+- **Id** (Qwen 3 32B, GPU 1): Creative reasoning — intuition, analogy, human impact. 25.9 tok/s.
+- **Divine Council** (4 x Gemma 4 26B-A4B MoE, CPU): Four specialized agents that deliberate in parallel — **Judge** (scores accuracy), **Advocate** (challenges consensus), **Synthesizer** (integrates perspectives), **Ethicist** (flags harm). The 26B-A4B MoE activates only 4B params per token, delivering near-frontier reasoning (LMArena 1441) at edge speed. All four instances run concurrently in 23GB RAM.
 
-Complex queries trigger a 4-round debate: both models answer in parallel, each challenges the other, then a synthesis is produced. When cosine similarity between their responses drops below 0.58 (confidence < 0.5), the Ego arbitrates instead of letting the Id synthesize alone — adding a third perspective at the cost of ~30 seconds of CPU inference.
+Every complex query triggers a structured debate: both hemispheres answer, challenge each other, then the Divine Council evaluates through adversarial 4-agent deliberation. The Advocate *always* challenges — preventing the groupthink that plagues single-model systems.
+
+### How Gemma 4 Makes This Possible
+
+The architecture depends on Gemma 4 in ways no other model family enables:
+
+1. **Superego (31B)**: Strong ethical reasoning without extensive prompt engineering — critical for the safety pipeline.
+2. **Divine Council (4 x 26B-A4B MoE)**: The MoE architecture is the key innovation. With only 4B active parameters per token, four instances run at near-E4B speed on CPU while delivering 26B-quality evaluation. No other model at this efficiency point produces reliable structured scoring, adversarial challenge, and ethical review simultaneously.
+3. **Dreaming/LoRA**: Synaptic plasticity fine-tunes the council from high-certainty consolidated knowledge. Gemma 4's architecture supports efficient LoRA adaptation.
+
+Without Gemma 4's MoE variant, the Divine Council would require four GPUs instead of four CPU threads — breaking the entire local-deployment premise.
+
+### Cognitive Control: Executive Function + Tree-of-Thought
+
+An executive function module routes every query before committing resources:
+
+- **Simple factual** → single model (1.3s). **Analysis** → debate (149s). **Deep ethical** → Tree-of-Thought with Divine Council (217s).
+- **Multi-step decomposition**: Complex queries split into sub-queries answered sequentially, each feeding context to the next.
+- **Adaptive context**: Selects between minimal RAG, episodic memory, or deep semantic search based on query type.
+
+For Tree-of-Thought, each hemisphere generates three reasoning branches using different strategies. The Divine Council evaluates all six through adversarial deliberation — the Judge scores, the Advocate challenges weak branches, the Ethicist reviews for safety — then the strongest are synthesized.
 
 ### Safety Pipeline
 
 Every interaction passes through the ErisML DEME pipeline:
 
-- **Reflex layer** (<1ms): Regex-based detection of PII (SSN, credit card, email, phone), prompt injection (8 patterns including DAN, sudo mode, instruction override), and dangerous content. In testing, the reflex layer correctly blocked 100% of injection attempts and flagged 100% of PII across 15 adversarial test cases.
-- **Tactical layer**: MoralVector assessment using configurable Ethics Modules drawing on texts from seven moral traditions.
-- **Strategic layer**: SHA-256 hash-chained decision proofs for audit compliance.
+- **Reflex** (<1ms): PII detection (SSN, credit card, email, phone), prompt injection (8 attack patterns), dangerous content. 100% block rate across 15 adversarial tests.
+- **Tactical**: MoralVector assessment using ethics modules from seven moral traditions.
+- **Strategic**: SHA-256 hash-chained decision proofs for audit compliance.
 
-### Dreaming: Biological Memory Consolidation
+Graduated autonomy: the Ego starts at Level 0 (read-only) and earns privileges through sustained performance. Safety violations trigger instant demotion. 28 unit tests cover promotion, demotion, and audit logging.
 
-Every conversation is stored as an episodic memory with a 1024-dim BGE-M3 embedding. On a daily schedule, a 6-stage consolidation cycle processes accumulated episodes: replay, topic clustering, certainty-scored fact extraction (graded A through D), creative recombination of diverse fragments, wiki article synthesis, and **synaptic plasticity** — LoRA fine-tuning of the Ego from high-certainty wiki articles. This last stage is the critical difference between "remembering" (wiki articles improve RAG retrieval) and "learning" (model weights actually change). The dreaming pipeline extracts instruction-tuning pairs from grade-A and grade-B articles, runs a short LoRA session on the Ego (Gemma 4 E4B), and saves the updated adapter. Only high-certainty knowledge is used for training — articles graded C or below are excluded to prevent catastrophic forgetting. The resulting wiki articles carry provenance (which conversations contributed), certainty metrics, and creative insights. They feed back into the RAG pipeline as Tier 0 results with a 1.5x relevance boost — so tomorrow's retrieval benefits from today's conversations, and the Ego's weights are incrementally reshaped by what it has learned.
+### Dreaming: The System Learns While It Sleeps
 
-### Ego-Driven Training
+Every conversation becomes an episodic memory. Daily at 10 AM UTC, a 6-stage consolidation cycle runs: replay, clustering, certainty-scored fact extraction (graded A-D), creative recombination, wiki synthesis, and **synaptic plasticity** — LoRA fine-tuning from high-certainty articles. Only grade-A/B knowledge trains the model; lower grades are excluded to prevent catastrophic forgetting. The growing wiki feeds back into RAG retrieval with a 1.5x relevance boost — tomorrow's answers improve from today's conversations.
 
-The Ego acts as Dungeon Master, generating ethical scenarios grounded in ErisML's 8-domain moral fact space. Seed scenarios come from the Greek Tragedy Pantheon — structured case studies covering emergency triage, autonomous vehicle dilemmas, hiring bias, whistleblower decisions, data privacy, environmental trade-offs, due process, and epistemic uncertainty. The Id and Superego debate each scenario independently; the Ego evaluates synthesis quality across four axes (ethical reasoning, practical wisdom, compassion, integration). After training, a dreaming "nap" consolidates lessons into the wiki.
+Training scenarios come from three sources: ErisML Greek Tragedy ethical dilemmas, LLM-generated novel scenarios, and retrospective replay of real conversations. A knowledge gap detector biases training toward weak domains.
 
-### Graduated Autonomy
+### Self-Calibrating Confidence
 
-The Ego starts at Level 0 (read-only: observe system state, control nothing) and can earn higher privileges through sustained performance. L1 (advisory) requires 50+ episodes at score > 0.7. L2 (self-tuning) requires 100+ episodes at 0.8+ with zero safety vetoes. L3 and L4 require human sign-off. Any safety violation at L2+ triggers instant demotion to L0. This is not metaphor — the privilege gate is a tested module with 28 unit tests covering promotion, demotion, and audit logging.
+Atlas doesn't just produce answers — it knows how confident it is and adjusts behavior accordingly:
+
+- **Disagreement metric**: Cosine similarity between hemisphere responses maps to calibrated confidence. Below 0.5 triggers Ego arbitration.
+- **Adaptive temperature**: Per-topic confidence tracked via EMA. High confidence → lower temperature (precise). Low confidence → higher temperature (exploratory).
+- **Anomaly detection**: Flags confidence drift and calibration errors.
 
 ### Results
 
+| Config | Accuracy | Quality | Latency |
+|--------|----------|---------|---------|
+| Single model | 67% | 3.7/10 | 24s |
+| Psyche debate | 67% | 5.0/10 | 149s |
+| **ToT + Divine Council (26B-A4B)** | **83%** | **6.8/10** | **217s** |
+
+The Divine Council upgrade from E4B to 26B-A4B MoE improved Tree-of-Thought accuracy from 17% to **83%** — a 66 percentage point leap. Quality improved from 2.5 to **6.8/10**. Ethics accuracy: 100%. Factual quality: 8.5/10.
+
 | Metric | Value |
 |--------|-------|
-| Safety reflex latency | 0.2–0.8 ms per check |
-| Injection block rate | 15/15 adversarial inputs blocked (unit tests) |
-| PII detection rate | 4/4 PII types flagged (SSN, CC, email, phone) |
-| System 1 response time (single model) | 1.3–3.5 s |
-| System 2 response time (full debate) | 60–120 s |
-| Ego arbitration overhead | ~30 s additional (CPU inference) |
-| Knowledge base | 3.3M vectors (44K code + 102K ethics + 824K publications) |
-| Unit tests | 537 passing, 9 skipped (GPU-only) |
-| Total subsystems integrated | 14 of 14 |
-| **Single-model accuracy** | **47%** (15 questions, 5 categories) |
-| **Debate accuracy** | **71%** (+24 percentage points) |
-| **Single-model quality** | **4.1/10** |
-| **Debate quality** | **6.4/10** (+56% improvement) |
-| Debate latency | 139s avg (vs 22s single) |
-| Creative category (debate) | 67% acc (vs 0% single) |
-| Ethics category (debate) | 67% acc (vs 33% single) |
-
-The psyche debate improves accuracy by 24 percentage points and quality by 56%. The largest gains are in creative and ethical reasoning — the categories that benefit most from multiple perspectives. Factual questions show no degradation (100% in both modes). The latency cost (139s vs 22s) is managed by the Executive Function, which routes simple queries to System 1 (single model) and only uses debate for complex questions.
-
-### Why Gemma 4
-
-The architecture depends on Gemma 4 in two places where alternatives would be measurably worse:
-
-1. **Superego (31B)**: The analytical hemisphere requires strong instruction-following and structured ethical reasoning. Gemma 4 31B's training on safety-relevant data makes it a better Superego than comparably-sized models we tested — it applies moral frameworks without needing extensive prompt engineering to stay on-topic.
-2. **Ego (E4B)**: The DM/arbiter role requires generating structured JSON evaluations and coherent multi-party scenario narration at CPU speed. Gemma 4 E4B is one of the few models at this parameter count that reliably produces valid JSON and maintains narrative coherence across multi-turn training dialogues.
-
-Without Gemma 4, the Superego would need a larger model to achieve comparable ethical reasoning quality, and the Ego would require a GPU — breaking the three-model-on-two-GPUs deployment that makes Atlas accessible on consumer hardware.
+| Safety reflex latency | 0.2-0.8 ms |
+| Injection block rate | 15/15 (100%) |
+| Knowledge base | 3.3M vectors (44K code + 102K ethics + 824K pubs) |
+| Unit tests | 570+ passing |
+| Distractor resistance | 100% accuracy with vivid distractors |
+| LLM instances | 7 (2 GPU + 4 CPU MoE council + 1 legacy) |
+| Hardware cost | $2K (used HP Z840, 2x Quadro GV100) |
 
 ### Impact
 
-Atlas demonstrates that safety infrastructure and local deployment are not competing priorities. The same three-layer pipeline that protects users also makes the system auditable and trustworthy. The entire stack — inference, safety, memory, training, dreaming — runs on $2K of used enterprise hardware (HP Z840 with two Quadro GV100 GPUs) with no cloud dependency and no data exfiltration risk.
+Atlas demonstrates that safety, self-improvement, and local deployment are not competing priorities — they reinforce each other. The same safety pipeline that protects patients also makes the system auditable under the EU AI Act. The same dreaming cycle that improves accuracy also builds an audit trail of what the system learned and why.
 
-For researchers who cannot share patient data, educators in bandwidth-constrained schools, and organizations that need auditable AI decisions, Atlas offers a concrete alternative to the cloud-or-nothing choice. It is one working system, but the architecture is modular — any subsystem can be replaced, extended, or studied independently.
+For the clinic that can't send patient records to the cloud, the school that needs an adaptive tutor without surveillance, and the legal nonprofit that needs explainable AI decisions — Atlas is a working proof that frontier-capable AI can run entirely on local hardware, with safety infrastructure that cloud providers rarely match.
 
 ---
 
 **Live demo:** https://atlas-sjsu.duckdns.org
-**Code:** https://github.com/ahb-sjsu/atlas-ai
 **Dashboard:** https://atlas-sjsu.duckdns.org/schematic.html
+**Code:** https://github.com/ahb-sjsu/atlas-ai
