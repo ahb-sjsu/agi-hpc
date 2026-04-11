@@ -1,62 +1,166 @@
 {
   "benchmark_info": {
-    "description": "TurboQuant weight compression perplexity evaluation",
+    "description": "TurboQuant weight compression comprehensive differential benchmark",
     "model": "gpt2",
     "dataset": "wikitext-2-raw-v1 (validation)",
-    "max_length": 1024,
-    "num_samples": 20
+    "num_samples": 50,
+    "methods": [
+      "beam",
+      "beam_mixed",
+      "svd"
+    ],
+    "credit": "Mixed-precision inspired by Reddit u/FabulousExample4605 (r/LocalLLaMA)"
   },
   "results": [
     {
-      "model": "gpt2",
+      "method": "beam",
+      "energy_threshold": 0.85,
+      "bits": 3,
+      "baseline_ppl": 48.2,
+      "compressed_ppl": 1373.11,
+      "ppl_ratio": 28.49,
+      "compression_ratio": 1.9,
+      "savings_pct": 47.2
+    },
+    {
+      "method": "beam",
+      "energy_threshold": 0.9,
+      "bits": 3,
+      "baseline_ppl": 48.2,
+      "compressed_ppl": 1373.11,
+      "ppl_ratio": 28.49,
+      "compression_ratio": 1.9,
+      "savings_pct": 47.2
+    },
+    {
       "method": "beam",
       "energy_threshold": 0.95,
       "bits": 3,
-      "baseline_ppl": 45.53,
-      "compressed_ppl": 1318.79,
-      "ppl_ratio": 28.9653,
-      "compression_ratio": 1.89,
-      "original_mb": 621.94,
-      "compressed_mb": 328.56,
-      "savings_pct": 47.2,
-      "compress_time_s": 50.05,
-      "baseline_eval_time_s": 3.02,
-      "compressed_eval_time_s": 47.69,
-      "total_tokens": 1312
+      "baseline_ppl": 48.2,
+      "compressed_ppl": 1373.11,
+      "ppl_ratio": 28.49,
+      "compression_ratio": 1.9,
+      "savings_pct": 47.2
     },
     {
-      "model": "gpt2",
+      "method": "beam",
+      "energy_threshold": 0.99,
+      "bits": 3,
+      "baseline_ppl": 48.2,
+      "compressed_ppl": 1373.11,
+      "ppl_ratio": 28.49,
+      "compression_ratio": 1.9,
+      "savings_pct": 47.2
+    },
+    {
+      "method": "beam",
+      "energy_threshold": 0.95,
+      "bits": 4,
+      "baseline_ppl": 48.2,
+      "compressed_ppl": 64.83,
+      "ppl_ratio": 1.35,
+      "compression_ratio": 1.8,
+      "savings_pct": 45.5
+    },
+    {
+      "method": "beam_mixed",
+      "energy_threshold": 0.85,
+      "bits": 3,
+      "baseline_ppl": 48.2,
+      "compressed_ppl": 300.6,
+      "ppl_ratio": 6.24,
+      "compression_ratio": 1.6,
+      "savings_pct": 39.0
+    },
+    {
+      "method": "beam_mixed",
+      "energy_threshold": 0.9,
+      "bits": 3,
+      "baseline_ppl": 48.2,
+      "compressed_ppl": 300.6,
+      "ppl_ratio": 6.24,
+      "compression_ratio": 1.6,
+      "savings_pct": 39.0
+    },
+    {
       "method": "beam_mixed",
       "energy_threshold": 0.95,
       "bits": 3,
-      "baseline_ppl": 45.53,
-      "compressed_ppl": 293.0,
-      "ppl_ratio": 6.4353,
-      "compression_ratio": 1.64,
-      "original_mb": 621.94,
-      "compressed_mb": 379.26,
-      "savings_pct": 39.0,
-      "compress_time_s": 55.93,
-      "baseline_eval_time_s": 3.5,
-      "compressed_eval_time_s": 48.68,
-      "total_tokens": 1312
+      "baseline_ppl": 48.2,
+      "compressed_ppl": 300.6,
+      "ppl_ratio": 6.24,
+      "compression_ratio": 1.6,
+      "savings_pct": 39.0
     },
     {
-      "model": "gpt2",
+      "method": "beam_mixed",
+      "energy_threshold": 0.99,
+      "bits": 3,
+      "baseline_ppl": 48.2,
+      "compressed_ppl": 300.6,
+      "ppl_ratio": 6.24,
+      "compression_ratio": 1.6,
+      "savings_pct": 39.0
+    },
+    {
+      "method": "beam_mixed",
+      "energy_threshold": 0.95,
+      "bits": 4,
+      "baseline_ppl": 48.2,
+      "compressed_ppl": 300.6,
+      "ppl_ratio": 6.24,
+      "compression_ratio": 1.6,
+      "savings_pct": 39.0
+    },
+    {
+      "method": "svd",
+      "energy_threshold": 0.85,
+      "bits": 3,
+      "baseline_ppl": 48.2,
+      "compressed_ppl": 6867.75,
+      "ppl_ratio": 142.48,
+      "compression_ratio": 2.0,
+      "savings_pct": 48.9
+    },
+    {
+      "method": "svd",
+      "energy_threshold": 0.9,
+      "bits": 3,
+      "baseline_ppl": 48.2,
+      "compressed_ppl": 6331.33,
+      "ppl_ratio": 131.36,
+      "compression_ratio": 2.0,
+      "savings_pct": 48.9
+    },
+    {
       "method": "svd",
       "energy_threshold": 0.95,
       "bits": 3,
-      "baseline_ppl": 45.53,
-      "compressed_ppl": 4306.12,
-      "ppl_ratio": 94.5776,
-      "compression_ratio": 1.95,
-      "original_mb": 621.94,
-      "compressed_mb": 318.43,
-      "savings_pct": 48.8,
-      "compress_time_s": 51.14,
-      "baseline_eval_time_s": 4.0,
-      "compressed_eval_time_s": 31.98,
-      "total_tokens": 1312
+      "baseline_ppl": 48.2,
+      "compressed_ppl": 5925.89,
+      "ppl_ratio": 122.94,
+      "compression_ratio": 1.9,
+      "savings_pct": 48.8
+    },
+    {
+      "method": "svd",
+      "energy_threshold": 0.99,
+      "bits": 3,
+      "baseline_ppl": 48.2,
+      "compressed_ppl": 5536.08,
+      "ppl_ratio": 114.86,
+      "compression_ratio": 1.9,
+      "savings_pct": 48.8
+    },
+    {
+      "method": "svd",
+      "energy_threshold": 0.95,
+      "bits": 4,
+      "baseline_ppl": 48.2,
+      "compressed_ppl": 7879.84,
+      "ppl_ratio": 163.48,
+      "compression_ratio": 1.9,
+      "savings_pct": 47.7
     }
   ]
 }
