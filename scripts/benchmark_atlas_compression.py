@@ -225,7 +225,7 @@ def benchmark_model(
             label = f"{method}/{bits}-bit"
             print(f"\n  --- {label} ---")
 
-            config = WeightCompressionConfig(method=method, bits=bits)
+            config = WeightCompressionConfig(method=method, bits=bits, use_gpu=True)
             engine = TurboQuantWeights(config)
 
             # Compress
