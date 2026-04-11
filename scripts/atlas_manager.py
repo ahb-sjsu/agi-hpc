@@ -5,7 +5,7 @@ Atlas AI System Manager — start | stop | status | restart | watch
 Manages all Atlas AI services as a unified system:
   - Superego (Gemma 4 31B, GPU 0)
   - Id (Qwen 3 32B, GPU 1)
-  - Divine Council (4x Gemma 4 26B-A4B MoE, CPU)
+  - Divine Council (7 agents, 1x Gemma 4 26B-A4B MoE, --parallel 8, CPU)
   - RAG Server (Flask + embeddings)
   - Telemetry Server
   - NATS JetStream (if installed)
@@ -43,9 +43,7 @@ log = logging.getLogger("atlas-mgr")
 
 ATLAS_HOME = os.environ.get("ATLAS_HOME", "/home/claude/agi-hpc")
 MODELS_DIR = os.environ.get("MODELS_DIR", "/home/claude/models")
-LLAMA_BIN = os.environ.get(
-    "LLAMA_BIN", "/home/claude/llama.cpp/build/bin/llama-server"
-)
+LLAMA_BIN = os.environ.get("LLAMA_BIN", "/home/claude/llama.cpp/build/bin/llama-server")
 PYTHON = os.environ.get("ATLAS_PYTHON", "/home/claude/env/bin/python3")
 LOG_DIR = "/tmp"
 
@@ -100,56 +98,19 @@ SERVICES: list[ServiceConfig] = [
         category="llm",
         gpu=1,
     ),
-    # Divine Council (CPU)
+    # Divine Council — single server, 7 agents, --parallel 8
+    # All council members (Judge, Advocate, Synthesizer, Ethicist, Historian,
+    # Futurist, Pragmatist) share this one process. ~18GB total.
     ServiceConfig(
         name="ego",
-        description="Council Judge: 26B-A4B MoE",
+        description="Divine Council: 7 agents, 26B-A4B MoE, --parallel 8",
         port=8084,
         health_path="/health",
         start_cmd=(
             f"CUDA_VISIBLE_DEVICES= {LLAMA_BIN} "
             f"--model {MODELS_DIR}/gemma-4-26B-A4B-it-UD-Q4_K_XL.gguf "
             f"--host 127.0.0.1 --port 8084 --ctx-size 4096 "
-            f"--threads 10 --n-gpu-layers 0"
-        ),
-        category="council",
-    ),
-    ServiceConfig(
-        name="tot-worker-0",
-        description="Council Advocate: 26B-A4B MoE",
-        port=8088,
-        health_path="/health",
-        start_cmd=(
-            f"CUDA_VISIBLE_DEVICES= {LLAMA_BIN} "
-            f"--model {MODELS_DIR}/gemma-4-26B-A4B-it-UD-Q4_K_XL.gguf "
-            f"--host 127.0.0.1 --port 8088 --ctx-size 4096 "
-            f"--threads 10 --n-gpu-layers 0"
-        ),
-        category="council",
-    ),
-    ServiceConfig(
-        name="tot-worker-1",
-        description="Council Synthesizer: 26B-A4B MoE",
-        port=8086,
-        health_path="/health",
-        start_cmd=(
-            f"CUDA_VISIBLE_DEVICES= {LLAMA_BIN} "
-            f"--model {MODELS_DIR}/gemma-4-26B-A4B-it-UD-Q4_K_XL.gguf "
-            f"--host 127.0.0.1 --port 8086 --ctx-size 4096 "
-            f"--threads 10 --n-gpu-layers 0"
-        ),
-        category="council",
-    ),
-    ServiceConfig(
-        name="tot-worker-2",
-        description="Council Ethicist: 26B-A4B MoE",
-        port=8087,
-        health_path="/health",
-        start_cmd=(
-            f"CUDA_VISIBLE_DEVICES= {LLAMA_BIN} "
-            f"--model {MODELS_DIR}/gemma-4-26B-A4B-it-UD-Q4_K_XL.gguf "
-            f"--host 127.0.0.1 --port 8087 --ctx-size 4096 "
-            f"--threads 10 --n-gpu-layers 0"
+            f"--threads 24 --parallel 8 --n-gpu-layers 0 --cont-batching"
         ),
         category="council",
     ),
@@ -159,9 +120,7 @@ SERVICES: list[ServiceConfig] = [
         description="RAG Server (Flask)",
         port=8081,
         health_path="/api/search-status",
-        start_cmd=(
-            f"cd {ATLAS_HOME} && {PYTHON} atlas-rag-server.py"
-        ),
+        start_cmd=(f"cd {ATLAS_HOME} && {PYTHON} atlas-rag-server.py"),
         category="infra",
         depends_on=["spock", "ego"],
     ),
@@ -170,9 +129,7 @@ SERVICES: list[ServiceConfig] = [
         description="Telemetry Server",
         port=8085,
         health_path="/api/telemetry",
-        start_cmd=(
-            f"cd {ATLAS_HOME} && {PYTHON} scripts/telemetry_server.py"
-        ),
+        start_cmd=(f"cd {ATLAS_HOME} && {PYTHON} scripts/telemetry_server.py"),
         category="infra",
     ),
 ]
@@ -317,7 +274,8 @@ def start(
         if _check_port(svc.port, svc.health_path):
             log.warning(
                 "%-15s port %d already in use — killing",
-                svc.name, svc.port,
+                svc.name,
+                svc.port,
             )
             _kill_port(svc.port)
             time.sleep(2)
@@ -325,7 +283,9 @@ def start(
         if _tmux_start(svc.name, svc.start_cmd):
             log.info(
                 "%-15s started (port %d) [%s]",
-                svc.name, svc.port, svc.description,
+                svc.name,
+                svc.port,
+                svc.description,
             )
         else:
             log.error("%-15s FAILED to start", svc.name)
@@ -363,9 +323,7 @@ def stop(
             log.info("%-15s already stopped", svc.name)
 
     # Kill any orphaned GPU processes
-    gpu_pids = _run(
-        "nvidia-smi --query-compute-apps=pid --format=csv,noheader"
-    )
+    gpu_pids = _run("nvidia-smi --query-compute-apps=pid --format=csv,noheader")
     if gpu_pids:
         for pid in gpu_pids.strip().split("\n"):
             pid = pid.strip()
@@ -424,11 +382,7 @@ def watch(interval: int = WATCH_INTERVAL) -> None:
 
     while True:
         results = status()
-        down = [
-            name
-            for name, info in results.items()
-            if info["state"] == "stopped"
-        ]
+        down = [name for name, info in results.items() if info["state"] == "stopped"]
 
         if down:
             log.warning("DOWN: %s", ", ".join(down))
@@ -457,9 +411,7 @@ def watch(interval: int = WATCH_INTERVAL) -> None:
                     continue
 
                 # Find the service config
-                svc = next(
-                    (s for s in SERVICES if s.name == name), None
-                )
+                svc = next((s for s in SERVICES if s.name == name), None)
                 if svc is None:
                     continue
 
@@ -499,9 +451,7 @@ def print_status() -> None:
         color = (
             "\033[32m"
             if state == "running"
-            else "\033[33m"
-            if state == "loading"
-            else "\033[31m"
+            else "\033[33m" if state == "loading" else "\033[31m"
         )
         reset = "\033[0m"
         print(
@@ -514,8 +464,7 @@ def print_status() -> None:
 
     # GPU usage
     gpu_out = _run(
-        "nvidia-smi --query-gpu=index,memory.used,memory.total "
-        "--format=csv,noheader"
+        "nvidia-smi --query-gpu=index,memory.used,memory.total " "--format=csv,noheader"
     )
     if gpu_out:
         print("\nGPU memory:")
@@ -540,8 +489,13 @@ def main() -> None:
     parser.add_argument(
         "command",
         choices=[
-            "start", "stop", "restart", "status",
-            "watch", "maint", "resume",
+            "start",
+            "stop",
+            "restart",
+            "status",
+            "watch",
+            "maint",
+            "resume",
         ],
         help="Command to execute",
     )
