@@ -1070,7 +1070,7 @@ def _make_compressed_linear(
                     out = h @ U.T
 
             if self.bias is not None:
-                out = out + self.bias.to(x.dtype)
+                out = out + self.bias.to(x.device, x.dtype)
             return out
 
     return CompressedLinear(cw, engine, bias, transposed)
