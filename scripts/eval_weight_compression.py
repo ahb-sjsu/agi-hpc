@@ -231,7 +231,7 @@ def main() -> None:
         "--method",
         type=str,
         default="beam",
-        choices=["beam", "svd", "both"],
+        choices=["beam", "beam_mixed", "svd", "both"],
         help="Compression method (default: beam)",
     )
     parser.add_argument(
@@ -249,7 +249,7 @@ def main() -> None:
     print(f"  {len(texts)} text samples loaded")
 
     # Configure sweep: (method, energy, bits)
-    methods = ["beam", "svd"] if args.method == "both" else [args.method]
+    methods = ["beam", "beam_mixed", "svd"] if args.method == "both" else [args.method]
     if args.sweep:
         configs = [
             (m, e, b)

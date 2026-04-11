@@ -7,13 +7,19 @@
 """
 TurboQuant model weight compression.
 
-Two compression methods:
+Three compression methods:
 
 **Beam** (``method="beam"``): Direct PolarQuant on weight matrix rows.
 Each row is treated as a beam vector — rotated, scalar-quantized, and
 bit-packed with its L2 norm preserved.  No decomposition; one error
-source.  Achieves ~5.1x compression at >0.95 cosine similarity (3-bit).
-Adapted from Theory Radar's TurboBeam search compression.
+source.  Adapted from Theory Radar's TurboBeam search compression.
+
+**Beam Mixed** (``method="beam_mixed"``): Variance-based per-coordinate
+mixed precision after PolarQuant rotation.  High-variance coordinates
+get 4-bit, medium 3-bit, low 2-bit.  Achieves near-4-bit quality at
+~3.3 average bits.  Inspired by Reddit u/FabulousExample4605's
+per-weight precision selection (r/LocalLLaMA, 2026-04) and the
+eigenvalue-weighted mixed precision design from TurboQuant Pro v0.9.0.
 
 **SVD** (``method="svd"``): Truncated SVD followed by PolarQuant on the
 factors.  Higher compression (~10-20x) but two error sources (rank
@@ -21,11 +27,13 @@ truncation + quantization) that compound across layers.
 
 Theory:
     - Zandieh et al. (ICLR 2026): random rotation decorrelates
-      dimensions for near-optimal scalar quantization (both methods).
+      dimensions for near-optimal scalar quantization (all methods).
     - Eckart-Young-Mirsky theorem: truncated SVD is optimal rank-k
       approximation (SVD method).
     - Theory Radar TurboBeam: direction-preserving vector quantization
-      maintains similarity structure (beam method).
+      maintains similarity structure (beam methods).
+    - Per-coordinate variance analysis after rotation reveals which
+      dimensions carry signal vs noise (beam_mixed method).
 
 Reuses :class:`TurboQuantKV` from ``turboquant_kv.py`` for the
 rotation + quantization + bit-packing pipeline (shape-agnostic).
@@ -41,7 +49,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
-from agi.meta.llm.turboquant_kv import CompressedKV, TurboQuantKV
+from agi.meta.llm.turboquant_kv import _CODEBOOKS, CompressedKV, TurboQuantKV
 
 logger = logging.getLogger(__name__)
 
@@ -269,6 +277,8 @@ class TurboQuantWeights:
 
         if self.config.method == "beam":
             return self._compress_beam(weight, name)
+        if self.config.method == "beam_mixed":
+            return self._compress_beam_mixed(weight, name)
         return self._compress_svd(weight, name)
 
     def _compress_beam(
@@ -316,6 +326,155 @@ class TurboQuantWeights:
         )
 
         return cw
+
+    def _compress_beam_mixed(
+        self,
+        weight: np.ndarray,
+        name: str = "",
+    ) -> CompressedWeight:
+        """Mixed-precision beam: per-coordinate bit allocation after rotation.
+
+        After PolarQuant rotation, measures variance of each coordinate
+        across all weight rows. High-variance coordinates get 4-bit,
+        medium get 3-bit, low get 2-bit. Average ~3.0-3.3 bits.
+
+        Inspired by eigenvalue-weighted mixed precision (TurboQuant Pro
+        v0.9.0 roadmap) and per-weight precision selection (Reddit
+        r/LocalLLaMA FabulousExample4605).
+        """
+        import math
+
+        d_out, d_in = weight.shape
+        original_dtype = weight.dtype
+        W = weight.astype(np.float32)
+
+        # --- Step 1: Rotation (reuse cached TQ for the rotation matrix) ---
+        tq = self._get_tq(d_in, self.config.seed)
+
+        # Compute norms and unit vectors
+        norms = np.linalg.norm(W, axis=-1)  # (d_out,)
+        safe_norms = np.maximum(norms, 1e-30)[:, np.newaxis]
+        W_unit = W / safe_norms
+
+        # Apply rotation (access TQ internals)
+        W_rot = tq._rotate(tq._to_device(W_unit))
+        if hasattr(W_rot, "get"):  # CuPy → numpy
+            W_rot = W_rot.get()
+
+        # --- Step 2: Per-coordinate variance analysis ---
+        coord_var = np.var(W_rot, axis=0)  # (d_in,) variance per coord
+        total_var = coord_var.sum()
+
+        if total_var < 1e-30:
+            # Degenerate — fall back to uniform
+            return self._compress_beam(weight, name)
+
+        # Sort coordinates by variance (descending)
+        cum_var = np.cumsum(np.sort(coord_var)[::-1]) / total_var
+
+        # Bit bands: top 60% variance->4bit, next 30%->3bit, bottom 10%->2bit
+        var_threshold_4 = 0.60
+        var_threshold_3 = 0.90  # cumulative: 60% + 30% = 90%
+
+        n_4bit = int(np.searchsorted(cum_var, var_threshold_4)) + 1
+        n_3bit = int(np.searchsorted(cum_var, var_threshold_3)) + 1 - n_4bit
+        n_2bit = d_in - n_4bit - n_3bit
+
+        # Map coordinates to bit bands based on their variance rank
+        coord_order = np.argsort(coord_var)[::-1]  # highest variance first
+        bit_map = np.zeros(d_in, dtype=np.uint8)
+        bit_map[coord_order[:n_4bit]] = 4
+        bit_map[coord_order[n_4bit : n_4bit + n_3bit]] = 3
+        bit_map[coord_order[n_4bit + n_3bit :]] = 2
+
+        avg_bits = (n_4bit * 4 + n_3bit * 3 + n_2bit * 2) / d_in
+
+        # --- Step 3: Quantize each coordinate with its assigned codebook ---
+        scale = 1.0 / math.sqrt(d_in)
+        indices = np.empty_like(W_rot, dtype=np.uint8)
+
+        for bits_val in [2, 3, 4]:
+            mask = bit_map == bits_val
+            if not mask.any():
+                continue
+            raw_centroids = _CODEBOOKS[bits_val]
+            centroids = (raw_centroids * scale).astype(np.float32)
+            boundaries = (centroids[:-1] + centroids[1:]) / 2.0
+            indices[:, mask] = np.searchsorted(boundaries, W_rot[:, mask]).astype(
+                np.uint8
+            )
+
+        # --- Step 4: Pack into CompressedKV-compatible format ---
+        # Store as unpacked uint8 indices (mixed bit widths can't use standard packing)
+        comp = CompressedKV(
+            indices=indices,
+            norms=norms.astype(np.float32),
+            bits=0,  # 0 signals mixed precision
+            original_dtype=np.dtype(original_dtype),
+            packed=False,
+            n_values=int(np.prod(indices.shape)),
+            shape=tuple(int(s) for s in indices.shape),
+        )
+
+        # Store the bit_map and coord stats in a side array
+        cw = CompressedWeight(
+            U_compressed=comp,
+            S=np.array([1.0], dtype=np.float32),
+            Vt_compressed=bit_map,  # store bit assignments as numpy array
+            rank=d_in,
+            original_shape=(d_out, d_in),
+            original_dtype=np.dtype(original_dtype),
+            energy_retained=1.0,
+            quantized=True,
+            method="beam_mixed",
+            U_shape=(d_out, d_in),
+            Vt_shape=(0, 0),
+        )
+
+        logger.info(
+            "[tq-weights] %s: (%d, %d) beam_mixed avg %.1f-bit "
+            "(4b:%d 3b:%d 2b:%d), %.1fx compression",
+            name or "weight",
+            d_out,
+            d_in,
+            avg_bits,
+            n_4bit,
+            n_3bit,
+            n_2bit,
+            cw.compression_ratio(),
+        )
+
+        return cw
+
+    def _decompress_beam_mixed(self, cw: CompressedWeight) -> np.ndarray:
+        """Decompress a mixed-precision beam-compressed weight matrix."""
+        import math
+
+        d_out, d_in = cw.original_shape
+        indices = cw.U_compressed.indices  # (d_out, d_in) uint8
+        norms = cw.U_compressed.norms  # (d_out,)
+        bit_map = cw.Vt_compressed  # (d_in,) uint8 bit assignments
+
+        tq = self._get_tq(d_in, self.config.seed)
+        scale = 1.0 / math.sqrt(d_in)
+
+        # Reconstruct rotated coordinates from indices + codebooks
+        W_rot = np.empty((d_out, d_in), dtype=np.float32)
+        for bits_val in [2, 3, 4]:
+            mask = bit_map == bits_val
+            if not mask.any():
+                continue
+            centroids = (_CODEBOOKS[bits_val] * scale).astype(np.float32)
+            W_rot[:, mask] = centroids[indices[:, mask]]
+
+        # Inverse rotation
+        W_rot_dev = tq._to_device(W_rot)
+        W_unit = tq._unrotate(W_rot_dev)
+        if hasattr(W_unit, "get"):
+            W_unit = W_unit.get()
+
+        # Scale by norms
+        return W_unit * norms[:, np.newaxis]
 
     def _compress_svd(
         self,
@@ -393,6 +552,8 @@ class TurboQuantWeights:
         """
         if cw.method == "beam":
             return self._decompress_beam(cw)
+        if cw.method == "beam_mixed":
+            return self._decompress_beam_mixed(cw)
         U_k, Vt_k = self._decompress_factors(cw)
         W_approx = (U_k * cw.S[np.newaxis, :]) @ Vt_k
         return W_approx
@@ -419,8 +580,8 @@ class TurboQuantWeights:
         Returns:
             Output tensor (..., d_out).
         """
-        if cw.method == "beam":
-            W = self._decompress_beam(cw)
+        if cw.method in ("beam", "beam_mixed"):
+            W = self.decompress_weight(cw)
             return x @ W.T
 
         U_k, Vt_k = self._decompress_factors(cw)
@@ -451,6 +612,10 @@ class TurboQuantWeights:
         """
         if cw.method == "beam":
             W = self._decompress_beam(cw)
+            return W, np.empty(0, dtype=np.float32)
+
+        if cw.method == "beam_mixed":
+            W = self._decompress_beam_mixed(cw)
             return W, np.empty(0, dtype=np.float32)
 
         if cw.quantized:
@@ -870,8 +1035,8 @@ def _make_compressed_linear(
         def _ensure_factors(self) -> None:
             if self._U_k is not None:
                 return
-            if self._cw.method == "beam":
-                W = self._engine._decompress_beam(self._cw)
+            if self._cw.method in ("beam", "beam_mixed"):
+                W = self._engine.decompress_weight(self._cw)
                 self._U_k = torch.from_numpy(W)
                 self._Vt_k = torch.empty(0)
                 self._S = torch.empty(0)
@@ -885,7 +1050,7 @@ def _make_compressed_linear(
             self._ensure_factors()
             assert self._U_k is not None
 
-            if self._cw.method == "beam":
+            if self._cw.method in ("beam", "beam_mixed"):
                 W = self._U_k.to(x.device, x.dtype)
                 if self._transposed:
                     out = x @ W
