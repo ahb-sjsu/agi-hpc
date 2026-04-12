@@ -33,10 +33,10 @@ import sys
 import time
 from pathlib import Path
 
-# Thermal safety: cap threads BEFORE importing torch/numpy
-os.environ["OMP_NUM_THREADS"] = "20"
-os.environ["MKL_NUM_THREADS"] = "20"
-os.environ["OPENBLAS_NUM_THREADS"] = "20"
+# Thermal safety: start with conservative cap, ThermalController adjusts dynamically
+os.environ["OMP_NUM_THREADS"] = "10"
+os.environ["MKL_NUM_THREADS"] = "10"
+os.environ["OPENBLAS_NUM_THREADS"] = "10"
 
 import numpy as np  # noqa: E402
 
@@ -52,7 +52,23 @@ from agi.meta.llm.turboquant_weights import (  # noqa: E402
     WeightCompressionConfig,
 )
 
-torch.set_num_threads(20)
+# Dynamic thermal control via batch-probe (auto_apply manages threads)
+_thermal = None
+try:
+    from batch_probe import ThermalController
+
+    _thermal = ThermalController(
+        target_temp=80.0,
+        max_threads=20,
+        min_threads=4,
+        auto_apply=True,
+        verbose=True,
+    )
+    _thermal.start()
+    print("[thermal] ThermalController active: target=80C, auto_apply=True")
+except ImportError:
+    torch.set_num_threads(10)
+    print("[thermal] batch-probe not available, static 10 threads")
 
 # ------------------------------------------------------------------ #
 # Perplexity evaluation                                               #
@@ -413,6 +429,17 @@ def main() -> None:
     print(f"\n\nFINAL RESULTS ({len(all_results)} configs)")
     _print_summary(all_results)
     print(f"\nSaved to {args.output}")
+
+    if _thermal is not None:
+        _thermal.stop()
+        summary = _thermal.summary()
+        if summary:
+            print(
+                f"\n[thermal] Summary: avg={summary['temp_mean']:.0f}C "
+                f"max={summary['temp_max']:.0f}C "
+                f"threads={summary['threads_mean']:.0f} "
+                f"({summary['threads_min']}-{summary['threads_max']})"
+            )
 
 
 if __name__ == "__main__":

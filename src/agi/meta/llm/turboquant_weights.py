@@ -370,24 +370,15 @@ class TurboQuantWeights:
             return self._compress_beam(weight, name)
 
         # Sort coordinates by variance (descending)
-        cum_var = np.cumsum(np.sort(coord_var)[::-1]) / total_var
+        # Split at median: above-median -> 4-bit, below -> 3-bit
+        # No 2-bit (too destructive on real models)
+        median_var = np.median(coord_var)
 
-        # Bit bands: top 60% variance->4bit, next 30%->3bit, bottom 10%->2bit
-        var_threshold_4 = 0.60
-        var_threshold_3 = 0.90  # cumulative: 60% + 30% = 90%
+        bit_map = np.where(coord_var >= median_var, np.uint8(4), np.uint8(3))
+        n_4bit = int(np.sum(bit_map == 4))
+        n_3bit = d_in - n_4bit
 
-        n_4bit = int(np.searchsorted(cum_var, var_threshold_4)) + 1
-        n_3bit = int(np.searchsorted(cum_var, var_threshold_3)) + 1 - n_4bit
-        n_2bit = d_in - n_4bit - n_3bit
-
-        # Map coordinates to bit bands based on their variance rank
-        coord_order = np.argsort(coord_var)[::-1]  # highest variance first
-        bit_map = np.zeros(d_in, dtype=np.uint8)
-        bit_map[coord_order[:n_4bit]] = 4
-        bit_map[coord_order[n_4bit : n_4bit + n_3bit]] = 3
-        bit_map[coord_order[n_4bit + n_3bit :]] = 2
-
-        avg_bits = (n_4bit * 4 + n_3bit * 3 + n_2bit * 2) / d_in
+        avg_bits = (n_4bit * 4 + n_3bit * 3) / d_in
 
         # --- Step 3: Quantize each coordinate with its assigned codebook ---
         scale = 1.0 / math.sqrt(d_in)
@@ -433,14 +424,13 @@ class TurboQuantWeights:
 
         logger.info(
             "[tq-weights] %s: (%d, %d) beam_mixed avg %.1f-bit "
-            "(4b:%d 3b:%d 2b:%d), %.1fx compression",
+            "(4b:%d 3b:%d), %.1fx compression",
             name or "weight",
             d_out,
             d_in,
             avg_bits,
             n_4bit,
             n_3bit,
-            n_2bit,
             cw.compression_ratio(),
         )
 
@@ -1037,14 +1027,14 @@ def _make_compressed_linear(
                 return
             if self._cw.method in ("beam", "beam_mixed"):
                 W = self._engine.decompress_weight(self._cw)
-                self._U_k = torch.from_numpy(W)
+                self._U_k = torch.from_numpy(W).half()
                 self._Vt_k = torch.empty(0)
                 self._S = torch.empty(0)
             else:
                 U_k, Vt_k = self._engine._decompress_factors(self._cw)
-                self._U_k = torch.from_numpy(U_k)
-                self._Vt_k = torch.from_numpy(Vt_k)
-                self._S = torch.from_numpy(self._cw.S)
+                self._U_k = torch.from_numpy(U_k).half()
+                self._Vt_k = torch.from_numpy(Vt_k).half()
+                self._S = torch.from_numpy(self._cw.S).half()
 
         def forward(self, x: torch.Tensor) -> torch.Tensor:
             self._ensure_factors()
