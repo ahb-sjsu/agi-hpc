@@ -52,23 +52,35 @@ from agi.meta.llm.turboquant_weights import (  # noqa: E402
     WeightCompressionConfig,
 )
 
-# Dynamic thermal control via batch-probe (auto_apply manages threads)
+# Dynamic thermal control via batch-probe
+# Target 75C (not 80) with max 12 threads (not 20) — sustained
+# compression + eval at 20 threads hits 100C on the dual Xeons.
 _thermal = None
 try:
     from batch_probe import ThermalController
 
     _thermal = ThermalController(
-        target_temp=80.0,
-        max_threads=20,
-        min_threads=4,
+        target_temp=75.0,
+        max_threads=12,
+        min_threads=2,
         auto_apply=True,
         verbose=True,
     )
     _thermal.start()
-    print("[thermal] ThermalController active: target=80C, auto_apply=True")
+    print("[thermal] ThermalController: target=75C, max=12, auto_apply=True")
 except ImportError:
-    torch.set_num_threads(10)
-    print("[thermal] batch-probe not available, static 10 threads")
+    torch.set_num_threads(8)
+    os.environ["OMP_NUM_THREADS"] = "8"
+    print("[thermal] batch-probe not available, static 8 threads")
+
+
+def _sync_thermal() -> None:
+    """Sync torch thread count with ThermalController."""
+    if _thermal is not None:
+        n = _thermal.get_threads()
+        torch.set_num_threads(n)
+        os.environ["OMP_NUM_THREADS"] = str(n)
+
 
 # ------------------------------------------------------------------ #
 # Perplexity evaluation                                               #
@@ -85,6 +97,8 @@ def compute_perplexity(
 ) -> dict:
     """Sliding-window perplexity on a list of texts."""
     model.eval()
+
+    _sync_thermal()
 
     # Resolve actual device from model (handles device_map="auto")
     if device == "auto":
@@ -244,7 +258,8 @@ def benchmark_model(
             config = WeightCompressionConfig(method=method, bits=bits, use_gpu=True)
             engine = TurboQuantWeights(config)
 
-            # Compress
+            # Compress (sync thermal before heavy CPU work)
+            _sync_thermal()
             print(f"  Compressing ({method}, {bits}-bit)...")
             t0 = time.perf_counter()
             compressed = compress_model_streaming(model, config)
