@@ -1,0 +1,2 @@
+# Export artifacts are regenerated from SVG masters; don't commit them.
+exports/
