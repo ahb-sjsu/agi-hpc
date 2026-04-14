@@ -5,17 +5,13 @@ from __future__ import annotations
 
 from typing import Dict, List
 
-import pytest
-
 from agi.reasoning._council_backend import (
     BackendRequest,
     BackendResponse,
-    CouncilBackend,
 )
 from agi.reasoning._council_metrics import CouncilMetrics
 from agi.reasoning.divine_council import (
     COUNCIL_MEMBERS,
-    CouncilVerdict,
     CouncilVote,
     DivineCouncil,
     VoteOutcome,
@@ -24,7 +20,6 @@ from agi.reasoning.divine_council import (
     _extract_score,
     _tally,
 )
-
 
 # ---------------------------------------------------------------------------
 # Scripted backend for aggregation tests
@@ -124,13 +119,15 @@ class TestSeverityExtraction:
 
     def test_severity_keyword_first(self):
         assert (
-            _extract_ethical_severity("ethicist", "Serious risk of harm.")
-            == "serious"
+            _extract_ethical_severity("ethicist", "Serious risk of harm.") == "serious"
         )
 
     def test_bare_severity_word_not_counted(self):
         # "minor" far from any risk/concern word → don't count
-        assert _extract_ethical_severity("ethicist", "The minor detail is irrelevant.") == ""
+        assert (
+            _extract_ethical_severity("ethicist", "The minor detail is irrelevant.")
+            == ""
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -258,9 +255,11 @@ class TestTallyConsensusLogic:
         # counted as approvals, producing a false consensus of 6 approve.
 
     def test_synthesis_uses_synthesizer_when_present(self):
-        votes = {"synthesizer": _vote(
-            "synthesizer", VoteOutcome.APPROVE, response="the final answer"
-        )}
+        votes = {
+            "synthesizer": _vote(
+                "synthesizer", VoteOutcome.APPROVE, response="the final answer"
+            )
+        }
         verdict = _tally(votes, trace_id="tid")
         assert verdict.synthesis == "the final answer"
 
@@ -269,7 +268,9 @@ class TestTallyConsensusLogic:
             "synthesizer": _vote(
                 "synthesizer", VoteOutcome.ABSTAIN, response="", error="timeout"
             ),
-            "judge": _vote("judge", VoteOutcome.APPROVE, score=9.0, response="j says yes 9/10"),
+            "judge": _vote(
+                "judge", VoteOutcome.APPROVE, score=9.0, response="j says yes 9/10"
+            ),
             "pragmatist": _vote(
                 "pragmatist", VoteOutcome.APPROVE, score=7.0, response="p says ok"
             ),

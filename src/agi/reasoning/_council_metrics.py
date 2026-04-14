@@ -76,7 +76,9 @@ class CouncilMetrics:
         # When the library is available, using an isolated registry in
         # tests avoids "Duplicated timeseries in CollectorRegistry".
         # In production, pass None (default global registry).
-        kw = {"registry": registry} if (_PROM_AVAILABLE and registry is not None) else {}
+        kw = (
+            {"registry": registry} if (_PROM_AVAILABLE and registry is not None) else {}
+        )
         self._request_total = Counter(
             "council_request_total",
             "Divine Council per-member request count",
@@ -143,9 +145,7 @@ class CouncilMetrics:
     # ---- request-level ------------------------------------------------
 
     @contextmanager
-    def track_request(
-        self, *, member: str, backend: str
-    ) -> Iterator[None]:
+    def track_request(self, *, member: str, backend: str) -> Iterator[None]:
         """Context manager that measures elapsed time for one request.
 
         On exit, latency is recorded under ``outcome="exception"`` if an

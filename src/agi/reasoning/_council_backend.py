@@ -30,12 +30,11 @@ from __future__ import annotations
 
 import logging
 import random
-import re
 import threading
 import time
 import uuid
-from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Protocol
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, Optional, Protocol
 
 import requests
 
@@ -162,12 +161,9 @@ class _CircuitBreaker:
     def snapshot(self) -> Dict[str, Any]:
         with self._lock:
             return {
-                "open": self._open_until > 0.0
-                and time.monotonic() < self._open_until,
+                "open": self._open_until > 0.0 and time.monotonic() < self._open_until,
                 "consecutive_failures": self._consecutive_failures,
-                "seconds_until_retry": max(
-                    0.0, self._open_until - time.monotonic()
-                ),
+                "seconds_until_retry": max(0.0, self._open_until - time.monotonic()),
             }
 
 
@@ -213,7 +209,8 @@ class _HealthProbe:
         try:
             data = r.json()
         except ValueError:
-            # /health may return plaintext on some llama-server builds; 200 alone is fine.
+            # /health may return plaintext on some llama-server builds;
+            # a 200 status alone is sufficient.
             return True
         status = str(data.get("status", "")).lower()
         return status in {"", "ok", "ready"}

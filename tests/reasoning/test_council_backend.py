@@ -3,8 +3,7 @@
 
 from __future__ import annotations
 
-from typing import Callable, Dict, List
-from unittest.mock import patch
+from typing import Dict, List
 
 import pytest
 import requests
@@ -16,7 +15,6 @@ from agi.reasoning._council_backend import (
     LlamaServerBackend,
     new_trace_id,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fakes
@@ -72,9 +70,7 @@ def _ok_response(content: str = "ok response"):
 
 def _healthy_probe(monkeypatch, backend: LlamaServerBackend, healthy: bool = True):
     """Force the health probe to return a given value for tests."""
-    monkeypatch.setattr(
-        backend._health, "probe", lambda: healthy
-    )
+    monkeypatch.setattr(backend._health, "probe", lambda: healthy)
 
 
 def _make_request(member: str = "judge") -> BackendRequest:
@@ -204,9 +200,7 @@ class TestLlamaServerBackend:
     def test_empty_content_is_transient(self, monkeypatch):
         session = _FakeSession(
             responses=[
-                _FakeResponse(
-                    200, payload={"choices": [{"message": {"content": ""}}]}
-                ),
+                _FakeResponse(200, payload={"choices": [{"message": {"content": ""}}]}),
                 _ok_response("now has content"),
             ]
         )
@@ -243,9 +237,7 @@ class TestLlamaServerBackend:
 
     def test_circuit_opens_after_threshold(self, monkeypatch):
         # All calls fail; circuit should open after 5 consecutive failures.
-        session = _FakeSession(
-            exceptions=[requests.ConnectionError("x")] * 30
-        )
+        session = _FakeSession(exceptions=[requests.ConnectionError("x")] * 30)
         backend = LlamaServerBackend(
             "http://localhost:9999",
             name="circuit",
@@ -272,7 +264,12 @@ class TestLlamaServerBackend:
         # 2 failures, then a success resets the counter
         session = _FakeSession(
             responses=[_ok_response("good")],
-            exceptions=[requests.ConnectionError("a"), None, requests.ConnectionError("b"), None],
+            exceptions=[
+                requests.ConnectionError("a"),
+                None,
+                requests.ConnectionError("b"),
+                None,
+            ],
         )
         # Sequence: call 1 = exc (fail), call 2 = no exc + ok response (success)
         # We'll iterate manually rather than rely on interleaving.

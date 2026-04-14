@@ -308,9 +308,7 @@ class CouncilVerdict:
             preview = vote.response[:preview_chars]
             if len(vote.response) > preview_chars:
                 preview += "…"
-            lines.append(
-                f"**{name}** ({vote.latency_s:.1f}s){tag}:\n{preview}\n"
-            )
+            lines.append(f"**{name}** ({vote.latency_s:.1f}s){tag}:\n{preview}\n")
         lines.append(
             f"\n**Consensus:** "
             f"{'Yes' if self.consensus else 'No'} "
@@ -675,9 +673,7 @@ def _tally(votes: Dict[str, CouncilVote], *, trace_id: str) -> CouncilVerdict:
         synthesis = synth_vote.response
     else:
         # Fall back to the highest-scoring non-abstaining member
-        candidates = [
-            v for v in votes.values() if v.outcome != VoteOutcome.ABSTAIN
-        ]
+        candidates = [v for v in votes.values() if v.outcome != VoteOutcome.ABSTAIN]
         if candidates:
             best = max(candidates, key=lambda v: v.score)
             synthesis = (
