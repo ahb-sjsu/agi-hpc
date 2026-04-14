@@ -8,14 +8,47 @@ StartLimitBurst=3
 Type=simple
 User=claude
 Environment=CUDA_VISIBLE_DEVICES=
-# Single llama-server with --parallel 8 replaces 4 separate instances.
-# All 7 council members (Judge, Advocate, Synthesizer, Ethicist, Historian,
-# Futurist, Pragmatist) hit this one endpoint concurrently. The model loads
-# once (~15 GB); each parallel slot adds ~300 MB of KV cache.
+# Single llama-server with --parallel 8 serves all 7 council members
+# (Judge, Advocate, Synthesizer, Ethicist, Historian, Futurist, Pragmatist)
+# concurrently. Model loads once (~15 GB); each parallel slot adds KV cache.
+#
+# Flag rationale (see docs/architecture/COUNCIL_RELIABILITY_PLAN.md §Design):
+#
+#   --ctx-size 16384        up from 4096. With --parallel 8, the KV cache is
+#                           split: each slot gets effectively ctx/parallel
+#                           tokens. At 4096 that was ~512/slot — too tight
+#                           for council members receiving superego + id
+#                           responses in the brief. 16384 gives ~2 K/slot.
+#
+#   --cache-ram 4096        Gemma 4 crash mitigation from r/LocalLLaMA
+#                           (2026-04-12): at high context fill, the default
+#                           checkpoint-paging path OOMs. Capping cache-ram
+#                           at 4 GB prevents that blow-up. Without this,
+#                           users report crashes daily; with it, crashes
+#                           are rare.
+#
+#   --no-mmap               matches Spock/Id services; avoids the mmap
+#                           path that interacts badly with --cache-ram.
+#
+#   --jinja                 lets Gemma 4 use its official chat template.
+#                           Without this, tool-call and system-prompt
+#                           handling regresses to llama.cpp defaults
+#                           which don't match Gemma's training.
+#
+#   --cont-batching         already present. Keeps parallel slots efficient.
+#
+# If crashes resume despite these flags, try --cache-ram 2048 or --cache-ram 0.
 ExecStart=/home/claude/llama.cpp/build/bin/llama-server \
     --model /home/claude/models/gemma-4-26B-A4B-it-UD-Q4_K_XL.gguf \
-    --host 127.0.0.1 --port 8084 --ctx-size 4096 --threads 24 \
-    --parallel 8 --n-gpu-layers 0 --cont-batching
+    --host 127.0.0.1 --port 8084 \
+    --ctx-size 16384 \
+    --threads 24 \
+    --parallel 8 \
+    --n-gpu-layers 0 \
+    --cont-batching \
+    --cache-ram 4096 \
+    --no-mmap \
+    --jinja
 Restart=always
 RestartSec=15
 StandardOutput=journal
