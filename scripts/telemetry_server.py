@@ -1195,6 +1195,72 @@ def _get_nrp_burst_status():
         return {"error": str(e)[:200]}
 
 
+# ── Live NATS message stream (Wireshark-style) ──────────────────
+
+import asyncio
+import collections
+
+_NATS_LIVE_BUFFER: collections.deque = collections.deque(maxlen=300)
+_NATS_LIVE_RUNNING = False
+
+
+def _start_nats_subscriber():
+    """Spawn a background thread that subscribes to agi.> and burst.>
+    and appends each message to the live buffer."""
+    global _NATS_LIVE_RUNNING
+    if _NATS_LIVE_RUNNING:
+        return
+    _NATS_LIVE_RUNNING = True
+
+    async def _run():
+        try:
+            import nats as nats_lib
+        except ImportError:
+            log.warning("nats-py not installed; NATS live stream disabled")
+            return
+        while True:
+            try:
+                nc = await nats_lib.connect("nats://localhost:4222", name="telemetry-live")
+                log.info("NATS live subscriber connected")
+
+                async def _on_msg(msg):
+                    data_preview = ""
+                    try:
+                        data_preview = msg.data[:200].decode("utf-8", "replace")
+                    except Exception:
+                        data_preview = f"<{len(msg.data)} bytes>"
+                    _NATS_LIVE_BUFFER.appendleft({
+                        "ts": time.time(),
+                        "subject": msg.subject,
+                        "size": len(msg.data),
+                        "preview": data_preview,
+                        "reply": msg.reply or "",
+                    })
+
+                await nc.subscribe("agi.>", cb=_on_msg)
+                await nc.subscribe("burst.>", cb=_on_msg)
+                # Block until disconnect
+                while nc.is_connected:
+                    await asyncio.sleep(5)
+                log.warning("NATS live subscriber disconnected, reconnecting...")
+            except Exception as e:
+                log.warning("NATS live subscriber error: %s, retrying in 10s", e)
+                await asyncio.sleep(10)
+
+    def _thread():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(_run())
+
+    t = threading.Thread(target=_thread, daemon=True, name="nats-live")
+    t.start()
+
+
+def _get_nats_live():
+    """Return the live NATS message buffer as a list."""
+    return list(_NATS_LIVE_BUFFER)
+
+
 class TelemetryHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=STATIC_DIR, **kwargs)
@@ -1226,6 +1292,8 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
             self._json_response(_get_training_history(min(days, 365)))
         elif self.path == "/api/nrp-burst" or self.path.startswith("/api/nrp-burst?"):
             self._json_response(_get_nrp_burst_status())
+        elif self.path == "/api/nats-live" or self.path.startswith("/api/nats-live?"):
+            self._json_response(_get_nats_live())
         elif self.path.startswith("/api/"):
             self._json_response({})
         else:
@@ -1348,6 +1416,7 @@ if __name__ == "__main__":
     except Exception as e:
         log.warning("initial snapshot failed (will retry in background): %s", e)
     threading.Thread(target=_refresher, daemon=True, name="snapshot").start()
+    _start_nats_subscriber()
 
     server = ThreadingHTTPServer(("0.0.0.0", args.port), TelemetryHandler)
     server.serve_forever()

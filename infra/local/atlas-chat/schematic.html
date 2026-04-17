@@ -708,31 +708,17 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       </div>
     </div>
 
-    <!-- NATS Throughput (with scale) -->
-    <div class="metric-panel">
-      <div class="panel-title"><span class="icon">&#9656;</span> NATS Throughput</div>
-      <div class="sparkline-wrap" style="position:relative">
-        <svg class="sparkline-svg" viewBox="0 0 300 80" preserveAspectRatio="none">
-          <defs>
-            <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#4a9eff" stop-opacity="0.4"/>
-              <stop offset="100%" stop-color="#4a9eff" stop-opacity="0"/>
-            </linearGradient>
-          </defs>
-          <polyline class="sparkline-area" id="spark-area" points=""/>
-          <polyline class="sparkline-line" id="spark-line" points=""/>
-        </svg>
-        <div style="position:absolute;right:2px;top:0;bottom:0;display:flex;flex-direction:column;justify-content:space-between;font-size:7px;color:var(--text-muted);font-family:var(--mono)">
-          <span id="nats-scale-max">0</span>
-          <span id="nats-scale-min">0</span>
-        </div>
+    <!-- NATS Live (Wireshark-style message stream) -->
+    <div class="metric-panel" style="grid-column:span 2">
+      <div class="panel-title"><span class="icon">&#9656;</span> NATS Live
+        <span style="float:right;font-size:9px;font-weight:400;color:var(--text-dim)">
+          In: <span id="nats-in">0</span> &middot;
+          Out: <span id="nats-out">0</span> &middot;
+          Conns: <span id="nats-conns">0</span> &middot;
+          JS: <span id="nats-js-msgs">0</span>
+        </span>
       </div>
-      <div class="sparkline-stats">
-        <div class="ss">In: <span id="nats-in">0</span></div>
-        <div class="ss">Out: <span id="nats-out">0</span></div>
-        <div class="ss">Conns: <span id="nats-conns">0</span></div>
-        <div class="ss">JS: <span id="nats-js-msgs">0</span></div>
-      </div>
+      <div id="nats-live-stream" style="font-family:var(--mono);font-size:10px;max-height:220px;overflow-y:auto;line-height:1.6"></div>
     </div>
 
     <!-- Memory Tiers (side-by-side with NATS) -->
@@ -1834,13 +1820,72 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     } catch(e){}
   }
 
+  // ─── NATS Live stream (Wireshark-style) ───
+  var natsLiveColors = {
+    'burst.submit':'#e6a832','burst.status':'#e6a832','burst.result':'#e6a832',
+    'agi.lh':'#4a9eff','agi.rh':'#c084fc',
+    'agi.memory':'#22d3ee','agi.safety':'#f87171',
+    'agi.meta':'#a3e635','agi.env':'#fb923c',
+    'agi.integration':'#e879f9','agi.dht':'#94a3b8'
+  };
+  function natsSubjectColor(subj){
+    for(var prefix in natsLiveColors){
+      if(subj.startsWith(prefix)) return natsLiveColors[prefix];
+    }
+    return 'var(--text-muted)';
+  }
+  function natsTimeAgo(ts){
+    var s = Math.floor(Date.now()/1000 - ts);
+    if(s < 1) return 'now';
+    if(s < 60) return s + 's';
+    if(s < 3600) return Math.floor(s/60) + 'm';
+    return Math.floor(s/3600) + 'h';
+  }
+  var natsLiveAutoScroll = true;
+  async function pollNatsLive(){
+    try {
+      var res = await fetch('/api/nats-live');
+      if(!res.ok) return;
+      var msgs = await res.json();
+      var container = el('nats-live-stream');
+      if(!container || !msgs.length) return;
+      // Check if user has scrolled up (disable auto-scroll)
+      natsLiveAutoScroll = container.scrollTop <= 10;
+      var html = '';
+      var shown = msgs.slice(0, 80);
+      shown.forEach(function(m){
+        var color = natsSubjectColor(m.subject);
+        var preview = (m.preview || '').replace(/</g,'&lt;').substring(0, 100);
+        // Try to parse JSON preview to show key fields
+        var detail = preview;
+        try {
+          var parsed = JSON.parse(m.preview);
+          if(parsed.job_id) detail = 'job_id=' + parsed.job_id;
+          if(parsed.descriptor && parsed.descriptor.name) detail += ' name=' + parsed.descriptor.name;
+          if(parsed.state) detail = 'state=' + parsed.state + (parsed.k8s_job ? ' k8s=' + parsed.k8s_job : '');
+          if(parsed.descriptor && parsed.descriptor.image) detail += ' img=' + parsed.descriptor.image.split('/').pop();
+        } catch(e){}
+        html += '<div style="display:flex;gap:8px;border-bottom:1px solid rgba(255,255,255,0.04);padding:1px 0">' +
+          '<span style="color:var(--text-dim);min-width:28px;text-align:right">' + natsTimeAgo(m.ts) + '</span>' +
+          '<span style="color:' + color + ';min-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + m.subject + '">' + m.subject + '</span>' +
+          '<span style="color:var(--text-dim);min-width:40px;text-align:right">' + m.size + 'B</span>' +
+          '<span style="color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1" title="' + preview + '">' + detail + '</span>' +
+          '</div>';
+      });
+      container.innerHTML = html;
+      if(natsLiveAutoScroll) container.scrollTop = 0;
+    } catch(e){}
+  }
+
   // ─── Init ───
   poll();
   pollEvents();
   pollNRP();
+  pollNatsLive();
   setInterval(poll, 5000);
   setInterval(pollEvents, 15000);
   setInterval(pollNRP, 30000);
+  setInterval(pollNatsLive, 2000);
   tickUptime();
   setInterval(tickUptime, 1000);
 
