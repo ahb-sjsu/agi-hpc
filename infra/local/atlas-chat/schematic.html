@@ -1896,12 +1896,32 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       var svg = el('nats-topo-svg');
       if(svg){
         var activePods = (window._nrpPods || []).filter(function(p){ return p.phase==='Running'||p.phase==='Pending'||p.phase==='ContainerCreating'; });
-        // Sort alphabetically so the layout is stable
-        conns.sort(function(a,b){
-          var aKey = (a.subs_list||[]).filter(function(s){return s.indexOf('_INBOX')!==0;})[0] || a.name || a.lang || '';
-          var bKey = (b.subs_list||[]).filter(function(s){return s.indexOf('_INBOX')!==0;})[0] || b.name || b.lang || '';
-          return aKey.localeCompare(bKey);
+        // Stable layout: cache slot assignments by connection key so nodes
+        // don't jump when the API returns connections in different order or
+        // connections briefly drop and reappear.
+        if(!window._topoSlots) window._topoSlots = {};
+        if(!window._topoSlotsPod) window._topoSlotsPod = {};
+        function connKey(c){
+          var subs = (c.subs_list||[]).filter(function(s){return s.indexOf('_INBOX')!==0;});
+          return subs[0] || c.name || (c.lang + ' ' + c.version) || String(c.cid||'');
+        }
+        // Assign stable slots: existing connections keep their slot, new ones get next free
+        var slots = window._topoSlots;
+        var usedSlots = {};
+        var sortedConns = conns.slice().sort(function(a,b){ return connKey(a).localeCompare(connKey(b)); });
+        // First pass: keep existing slots
+        sortedConns.forEach(function(c){ var k = connKey(c); if(slots[k] !== undefined) usedSlots[slots[k]] = true; });
+        // Second pass: assign new slots
+        var nextSlot = 0;
+        sortedConns.forEach(function(c){
+          var k = connKey(c);
+          if(slots[k] === undefined){
+            while(usedSlots[nextSlot]) nextSlot++;
+            slots[k] = nextSlot; usedSlots[nextSlot] = true;
+          }
         });
+        // Sort by slot for rendering
+        conns = sortedConns.sort(function(a,b){ return (slots[connKey(a)]||0) - (slots[connKey(b)]||0); });
         activePods.sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
         var leafOk = leafs.length > 0;
         var nLocal = conns.length;
