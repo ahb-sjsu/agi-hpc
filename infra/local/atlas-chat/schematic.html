@@ -1896,6 +1896,13 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       var svg = el('nats-topo-svg');
       if(svg){
         var activePods = (window._nrpPods || []).filter(function(p){ return p.phase==='Running'||p.phase==='Pending'||p.phase==='ContainerCreating'; });
+        // Sort alphabetically so the layout is stable
+        conns.sort(function(a,b){
+          var aKey = (a.subs_list||[]).filter(function(s){return s.indexOf('_INBOX')!==0;})[0] || a.name || a.lang || '';
+          var bKey = (b.subs_list||[]).filter(function(s){return s.indexOf('_INBOX')!==0;})[0] || b.name || b.lang || '';
+          return aKey.localeCompare(bKey);
+        });
+        activePods.sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
         var leafOk = leafs.length > 0;
         var nLocal = conns.length;
         var nPods = activePods.length;
