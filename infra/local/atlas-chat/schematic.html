@@ -710,15 +710,32 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 
     <!-- NATS Live (Wireshark-style message stream) -->
     <div class="metric-panel" style="grid-column:span 2">
-      <div class="panel-title"><span class="icon">&#9656;</span> NATS Live
-        <span style="float:right;font-size:9px;font-weight:400;color:var(--text-dim)">
+      <div class="panel-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span><span class="icon">&#9656;</span> NATS Live</span>
+        <span style="font-size:9px;font-weight:400;color:var(--text-dim)">
           In: <span id="nats-in">0</span> &middot;
           Out: <span id="nats-out">0</span> &middot;
           Conns: <span id="nats-conns">0</span> &middot;
-          JS: <span id="nats-js-msgs">0</span>
+          JS: <span id="nats-js-msgs">0</span> &middot;
+          <span id="nats-live-count">0</span> msgs
         </span>
+        <span style="flex:1"></span>
+        <!-- Column toggles -->
+        <span id="nats-col-toggles" style="font-size:9px;font-weight:400;display:flex;gap:6px;flex-wrap:wrap">
+          <label style="cursor:pointer;color:var(--text-dim)" title="Show age column"><input type="checkbox" checked data-col="age" style="vertical-align:middle;margin:0 2px"> age</label>
+          <label style="cursor:pointer;color:var(--text-dim)" title="Show subject"><input type="checkbox" checked data-col="subject" style="vertical-align:middle;margin:0 2px"> subject</label>
+          <label style="cursor:pointer;color:var(--text-dim)" title="Show size"><input type="checkbox" checked data-col="size" style="vertical-align:middle;margin:0 2px"> size</label>
+          <label style="cursor:pointer;color:var(--text-dim)" title="Show summary"><input type="checkbox" checked data-col="summary" style="vertical-align:middle;margin:0 2px"> summary</label>
+          <label style="cursor:pointer;color:var(--text-dim)" title="Show reply inbox"><input type="checkbox" data-col="reply" style="vertical-align:middle;margin:0 2px"> reply</label>
+        </span>
+        <!-- Subject filter -->
+        <input id="nats-filter" type="text" placeholder="filter subjects…" spellcheck="false"
+          style="font-size:9px;font-family:var(--mono);width:120px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--text)">
+        <!-- Pause -->
+        <button id="nats-pause-btn" title="Pause / resume auto-scroll"
+          style="font-size:9px;padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer">&#9646;&#9646;</button>
       </div>
-      <div id="nats-live-stream" style="font-family:var(--mono);font-size:10px;max-height:220px;overflow-y:auto;line-height:1.6"></div>
+      <div id="nats-live-stream" style="font-family:var(--mono);font-size:10px;max-height:260px;overflow-y:auto;line-height:1.5;scrollbar-width:thin"></div>
     </div>
 
     <!-- Memory Tiers (side-by-side with NATS) -->
@@ -1841,30 +1858,63 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     if(s < 3600) return Math.floor(s/60) + 'm';
     return Math.floor(s/3600) + 'h';
   }
-  var natsLiveAutoScroll = true;
+  var natsLivePaused = false;
+  // Pause button
+  (function(){
+    var btn = el('nats-pause-btn');
+    if(btn) btn.onclick = function(){
+      natsLivePaused = !natsLivePaused;
+      btn.textContent = natsLivePaused ? '\u25B6' : '\u23F8';
+      btn.title = natsLivePaused ? 'Resume' : 'Pause';
+    };
+  })();
+  // Read column visibility from checkboxes
+  function natsVisibleCols(){
+    var cols = {};
+    var checks = document.querySelectorAll('#nats-col-toggles input[data-col]');
+    checks.forEach(function(c){ cols[c.dataset.col] = c.checked; });
+    return cols;
+  }
   async function pollNatsLive(){
+    if(natsLivePaused) return;
     try {
       var res = await fetch('/api/nats-live');
       if(!res.ok) return;
       var msgs = await res.json();
       var container = el('nats-live-stream');
-      if(!container || !msgs.length) return;
-      // Check if user has scrolled up (disable auto-scroll)
-      natsLiveAutoScroll = container.scrollTop <= 10;
+      if(!container) return;
+      var countEl = el('nats-live-count');
+      if(countEl) countEl.textContent = msgs.length;
+      // Subject filter
+      var filterVal = (el('nats-filter') || {}).value || '';
+      if(filterVal){
+        var fl = filterVal.toLowerCase();
+        msgs = msgs.filter(function(m){ return m.subject.toLowerCase().indexOf(fl) !== -1; });
+      }
+      var cols = natsVisibleCols();
+      var shown = msgs.slice(0, 50);
+      if(!shown.length){
+        container.innerHTML = '<div style="color:var(--text-dim);padding:4px">no messages' + (filterVal ? ' matching "' + filterVal + '"' : '') + '</div>';
+        return;
+      }
       var html = '';
-      var shown = msgs.slice(0, 30);
       shown.forEach(function(m){
         var color = natsSubjectColor(m.subject);
         var detail = (m.summary || '').replace(/</g,'&lt;');
-        html += '<div style="display:flex;gap:8px;border-bottom:1px solid rgba(255,255,255,0.04);padding:1px 0">' +
-          '<span style="color:var(--text-dim);min-width:24px;text-align:right;flex-shrink:0">' + natsTimeAgo(m.ts) + '</span>' +
-          '<span style="color:' + color + ';min-width:150px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0" title="' + m.subject + '">' + m.subject + '</span>' +
-          '<span style="color:var(--text-dim);min-width:36px;text-align:right;flex-shrink:0">' + m.size + 'B</span>' +
-          '<span style="color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">' + detail + '</span>' +
-          '</div>';
+        html += '<div style="display:flex;gap:6px;border-bottom:1px solid rgba(255,255,255,0.04);padding:1px 0">';
+        if(cols.age !== false)
+          html += '<span style="color:var(--text-dim);min-width:22px;text-align:right;flex-shrink:0">' + natsTimeAgo(m.ts) + '</span>';
+        if(cols.subject !== false)
+          html += '<span style="color:' + color + ';min-width:140px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0" title="' + m.subject + '">' + m.subject + '</span>';
+        if(cols.size !== false)
+          html += '<span style="color:var(--text-dim);min-width:32px;text-align:right;flex-shrink:0">' + m.size + 'B</span>';
+        if(cols.reply)
+          html += '<span style="color:var(--text-dim);min-width:60px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;font-size:9px">' + (m.reply || '') + '</span>';
+        if(cols.summary !== false)
+          html += '<span style="color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1" title="' + detail + '">' + detail + '</span>';
+        html += '</div>';
       });
       container.innerHTML = html;
-      if(natsLiveAutoScroll) container.scrollTop = 0;
     } catch(e){}
   }
 
