@@ -1080,6 +1080,73 @@ def _build_events():
 
 _nrp_cache = {"data": {}, "ts": 0}
 
+# ── NRP NATS telemetry subscriber ──────────────────────────────
+# Background thread subscribes to nrp.> on local NATS so the leaf
+# node bridges those subjects from NRP. Incoming messages are cached
+# and served via /api/nrp-telemetry.
+_nrp_nats_cache = {"heartbeats": [], "pods": {}, "last_heartbeat": 0}
+_nrp_nats_lock = threading.Lock()
+
+
+def _nrp_nats_listener():
+    """Background thread: subscribe to nrp.> on Atlas NATS."""
+    import socket as _socket
+    while True:
+        try:
+            s = _socket.create_connection(("localhost", 4222), 10)
+            s.settimeout(90)  # longer than heartbeat interval
+            s.recv(4096)  # INFO
+            s.sendall(b'CONNECT {"verbose":false}\r\n')
+            s.sendall(b'SUB nrp.> 1\r\n')
+            s.sendall(b'PING\r\n')
+            s.recv(1024)
+            log.info("[nrp-nats] subscribed to nrp.>")
+
+            buf = b""
+            while True:
+                data = s.recv(4096)
+                if not data:
+                    break
+                buf += data
+                while b"\r\n" in buf:
+                    line, buf = buf.split(b"\r\n", 1)
+                    if line.startswith(b"MSG"):
+                        parts = line.decode().split()
+                        subject = parts[1]
+                        size = int(parts[-1])
+                        while len(buf) < size + 2:
+                            buf += s.recv(4096)
+                        payload = buf[:size].decode(errors="replace")
+                        buf = buf[size + 2:]
+                        try:
+                            msg = json.loads(payload)
+                        except Exception:
+                            msg = {"raw": payload[:200]}
+                        with _nrp_nats_lock:
+                            if subject == "nrp.heartbeat":
+                                _nrp_nats_cache["last_heartbeat"] = time.time()
+                                _nrp_nats_cache["heartbeats"].append(msg)
+                                _nrp_nats_cache["heartbeats"] = _nrp_nats_cache["heartbeats"][-10:]
+                            elif subject == "nrp.pods":
+                                _nrp_nats_cache["pods"] = msg
+                            log.info("[nrp-nats] %s: %s", subject, str(msg)[:120])
+                    elif line == b"PING":
+                        s.sendall(b"PONG\r\n")
+        except Exception as e:
+            log.warning("[nrp-nats] disconnected: %s — reconnecting in 10s", e)
+        time.sleep(10)
+
+
+def _get_nrp_nats_telemetry():
+    with _nrp_nats_lock:
+        age = time.time() - _nrp_nats_cache["last_heartbeat"] if _nrp_nats_cache["last_heartbeat"] else None
+        return {
+            "leaf_alive": age is not None and age < 120,
+            "last_heartbeat_age_s": round(age, 1) if age else None,
+            "heartbeats": list(_nrp_nats_cache["heartbeats"]),
+            "pods": dict(_nrp_nats_cache["pods"]),
+        }
+
 
 def _get_nrp_burst_status():
     """Query NRP for nats-bursting job + pod status. Cached for 30s."""
@@ -1401,6 +1468,8 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
             self._json_response(_get_training_history(min(days, 365)))
         elif self.path == "/api/nrp-burst" or self.path.startswith("/api/nrp-burst?"):
             self._json_response(_get_nrp_burst_status())
+        elif self.path == "/api/nrp-telemetry" or self.path.startswith("/api/nrp-telemetry?"):
+            self._json_response(_get_nrp_nats_telemetry())
         elif self.path == "/api/nats-live" or self.path.startswith("/api/nats-live?"):
             self._json_response(_get_nats_live())
         elif self.path.startswith("/api/"):
@@ -1525,6 +1594,7 @@ if __name__ == "__main__":
     except Exception as e:
         log.warning("initial snapshot failed (will retry in background): %s", e)
     threading.Thread(target=_refresher, daemon=True, name="snapshot").start()
+    threading.Thread(target=_nrp_nats_listener, daemon=True, name="nrp-nats").start()
     _start_nats_subscriber()
 
     server = ThreadingHTTPServer(("0.0.0.0", args.port), TelemetryHandler)
