@@ -1796,11 +1796,14 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     if(s==='Failed') return 'var(--red)';
     return 'var(--yellow)';
   }
+  window._nrpPods = [];
   async function pollNRP(){
     try {
       var res = await fetch('/api/nrp-burst');
       if(!res.ok) return;
       var d = await res.json();
+      // Stash pod data for the NATS Connections panel to read
+      window._nrpPods = d.pods || [];
       el('nrp-succeeded').textContent = d.succeeded || 0;
       el('nrp-running').textContent = d.running || 0;
       el('nrp-pending').textContent = d.pending || 0;
@@ -1891,28 +1894,44 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       var epEl = el('nats-endpoints');
       if(epEl){
         var epHtml = '';
-        // Leaf connections first (prominent)
-        leafs.forEach(function(lf){
-          epHtml += '<div style="display:flex;gap:6px;align-items:center;padding:2px 4px;background:rgba(74,158,255,0.08);border-radius:4px">' +
-            '<span style="color:var(--green);font-weight:600">&#9670;</span>' +
-            '<span style="color:var(--accent);flex:1">NRP leaf</span>' +
-            '<span style="color:var(--text-dim)">' + lf.ip + '</span>' +
-            '<span style="color:var(--green)">' + lf.rtt + '</span>' +
-            '<span style="color:var(--text-dim)">' + lf.subscriptions + ' subs</span>' +
-            '<span style="color:var(--text-dim);font-size:8px">' + lf.compression + '</span>' +
-            '</div>';
-        });
-        if(!leafs.length){
-          epHtml += '<div style="padding:2px 4px;color:var(--red)">&#9670; NRP leaf disconnected</div>';
+        // NRP leaf + pods behind it
+        if(leafs.length){
+          leafs.forEach(function(lf){
+            epHtml += '<div style="padding:2px 4px;background:rgba(74,158,255,0.08);border-radius:4px;margin-bottom:2px">' +
+              '<div style="display:flex;gap:6px;align-items:center">' +
+              '<span style="color:var(--green);font-weight:600">&#9670;</span>' +
+              '<span style="color:var(--accent)">NRP leaf</span>' +
+              '<span style="color:var(--text-dim)">' + lf.ip + '</span>' +
+              '<span style="color:var(--green)">' + lf.rtt + '</span>' +
+              '<span style="color:var(--text-dim)">' + lf.subscriptions + ' subs</span>' +
+              '<span style="color:var(--text-dim);font-size:8px">' + lf.compression + '</span>' +
+              '</div></div>';
+          });
+        } else {
+          epHtml += '<div style="padding:2px 4px;color:var(--red);margin-bottom:2px">&#9670; NRP leaf disconnected</div>';
         }
-        // Client connections
+        // Fetch pod details from nrp-burst cache (pollNRP populates this)
+        if(window._nrpPods && window._nrpPods.length){
+          window._nrpPods.forEach(function(p){
+            var phaseColor = p.phase==='Running'?'var(--green)':p.phase==='Succeeded'?'var(--text-dim)':p.phase==='Failed'?'var(--red)':'var(--yellow)';
+            var res = p.resources || {};
+            var resStr = [res.cpu, res.memory, res.gpu ? res.gpu+' GPU' : ''].filter(Boolean).join(' / ');
+            epHtml += '<div style="display:flex;gap:4px;align-items:center;padding:1px 4px 1px 16px;border-bottom:1px solid rgba(255,255,255,0.03);font-size:8px">' +
+              '<span style="color:' + phaseColor + '">&#9679;</span>' +
+              '<span style="color:var(--text);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + p.name + '">' + p.name + '</span>' +
+              '<span style="color:' + phaseColor + '">' + p.phase + '</span>' +
+              (p.node ? '<span style="color:var(--text-dim)" title="' + p.node + '">' + p.node.split('.')[0] + '</span>' : '') +
+              (resStr ? '<span style="color:var(--text-dim);margin-left:auto">' + resStr + '</span>' : '') +
+              '</div>';
+          });
+        }
+        // Local NATS clients
         conns.forEach(function(c){
           var label = c.name || (c.lang + ' ' + c.version);
           var subs = (c.subs_list || []).slice(0,3).join(', ');
           var idleColor = 'var(--text-dim)';
-          // Highlight active vs idle
           if(c.idle && c.idle.indexOf('m') === -1 && c.idle.indexOf('h') === -1 && c.idle.indexOf('d') === -1)
-            idleColor = 'var(--green)'; // active in last minute
+            idleColor = 'var(--green)';
           epHtml += '<div style="display:flex;gap:6px;align-items:center;padding:2px 4px;border-bottom:1px solid rgba(255,255,255,0.04)" title="subs: ' + subs + '">' +
             '<span style="color:' + idleColor + '">&#9679;</span>' +
             '<span style="color:var(--text);min-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + label + '</span>' +
