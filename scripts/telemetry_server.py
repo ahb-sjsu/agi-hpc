@@ -1294,8 +1294,63 @@ def _start_nats_subscriber():
 
 
 def _get_nats_live():
-    """Return the live NATS message buffer as a list."""
-    return list(_NATS_LIVE_BUFFER)
+    """Return the live NATS message buffer + connected endpoints."""
+    # Fetch /connz for connected client details
+    connections = []
+    try:
+        import urllib.request
+        req = urllib.request.Request(
+            "http://localhost:8222/connz?subs=true",
+            headers={"Accept": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read())
+            for c in data.get("connections", []):
+                connections.append({
+                    "cid": c.get("cid"),
+                    "name": c.get("name", ""),
+                    "kind": c.get("kind", "Client"),
+                    "ip": c.get("ip", ""),
+                    "lang": c.get("lang", ""),
+                    "version": c.get("version", ""),
+                    "uptime": c.get("uptime", ""),
+                    "idle": c.get("idle", ""),
+                    "rtt": c.get("rtt", ""),
+                    "in_msgs": c.get("in_msgs", 0),
+                    "out_msgs": c.get("out_msgs", 0),
+                    "in_bytes": c.get("in_bytes", 0),
+                    "out_bytes": c.get("out_bytes", 0),
+                    "subscriptions": c.get("subscriptions", 0),
+                    "subs_list": c.get("subscriptions_list", [])[:10],
+                })
+    except Exception:
+        pass
+    # Fetch /leafz for leaf connections
+    leafs = []
+    try:
+        req = urllib.request.Request(
+            "http://localhost:8222/leafz",
+            headers={"Accept": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read())
+            for lf in data.get("leafs", []):
+                leafs.append({
+                    "name": lf.get("name", ""),
+                    "ip": lf.get("ip", ""),
+                    "rtt": lf.get("rtt", ""),
+                    "in_msgs": lf.get("in_msgs", 0),
+                    "out_msgs": lf.get("out_msgs", 0),
+                    "subscriptions": lf.get("subscriptions", 0),
+                    "compression": lf.get("compression", ""),
+                })
+    except Exception:
+        pass
+    return {
+        "messages": list(_NATS_LIVE_BUFFER),
+        "connections": connections,
+        "leafs": leafs,
+    }
 
 
 class TelemetryHandler(SimpleHTTPRequestHandler):

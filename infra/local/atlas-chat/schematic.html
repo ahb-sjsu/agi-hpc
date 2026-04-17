@@ -710,35 +710,38 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 
     <!-- NATS Live (Wireshark-style message stream) -->
     <div class="metric-panel" style="grid-column:span 2">
-      <div class="panel-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <div class="panel-title" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
         <span><span class="icon">&#9656;</span> NATS Live</span>
         <span style="font-size:9px;font-weight:400;color:var(--text-dim)">
-          In: <span id="nats-in">0</span> &middot;
-          Out: <span id="nats-out">0</span> &middot;
-          Conns: <span id="nats-conns">0</span> &middot;
-          JS: <span id="nats-js-msgs">0</span> &middot;
           <span id="nats-live-count">0</span> msgs
         </span>
         <span style="flex:1"></span>
-        <!-- Column toggles -->
-        <span id="nats-col-toggles" style="font-size:9px;font-weight:400;display:flex;gap:6px;flex-wrap:wrap">
-          <label style="cursor:pointer;color:var(--text-dim)" title="Show age column"><input type="checkbox" checked data-col="age" style="vertical-align:middle;margin:0 2px"> age</label>
-          <label style="cursor:pointer;color:var(--text-dim)" title="Show subject"><input type="checkbox" checked data-col="subject" style="vertical-align:middle;margin:0 2px"> subject</label>
-          <label style="cursor:pointer;color:var(--text-dim)" title="Show size"><input type="checkbox" checked data-col="size" style="vertical-align:middle;margin:0 2px"> size</label>
-          <label style="cursor:pointer;color:var(--text-dim)" title="Show summary"><input type="checkbox" checked data-col="summary" style="vertical-align:middle;margin:0 2px"> summary</label>
-          <label style="cursor:pointer;color:var(--text-dim)" title="Show reply inbox"><input type="checkbox" data-col="reply" style="vertical-align:middle;margin:0 2px"> reply</label>
+        <span id="nats-col-toggles" style="font-size:8px;font-weight:400;display:flex;gap:4px;flex-wrap:wrap">
+          <label style="cursor:pointer;color:var(--text-dim)"><input type="checkbox" checked data-col="age" style="vertical-align:middle;margin:0 1px"> age</label>
+          <label style="cursor:pointer;color:var(--text-dim)"><input type="checkbox" checked data-col="subject" style="vertical-align:middle;margin:0 1px"> subj</label>
+          <label style="cursor:pointer;color:var(--text-dim)"><input type="checkbox" checked data-col="size" style="vertical-align:middle;margin:0 1px"> size</label>
+          <label style="cursor:pointer;color:var(--text-dim)"><input type="checkbox" checked data-col="summary" style="vertical-align:middle;margin:0 1px"> info</label>
+          <label style="cursor:pointer;color:var(--text-dim)"><input type="checkbox" data-col="reply" style="vertical-align:middle;margin:0 1px"> reply</label>
         </span>
-        <!-- Subject filter -->
-        <input id="nats-filter" type="text" placeholder="filter subjects…" spellcheck="false"
-          style="font-size:9px;font-family:var(--mono);width:120px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--text)">
-        <!-- Pause -->
-        <button id="nats-pause-btn" title="Pause / resume auto-scroll"
-          style="font-size:9px;padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer">&#9646;&#9646;</button>
+        <input id="nats-filter" type="text" placeholder="filter…" spellcheck="false"
+          style="font-size:9px;font-family:var(--mono);width:80px;padding:2px 4px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--text)">
+        <button id="nats-pause-btn" title="Pause / resume"
+          style="font-size:9px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer">&#9646;&#9646;</button>
       </div>
-      <div id="nats-live-stream" style="font-family:var(--mono);font-size:10px;max-height:260px;overflow-y:auto;line-height:1.5;scrollbar-width:thin"></div>
+      <div id="nats-live-stream" style="font-family:var(--mono);font-size:10px;max-height:220px;overflow-y:auto;line-height:1.5;scrollbar-width:thin"></div>
     </div>
 
-    <!-- Memory Tiers (side-by-side with NATS) -->
+    <!-- NATS Connections (next to Memory Tiers) -->
+    <div class="metric-panel">
+      <div class="panel-title"><span class="icon">&#9670;</span> NATS Connections
+        <span style="font-size:9px;font-weight:400;color:var(--text-dim)">
+          In: <span id="nats-in">0</span> Out: <span id="nats-out">0</span> Conns: <span id="nats-conns">0</span> JS: <span id="nats-js-msgs">0</span>
+        </span>
+      </div>
+      <div id="nats-endpoints" style="font-family:var(--mono);font-size:9px;display:flex;flex-direction:column;gap:3px;max-height:160px;overflow-y:auto;scrollbar-width:thin"></div>
+    </div>
+
+    <!-- Memory Tiers -->
     <div class="metric-panel">
       <div class="panel-title"><span class="icon">&#9733;</span> Memory Tiers</div>
       <div class="mem-tier">
@@ -1880,7 +1883,46 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     try {
       var res = await fetch('/api/nats-live');
       if(!res.ok) return;
-      var msgs = await res.json();
+      var data = await res.json();
+      var msgs = data.messages || data;  // backwards compat
+      var conns = data.connections || [];
+      var leafs = data.leafs || [];
+      // Render endpoints in the connections panel
+      var epEl = el('nats-endpoints');
+      if(epEl){
+        var epHtml = '';
+        // Leaf connections first (prominent)
+        leafs.forEach(function(lf){
+          epHtml += '<div style="display:flex;gap:6px;align-items:center;padding:2px 4px;background:rgba(74,158,255,0.08);border-radius:4px">' +
+            '<span style="color:var(--green);font-weight:600">&#9670;</span>' +
+            '<span style="color:var(--accent);flex:1">NRP leaf</span>' +
+            '<span style="color:var(--text-dim)">' + lf.ip + '</span>' +
+            '<span style="color:var(--green)">' + lf.rtt + '</span>' +
+            '<span style="color:var(--text-dim)">' + lf.subscriptions + ' subs</span>' +
+            '<span style="color:var(--text-dim);font-size:8px">' + lf.compression + '</span>' +
+            '</div>';
+        });
+        if(!leafs.length){
+          epHtml += '<div style="padding:2px 4px;color:var(--red)">&#9670; NRP leaf disconnected</div>';
+        }
+        // Client connections
+        conns.forEach(function(c){
+          var label = c.name || (c.lang + ' ' + c.version);
+          var subs = (c.subs_list || []).slice(0,3).join(', ');
+          var idleColor = 'var(--text-dim)';
+          // Highlight active vs idle
+          if(c.idle && c.idle.indexOf('m') === -1 && c.idle.indexOf('h') === -1 && c.idle.indexOf('d') === -1)
+            idleColor = 'var(--green)'; // active in last minute
+          epHtml += '<div style="display:flex;gap:6px;align-items:center;padding:2px 4px;border-bottom:1px solid rgba(255,255,255,0.04)" title="subs: ' + subs + '">' +
+            '<span style="color:' + idleColor + '">&#9679;</span>' +
+            '<span style="color:var(--text);min-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + label + '</span>' +
+            '<span style="color:var(--text-dim);font-size:8px">' + c.rtt + '</span>' +
+            '<span style="color:var(--text-dim);font-size:8px">' + c.subscriptions + ' subs</span>' +
+            '<span style="color:var(--text-dim);font-size:8px;margin-left:auto">idle ' + c.idle + '</span>' +
+            '</div>';
+        });
+        epEl.innerHTML = epHtml;
+      }
       var container = el('nats-live-stream');
       if(!container) return;
       var countEl = el('nats-live-count');
