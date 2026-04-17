@@ -1,0 +1,36 @@
+# Nemotron 3 Reasoning Challenge — NRP Docker image
+#
+# Build on Atlas:
+#   docker build -f Dockerfile.nrp -t nemotron-nrp:0.1 .
+#
+# Run on NRP via nats-bursting or direct kubectl:
+#   resources: 1 GPU (H200 or A100), 4 CPU, 64Gi RAM
+FROM pytorch/pytorch:2.4.1-cuda12.1-cudnn9-devel
+
+WORKDIR /app
+
+# pytorch base already has gcc, make, ninja, nvcc, torch 2.4.1+cu121.
+# Install deps WITHOUT letting pip touch torch (--no-deps for torch-dependent
+# packages, then their non-torch deps separately).
+RUN pip install --no-cache-dir --no-deps \
+        transformers peft accelerate trl && \
+    pip install --no-cache-dir \
+        safetensors tokenizers huggingface-hub \
+        datasets bitsandbytes \
+        sentencepiece protobuf polars numpy \
+        jinja2 regex requests tqdm pyyaml packaging \
+        xxhash multiprocess dill pyarrow fsspec aiohttp
+
+# mamba_ssm + causal_conv1d — CUDA compilation (~5 min)
+# --no-build-isolation forces use of the existing torch 2.4.1+cu121
+# instead of pip pulling latest torch into an isolated build env.
+ENV TORCH_CUDA_ARCH_LIST="7.0 8.0 9.0"
+RUN pip install --no-cache-dir --no-build-isolation causal-conv1d && \
+    pip install --no-cache-dir --no-build-isolation mamba-ssm
+
+COPY nemotron_nrp.py /app/
+COPY nemotron_v3_kaggle.py /app/
+
+RUN mkdir -p /data /output
+ENV PYTHONUNBUFFERED=1
+ENTRYPOINT ["python3", "/app/nemotron_nrp.py"]
