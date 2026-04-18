@@ -1834,15 +1834,20 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
           if(mem.endsWith('Mi')) totalMemMi += parseInt(mem);
           else if(mem.endsWith('Gi')) totalMemMi += parseInt(mem) * 1024;
         });
-        var parts = [];
-        for(var gm in gpuModels) parts.push(gpuModels[gm] + 'x ' + gm);
+        var vramPerGpu = {'A100':80,'H100':80,'H200':141,'L40S':48,'V100':32,'T4':16,'GV100':32,'GPU':0};
+        var parts = [], totalVram = 0;
+        for(var gm in gpuModels){
+          parts.push(gpuModels[gm] + 'x ' + gm);
+          totalVram += gpuModels[gm] * (vramPerGpu[gm] || 0);
+        }
         if(!parts.length && totalGpu) parts.push(totalGpu + ' GPU');
         var cpuStr = totalCpuM >= 1000 ? (totalCpuM/1000).toFixed(1) + ' cores' : totalCpuM + 'm';
         var memStr = totalMemMi >= 1024 ? (totalMemMi/1024).toFixed(1) + ' GiB' : totalMemMi + ' MiB';
         var html = '';
-        if(parts.length) html += '<span style="color:var(--accent)">' + parts.join(' + ') + '</span> &nbsp; ';
-        if(totalCpuM) html += '<span style="color:var(--green)">' + cpuStr + '</span> &nbsp; ';
-        if(totalMemMi) html += '<span style="color:var(--text-dim)">' + memStr + ' RAM</span>';
+        if(parts.length) html += '<span style="color:var(--accent)">' + parts.join(' + ') + '</span>';
+        if(totalVram) html += ' <span style="color:var(--accent);font-weight:700">' + totalVram + ' GB VRAM</span>';
+        if(totalCpuM) html += ' &nbsp;<span style="color:var(--green)">' + cpuStr + '</span>';
+        if(totalMemMi) html += ' &nbsp;<span style="color:var(--text-dim)">' + memStr + ' RAM</span>';
         if(!html) html = '<span style="color:var(--text-dim)">no active pods</span>';
         sumEl.innerHTML = html;
       }
@@ -2124,7 +2129,9 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
             var statusText = p.reason || p.phase;
             var gpu = (p.resources||{}).gpu || '';
             var gpuModel = (p.resources||{}).gpu_model || '';
-            var gpuDisplay = gpu ? (gpuModel ? gpu + 'x ' + gpuModel : gpu + ' GPU') : '\u2014';
+            var vramMap = {'A100':'80G','H100':'80G','H200':'141G','L40S':'48G','V100':'32G','T4':'16G','GV100':'32G'};
+            var vram = gpuModel ? (vramMap[gpuModel]||'') : '';
+            var gpuDisplay = gpu ? (gpuModel ? gpu + 'x ' + gpuModel + (vram?' '+vram:'') : gpu + ' GPU') : '\u2014';
             var img = p.image || '\u2014';
             var node = p.node ? p.node.split('.')[0] : '\u2014';
             var usage = p.usage || {};
