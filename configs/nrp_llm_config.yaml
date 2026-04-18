@@ -1,0 +1,57 @@
+# NRP Managed LLM Configuration
+# Routes Divine Council agents to NRP Nautilus managed LLM API
+# instead of local llama.cpp servers, freeing both local GPUs.
+#
+# NRP provides these models at zero cost:
+#   kimi     = Kimi-K2.5 (1T params, multimodal, agentic coding)
+#   qwen3    = Qwen3.5-397B (multimodal, Claude/Gemini-level)
+#   gemma-4-e4b = Gemma 4 (multimodal)
+#   qwen3-small, qwen3-27b, gemma, glm-4.7, minimax-m2, olmo
+
+nrp_llm:
+  base_url: "https://ellm.nrp-nautilus.io/v1"
+  # Token from NRP LLM Access (set via env NRP_LLM_TOKEN or here)
+  api_key: "${NRP_LLM_TOKEN}"
+
+  # Divine Council agent -> NRP model mapping
+  agents:
+    id:
+      model: "qwen3"           # Qwen3.5-397B (was: local Qwen 3 32B)
+      role: "System 1 — fast, intuitive reasoning"
+      extra_body:
+        chat_template_kwargs:
+          enable_thinking: false
+      temperature: 0.7
+      max_tokens: 4096
+
+    superego:
+      model: "gemma-4-e4b"     # Gemma 4 (was: local Gemma 4 31B)
+      role: "System 2 — deliberative, ethical reasoning"
+      temperature: 0.3
+      max_tokens: 4096
+
+    ego:
+      model: "kimi"            # Kimi-K2.5 1T (was: local Gemma 4 26B MoE)
+      role: "Arbitrator — structured debate"
+      extra_body:
+        chat_template_kwargs:
+          thinking: false
+      temperature: 0.5
+      max_tokens: 8192
+
+  # Additional models for specialized tasks
+  specialists:
+    coder:
+      model: "kimi"
+      role: "Code generation and review"
+    analyst:
+      model: "qwen3"
+      role: "Data analysis and pattern recognition"
+    vision:
+      model: "gemma-4-e4b"
+      role: "Visual analysis (multimodal)"
+
+  # Rate limiting (be polite to shared resource)
+  rate_limit:
+    max_concurrent: 5
+    delay_between_calls_s: 0.5
