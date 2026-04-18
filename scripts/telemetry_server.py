@@ -1091,14 +1091,15 @@ _nrp_nats_lock = threading.Lock()
 def _nrp_nats_listener():
     """Background thread: subscribe to nrp.> on Atlas NATS."""
     import socket as _socket
+
     while True:
         try:
             s = _socket.create_connection(("localhost", 4222), 10)
             s.settimeout(90)  # longer than heartbeat interval
             s.recv(4096)  # INFO
             s.sendall(b'CONNECT {"verbose":false}\r\n')
-            s.sendall(b'SUB nrp.> 1\r\n')
-            s.sendall(b'PING\r\n')
+            s.sendall(b"SUB nrp.> 1\r\n")
+            s.sendall(b"PING\r\n")
             s.recv(1024)
             log.info("[nrp-nats] subscribed to nrp.>")
 
@@ -1117,7 +1118,7 @@ def _nrp_nats_listener():
                         while len(buf) < size + 2:
                             buf += s.recv(4096)
                         payload = buf[:size].decode(errors="replace")
-                        buf = buf[size + 2:]
+                        buf = buf[size + 2 :]
                         try:
                             msg = json.loads(payload)
                         except Exception:
@@ -1126,7 +1127,9 @@ def _nrp_nats_listener():
                             if subject == "nrp.heartbeat":
                                 _nrp_nats_cache["last_heartbeat"] = time.time()
                                 _nrp_nats_cache["heartbeats"].append(msg)
-                                _nrp_nats_cache["heartbeats"] = _nrp_nats_cache["heartbeats"][-10:]
+                                _nrp_nats_cache["heartbeats"] = _nrp_nats_cache[
+                                    "heartbeats"
+                                ][-10:]
                             elif subject == "nrp.pods":
                                 _nrp_nats_cache["pods"] = msg
                             log.info("[nrp-nats] %s: %s", subject, str(msg)[:120])
@@ -1139,7 +1142,11 @@ def _nrp_nats_listener():
 
 def _get_nrp_nats_telemetry():
     with _nrp_nats_lock:
-        age = time.time() - _nrp_nats_cache["last_heartbeat"] if _nrp_nats_cache["last_heartbeat"] else None
+        age = (
+            time.time() - _nrp_nats_cache["last_heartbeat"]
+            if _nrp_nats_cache["last_heartbeat"]
+            else None
+        )
         return {
             "leaf_alive": age is not None and age < 120,
             "last_heartbeat_age_s": round(age, 1) if age else None,
@@ -1248,15 +1255,26 @@ def _get_erebus_activity(since: int = 0, limit: int = 200) -> dict:
 #   1. KILL pods that are under-utilizing requested resources
 #   2. COUNT violations and enforce the 4-pod limit
 
+
 def _get_pod_logs(pod_name: str, tail: int = 8) -> dict:
     """Fetch recent logs from a pod via kubectl."""
     kubeconfig = os.path.expanduser("~/.kube/config")
     ns = "ssu-atlas-ai"
     try:
         result = subprocess.run(
-            ["kubectl", "--kubeconfig", kubeconfig, "-n", ns,
-             "logs", pod_name, f"--tail={tail}"],
-            capture_output=True, text=True, timeout=5,
+            [
+                "kubectl",
+                "--kubeconfig",
+                kubeconfig,
+                "-n",
+                ns,
+                "logs",
+                pod_name,
+                f"--tail={tail}",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         if result.returncode == 0:
             return {"pod": pod_name, "logs": result.stdout.strip().split("\n")}
@@ -1270,17 +1288,22 @@ _nrp_mode: dict = {"mode": "auto", "active": "unknown", "n_active": 0}
 
 
 def _parse_cpu_m(val):
-    if not val: return 0
+    if not val:
+        return 0
     val = str(val).strip()
     return int(val[:-1]) if val.endswith("m") else int(float(val) * 1000)
 
 
 def _parse_mem_mi(val):
-    if not val: return 0
+    if not val:
+        return 0
     val = str(val).strip().replace(" ", "")
-    if val.endswith("Mi"): return int(val[:-2])
-    if val.endswith("Gi"): return int(float(val[:-2]) * 1024)
-    if val.endswith("GB"): return int(float(val[:-2]) * 1024)
+    if val.endswith("Mi"):
+        return int(val[:-2])
+    if val.endswith("Gi"):
+        return int(float(val[:-2]) * 1024)
+    if val.endswith("GB"):
+        return int(float(val[:-2]) * 1024)
     return 0
 
 
@@ -1363,17 +1386,29 @@ def _nrp_watchdog_check(pods: list[dict]):
             job_name = pod.get("job", "")
             target = ("job", job_name) if job_name else ("pod", name)
             subprocess.run(
-                ["kubectl", "--kubeconfig", kubeconfig, "-n", ns,
-                 "delete", target[0], target[1]],
-                capture_output=True, timeout=10)
+                [
+                    "kubectl",
+                    "--kubeconfig",
+                    kubeconfig,
+                    "-n",
+                    ns,
+                    "delete",
+                    target[0],
+                    target[1],
+                ],
+                capture_output=True,
+                timeout=10,
+            )
         except Exception as e:
             log.error(f"[nrp-watchdog] Failed to kill {name}: {e}")
         _nrp_violations.pop(name, None)
 
     # Emergency: if 4+ pods violating simultaneously, kill ALL violators immediately
     if n_violating >= 4:
-        log.warning(f"[nrp-watchdog] EMERGENCY: {n_violating} pods violating "
-                   f"(ban threshold is 4). Killing all violators.")
+        log.warning(
+            f"[nrp-watchdog] EMERGENCY: {n_violating} pods violating "
+            f"(ban threshold is 4). Killing all violators."
+        )
         for pod in active:
             name = pod["name"]
             if _pod_is_violating(pod):
@@ -1381,9 +1416,19 @@ def _nrp_watchdog_check(pods: list[dict]):
                     job_name = pod.get("job", "")
                     target = ("job", job_name) if job_name else ("pod", name)
                     subprocess.run(
-                        ["kubectl", "--kubeconfig", kubeconfig, "-n", ns,
-                         "delete", target[0], target[1]],
-                        capture_output=True, timeout=10)
+                        [
+                            "kubectl",
+                            "--kubeconfig",
+                            kubeconfig,
+                            "-n",
+                            ns,
+                            "delete",
+                            target[0],
+                            target[1],
+                        ],
+                        capture_output=True,
+                        timeout=10,
+                    )
                 except Exception:
                     pass
 
@@ -1399,25 +1444,30 @@ def _nrp_watchdog_check(pods: list[dict]):
             if help_file.exists():
                 queue = json.loads(help_file.read_text())
             from datetime import datetime
+
             for name, pod, violation in pods_to_kill:
-                queue.append({
-                    "task": 0,
-                    "question": (
-                        f"[WATCHDOG NEGATIVE FEEDBACK] Pod '{name}' was killed "
-                        f"for NRP violation: {violation}. "
-                        f"Resources requested: cpu={pod.get('resources',{}).get('cpu','?')}, "
-                        f"memory={pod.get('resources',{}).get('memory','?')}, "
-                        f"gpu={pod.get('resources',{}).get('gpu','')}. "
-                        f"Rule: CPU-only pods must use cpu<=1, memory<=2Gi to stay "
-                        f"in the ignored utilization range. GPU pods must maintain "
-                        f">40% GPU utilization. Do NOT repeat this mistake."
-                    ),
-                    "timestamp": datetime.now().isoformat(),
-                    "source": "watchdog",
-                    "severity": "violation",
-                })
+                queue.append(
+                    {
+                        "task": 0,
+                        "question": (
+                            f"[WATCHDOG NEGATIVE FEEDBACK] Pod '{name}' was killed "
+                            f"for NRP violation: {violation}. "
+                            f"Resources requested: cpu={pod.get('resources',{}).get('cpu','?')}, "
+                            f"memory={pod.get('resources',{}).get('memory','?')}, "
+                            f"gpu={pod.get('resources',{}).get('gpu','')}. "
+                            f"Rule: CPU-only pods must use cpu<=1, memory<=2Gi to stay "
+                            f"in the ignored utilization range. GPU pods must maintain "
+                            f">40% GPU utilization. Do NOT repeat this mistake."
+                        ),
+                        "timestamp": datetime.now().isoformat(),
+                        "source": "watchdog",
+                        "severity": "violation",
+                    }
+                )
             help_file.write_text(json.dumps(queue[-30:], indent=2))
-            log.info(f"[nrp-watchdog] Wrote {len(pods_to_kill)} violation(s) to Erebus feedback")
+            log.info(
+                f"[nrp-watchdog] Wrote {len(pods_to_kill)} violation(s) to Erebus feedback"
+            )
         except Exception as e:
             log.warning(f"[nrp-watchdog] Failed to write Erebus feedback: {e}")
 
@@ -1431,8 +1481,9 @@ def nrp_validate_pod_spec(spec: dict) -> list[str]:
     Call this BEFORE kubectl apply to catch stupid requests.
     """
     problems = []
-    containers = spec.get("spec", {}).get("template", {}).get(
-        "spec", {}).get("containers", [])
+    containers = (
+        spec.get("spec", {}).get("template", {}).get("spec", {}).get("containers", [])
+    )
     if not containers:
         problems.append("no containers defined")
         return problems
@@ -1462,11 +1513,15 @@ def nrp_validate_pod_spec(spec: dict) -> list[str]:
         mem_mi = _parse_mem_mi(req.get("memory", ""))
         cpu_m = _parse_cpu_m(req.get("cpu", ""))
         if mem_mi > 2048:
-            problems.append(f"CPU-only pod requests {req['memory']} RAM "
-                          f"(>2GB, subject to utilization monitoring). Use 2Gi.")
+            problems.append(
+                f"CPU-only pod requests {req['memory']} RAM "
+                f"(>2GB, subject to utilization monitoring). Use 2Gi."
+            )
         if cpu_m > 1000:
-            problems.append(f"CPU-only pod requests {req['cpu']} CPU "
-                          f"(>1, subject to utilization monitoring). Use 1.")
+            problems.append(
+                f"CPU-only pod requests {req['cpu']} CPU "
+                f"(>1, subject to utilization monitoring). Use 1."
+            )
 
     # No sleep in command
     cmd = " ".join(c.get("command", []) + c.get("args", []))
@@ -1474,8 +1529,9 @@ def nrp_validate_pod_spec(spec: dict) -> list[str]:
         problems.append("sleep in command = BAN")
 
     # No A100/H100 targeting (no quota)
-    affinity = spec.get("spec", {}).get("template", {}).get(
-        "spec", {}).get("affinity", {})
+    affinity = (
+        spec.get("spec", {}).get("template", {}).get("spec", {}).get("affinity", {})
+    )
     affinity_str = json.dumps(affinity)
     if "A100" in affinity_str or "H100" in affinity_str or "H200" in affinity_str:
         problems.append("targeting A100/H100/H200 (no quota, will Pend forever)")
@@ -1488,16 +1544,19 @@ def nrp_validate_pod_spec(spec: dict) -> list[str]:
             if help_file.exists():
                 queue = json.loads(help_file.read_text())
             from datetime import datetime
-            queue.append({
-                "task": 0,
-                "question": (
-                    f"[WATCHDOG BLOCKED] Pod spec rejected: "
-                    f"{'; '.join(problems)}. Fix before resubmitting."
-                ),
-                "timestamp": datetime.now().isoformat(),
-                "source": "watchdog",
-                "severity": "blocked",
-            })
+
+            queue.append(
+                {
+                    "task": 0,
+                    "question": (
+                        f"[WATCHDOG BLOCKED] Pod spec rejected: "
+                        f"{'; '.join(problems)}. Fix before resubmitting."
+                    ),
+                    "timestamp": datetime.now().isoformat(),
+                    "source": "watchdog",
+                    "severity": "blocked",
+                }
+            )
             help_file.write_text(json.dumps(queue[-30:], indent=2))
         except Exception:
             pass
@@ -1518,9 +1577,20 @@ def _get_nrp_burst_status():
 
         # ── Jobs (all in namespace, not just labelled) ──
         jobs_result = subprocess.run(
-            ["kubectl", "--kubeconfig", kubeconfig, "-n", ns,
-             "get", "jobs", "-o", "json"],
-            capture_output=True, text=True, timeout=15,
+            [
+                "kubectl",
+                "--kubeconfig",
+                kubeconfig,
+                "-n",
+                ns,
+                "get",
+                "jobs",
+                "-o",
+                "json",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=15,
         )
         jobs_list = []
         if jobs_result.returncode == 0:
@@ -1539,24 +1609,37 @@ def _get_nrp_burst_status():
                     state = "Failed"
                 else:
                     state = "Pending"
-                jobs_list.append({
-                    "name": meta.get("name", ""),
-                    "state": state,
-                    "active": active,
-                    "succeeded": succeeded,
-                    "failed": failed,
-                    "created": meta.get("creationTimestamp", ""),
-                    "managed_by": meta.get("labels", {}).get(
-                        "app.kubernetes.io/managed-by", ""),
-                    "batch": meta.get("labels", {}).get(
-                        "neurogolf.io/batch", ""),
-                })
+                jobs_list.append(
+                    {
+                        "name": meta.get("name", ""),
+                        "state": state,
+                        "active": active,
+                        "succeeded": succeeded,
+                        "failed": failed,
+                        "created": meta.get("creationTimestamp", ""),
+                        "managed_by": meta.get("labels", {}).get(
+                            "app.kubernetes.io/managed-by", ""
+                        ),
+                        "batch": meta.get("labels", {}).get("neurogolf.io/batch", ""),
+                    }
+                )
 
         # ── Pods ──
         pods_result = subprocess.run(
-            ["kubectl", "--kubeconfig", kubeconfig, "-n", ns,
-             "get", "pods", "-o", "json"],
-            capture_output=True, text=True, timeout=15,
+            [
+                "kubectl",
+                "--kubeconfig",
+                kubeconfig,
+                "-n",
+                ns,
+                "get",
+                "pods",
+                "-o",
+                "json",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=15,
         )
         pods_list = []
         phases = {}
@@ -1623,25 +1706,37 @@ def _get_nrp_burst_status():
                     if gpu_model:
                         res["gpu_model"] = gpu_model
 
-                pods_list.append({
-                    "name": meta.get("name", ""),
-                    "phase": phase,
-                    "reason": reason,
-                    "node": node_name,
-                    "image": image.split("/")[-1] if image else "",
-                    "resources": res,
-                    "created": meta.get("creationTimestamp", ""),
-                    "job": meta.get("labels", {}).get("job-name", ""),
-                    "batch": batch,
-                })
+                pods_list.append(
+                    {
+                        "name": meta.get("name", ""),
+                        "phase": phase,
+                        "reason": reason,
+                        "node": node_name,
+                        "image": image.split("/")[-1] if image else "",
+                        "resources": res,
+                        "created": meta.get("creationTimestamp", ""),
+                        "job": meta.get("labels", {}).get("job-name", ""),
+                        "batch": batch,
+                    }
+                )
 
         # ── Pod metrics (kubectl top pods) ──
         usage_map = {}  # pod_name -> {cpu, memory}
         try:
             top_result = subprocess.run(
-                ["kubectl", "--kubeconfig", kubeconfig, "-n", ns,
-                 "top", "pods", "--no-headers"],
-                capture_output=True, text=True, timeout=10,
+                [
+                    "kubectl",
+                    "--kubeconfig",
+                    kubeconfig,
+                    "-n",
+                    ns,
+                    "top",
+                    "pods",
+                    "--no-headers",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
             if top_result.returncode == 0:
                 for line in top_result.stdout.strip().split("\n"):
@@ -1655,24 +1750,37 @@ def _get_nrp_burst_status():
             pass
 
         # ── GPU metrics via nvidia-smi exec (only for running GPU pods) ──
-        gpu_pods = [p for p in pods_list
-                    if p.get("resources", {}).get("gpu")
-                    and p.get("phase") == "Running"]
+        gpu_pods = [
+            p
+            for p in pods_list
+            if p.get("resources", {}).get("gpu") and p.get("phase") == "Running"
+        ]
         for pod in gpu_pods[:8]:  # cap at 8 to avoid too many execs
             try:
                 nv_result = subprocess.run(
-                    ["kubectl", "--kubeconfig", kubeconfig, "-n", ns,
-                     "exec", pod["name"], "--",
-                     "nvidia-smi",
-                     "--query-gpu=name,memory.used,memory.total,utilization.gpu",
-                     "--format=csv,noheader,nounits"],
-                    capture_output=True, text=True, timeout=5,
+                    [
+                        "kubectl",
+                        "--kubeconfig",
+                        kubeconfig,
+                        "-n",
+                        ns,
+                        "exec",
+                        pod["name"],
+                        "--",
+                        "nvidia-smi",
+                        "--query-gpu=name,memory.used,memory.total,utilization.gpu",
+                        "--format=csv,noheader,nounits",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
                 )
                 if nv_result.returncode == 0:
                     parts = [x.strip() for x in nv_result.stdout.strip().split(",")]
                     if len(parts) >= 4:
-                        pod["resources"]["gpu_model"] = parts[0].replace(
-                            "NVIDIA ", "").replace("GeForce ", "")
+                        pod["resources"]["gpu_model"] = (
+                            parts[0].replace("NVIDIA ", "").replace("GeForce ", "")
+                        )
                         pod["gpu_live"] = {
                             "vram_used_mib": int(parts[1]),
                             "vram_total_mib": int(parts[2]),
@@ -1688,12 +1796,12 @@ def _get_nrp_burst_status():
                 pod["usage"] = usage
 
         # Sort: running/pending first, then newest
-        jobs_list.sort(key=lambda j: (
-            j["state"] not in ("Running", "Pending"), j["created"]
-        ))
-        pods_list.sort(key=lambda p: (
-            p["phase"] not in ("Running", "Pending"), p["created"]
-        ))
+        jobs_list.sort(
+            key=lambda j: (j["state"] not in ("Running", "Pending"), j["created"])
+        )
+        pods_list.sort(
+            key=lambda p: (p["phase"] not in ("Running", "Pending"), p["created"])
+        )
 
         out = {
             "succeeded": phases.get("Succeeded", 0),
@@ -1701,9 +1809,7 @@ def _get_nrp_burst_status():
             "pending": phases.get("Pending", 0) + phases.get("ContainerCreating", 0),
             "failed": phases.get("Failed", 0),
             "total": sum(phases.values()),
-            "batches": [
-                {"label": k, "total": v} for k, v in sorted(batches.items())
-            ],
+            "batches": [{"label": k, "total": v} for k, v in sorted(batches.items())],
             "jobs": jobs_list,
             "pods": pods_list,
         }
@@ -1745,7 +1851,9 @@ def _start_nats_subscriber():
             return
         while True:
             try:
-                nc = await nats_lib.connect("nats://localhost:4222", name="telemetry-live")
+                nc = await nats_lib.connect(
+                    "nats://localhost:4222", name="telemetry-live"
+                )
                 log.info("NATS live subscriber connected")
 
                 async def _on_msg(msg):
@@ -1791,13 +1899,15 @@ def _start_nats_subscriber():
                             summary = msg.data[:120].decode("utf-8", "replace")
                         except Exception:
                             summary = f"<{len(msg.data)}B binary>"
-                    _NATS_LIVE_BUFFER.appendleft({
-                        "ts": time.time(),
-                        "subject": msg.subject,
-                        "size": len(msg.data),
-                        "summary": summary,
-                        "reply": msg.reply or "",
-                    })
+                    _NATS_LIVE_BUFFER.appendleft(
+                        {
+                            "ts": time.time(),
+                            "subject": msg.subject,
+                            "size": len(msg.data),
+                            "summary": summary,
+                            "reply": msg.reply or "",
+                        }
+                    )
 
                 await nc.subscribe("agi.>", cb=_on_msg)
                 await nc.subscribe("burst.>", cb=_on_msg)
@@ -1824,6 +1934,7 @@ def _get_nats_live():
     connections = []
     try:
         import urllib.request
+
         req = urllib.request.Request(
             "http://localhost:8222/connz?subs=true",
             headers={"Accept": "application/json"},
@@ -1831,23 +1942,25 @@ def _get_nats_live():
         with urllib.request.urlopen(req, timeout=5) as resp:
             data = json.loads(resp.read())
             for c in data.get("connections", []):
-                connections.append({
-                    "cid": c.get("cid"),
-                    "name": c.get("name", ""),
-                    "kind": c.get("kind", "Client"),
-                    "ip": c.get("ip", ""),
-                    "lang": c.get("lang", ""),
-                    "version": c.get("version", ""),
-                    "uptime": c.get("uptime", ""),
-                    "idle": c.get("idle", ""),
-                    "rtt": c.get("rtt", ""),
-                    "in_msgs": c.get("in_msgs", 0),
-                    "out_msgs": c.get("out_msgs", 0),
-                    "in_bytes": c.get("in_bytes", 0),
-                    "out_bytes": c.get("out_bytes", 0),
-                    "subscriptions": c.get("subscriptions", 0),
-                    "subs_list": c.get("subscriptions_list", [])[:10],
-                })
+                connections.append(
+                    {
+                        "cid": c.get("cid"),
+                        "name": c.get("name", ""),
+                        "kind": c.get("kind", "Client"),
+                        "ip": c.get("ip", ""),
+                        "lang": c.get("lang", ""),
+                        "version": c.get("version", ""),
+                        "uptime": c.get("uptime", ""),
+                        "idle": c.get("idle", ""),
+                        "rtt": c.get("rtt", ""),
+                        "in_msgs": c.get("in_msgs", 0),
+                        "out_msgs": c.get("out_msgs", 0),
+                        "in_bytes": c.get("in_bytes", 0),
+                        "out_bytes": c.get("out_bytes", 0),
+                        "subscriptions": c.get("subscriptions", 0),
+                        "subs_list": c.get("subscriptions_list", [])[:10],
+                    }
+                )
     except Exception:
         pass
     # Fetch /leafz for leaf connections
@@ -1860,15 +1973,17 @@ def _get_nats_live():
         with urllib.request.urlopen(req, timeout=5) as resp:
             data = json.loads(resp.read())
             for lf in data.get("leafs", []):
-                leafs.append({
-                    "name": lf.get("name", ""),
-                    "ip": lf.get("ip", ""),
-                    "rtt": lf.get("rtt", ""),
-                    "in_msgs": lf.get("in_msgs", 0),
-                    "out_msgs": lf.get("out_msgs", 0),
-                    "subscriptions": lf.get("subscriptions", 0),
-                    "compression": lf.get("compression", ""),
-                })
+                leafs.append(
+                    {
+                        "name": lf.get("name", ""),
+                        "ip": lf.get("ip", ""),
+                        "rtt": lf.get("rtt", ""),
+                        "in_msgs": lf.get("in_msgs", 0),
+                        "out_msgs": lf.get("out_msgs", 0),
+                        "subscriptions": lf.get("subscriptions", 0),
+                        "compression": lf.get("compression", ""),
+                    }
+                )
     except Exception:
         pass
     return {
@@ -1897,11 +2012,11 @@ def _get_erebus_memory():
 def _get_erebus_status():
     """Check if Erebus is running and get recent log."""
     import shutil
+
     status = {"running": False, "recent_log": [], "memory_summary": {}}
     try:
         result = subprocess.run(
-            ["pgrep", "-f", "arc_scientist"],
-            capture_output=True, text=True, timeout=5
+            ["pgrep", "-f", "arc_scientist"], capture_output=True, text=True, timeout=5
         )
         status["running"] = result.returncode == 0
     except Exception:
@@ -1919,7 +2034,10 @@ def _get_erebus_status():
             "total_solves": mem.get("total_solves", 0),
             "tasks_explored": len(mem.get("tasks", {})),
             "strategies": {
-                k: {"attempts": v.get("attempts", 0), "successes": v.get("successes", 0)}
+                k: {
+                    "attempts": v.get("attempts", 0),
+                    "successes": v.get("successes", 0),
+                }
                 for k, v in mem.get("strategies", {}).items()
             },
         }
@@ -1929,7 +2047,9 @@ def _get_erebus_status():
 
 
 EREBUS_HELP_PATH = "/archive/neurogolf/erebus_help_queue.json"
-_erebus_fingerprints: dict = {}  # pre-cached at first chat, persists for server lifetime
+_erebus_fingerprints: dict = (
+    {}
+)  # pre-cached at first chat, persists for server lifetime
 
 
 def _get_erebus_help_queue():
@@ -1960,7 +2080,9 @@ def _erebus_chat(user_message: str) -> str:
         tasks = mem.get("tasks", {})
         strategies = mem.get("strategies", {})
 
-        memory_context = f"I have made {total_a} attempts and solved {total_s} tasks so far.\n"
+        memory_context = (
+            f"I have made {total_a} attempts and solved {total_s} tasks so far.\n"
+        )
         memory_context += f"I have explored {len(tasks)} different tasks.\n"
 
         if strategies:
@@ -2032,8 +2154,10 @@ def _erebus_chat(user_message: str) -> str:
 
     try:
         from openai import OpenAI
-        client = OpenAI(api_key=token, base_url="https://ellm.nrp-nautilus.io/v1",
-                         timeout=30)
+
+        client = OpenAI(
+            api_key=token, base_url="https://ellm.nrp-nautilus.io/v1", timeout=30
+        )
 
         messages = [
             {"role": "system", "content": system_prompt},
@@ -2059,27 +2183,31 @@ def _erebus_chat(user_message: str) -> str:
                 # Register package paths so dataclass decorator can resolve modules
                 if "agi" not in _sys.modules:
                     import types
+
                     _sys.modules["agi"] = types.ModuleType("agi")
                     _sys.modules["agi.autonomous"] = types.ModuleType("agi.autonomous")
 
                 # Load primitives first (dependency)
                 if _prim_path.exists():
                     _prim_spec = importlib.util.spec_from_file_location(
-                        "agi.autonomous.primitives", _prim_path)
+                        "agi.autonomous.primitives", _prim_path
+                    )
                     _prim_mod = importlib.util.module_from_spec(_prim_spec)
                     _sys.modules["agi.autonomous.primitives"] = _prim_mod
                     _prim_spec.loader.exec_module(_prim_mod)
 
                 # Load scientist module
                 _sci_spec = importlib.util.spec_from_file_location(
-                    "agi.autonomous.arc_scientist", _sci_path)
+                    "agi.autonomous.arc_scientist", _sci_path
+                )
                 _sci_mod = importlib.util.module_from_spec(_sci_spec)
                 _sys.modules["agi.autonomous.arc_scientist"] = _sci_mod
                 _sci_spec.loader.exec_module(_sci_mod)
 
                 # Load tools module
                 _spec = importlib.util.spec_from_file_location(
-                    "agi.autonomous.tools", _tools_path)
+                    "agi.autonomous.tools", _tools_path
+                )
                 _mod = importlib.util.module_from_spec(_spec)
                 _sys.modules["agi.autonomous.tools"] = _mod
                 _spec.loader.exec_module(_mod)
@@ -2108,20 +2236,32 @@ def _erebus_chat(user_message: str) -> str:
 
                 # Timeout wrapper — don't let agentic mode hang the chat
                 import concurrent.futures
+
                 with concurrent.futures.ThreadPoolExecutor(1) as pool:
                     future = pool.submit(
                         _mod.run_agentic_turn,
-                        client, "kimi", messages, executor,
-                        2, extra)  # max 2 tool rounds
+                        client,
+                        "kimi",
+                        messages,
+                        executor,
+                        2,
+                        extra,
+                    )  # max 2 tool rounds
                     return future.result(timeout=45)
         except Exception as tool_err:
             import traceback
-            log.warning(f"Agentic mode failed, falling back: {tool_err}\n{traceback.format_exc()}")
+
+            log.warning(
+                f"Agentic mode failed, falling back: {tool_err}\n{traceback.format_exc()}"
+            )
 
         # Simple chat (no tools)
         r = client.chat.completions.create(
-            model="kimi", max_tokens=1024, messages=messages,
-            extra_body=extra, timeout=30,
+            model="kimi",
+            max_tokens=1024,
+            messages=messages,
+            extra_body=extra,
+            timeout=30,
         )
         return r.choices[0].message.content or ""
     except Exception as e:
@@ -2159,7 +2299,9 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
             self._json_response(_get_training_history(min(days, 365)))
         elif self.path == "/api/nrp-burst" or self.path.startswith("/api/nrp-burst?"):
             self._json_response(_get_nrp_burst_status())
-        elif self.path == "/api/nrp-telemetry" or self.path.startswith("/api/nrp-telemetry?"):
+        elif self.path == "/api/nrp-telemetry" or self.path.startswith(
+            "/api/nrp-telemetry?"
+        ):
             self._json_response(_get_nrp_nats_telemetry())
         elif self.path == "/api/nats-live" or self.path.startswith("/api/nats-live?"):
             self._json_response(_get_nats_live())
@@ -2168,11 +2310,17 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
             self._json_response(_get_pod_logs(pod_name))
         elif self.path == "/api/nrp/mode" or self.path.startswith("/api/nrp/mode?"):
             self._json_response(_nrp_mode)
-        elif self.path == "/api/erebus/memory" or self.path.startswith("/api/erebus/memory?"):
+        elif self.path == "/api/erebus/memory" or self.path.startswith(
+            "/api/erebus/memory?"
+        ):
             self._json_response(_get_erebus_memory())
-        elif self.path == "/api/erebus/status" or self.path.startswith("/api/erebus/status?"):
+        elif self.path == "/api/erebus/status" or self.path.startswith(
+            "/api/erebus/status?"
+        ):
             self._json_response(_get_erebus_status())
-        elif self.path == "/api/erebus/help" or self.path.startswith("/api/erebus/help?"):
+        elif self.path == "/api/erebus/help" or self.path.startswith(
+            "/api/erebus/help?"
+        ):
             self._json_response(_get_erebus_help_queue())
         elif self.path.startswith("/api/erebus/activity"):
             from urllib.parse import parse_qs, urlparse
@@ -2379,7 +2527,9 @@ if __name__ == "__main__":
         log.warning("initial snapshot failed (will retry in background): %s", e)
     threading.Thread(target=_refresher, daemon=True, name="snapshot").start()
     threading.Thread(target=_nrp_nats_listener, daemon=True, name="nrp-nats").start()
-    threading.Thread(target=_tail_erebus_logs, daemon=True, name="activity-tail").start()
+    threading.Thread(
+        target=_tail_erebus_logs, daemon=True, name="activity-tail"
+    ).start()
     _start_nats_subscriber()
 
     # Pre-load Erebus fingerprints in background so first chat is fast
@@ -2387,21 +2537,27 @@ if __name__ == "__main__":
         try:
             from pathlib import Path as _P
             import importlib.util
+
             _base = _P(__file__).parent.parent / "src" / "agi" / "autonomous"
             _sci_path = _base / "arc_scientist.py"
             if _sci_path.exists():
                 import types
                 import sys as _s
+
                 for mod_name in ("agi", "agi.autonomous"):
                     if mod_name not in _s.modules:
                         _s.modules[mod_name] = types.ModuleType(mod_name)
                 _prim_path = _base / "primitives.py"
                 if _prim_path.exists():
-                    spec = importlib.util.spec_from_file_location("agi.autonomous.primitives", _prim_path)
+                    spec = importlib.util.spec_from_file_location(
+                        "agi.autonomous.primitives", _prim_path
+                    )
                     mod = importlib.util.module_from_spec(spec)
                     _s.modules["agi.autonomous.primitives"] = mod
                     spec.loader.exec_module(mod)
-                spec2 = importlib.util.spec_from_file_location("agi.autonomous.arc_scientist", _sci_path)
+                spec2 = importlib.util.spec_from_file_location(
+                    "agi.autonomous.arc_scientist", _sci_path
+                )
                 mod2 = importlib.util.module_from_spec(spec2)
                 _s.modules["agi.autonomous.arc_scientist"] = mod2
                 spec2.loader.exec_module(mod2)
@@ -2420,7 +2576,10 @@ if __name__ == "__main__":
                 log.info(f"Erebus: pre-loaded {len(fps)} fingerprints")
         except Exception as e:
             log.warning(f"Fingerprint preload failed: {e}")
-    threading.Thread(target=_preload_fingerprints, daemon=True, name="erebus-fp").start()
+
+    threading.Thread(
+        target=_preload_fingerprints, daemon=True, name="erebus-fp"
+    ).start()
 
     server = ThreadingHTTPServer(("0.0.0.0", args.port), TelemetryHandler)
     server.serve_forever()
