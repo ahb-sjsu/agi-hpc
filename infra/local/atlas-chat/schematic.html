@@ -6,8 +6,8 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Atlas AGI-HPC — Operations Dashboard</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23111827'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='monospace' font-weight='bold' fill='%234a9eff'>A</text><circle cx='24' cy='8' r='4' fill='%2322c55e'/></svg>">
+<title>Erebus — Atlas AI Operations</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23111827'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='monospace' font-weight='bold' fill='%234a9eff'>E</text><circle cx='24' cy='8' r='4' fill='%2322c55e'/></svg>">
 <style>
 /* ───────────────────────── Reset & Base ───────────────────────── */
 *{margin:0;padding:0;box-sizing:border-box}
@@ -211,8 +211,8 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       <line x1="2" y1="16" x2="7" y2="16" stroke="#4a9eff" stroke-width="1" opacity=".4"/>
       <line x1="25" y1="16" x2="30" y2="16" stroke="#4a9eff" stroke-width="1" opacity=".4"/>
     </svg>
-    <h1>Atlas AI</h1>
-    <span class="subtitle">Operations Dashboard</span>
+    <h1>Erebus</h1>
+    <span class="subtitle">Atlas AI Operations</span>
   </div>
   <div class="nav">
     <a href="/">Chat</a>
@@ -367,7 +367,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 
   <!-- Architecture Topology -->
   <div class="metric-panel full" style="margin-bottom:16px">
-    <div class="panel-title"><span class="icon">&#9635;</span> Cognitive Architecture Topology</div>
+    <div class="panel-title"><span class="icon">&#9635;</span> Erebus Cognitive Architecture</div>
     <svg id="topo-svg" viewBox="0 0 600 280" style="width:100%;max-height:260px;display:none">
       <!-- Flow arrows (drawn first, behind nodes) -->
       <defs>
@@ -408,15 +408,15 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       <!-- Three models -->
       <rect id="topo-superego" x="50" y="138" width="140" height="34" rx="6" fill="rgba(74,158,255,0.15)" stroke="#4a9eff" stroke-width="1.5"/>
       <text x="120" y="152" text-anchor="middle" fill="#e0e6f0" font-size="9" font-weight="bold">Superego</text>
-      <text x="120" y="165" text-anchor="middle" fill="#7a8ba8" font-size="7">Gemma 4 31B | GPU 0</text>
+      <text x="120" y="165" text-anchor="middle" fill="#7a8ba8" font-size="7">NRP Gemma 4 (cortex)</text>
 
       <rect id="topo-ego" x="230" y="138" width="140" height="34" rx="6" fill="rgba(74,222,128,0.15)" stroke="#4ade80" stroke-width="1.5"/>
       <text x="300" y="152" text-anchor="middle" fill="#e0e6f0" font-size="9" font-weight="bold">Ego</text>
-      <text x="300" y="165" text-anchor="middle" fill="#7a8ba8" font-size="7">Gemma 4 26B-A4B MoE | CPU</text>
+      <text x="300" y="165" text-anchor="middle" fill="#7a8ba8" font-size="7">NRP Kimi K2.5 1T (cortex)</text>
 
       <rect id="topo-id" x="410" y="138" width="140" height="34" rx="6" fill="rgba(251,146,60,0.15)" stroke="#fb923c" stroke-width="1.5"/>
       <text x="480" y="152" text-anchor="middle" fill="#e0e6f0" font-size="9" font-weight="bold">Id</text>
-      <text x="480" y="165" text-anchor="middle" fill="#7a8ba8" font-size="7">Qwen 3 32B | GPU 1</text>
+      <text x="480" y="165" text-anchor="middle" fill="#7a8ba8" font-size="7">NRP Qwen 3.5 397B (cortex)</text>
 
       <rect id="topo-safety-out" x="220" y="198" width="160" height="22" rx="4" fill="rgba(248,113,113,0.15)" stroke="#f87171" stroke-width="1.5"/>
       <text x="300" y="213" text-anchor="middle" fill="#e0e6f0" font-size="9">Safety Output Gate</text>
@@ -443,8 +443,8 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
         ['safety_in', 'Safety Input Gate',   cx,   90,  110, 18, '#f87171','rgba(248,113,113,0.12)'],
         ['rag',       'RAG Context',         cx,  114,  100, 18, '#f59e0b','rgba(245,158,11,0.12)'],
         // Psyche row: Superego + Id
-        ['superego',  'Superego',            cx-140,146, 110, 28, '#4a9eff','rgba(74,158,255,0.12)','Gemma 4 31B | GPU 0'],
-        ['id',        'Id',                  cx+140,146, 110, 28, '#fb923c','rgba(251,146,60,0.12)','Qwen 3 32B | GPU 1'],
+        ['superego',  'Superego',            cx-140,146, 110, 28, '#4a9eff','rgba(74,158,255,0.12)','NRP Gemma 4'],
+        ['id',        'Id',                  cx+140,146, 110, 28, '#fb923c','rgba(251,146,60,0.12)','NRP Qwen 3.5 397B'],
         // Calibration (between hemispheres)
         ['calibration','Calibration',        cx,  146,  80, 18, '#a78bfa','rgba(167,139,250,0.12)'],
         // Divine Council — row 1: core evaluators
@@ -461,10 +461,10 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
         ['episodes',  'Episodes Stored',     cx,  284,  100, 18, '#4ade80','rgba(74,222,128,0.12)'],
         ['response',  'Response',            cx,  310,  90,  18, '#4a9eff','rgba(74,158,255,0.12)'],
         // Learning subsystems (side nodes)
-        ['training',  'DM Training',         62, 284, 100, 28, '#d97706','rgba(217,119,6,0.12)','Ego as DM'],
-        ['dreaming',  'Dreaming',           W-62, 284, 100, 28, '#7c3aed','rgba(124,58,237,0.12)','LoRA + Wiki'],
-        ['memory',    'Memory',             W-62, 114, 100, 26, '#4ade80','rgba(74,222,128,0.12)','3.3M vectors'],
-        ['curriculum','Curriculum',          62,  114, 100, 26, '#d97706','rgba(217,119,6,0.12)','Gap Detect'],
+        ['training',  'Basal Ganglia',        62, 284, 100, 28, '#d97706','rgba(217,119,6,0.12)','Conv + A* | GV100'],
+        ['dreaming',  'Dreaming',           W-62, 284, 100, 28, '#7c3aed','rgba(124,58,237,0.12)','Consolidation'],
+        ['memory',    'Memory',             W-62, 114, 100, 26, '#4ade80','rgba(74,222,128,0.12)','pgvec 3.3M'],
+        ['curriculum','Erebus',              62,  114, 100, 26, '#d97706','rgba(217,119,6,0.12)','Scientist'],
       ];
       var nodes = {};
       specs.forEach(function(s){ nodes[s[0]] = {id:s[0],label:s[1],x:s[2],y:s[3],w:s[4],h:s[5],color:s[6],bg:s[7],sub:s[8]}; });
@@ -490,6 +490,18 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       mkArrow('ao','#fb923c');
       mkArrow('ap','#7c3aed');
       mkArrow('ay','#d97706');
+
+      // Zone backgrounds: cortical (NRP cloud) and subcortical (local GPUs)
+      svg.append('rect').attr('x',2).attr('y',126).attr('width',W-4).attr('height',115).attr('rx',8)
+        .attr('fill','rgba(74,158,255,0.03)').attr('stroke','rgba(74,158,255,0.08)').attr('stroke-width',0.5);
+      svg.append('text').attr('x',W-6).attr('y',138).attr('text-anchor','end')
+        .attr('fill','rgba(74,158,255,0.3)').attr('font-size','8').attr('font-weight','600')
+        .text('CORTEX (NRP Nautilus)');
+      svg.append('rect').attr('x',2).attr('y',248).attr('width',W-4).attr('height',85).attr('rx',8)
+        .attr('fill','rgba(251,146,60,0.03)').attr('stroke','rgba(251,146,60,0.08)').attr('stroke-width',0.5);
+      svg.append('text').attr('x',W-6).attr('y',260).attr('text-anchor','end')
+        .attr('fill','rgba(251,146,60,0.3)').attr('font-size','8').attr('font-weight','600')
+        .text('SUBCORTICAL (Local GV100s)');
 
       // Straight vertical links
       function line(s,t,col,marker){
