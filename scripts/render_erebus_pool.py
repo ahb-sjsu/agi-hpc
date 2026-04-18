@@ -33,27 +33,27 @@ def main():
         stream="EREBUS_TASKS",
         subjects=["erebus.tasks.>"],
         env={
+            # Tasks come from the bundle (public repo); compiler modules
+            # come from the bundle too. Handler source comes from agi-hpc.
             "TASK_DIR": "/work/tasks",
-            "COMPILER_DIR": "/work/src/compiler",
-            "BUNDLE_REPO": args.bundle_repo,
-            "PYTHONPATH": "/work/src",
+            "COMPILER_DIR": "/work/bundle/src/compiler",
+            "PYTHONPATH": "/work/agi-hpc/src",
             "NATS_RESULT_PREFIX": "erebus.results.",
         },
         env_from_secrets={
             "NRP_LLM_TOKEN": ("erebus-worker-secrets", "nrp-llm-token"),
         },
-        # Install deps + clone bundle each pod start, then exec the
-        # Erebus handler-registered worker loop.
+        # Pod bootstrap: install deps, clone bundle (tasks + compiler
+        # modules), clone agi-hpc (Erebus handler source), then exec
+        # the pool worker with handlers registered.
         pre_install=[
             "pip install --quiet nats-py openai onnx onnxruntime numpy "
             "'git+https://github.com/ahb-sjsu/nats-bursting.git@main#subdirectory=python'",
             "mkdir -p /work && cd /work && "
             f"git clone --depth 1 https://github.com/{args.bundle_repo}.git bundle && "
+            "git clone --depth 1 https://github.com/ahb-sjsu/agi-hpc.git && "
             "mkdir -p /work/tasks && "
-            "tar -C /work/tasks -xzf bundle/data/tasks.tar.gz && "
-            "cp -r bundle/src /work/src && "
-            # Also clone agi-hpc src so handlers import
-            "git clone --depth 1 https://github.com/ahb-sjsu/neurogolf-bundle.git /tmp/ignore 2>/dev/null || true",
+            "tar -C /work/tasks -xzf bundle/data/tasks.tar.gz",
         ],
         entry=[
             "python3", "-u", "-m", "agi.autonomous.erebus_worker_main",
