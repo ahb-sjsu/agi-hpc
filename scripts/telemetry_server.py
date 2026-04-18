@@ -1303,6 +1303,36 @@ def _nrp_watchdog_check(pods: list[dict]):
     _nrp_mode["n_active"] = n_active
     _nrp_mode["n_violating"] = n_violating
 
+    # Write violations to Erebus's help queue as negative feedback
+    if pods_to_kill:
+        try:
+            help_file = Path(EREBUS_HELP_PATH)
+            queue = []
+            if help_file.exists():
+                queue = json.loads(help_file.read_text())
+            from datetime import datetime
+            for name, pod, violation in pods_to_kill:
+                queue.append({
+                    "task": 0,
+                    "question": (
+                        f"[WATCHDOG NEGATIVE FEEDBACK] Pod '{name}' was killed "
+                        f"for NRP violation: {violation}. "
+                        f"Resources requested: cpu={pod.get('resources',{}).get('cpu','?')}, "
+                        f"memory={pod.get('resources',{}).get('memory','?')}, "
+                        f"gpu={pod.get('resources',{}).get('gpu','')}. "
+                        f"Rule: CPU-only pods must use cpu<=1, memory<=2Gi to stay "
+                        f"in the ignored utilization range. GPU pods must maintain "
+                        f">40% GPU utilization. Do NOT repeat this mistake."
+                    ),
+                    "timestamp": datetime.now().isoformat(),
+                    "source": "watchdog",
+                    "severity": "violation",
+                })
+            help_file.write_text(json.dumps(queue[-30:], indent=2))
+            log.info(f"[nrp-watchdog] Wrote {len(pods_to_kill)} violation(s) to Erebus feedback")
+        except Exception as e:
+            log.warning(f"[nrp-watchdog] Failed to write Erebus feedback: {e}")
+
     if n_active > 0:
         log.info(f"[nrp-watchdog] {n_active} pods, {n_violating} violating")
 
@@ -1361,6 +1391,28 @@ def nrp_validate_pod_spec(spec: dict) -> list[str]:
     affinity_str = json.dumps(affinity)
     if "A100" in affinity_str or "H100" in affinity_str or "H200" in affinity_str:
         problems.append("targeting A100/H100/H200 (no quota, will Pend forever)")
+
+    # Write rejections to Erebus feedback
+    if problems:
+        try:
+            help_file = Path(EREBUS_HELP_PATH)
+            queue = []
+            if help_file.exists():
+                queue = json.loads(help_file.read_text())
+            from datetime import datetime
+            queue.append({
+                "task": 0,
+                "question": (
+                    f"[WATCHDOG BLOCKED] Pod spec rejected: "
+                    f"{'; '.join(problems)}. Fix before resubmitting."
+                ),
+                "timestamp": datetime.now().isoformat(),
+                "source": "watchdog",
+                "severity": "blocked",
+            })
+            help_file.write_text(json.dumps(queue[-30:], indent=2))
+        except Exception:
+            pass
 
     return problems
 
