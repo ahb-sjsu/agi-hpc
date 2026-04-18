@@ -249,9 +249,12 @@ def run_qlora_training(min_pairs: int = 10) -> None:
     env["CUDA_VISIBLE_DEVICES"] = "1"  # GV100 GPU 1 (Kirk's)
     env.setdefault("HF_TOKEN", os.environ.get("HF_TOKEN", ""))
     try:
+        # Atlas GV100 is SM 7.0 (Volta) → bnb 4-bit not supported, use bf16.
+        # Qwen2.5-14B in bf16 is ~28GB, fits on 32GB GV100 with LoRA adapters.
         result = subprocess.run(
             [sys.executable, "-u", str(script),
-             "--base", "Qwen/Qwen2.5-32B-Instruct",
+             "--base", "Qwen/Qwen2.5-14B-Instruct",
+             "--quant", "none",
              "--rank", "16", "--epochs", "3", "--min-pairs", str(min_pairs)],
             env=env, timeout=5400, capture_output=True, text=True)
         log.info(f"QLoRA exit={result.returncode}")

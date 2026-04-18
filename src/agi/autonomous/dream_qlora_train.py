@@ -141,7 +141,7 @@ def collate(batch, pad_id: int):
 
 
 def train(base: str, pairs: list[dict], rank: int, epochs: int,
-          out_path: Path, dry_run: bool = False):
+          out_path: Path, dry_run: bool = False, quant: str = "nf4"):
     import torch
     from transformers import (AutoTokenizer, AutoModelForCausalLM,
                               BitsAndBytesConfig, TrainingArguments, Trainer)
@@ -161,18 +161,25 @@ def train(base: str, pairs: list[dict], rank: int, epochs: int,
         log.info("Dry run — not loading model.")
         return
 
-    log.info(f"Loading base model: {base} (4-bit NF4)")
-    bnb = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=torch.bfloat16,
-        bnb_4bit_use_double_quant=True,
-    )
-    model = AutoModelForCausalLM.from_pretrained(
-        base, quantization_config=bnb, device_map="auto",
-        trust_remote_code=True, torch_dtype=torch.bfloat16,
-    )
-    model = prepare_model_for_kbit_training(model)
+    if quant == "none":
+        log.info(f"Loading base model: {base} (bf16, no quantization)")
+        model = AutoModelForCausalLM.from_pretrained(
+            base, device_map="auto",
+            trust_remote_code=True, torch_dtype=torch.bfloat16,
+        )
+    else:
+        log.info(f"Loading base model: {base} (4-bit {quant})")
+        bnb = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type=quant,
+            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_use_double_quant=True,
+        )
+        model = AutoModelForCausalLM.from_pretrained(
+            base, quantization_config=bnb, device_map="auto",
+            trust_remote_code=True, torch_dtype=torch.bfloat16,
+        )
+        model = prepare_model_for_kbit_training(model)
 
     lora = LoraConfig(
         r=rank, lora_alpha=rank * 2, lora_dropout=0.05, bias="none",
@@ -232,6 +239,8 @@ def main():
     ap.add_argument("--min-pairs", type=int, default=5,
                     help="Skip training if fewer pairs than this")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--quant", default="nf4", choices=["nf4", "fp4", "none"],
+                    help="Quantization: nf4/fp4 (4-bit, needs Ampere+) or none (bf16, works on Volta)")
     ap.add_argument("--out")
     args = ap.parse_args()
 
@@ -244,7 +253,7 @@ def main():
     tag = datetime.now().strftime("%Y%m%d")
     out_path = Path(args.out) if args.out else OUT_DIR / f"lora_{tag}"
     train(args.base, pairs, args.rank, args.epochs, out_path,
-          dry_run=args.dry_run)
+          dry_run=args.dry_run, quant=args.quant)
 
 
 if __name__ == "__main__":
