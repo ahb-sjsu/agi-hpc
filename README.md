@@ -6,279 +6,187 @@
   </picture>
 </p>
 
-# AGI-HPC
-### Atlas AI — embodied, safety-aware AGI architecture for High Performance Computing clusters
+# Atlas AI
+
+### Psychoanalytic cognitive architecture on commodity hardware
 
 ![CI](https://github.com/ahb-sjsu/agi-hpc/actions/workflows/ci.yaml/badge.svg)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
-> **Brand assets:** [erisml.org/brand/](https://erisml.org/brand/) · local: [`docs/brand/`](docs/brand/)
+> **Brand assets:** [erisml.org/brand/](https://erisml.org/brand/) | local: [`docs/brand/`](docs/brand/)
 
-AGI-HPC is a **modular, distributed, safety-gated cognitive architecture** designed to run on **university-scale HPC clusters** (SJSU CoE HPC) using:
-
-- **Dual-hemisphere cognition** (LH + RH)  
-- **Tiered memory subsystem** (semantic, episodic, procedural)  
-- **Multi-layer safety system** (pre-action, in-action, post-action)  
-- **Virtual embodiment environment** (Unity/MuJoCo)  
-- **Event-driven coordination** (UCX/ZeroMQ/NATS JetStream fabric)
-- **gRPC services** across all components  
-- **Apptainer/Singularity containers** for reproducible HPC deployment
-
-This repository provides the **full scaffolding and automation tools** necessary to build, test, and deploy the system incrementally.
+Atlas AI is a **production multi-agent cognitive architecture** running on an HP Z840 workstation at SJSU, with burst compute via [NRP Nautilus](https://nrp.ai). It implements a Freudian psychoanalytic model where three local LLMs (Id, Superego, Ego) negotiate decisions through structured debate, coordinated by NATS JetStream and backed by PostgreSQL + pgvector semantic memory.
 
 ---
 
-# Dev Teams
-- Cognitive Architecture (LH/RH) Team
-- Memory Systems Team
-- EventBus & Messaging Team
-- HPC Deployment Team
-- Maritime Digital Twin Team
-- Unity Simulation Team
-- Evaluation & Metrics Team
+## The Divine Council
+
+Atlas runs three on-premise LLMs as psychoanalytic agents, served by llama.cpp:
+
+| Agent | Role | Model | Hardware | Port |
+|-------|------|-------|----------|------|
+| **Id** (Kirk) | System 1 -- fast, intuitive reasoning | Qwen 3 32B Q5_K_M | GPU 1 (GV100 32GB) | 8082 |
+| **Superego** (Spock) | System 2 -- deliberative, ethical reasoning | Gemma 4 31B Q5_K_M | GPU 0 (GV100 32GB) | 8080 |
+| **Ego** (McCoy) | Arbitrator -- runs structured debates | Gemma 4 26B-A4B MoE Q4_K_XL | CPU (24 threads, 8 parallel slots) | 8084 |
+
+The Ego hosts 7 concurrent council roles (Judge, Advocate, Synthesizer, Ethicist, Historian, Futurist, Pragmatist) that deliberate on decisions requiring multi-perspective analysis.
+
+## Infrastructure
+
+| Component | Description |
+|-----------|-------------|
+| **NATS JetStream** | Production event fabric at `:4222`. Leaf node at `:7422` bridges to NRP Nautilus. |
+| **PostgreSQL + pgvector** | 3.3M PCA-384 IVFFlat vectors. 5-tier semantic retrieval (L1 dream-wiki 1.5x boost, L2 wiki, L3 vector, L4 FTS, L5 live). |
+| **RAG Server** | Flask at `:8081` -- dual-hemisphere proxy + pgvector search. |
+| **Caddy** | Reverse proxy with OAuth2 proxy at `:4180`. Serves `atlas-sjsu.duckdns.org`. |
+| **Telemetry Server** | At `:8085`. NATS stats, NRP pod metrics, system health. Drives the operations dashboard. |
+| **Operations Dashboard** | Real-time schematic at `/schematic.html` with NATS topology, NRP pod GPU/VRAM monitoring, service status, memory tiers. |
+| **Thermal Guardian** | CPU temp monitoring (82C high, 100C critical). Caps compute at 20 threads. |
+| **Watchdog** | Health checks and automatic service restarts. |
+
+## NRP Nautilus Integration
+
+NATS leaf node bridges Atlas to NRP's Kubernetes cluster (namespace `ssu-atlas-ai`) for burst compute:
+
+- **CPU pods** -- LLM-guided prompt fuzzing via managed APIs (Kimi K2.5 1T, Qwen3.5 397B)
+- **GPU pods** -- Conv training on A100 80GB, L4 24GB, L40 48GB via node affinity
+- **Live monitoring** -- Pod GPU model, VRAM, CPU/RAM utilization via `kubectl exec nvidia-smi`
+- **Coverage-guided fuzzer** -- AFL-style prompt fuzzer for ARC task solving
+
+## Active Projects
+
+- **NeuroGolf 2026** -- Kaggle competition. ONNX golf for ARC-AGI tasks. DSL-to-ONNX compiler, VLM-guided solver. Private repo: `ahb-sjsu/neurogolf-2026`.
+- **ErisML** -- Ethical reasoning framework. Bond Index, Hohfeldian analysis, hash-chained decision proofs.
+- **Dreaming** -- Memory consolidation via wiki article synthesis during idle cycles.
 
 ---
 
-# 📐 Architecture Overview
-
-Below is a high-level diagram of the full AGI-HPC multi-service system:
-```mermaid
-%% MUCH MORE READABLE VERSION
-flowchart LR
-    %% Global styling for better readability
-    classDef bigbox fill:#fffde7,stroke:#666,stroke-width:2px,color:#000,rx:6px,ry:6px,font-size:16px;
-    classDef header font-size:20px,font-weight:bold;
-
-    %% Top-level
-    subgraph HPC_Cluster["🏔️ HPC Cluster (SJSU CoE)"]
-    direction LR
-
-        %% Left Hemisphere
-        subgraph LH["🧠 Left Hemisphere (Reasoning + Planning)"]
-        direction TB
-            LH_RPC["gRPC Server<br/>PlanService / MetaService"]
-            LH_MEM["Semantic Memory Queries"]
-            LH_SAFETY["Pre-Action Safety RPC"]
-            LH_META["Metacognition Client<br/>(ReviewPlan)"]
-            LH_EVENTS["EventFabric Publisher<br/>(plan.step_ready)"]
-        end
-
-        %% Right Hemisphere
-        subgraph RH["👁️ Right Hemisphere (Perception + World Model + Control)"]
-        direction TB
-            RH_RPC["gRPC Server<br/>SimulatePlan / ControlService"]
-            RH_PERCEPTION["Perception Pipeline<br/>(vision encoders, object detection)"]
-            RH_WM["World Model<br/>(short-horizon physics & prediction)"]
-            RH_SAFETY["In-Action Safety RPC"]
-            RH_POST["Post-Action Safety RPC"]
-            RH_EVENTS["EventFabric Publisher<br/>(perception.state_update,<br/>simulation.result)"]
-        end
-
-        %% Memory
-        subgraph MEM["💾 Memory Subsystem"]
-        direction TB
-            subgraph SEM["📚 Semantic Memory"]
-                SEM_RPC["SemanticService RPC"]
-                SEM_STORE["Vector Store (Qdrant/FAISS)<br/>Concepts, skills, facts"]
-            end
-            subgraph EPI["🎞️ Episodic Memory"]
-                EPI_RPC["EpisodicService RPC"]
-                EPI_LOG["Append-only Logs (JSONL/Parquet)"]
-            end
-            subgraph PROC["⚙️ Procedural Memory"]
-                PROC_RPC["ProceduralService RPC"]
-                PROC_SKILLS["Skill Catalog<br/>(pre/postconditions, policies)"]
-            end
-        end
-
-        %% Safety
-        subgraph SAFETY["🛡️ Safety Subsystem"]
-        direction TB
-            PRE["Pre-Action Safety<br/>(CheckPlan)"]
-            INACT["In-Action Safety<br/>(CheckStep)"]
-            POST["Post-Action Safety<br/>(AnalyzeOutcome)"]
-            RULES["Rule Engine<br/>(banned tools, constraints,<br/>risk scoring, thresholds)"]
-        end
-
-        %% Metacognition
-        subgraph META["🔍 Metacognition"]
-        direction TB
-            META_RPC["MetacognitionService RPC"]
-            META_ENGINE["Evaluation Engine<br/>(confidence, issues,<br/>ACCEPT/REVISE/REJECT)"]
-        end
-
-        %% Event Fabric
-        subgraph FABRIC["🔌 Event Fabric (UCX/ZeroMQ)"]
-        direction TB
-            TOPICS["Topics:<br/>perception.state_update<br/>plan.step_ready<br/>simulation.result<br/>safety.*<br/>meta.review"]
-        end
-
-    end
-
-    %% External environment
-    subgraph ENV["🌍 Virtual Environment<br/>(Unity or MuJoCo)<br/>(runs on laptop)"]
-    direction TB
-        CAM["Camera Frames<br/>RGB-D / metadata"]
-        STEP_API["HTTP/gRPC API<br/>Step(), Reset(), GetState()"]
-    end
-
-    %% Connections
-    CAM --> RH_PERCEPTION
-    STEP_API <--> RH_RPC
-
-    RH_EVENTS --> FABRIC
-    LH_EVENTS --> FABRIC
-
-    FABRIC --> LH_MEM
-    FABRIC --> RH_WM
-    FABRIC --> LH
-    FABRIC --> RH
-
-    LH_MEM --> SEM_RPC
-    LH ---> SAFETY
-    LH -- gRPC ReviewPlan --> META
-
-    RH --> INACT
-    RH --> POST
-
-    SEM_RPC --> SEM_STORE
-    EPI_RPC --> EPI_LOG
-    PROC_RPC --> PROC_SKILLS
-
-    PRE --> RULES
-    INACT --> RULES
-    POST --> RULES
-
-    META_RPC --> META_ENGINE
-
-    LH_EVENTS --> RH
-
-    %% Apply bigbox style
-    class LH_RPC,LH_MEM,LH_SAFETY,LH_META,LH_EVENTS bigbox;
-    class RH_RPC,RH_PERCEPTION,RH_WM,RH_SAFETY,RH_POST,RH_EVENTS bigbox;
-    class SEM_RPC,SEM_STORE,EPI_RPC,EPI_LOG,PROC_RPC,PROC_SKILLS bigbox;
-    class PRE,INACT,POST,RULES bigbox;
-    class META_RPC,META_ENGINE bigbox;
-    class TOPICS bigbox;
-    class CAM,STEP_API bigbox;
-```
-### Major subsystems
-
-| Subsystem | Responsibilities | Implementation |
-|----------|------------------|----------------|
-| **Left Hemisphere (LH)** | Planning, reasoning, metacognition pipeline, symbolic tool use | gRPC service + event fabric |
-| **Right Hemisphere (RH)** | Perception, world-model simulation, motor control | gRPC service + event fabric |
-| **Semantic Memory** | Vector DB for concepts, embeddings, world knowledge | Qdrant/FAISS (placeholder in-memory for now) |
-| **Episodic Memory** | Append-only event logs for replay + analysis | JSONL/Parquet logs |
-| **Procedural Memory** | Skills, policies, reusable action graphs | In-memory → SQL later |
-| **Safety (3-layer)** | Pre-action, in-action, post-action verification | gRPC services + rule engine |
-| **Metacognition** | Cross-check plans, confidence estimation, revise/reject loop | gRPC service + trace analyzer |
-| **Environment** | Virtual embodiment (Unity/MuJoCo/PyBullet) | Async Gymnasium-compatible interface |
-| **Event Fabric** | Topic-based low-latency message bus | Local/ZMQ/Redis/NATS JetStream (pluggable) |
-
----
-
-# 🧭 Project Layout
+## Project Layout
 
 ```
 agi-hpc/
-│
 ├── src/agi/
-│   ├── lh/                  # Left Hemisphere (planner, performance, HPC deploy)
-│   ├── rh/                  # Right Hemisphere (perception, world model, control)
-│   │   └── control/         # Motor primitives, trajectory, realtime, simulation
-│   ├── memory/              # Semantic, episodic, procedural, unified memory
-│   ├── safety/              # Safety subsystem (pre/in/post + rules + learning)
-│   ├── metacognition/       # Reasoning analyzer, consistency, anomaly detection
-│   ├── meta/                # LLM-based metacognitive reflection
-│   ├── core/                # gRPC, event fabric, DHT, LLM integration
+│   ├── core/                # gRPC server, event fabric, DHT, LLM client
+│   │   ├── api/             # Base gRPC server infrastructure
 │   │   ├── events/          # Local, ZMQ, Redis, NATS JetStream backends
-│   │   ├── dht/             # Hash ring, observability, HPC, security
-│   │   └── llm/             # Client, providers, middleware, integration
-│   ├── env/                 # Environment interface (MuJoCo, PyBullet, Unity)
-│   ├── common/              # Shared utilities (config loader)
-│   ├── integration/         # Cross-subsystem integration events
-│   └── proto_gen/           # Auto-generated protobuf stubs
+│   │   ├── dht/             # Hash ring, observability, HPC transport, security
+│   │   └── llm/             # Client, providers, middleware
+│   ├── reasoning/           # Divine Council, Tree-of-Thought debate, NATS service
+│   ├── lh/                  # Left hemisphere: planning, metacognition, HPC deploy
+│   ├── rh/                  # Right hemisphere: perception, world model, control
+│   ├── memory/              # Episodic, semantic, procedural, knowledge, unified
+│   ├── safety/              # 3-layer safety, ErisML, input/output/privilege gates
+│   ├── metacognition/       # Ego monitor, consistency checker, anomaly detector
+│   ├── dreaming/            # Synaptic plasticity, wiki consolidation
+│   ├── training/            # Dungeon Master, gym environment, curriculum
+│   ├── attention/           # Distractor detection and filtering
+│   ├── thermal/             # Thermal management and job queue
+│   ├── integration/         # Cross-subsystem orchestration
+│   ├── env/                 # Gymnasium-compatible environment (MuJoCo/Unity)
+│   ├── meta/                # LLM-based metacognitive reflection
+│   └── common/              # Shared utilities
 │
-├── proto/                   
-├── configs/                 
+├── deploy/
+│   ├── systemd/             # 19 service units under atlas.target
+│   └── llm/                 # Kubernetes production config
+│
+├── proto/                   # Protocol Buffer definitions
+├── configs/                 # Service configuration YAML
 ├── infra/
-│   ├── hpc/                
-│   └── local/              
+│   ├── hpc/                 # Apptainer, Slurm, Docker, monitoring
+│   └── local/               # Local development setup
 │
-├── docs/
-├── deploy/                  # Kubernetes / production configs
-│
-├── scripts/
-├── tests/
-
-└── .github/workflows/ci.yaml
+├── scripts/                 # Watchdog, telemetry, utilities
+├── tests/                   # Unit and integration tests
+├── docs/                    # Architecture docs, sprint plans, runbooks
+├── .github/workflows/       # CI/CD (ruff + black + pytest + auto-deploy)
+└── Caddyfile                # Reverse proxy config
 ```
+
+## Systemd Services
+
+All services run under `atlas.target` and are managed by systemd:
+
+| Service | Description |
+|---------|-------------|
+| `atlas-nats` | NATS JetStream event fabric |
+| `atlas-id` | Kirk / Id (Qwen 3 32B on GPU 1) |
+| `atlas-superego` | Spock / Superego (Gemma 4 31B on GPU 0) |
+| `atlas-ego` | Divine Council (Gemma 4 26B-A4B MoE, 8 parallel slots on CPU) |
+| `atlas-rag-server` | RAG server (Flask + pgvector search) |
+| `atlas-telemetry` | Telemetry server (metrics + event stream) |
+| `atlas-caddy` | Caddy reverse proxy |
+| `atlas-oauth2-proxy` | OAuth2 authentication proxy |
+| `atlas-watchdog` | Health monitoring and auto-restart |
+| `atlas-backup` | Scheduled backup (timer-driven) |
+| `atlas-training` | Training environment (timer-driven) |
+| `atlas-llm-kirk` | Kirk LLM service |
+| `atlas-llm-spock` | Spock LLM service |
+| `atlas-llm-dm` | Dungeon Master LLM service |
 
 ---
 
-# ⚡ Quickstart: Local Development
+## CI/CD
 
-### 1. Clone:
+GitHub Actions pipeline on every push to `main`:
+
+1. **Lint** -- `ruff check` + `black --check`
+2. **Test** -- `pytest tests/unit/`
+3. **Deploy** -- SSH to Atlas via Tailscale, `git pull`, `pip install -e ".[nats]"`, restart services
+4. **Smoke test** -- Verify RAG server and telemetry endpoints respond
+
+---
+
+## Hardware
+
+| Resource | Specification |
+|----------|---------------|
+| **Atlas Workstation** | HP Z840, 2x Xeon E5-2690v3 (48 threads), 251GB RAM |
+| **GPU 0** | Quadro GV100 32GB (Volta) -- Superego |
+| **GPU 1** | Quadro GV100 32GB (Volta) -- Id |
+| **Storage** | 15TB at `/archive` |
+| **Network** | Tailscale VPN at 100.68.134.21 |
+| **NRP Nautilus** | A100 80GB, L4 24GB, L40 48GB, L40S across 100+ university nodes |
+
+---
+
+## Quickstart
+
 ```bash
+# Clone
 git clone https://github.com/ahb-sjsu/agi-hpc.git
 cd agi-hpc
-```
 
-### 2. Install dev environment:
-```bash
+# Install
 pip install -e ".[dev]"
 pre-commit install
-```
 
-### 3. Generate protobuf stubs:
-```bash
+# Generate protobuf stubs
 python generate_protos.py --clean
-```
 
-### 4. Run LH/RH locally:
-```bash
+# Run locally (event fabric mode: local, zmq, nats, ucx)
+export AGI_FABRIC_MODE=local
 python src/agi/lh/service.py
 python src/agi/rh/service.py
 ```
-### Note
-```
-Local dev (no network)
 
-export AGI_FABRIC_MODE=local
+For production deployment on Atlas, see [`docs/ATLAS_OPERATIONS.md`](docs/ATLAS_OPERATIONS.md).
 
-
-ZMQ (dev multi-process / small cluster)
-
-export AGI_FABRIC_MODE=zmq
-export AGI_FABRIC_PUB_ENDPOINT=tcp://fabric:5556
-export AGI_FABRIC_SUB_ENDPOINT=tcp://fabric:5555
-
-
-NATS JetStream (production persistent messaging)
-
-export AGI_FABRIC_MODE=nats
-export AGI_FABRIC_NATS_URL=nats://nats-server:4222
-export AGI_FABRIC_NATS_STREAM=AGI_HPC_EVENTS
-export AGI_FABRIC_CONSUMER_GROUP=agi-hpc
-
-
-UCX (HPC inter-node)
-
-export AGI_FABRIC_MODE=ucx
-export AGI_FABRIC_UCX_ENDPOINT=tcp://fabric-node:13337
-
-
-Then run a UCX broker/server on fabric-node:13337 that:
-
-accepts UCX connections
-
-reads framed messages with the same [len][topic\0json] format
-
-fans them out to all connected peers.
-```
 ---
 
-# 📜 License
-MIT © 2025 Andrew Bond
+## Dev Teams
+
+- Cognitive Architecture (LH/RH)
+- Memory Systems
+- EventBus and Messaging
+- HPC Deployment
+- Maritime Digital Twin
+- Unity Simulation
+- Evaluation and Metrics
+
+---
+
+## License
+
+MIT (c) 2025 Andrew Bond
