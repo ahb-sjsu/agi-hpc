@@ -1149,18 +1149,16 @@ def _get_nrp_nats_telemetry():
 
 
 # ── NRP utilization watchdog ──────────────────────────────────
-# NRP Cluster Policy (either/or, no mixing):
+# NRP Cluster Policy:
+#   - Max 4 pods with GPU>40% / CPU 20-200% / RAM 20-150%
+#   - 5+ pods: ALL must stay under those thresholds
+#   - Pods IDLE relative to their request = violation (wasting resources)
+#   - Ignored: Memory <=2GB, CPU <=1
+#   - Jobs with sleep = ban
 #
-#   Mode A (heavy):  up to 4 pods, each can use up to 100%
-#   Mode B (swarm):  5+ pods, ALL must stay under thresholds
-#                    (GPU <40%, CPU <20% or >200%, RAM <20% or >150%)
-#
-#   Ignored: Memory <=2GB, CPU <=1
-#   Jobs ending with sleep = ban
-#
-# The watchdog auto-detects which mode we're in and enforces it.
-# If we have 5+ pods and any is heavy → kill it.
-# If we have <=4 pods, heavy is fine.
+# Watchdog does TWO things:
+#   1. KILL pods that are under-utilizing requested resources
+#   2. COUNT violations and enforce the 4-pod limit
 
 def _get_pod_logs(pod_name: str, tail: int = 8) -> dict:
     """Fetch recent logs from a pod via kubectl."""
@@ -1181,10 +1179,68 @@ def _get_pod_logs(pod_name: str, tail: int = 8) -> dict:
 
 _nrp_violations: dict[str, int] = {}
 _nrp_mode: dict = {"mode": "auto", "active": "unknown", "n_active": 0}
-# mode: "auto" (watchdog decides), "heavy" (force 4-pod max), "swarm" (force light)
+
+
+def _parse_cpu_m(val):
+    if not val: return 0
+    val = str(val).strip()
+    return int(val[:-1]) if val.endswith("m") else int(float(val) * 1000)
+
+
+def _parse_mem_mi(val):
+    if not val: return 0
+    val = str(val).strip().replace(" ", "")
+    if val.endswith("Mi"): return int(val[:-2])
+    if val.endswith("Gi"): return int(float(val[:-2]) * 1024)
+    if val.endswith("GB"): return int(float(val[:-2]) * 1024)
+    return 0
+
+
+def _pod_is_violating(pod) -> str | None:
+    """Check if a pod violates NRP utilization rules.
+
+    Returns violation description string, or None if compliant.
+    A pod violates if it's under-utilizing resources it requested
+    (outside the ignored ranges).
+    """
+    usage = pod.get("usage", {})
+    gpu_live = pod.get("gpu_live", {})
+    res = pod.get("resources", {})
+
+    # GPU: if requested, must be >40%
+    if res.get("gpu") and gpu_live.get("gpu_util_pct") is not None:
+        if gpu_live["gpu_util_pct"] <= 40:
+            return f"GPU {gpu_live['gpu_util_pct']}% (need >40%)"
+
+    # CPU: if requested >1 CPU, usage must be 20-200% of request
+    cpu_req_m = _parse_cpu_m(res.get("cpu", ""))
+    cpu_used_m = _parse_cpu_m(usage.get("cpu_used", ""))
+    if cpu_req_m > 1000:  # >1 CPU requested (not in ignored range)
+        if cpu_used_m == 0:
+            return f"CPU 0% of {cpu_req_m}m requested"
+        cpu_pct = cpu_used_m * 100 // cpu_req_m
+        if cpu_pct < 20:
+            return f"CPU {cpu_pct}% (need 20-200%)"
+        if cpu_pct > 200:
+            return f"CPU {cpu_pct}% (need 20-200%)"
+
+    # RAM: if requested >2GB, usage must be 20-150% of request
+    mem_req_mi = _parse_mem_mi(res.get("memory", ""))
+    mem_used_mi = _parse_mem_mi(usage.get("mem_used", ""))
+    if mem_req_mi > 2048:  # >2GB requested (not in ignored range)
+        if mem_used_mi == 0:
+            return f"RAM 0% of {mem_req_mi}Mi requested"
+        mem_pct = mem_used_mi * 100 // mem_req_mi
+        if mem_pct < 20:
+            return f"RAM {mem_pct}% (need 20-150%)"
+        if mem_pct > 150:
+            return f"RAM {mem_pct}% (need 20-150%)"
+
+    return None
+
 
 def _nrp_watchdog_check(pods: list[dict]):
-    """Enforce NRP either/or pod policy."""
+    """Enforce NRP utilization rules. Kill violating pods."""
     global _nrp_violations
     kubeconfig = os.path.expanduser("~/.kube/config")
     ns = "ssu-atlas-ai"
@@ -1193,88 +1249,46 @@ def _nrp_watchdog_check(pods: list[dict]):
     current_names = {p["name"] for p in active}
     _nrp_violations = {k: v for k, v in _nrp_violations.items() if k in current_names}
 
-    def _parse_cpu_m(val):
-        if not val: return 0
-        val = str(val).strip()
-        return int(val[:-1]) if val.endswith("m") else int(float(val) * 1000)
-
-    def _parse_mem_mi(val):
-        if not val: return 0
-        val = str(val).strip().replace(" ", "")
-        if val.endswith("Mi"): return int(val[:-2])
-        if val.endswith("Gi"): return int(float(val[:-2]) * 1024)
-        if val.endswith("GB"): return int(float(val[:-2]) * 1024)
-        return 0
-
-    def _is_heavy(pod):
-        """Check if pod exceeds violation thresholds."""
-        usage = pod.get("usage", {})
-        gpu_live = pod.get("gpu_live", {})
-        res = pod.get("resources", {})
-
-        # GPU > 40%
-        if res.get("gpu") and gpu_live.get("gpu_util_pct") is not None:
-            if gpu_live["gpu_util_pct"] > 40:
-                return True
-
-        # CPU 20-200% of requested (ignored if <=1 CPU)
-        cpu_req_m = _parse_cpu_m(res.get("cpu", ""))
-        cpu_used_m = _parse_cpu_m(usage.get("cpu_used", ""))
-        if cpu_req_m > 1000 and cpu_used_m > 0:
-            cpu_pct = cpu_used_m * 100 // cpu_req_m
-            if 20 <= cpu_pct <= 200:
-                return True
-
-        # RAM 20-150% of requested (ignored if <=2GB)
-        mem_req_mi = _parse_mem_mi(res.get("memory", ""))
-        mem_used_mi = _parse_mem_mi(usage.get("mem_used", ""))
-        if mem_req_mi > 2048 and mem_used_mi > 0:
-            mem_pct = mem_used_mi * 100 // mem_req_mi
-            if 20 <= mem_pct <= 150:
-                return True
-
-        return False
-
     n_active = len(active)
-
-    # Check configured mode (can be set via /api/nrp/mode)
-    mode = _nrp_mode.get("mode", "auto")
-
-    if mode == "auto":
-        # Auto-select: if we have any datacenter GPUs (A100/H100/H200/L40),
-        # use heavy mode (4 pods max). Otherwise swarm mode.
-        datacenter_gpus = {"A100", "H100", "H200", "L40", "L40S"}
-        has_datacenter = any(
-            p.get("gpu_live", {}).get("vram_total_mib", 0) > 20000 or
-            any(dg in (p.get("resources", {}).get("gpu_model", "") or "")
-                for dg in datacenter_gpus)
-            for p in active if p.get("resources", {}).get("gpu")
-        )
-        mode = "heavy" if (has_datacenter and n_active <= 4) else (
-            "heavy" if n_active <= 4 else "swarm"
-        )
-
-    _nrp_mode["active"] = mode
-    _nrp_mode["n_active"] = n_active
-
-    if mode == "heavy" and n_active <= 4:
-        _nrp_violations.clear()
-        log.info(f"[nrp-watchdog] Mode HEAVY: {n_active} pods (<=4), no restrictions")
-        return
-
-    # MODE SWARM: 5+ pods — ALL must be lightweight
-    # Any heavy pod is a violation
-    log.info(f"[nrp-watchdog] Mode B: {n_active} pods (>4), all must be light")
+    n_violating = 0
+    pods_to_kill = []
 
     for pod in active:
         name = pod["name"]
-        if _is_heavy(pod):
+        violation = _pod_is_violating(pod)
+
+        if violation:
+            n_violating += 1
             _nrp_violations[name] = _nrp_violations.get(name, 0) + 1
             count = _nrp_violations[name]
+            log.warning(f"[nrp-watchdog] {name}: {violation} (strike {count})")
 
             if count >= 2:
-                log.warning(f"[nrp-watchdog] KILLING {name}: heavy pod in swarm mode "
-                           f"({n_active} pods, all must be <40% GPU) — strike {count}")
+                pods_to_kill.append((name, pod, violation))
+        else:
+            _nrp_violations.pop(name, None)
+
+    # Kill pods with 2+ consecutive violations
+    for name, pod, violation in pods_to_kill:
+        log.warning(f"[nrp-watchdog] KILLING {name}: {violation}")
+        try:
+            job_name = pod.get("job", "")
+            target = ("job", job_name) if job_name else ("pod", name)
+            subprocess.run(
+                ["kubectl", "--kubeconfig", kubeconfig, "-n", ns,
+                 "delete", target[0], target[1]],
+                capture_output=True, timeout=10)
+        except Exception as e:
+            log.error(f"[nrp-watchdog] Failed to kill {name}: {e}")
+        _nrp_violations.pop(name, None)
+
+    # Emergency: if 4+ pods violating simultaneously, kill ALL violators immediately
+    if n_violating >= 4:
+        log.warning(f"[nrp-watchdog] EMERGENCY: {n_violating} pods violating "
+                   f"(ban threshold is 4). Killing all violators.")
+        for pod in active:
+            name = pod["name"]
+            if _pod_is_violating(pod):
                 try:
                     job_name = pod.get("job", "")
                     target = ("job", job_name) if job_name else ("pod", name)
@@ -1282,14 +1296,73 @@ def _nrp_watchdog_check(pods: list[dict]):
                         ["kubectl", "--kubeconfig", kubeconfig, "-n", ns,
                          "delete", target[0], target[1]],
                         capture_output=True, timeout=10)
-                except Exception as e:
-                    log.error(f"[nrp-watchdog] Failed to kill {name}: {e}")
-                _nrp_violations.pop(name, None)
-            else:
-                log.warning(f"[nrp-watchdog] {name}: heavy in swarm mode "
-                           f"(strike {count}/2, will kill next check)")
-        else:
-            _nrp_violations.pop(name, None)
+                except Exception:
+                    pass
+
+    _nrp_mode["active"] = "heavy" if n_active <= 4 else "swarm"
+    _nrp_mode["n_active"] = n_active
+    _nrp_mode["n_violating"] = n_violating
+
+    if n_active > 0:
+        log.info(f"[nrp-watchdog] {n_active} pods, {n_violating} violating")
+
+
+def nrp_validate_pod_spec(spec: dict) -> list[str]:
+    """Pre-submission validation. Returns list of problems, empty = OK.
+
+    Call this BEFORE kubectl apply to catch stupid requests.
+    """
+    problems = []
+    containers = spec.get("spec", {}).get("template", {}).get(
+        "spec", {}).get("containers", [])
+    if not containers:
+        problems.append("no containers defined")
+        return problems
+
+    c = containers[0]
+    res = c.get("resources", {})
+    req = res.get("requests", {})
+    lim = res.get("limits", {})
+
+    # limits must be within 20% of requests
+    for key in ("cpu", "memory"):
+        r = req.get(key, "")
+        l = lim.get(key, "")
+        if r and l and r != l:
+            r_val = _parse_cpu_m(r) if key == "cpu" else _parse_mem_mi(r)
+            l_val = _parse_cpu_m(l) if key == "cpu" else _parse_mem_mi(l)
+            if r_val > 0 and abs(l_val - r_val) / r_val > 0.2:
+                problems.append(f"{key} limits ({l}) >20% from requests ({r})")
+
+    # For >100 pods: limits MUST equal requests
+    # (can't check total pod count here, but flag if they differ)
+    if req.get("cpu") != lim.get("cpu") or req.get("memory") != lim.get("memory"):
+        problems.append("limits != requests (required for >100 pods)")
+
+    # CPU-only pods should use cpu<=1, memory<=2Gi to stay in ignored range
+    if not req.get("nvidia.com/gpu") and not lim.get("nvidia.com/gpu"):
+        mem_mi = _parse_mem_mi(req.get("memory", ""))
+        cpu_m = _parse_cpu_m(req.get("cpu", ""))
+        if mem_mi > 2048:
+            problems.append(f"CPU-only pod requests {req['memory']} RAM "
+                          f"(>2GB, subject to utilization monitoring). Use 2Gi.")
+        if cpu_m > 1000:
+            problems.append(f"CPU-only pod requests {req['cpu']} CPU "
+                          f"(>1, subject to utilization monitoring). Use 1.")
+
+    # No sleep in command
+    cmd = " ".join(c.get("command", []) + c.get("args", []))
+    if "sleep infinity" in cmd or cmd.rstrip().endswith("sleep"):
+        problems.append("sleep in command = BAN")
+
+    # No A100/H100 targeting (no quota)
+    affinity = spec.get("spec", {}).get("template", {}).get(
+        "spec", {}).get("affinity", {})
+    affinity_str = json.dumps(affinity)
+    if "A100" in affinity_str or "H100" in affinity_str or "H200" in affinity_str:
+        problems.append("targeting A100/H100/H200 (no quota, will Pend forever)")
+
+    return problems
 
 
 def _get_nrp_burst_status():
