@@ -2054,10 +2054,14 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
             s += '<circle cx="608" cy="'+py+'" r="6" fill="'+pc+'" opacity="0.85"/>';
             var pName = pod.name.replace(/-[a-z0-9]{5,}$/,'');
             var gpuModel = (pod.resources||{}).gpu_model || '';
+            var podUsage = pod.usage || {};
             var pDetail = pName;
-            if(gpu && gpuModel) pDetail += '  ·  ' + gpu + 'x ' + gpuModel;
-            else if(gpu) pDetail += '  ·  ' + gpu + ' GPU';
-            if(img) pDetail += '  ·  ' + img.split(':')[0];
+            if(gpu && gpuModel) pDetail += ' · ' + gpu + 'x ' + gpuModel;
+            else if(gpu) pDetail += ' · ' + gpu + ' GPU';
+            var usageBits = [];
+            if(podUsage.cpu_used && podUsage.cpu_used !== '0m') usageBits.push(podUsage.cpu_used + ' cpu');
+            if(podUsage.mem_used) usageBits.push(podUsage.mem_used);
+            if(usageBits.length) pDetail += ' · ' + usageBits.join(' ');
             s += '<text x="620" y="'+(py+4)+'" fill="var(--text)" font-size="10">'+pDetail+'</text>';
           }
           if(nPods > maxShow) s += '<text x="620" y="'+(pStartY + maxShow*pSpacing+10)+'" fill="var(--text-dim)" font-size="10">+ '+(nPods-maxShow)+' more pods</text>';
@@ -2081,8 +2085,9 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
           var th = '<table style="width:100%;border-collapse:collapse">' +
             '<tr style="color:var(--text-dim);font-size:8px;text-transform:uppercase">' +
             '<th style="text-align:left;padding:1px 3px">Pod</th>' +
-            '<th style="text-align:left;padding:1px 3px">Image</th>' +
             '<th style="text-align:center;padding:1px 3px">GPU</th>' +
+            '<th style="text-align:right;padding:1px 3px">CPU</th>' +
+            '<th style="text-align:right;padding:1px 3px">RAM</th>' +
             '<th style="text-align:left;padding:1px 3px">Status</th>' +
             '<th style="text-align:left;padding:1px 3px">Node</th></tr>';
           active.forEach(function(p){
@@ -2093,10 +2098,18 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
             var gpuDisplay = gpu ? (gpuModel ? gpu + 'x ' + gpuModel : gpu + ' GPU') : '\u2014';
             var img = p.image || '\u2014';
             var node = p.node ? p.node.split('.')[0] : '\u2014';
+            var usage = p.usage || {};
+            var cpuUsed = usage.cpu_used || '\u2014';
+            var memUsed = usage.mem_used || '\u2014';
+            var memLimit = (p.resources||{}).memory || '';
+            var memDisplay = memUsed !== '\u2014' && memLimit ? memUsed + '/' + memLimit : memUsed;
+            // Color CPU: green if active, dim if idle
+            var cpuColor = cpuUsed !== '\u2014' && cpuUsed !== '0m' ? 'var(--accent)' : 'var(--text-dim)';
             th += '<tr style="border-top:1px solid rgba(255,255,255,0.05)">' +
-              '<td style="padding:1px 3px;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + p.name + '">' + p.name.replace(/-[a-z0-9]{5,}$/,'') + '</td>' +
-              '<td style="padding:1px 3px;color:var(--text-dim);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + img + '">' + img + '</td>' +
+              '<td style="padding:1px 3px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + p.name + ' | ' + img + '">' + p.name.replace(/-[a-z0-9]{5,}$/,'') + '</td>' +
               '<td style="padding:1px 3px;text-align:center;color:var(--accent)">' + gpuDisplay + '</td>' +
+              '<td style="padding:1px 3px;text-align:right;color:' + cpuColor + ';font-size:9px">' + cpuUsed + '</td>' +
+              '<td style="padding:1px 3px;text-align:right;color:var(--text-dim);font-size:9px">' + memDisplay + '</td>' +
               '<td style="padding:1px 3px;color:' + sc + '">' + statusText + '</td>' +
               '<td style="padding:1px 3px;color:var(--text-dim)">' + node + '</td></tr>';
           });

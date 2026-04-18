@@ -1278,6 +1278,31 @@ def _get_nrp_burst_status():
                     "batch": batch,
                 })
 
+        # ── Pod metrics (kubectl top pods) ──
+        usage_map = {}  # pod_name -> {cpu, memory}
+        try:
+            top_result = subprocess.run(
+                ["kubectl", "--kubeconfig", kubeconfig, "-n", ns,
+                 "top", "pods", "--no-headers"],
+                capture_output=True, text=True, timeout=10,
+            )
+            if top_result.returncode == 0:
+                for line in top_result.stdout.strip().split("\n"):
+                    parts = line.split()
+                    if len(parts) >= 3:
+                        usage_map[parts[0]] = {
+                            "cpu_used": parts[1],     # e.g. "946m"
+                            "mem_used": parts[2],     # e.g. "710Mi"
+                        }
+        except Exception:
+            pass
+
+        # Merge usage into pods
+        for pod in pods_list:
+            usage = usage_map.get(pod["name"], {})
+            if usage:
+                pod["usage"] = usage
+
         # Sort: running/pending first, then newest
         jobs_list.sort(key=lambda j: (
             j["state"] not in ("Running", "Pending"), j["created"]
