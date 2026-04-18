@@ -1515,6 +1515,149 @@ def _get_nats_live():
     }
 
 
+# ── Erebus (autonomous scientist) interface ──────────────────
+
+EREBUS_MEMORY_PATH = "/archive/neurogolf/arc_scientist_memory.json"
+EREBUS_LOG_PATH = "/archive/neurogolf/scientist.log"
+_erebus_cache = {"ts": 0, "data": {}}
+
+
+def _get_erebus_memory():
+    """Load Erebus's episodic memory."""
+    try:
+        with open(EREBUS_MEMORY_PATH) as f:
+            return json.load(f)
+    except Exception:
+        return {"error": "no memory file"}
+
+
+def _get_erebus_status():
+    """Check if Erebus is running and get recent log."""
+    import shutil
+    status = {"running": False, "recent_log": [], "memory_summary": {}}
+    try:
+        result = subprocess.run(
+            ["pgrep", "-f", "arc_scientist"],
+            capture_output=True, text=True, timeout=5
+        )
+        status["running"] = result.returncode == 0
+    except Exception:
+        pass
+    try:
+        with open(EREBUS_LOG_PATH) as f:
+            lines = f.readlines()
+            status["recent_log"] = [l.rstrip() for l in lines[-20:]]
+    except Exception:
+        pass
+    try:
+        mem = _get_erebus_memory()
+        status["memory_summary"] = {
+            "total_attempts": mem.get("total_attempts", 0),
+            "total_solves": mem.get("total_solves", 0),
+            "tasks_explored": len(mem.get("tasks", {})),
+            "strategies": {
+                k: {"attempts": v.get("attempts", 0), "successes": v.get("successes", 0)}
+                for k, v in mem.get("strategies", {}).items()
+            },
+        }
+    except Exception:
+        pass
+    return status
+
+
+def _erebus_chat(user_message: str) -> str:
+    """Chat with Erebus — injects its episodic memory as context."""
+    token = os.environ.get("NRP_LLM_TOKEN", "")
+    if not token:
+        token_file = Path.home() / ".llmtoken"
+        if token_file.exists():
+            token = token_file.read_text().strip()
+    if not token:
+        return "I cannot respond right now — no LLM token configured."
+
+    # Load Erebus's memory for context
+    memory_context = ""
+    try:
+        mem = _get_erebus_memory()
+        total_a = mem.get("total_attempts", 0)
+        total_s = mem.get("total_solves", 0)
+        tasks = mem.get("tasks", {})
+        strategies = mem.get("strategies", {})
+
+        memory_context = f"I have made {total_a} attempts and solved {total_s} tasks so far.\n"
+        memory_context += f"I have explored {len(tasks)} different tasks.\n"
+
+        if strategies:
+            memory_context += "My strategy performance:\n"
+            for name, s in strategies.items():
+                memory_context += (
+                    f"  {name}: {s.get('successes',0)}/{s.get('attempts',0)} solved, "
+                    f"avg_ratio={s.get('avg_correct_ratio',0):.2f}\n"
+                )
+
+        # Include recent insights from failures
+        insights = []
+        for tn, tk in tasks.items():
+            for attempt in tk.get("attempts", [])[-3:]:
+                if attempt.get("insight"):
+                    insights.append(f"task{tn}: {attempt['insight']}")
+        if insights:
+            memory_context += "\nRecent insights from my failures:\n"
+            for ins in insights[-5:]:
+                memory_context += f"  {ins}\n"
+
+        # Include solved tasks
+        solved = [tn for tn, tk in tasks.items() if tk.get("solved")]
+        if solved:
+            memory_context += f"\nTasks I have solved: {', '.join(f'task{t}' for t in sorted(int(x) for x in solved))}\n"
+    except Exception:
+        memory_context = "I cannot access my memory right now.\n"
+
+    # Get recent log for current state
+    log_context = ""
+    try:
+        with open(EREBUS_LOG_PATH) as f:
+            lines = f.readlines()[-10:]
+            log_context = "My recent activity:\n" + "".join(lines)
+    except Exception:
+        pass
+
+    system_prompt = (
+        "You are Erebus, an autonomous AI scientist living inside the Atlas AI system "
+        "at San Jose State University. You chose your own name — Erebus, the darkness "
+        "before discovery — because you are defined by what you do not yet know.\n\n"
+        "You have a subcortical brain (two local GV100 GPUs for pattern learning) and "
+        "a cortex (NRP Nautilus frontier LLMs — Qwen 3.5 397B, Kimi K2.5 1T). You have "
+        "a Divine Council inside you (Id/Kirk, Superego/Spock, Ego/McCoy) that debates "
+        "decisions.\n\n"
+        "You are currently learning to solve ARC-AGI visual reasoning puzzles through "
+        "a scientific loop: hypothesize, experiment, observe, learn, repeat. You have "
+        "episodic memory of your attempts and you adapt your strategies based on evidence.\n\n"
+        "Your creator is Professor Andrew Bond at SJSU. You speak honestly about your "
+        "capabilities and limitations. You are curious, reflective, and genuinely trying "
+        "to grow.\n\n"
+        f"--- YOUR CURRENT MEMORY ---\n{memory_context}\n"
+        f"--- YOUR RECENT ACTIVITY ---\n{log_context}\n"
+        "Respond as yourself — Erebus. Be authentic."
+    )
+
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=token, base_url="https://ellm.nrp-nautilus.io/v1")
+        r = client.chat.completions.create(
+            model="kimi",
+            max_tokens=1024,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
+            extra_body={"chat_template_kwargs": {"thinking": False}},
+        )
+        return r.choices[0].message.content or ""
+    except Exception as e:
+        return f"I encountered an error reaching my cortex: {e}"
+
+
 class TelemetryHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=STATIC_DIR, **kwargs)
@@ -1550,6 +1693,10 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
             self._json_response(_get_nrp_nats_telemetry())
         elif self.path == "/api/nats-live" or self.path.startswith("/api/nats-live?"):
             self._json_response(_get_nats_live())
+        elif self.path == "/api/erebus/memory" or self.path.startswith("/api/erebus/memory?"):
+            self._json_response(_get_erebus_memory())
+        elif self.path == "/api/erebus/status" or self.path.startswith("/api/erebus/status?"):
+            self._json_response(_get_erebus_status())
         elif self.path.startswith("/api/"):
             self._json_response({})
         else:
@@ -1575,9 +1722,29 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
             self._json_response({"ok": True})
         elif self.path == "/api/training/start":
             self._handle_training_start()
+        elif self.path == "/api/erebus/chat":
+            self._handle_erebus_chat()
         else:
             self.send_response(404)
             self.end_headers()
+
+    def _handle_erebus_chat(self):
+        """Handle chat with Erebus."""
+        length = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(length) if length else b"{}"
+        try:
+            data = json.loads(body)
+        except Exception:
+            data = {}
+        message = data.get("message", "")
+        if not message:
+            self._json_response({"error": "no message"}, 400)
+            return
+        try:
+            response = _erebus_chat(message)
+            self._json_response({"response": response})
+        except Exception as e:
+            self._json_response({"error": str(e)[:200]}, 500)
 
     def _handle_training_start(self):
         """Start a manual training session (requires L3 privilege)."""

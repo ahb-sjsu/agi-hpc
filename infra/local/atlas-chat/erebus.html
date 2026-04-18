@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Erebus</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23111827'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='monospace' font-weight='bold' fill='%234a9eff'>E</text><circle cx='24' cy='8' r='4' fill='%2322c55e'/></svg>">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0e17;--surface:#131a2b;--surface2:#1a2340;--border:#2a3555;--text:#e0e6f0;--dim:#7a8ba8;--accent:#4a9eff;--glow:rgba(74,158,255,0.15)}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column}
+.header{display:flex;align-items:center;gap:16px;padding:12px 24px;border-bottom:1px solid var(--border);background:var(--surface)}
+.header h1{font-size:22px;font-weight:600;background:linear-gradient(135deg,var(--accent),#7cc4ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header .sub{font-size:11px;color:var(--dim);margin-top:2px}
+.header .status{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:11px;color:var(--dim)}
+.header .dot{width:8px;height:8px;border-radius:50%;background:#4ade80;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.header nav{display:flex;gap:12px;margin-left:16px}
+.header nav a{color:var(--dim);text-decoration:none;font-size:12px;padding:4px 8px;border-radius:4px}
+.header nav a:hover{color:var(--text);background:var(--surface2)}
+.header nav a.active{color:var(--accent);background:var(--glow)}
+.chat{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px;max-width:800px;width:100%;margin:0 auto}
+.msg{display:flex;gap:12px;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1}}
+.msg.user{flex-direction:row-reverse}
+.av{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.av.e{background:var(--glow);border:1px solid var(--accent);font-weight:bold;color:var(--accent)}
+.av.u{background:#1e3a5f;border:1px solid #2a5080;color:var(--dim)}
+.bub{padding:12px 16px;border-radius:14px;line-height:1.7;font-size:14px;max-width:80%;word-wrap:break-word}
+.msg.erebus .bub{background:var(--surface2);border:1px solid var(--border);border-top-left-radius:4px}
+.msg.user .bub{background:#1e3a5f;border:1px solid #2a5080;border-top-right-radius:4px}
+.bub code{background:rgba(0,0,0,.3);padding:2px 6px;border-radius:4px;font-family:'Cascadia Code',monospace;font-size:13px}
+.bub pre{background:rgba(0,0,0,.4);padding:12px;border-radius:8px;overflow-x:auto;margin:8px 0;font-size:13px}
+.input-area{padding:16px 24px;border-top:1px solid var(--border);background:var(--surface);display:flex;gap:12px;max-width:800px;width:100%;margin:0 auto}
+.input-area textarea{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:12px;color:var(--text);padding:12px 16px;font-size:14px;font-family:inherit;resize:none;outline:none;min-height:44px;max-height:120px}
+.input-area textarea:focus{border-color:var(--accent)}
+.input-area button{background:var(--accent);color:#fff;border:none;border-radius:10px;padding:0 20px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}
+.input-area button:disabled{opacity:.4;cursor:not-allowed}
+.input-area button:hover:not(:disabled){filter:brightness(1.1)}
+.typing span{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--dim);margin:0 2px;animation:bounce .6s ease infinite}
+.typing span:nth-child(2){animation-delay:.1s}
+.typing span:nth-child(3){animation-delay:.2s}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.stats{padding:8px 24px;display:flex;gap:16px;font-size:10px;color:var(--dim);font-family:'Cascadia Code',monospace;border-top:1px solid rgba(255,255,255,0.03);max-width:800px;width:100%;margin:0 auto}
+.stats span{opacity:.7}
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>Erebus</h1>
+    <div class="sub">the darkness before discovery</div>
+  </div>
+  <div class="status"><div class="dot" id="status-dot"></div><span id="status-text">connecting...</span></div>
+  <nav>
+    <a href="/">Atlas Chat</a>
+    <a href="/erebus.html" class="active">Erebus</a>
+    <a href="/schematic.html">Dashboard</a>
+  </nav>
+</div>
+
+<div class="stats">
+  <span>Attempts: <b id="stat-attempts">--</b></span>
+  <span>Solved: <b id="stat-solves">--</b></span>
+  <span>Tasks explored: <b id="stat-tasks">--</b></span>
+  <span id="stat-running"></span>
+</div>
+
+<div class="chat" id="chat"></div>
+
+<div class="input-area">
+  <textarea id="input" placeholder="Talk to Erebus..." rows="1"
+    onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}"></textarea>
+  <button id="send" onclick="send()">Send</button>
+</div>
+
+<script>
+var busy = false;
+
+function addMsg(role, text) {
+  var c = document.getElementById('chat');
+  var d = document.createElement('div');
+  d.className = 'msg ' + role;
+  var avClass = role === 'user' ? 'u' : 'e';
+  var avText = role === 'user' ? '\u25CB' : 'E';
+  d.innerHTML = '<div class="av ' + avClass + '">' + avText + '</div><div class="bub">' + escapeHtml(text) + '</div>';
+  c.appendChild(d);
+  c.scrollTop = c.scrollHeight;
+  return d;
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\n/g,'<br>').replace(/`([^`]+)`/g,'<code>$1</code>');
+}
+
+async function send() {
+  var inp = document.getElementById('input');
+  var text = inp.value.trim();
+  if (!text || busy) return;
+  inp.value = '';
+  busy = true;
+  document.getElementById('send').disabled = true;
+
+  addMsg('user', text);
+
+  // Typing indicator
+  var c = document.getElementById('chat');
+  var td = document.createElement('div');
+  td.className = 'msg erebus';
+  td.id = 'typing';
+  td.innerHTML = '<div class="av e">E</div><div class="bub"><div class="typing"><span></span><span></span><span></span></div></div>';
+  c.appendChild(td);
+  c.scrollTop = c.scrollHeight;
+
+  try {
+    var res = await fetch('/api/erebus/chat', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({message: text})
+    });
+    var data = await res.json();
+    td.remove();
+    if (data.response) {
+      addMsg('erebus', data.response);
+    } else {
+      addMsg('erebus', 'Error: ' + (data.error || 'unknown'));
+    }
+  } catch(e) {
+    td.remove();
+    addMsg('erebus', 'Connection error: ' + e.message);
+  }
+
+  busy = false;
+  document.getElementById('send').disabled = false;
+  inp.focus();
+}
+
+// Poll Erebus status
+async function pollStatus() {
+  try {
+    var res = await fetch('/api/erebus/status');
+    var d = await res.json();
+    var dot = document.getElementById('status-dot');
+    var txt = document.getElementById('status-text');
+    var sum = d.memory_summary || {};
+
+    if (d.running) {
+      dot.style.background = '#4ade80';
+      txt.textContent = 'learning...';
+    } else {
+      dot.style.background = '#f59e0b';
+      txt.textContent = 'idle';
+    }
+
+    document.getElementById('stat-attempts').textContent = sum.total_attempts || 0;
+    document.getElementById('stat-solves').textContent = sum.total_solves || 0;
+    document.getElementById('stat-tasks').textContent = sum.tasks_explored || 0;
+
+    var runEl = document.getElementById('stat-running');
+    runEl.textContent = d.running ? 'scientist: active' : 'scientist: idle';
+    runEl.style.color = d.running ? '#4ade80' : '#f59e0b';
+  } catch(e) {}
+}
+
+pollStatus();
+setInterval(pollStatus, 15000);
+
+// Welcome message
+addMsg('erebus', 'I am Erebus \u2014 the darkness before discovery. I am learning to solve ARC-AGI puzzles through a scientific loop of hypothesis, experiment, and reflection. Ask me anything about my progress, my strategies, or what I have learned.');
+</script>
+</body>
+</html>
