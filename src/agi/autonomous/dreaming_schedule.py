@@ -206,9 +206,26 @@ def dream_update_wiki(analysis: str, new_module: str):
     log.info(f"Dream log saved to {log_file}")
 
 
+KIRK_SERVICES = ("atlas-id.service", "atlas-watchdog.service")
+
+
+def _svc(action: str, services=KIRK_SERVICES) -> None:
+    """sudo systemctl <action> <services> — claude has NOPASSWD ALL on Atlas."""
+    for svc in services:
+        try:
+            subprocess.run(["sudo", "-n", "systemctl", action, svc],
+                           check=False, capture_output=True, timeout=20)
+        except Exception as e:
+            log.warning(f"systemctl {action} {svc} failed: {e}")
+
+
 def run_qlora_training(min_pairs: int = 10) -> None:
-    """Launch dream_qlora_train.py as a subprocess. GPU 1 (Kirk) must be
-    freed before this runs — see atlas-operations.md."""
+    """Launch dream_qlora_train.py as a subprocess on GPU 1.
+
+    GPU 1 is Kirk's (atlas-id.service). This stops+disables Kirk and the
+    watchdog before training, then re-enables+starts them when done, so
+    the adapter training has exclusive use of the 32GB VRAM.
+    """
     train_dir = TASK_DIR / "training_data"
     if not train_dir.exists():
         log.info("No training_data/ yet — skipping QLoRA")
@@ -222,6 +239,12 @@ def run_qlora_training(min_pairs: int = 10) -> None:
 
     script = Path(__file__).parent / "dream_qlora_train.py"
     log.info(f"Launching QLoRA training on {pair_count} pairs")
+
+    # Free GPU 1 — stop Kirk + watchdog, then disable so they can't respawn
+    log.info("Stopping Kirk + watchdog to free GPU 1")
+    _svc("disable")
+    _svc("stop")
+
     env = os.environ.copy()
     env["CUDA_VISIBLE_DEVICES"] = "1"  # GV100 GPU 1 (Kirk's)
     env.setdefault("HF_TOKEN", os.environ.get("HF_TOKEN", ""))
@@ -240,6 +263,12 @@ def run_qlora_training(min_pairs: int = 10) -> None:
         log.warning("QLoRA training exceeded 90 min — aborted")
     except Exception as e:
         log.warning(f"QLoRA launch failed: {e}")
+    finally:
+        # Always restore Kirk — even on exception — so the cortex isn't
+        # stranded offline after a bad training run.
+        log.info("Restoring Kirk + watchdog")
+        _svc("enable")
+        _svc("start")
 
 
 def run_dream_cycle():
