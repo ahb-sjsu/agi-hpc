@@ -479,20 +479,23 @@ def run_agentic_turn(client, model: str, messages: list[dict],
         msg = response.choices[0].message
 
         if not msg.tool_calls:
-            # No more tool calls — return final response
             return msg.content or ""
 
-        # Execute each tool call
-        messages.append({
-            "role": "assistant",
-            "content": msg.content or "",
-            "tool_calls": [
-                {"id": tc.id, "type": "function",
-                 "function": {"name": tc.function.name,
-                              "arguments": tc.function.arguments}}
-                for tc in msg.tool_calls
-            ],
-        })
+        # Build assistant message with tool calls
+        assistant_msg = {"role": "assistant", "content": msg.content or ""}
+        tool_calls_list = []
+        for tc in msg.tool_calls:
+            tc_dict = {
+                "id": tc.id if tc.id else f"call_{len(tool_calls_list)}",
+                "type": "function",
+                "function": {
+                    "name": tc.function.name,
+                    "arguments": tc.function.arguments if isinstance(tc.function.arguments, str) else json.dumps(tc.function.arguments),
+                },
+            }
+            tool_calls_list.append(tc_dict)
+        assistant_msg["tool_calls"] = tool_calls_list
+        messages.append(assistant_msg)
 
         for tc in msg.tool_calls:
             try:
