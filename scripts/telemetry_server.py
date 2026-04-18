@@ -2117,5 +2117,45 @@ if __name__ == "__main__":
     threading.Thread(target=_nrp_nats_listener, daemon=True, name="nrp-nats").start()
     _start_nats_subscriber()
 
+    # Pre-load Erebus fingerprints in background so first chat is fast
+    def _preload_fingerprints():
+        try:
+            from pathlib import Path as _P
+            import importlib.util
+            _base = _P(__file__).parent.parent / "src" / "agi" / "autonomous"
+            _sci_path = _base / "arc_scientist.py"
+            if _sci_path.exists():
+                import types
+                import sys as _s
+                for mod_name in ("agi", "agi.autonomous"):
+                    if mod_name not in _s.modules:
+                        _s.modules[mod_name] = types.ModuleType(mod_name)
+                _prim_path = _base / "primitives.py"
+                if _prim_path.exists():
+                    spec = importlib.util.spec_from_file_location("agi.autonomous.primitives", _prim_path)
+                    mod = importlib.util.module_from_spec(spec)
+                    _s.modules["agi.autonomous.primitives"] = mod
+                    spec.loader.exec_module(mod)
+                spec2 = importlib.util.spec_from_file_location("agi.autonomous.arc_scientist", _sci_path)
+                mod2 = importlib.util.module_from_spec(spec2)
+                _s.modules["agi.autonomous.arc_scientist"] = mod2
+                spec2.loader.exec_module(mod2)
+                fps = {}
+                task_dir = "/archive/neurogolf"
+                for tn in range(1, 401):
+                    tf = _P(task_dir) / f"task{tn:03d}.json"
+                    if tf.exists():
+                        try:
+                            with open(tf) as f:
+                                tk = json.load(f)
+                            fps[tn] = mod2.fingerprint_task(tk, tn)
+                        except Exception:
+                            pass
+                _erebus_fingerprints["fps"] = fps
+                log.info(f"Erebus: pre-loaded {len(fps)} fingerprints")
+        except Exception as e:
+            log.warning(f"Fingerprint preload failed: {e}")
+    threading.Thread(target=_preload_fingerprints, daemon=True, name="erebus-fp").start()
+
     server = ThreadingHTTPServer(("0.0.0.0", args.port), TelemetryHandler)
     server.serve_forever()
