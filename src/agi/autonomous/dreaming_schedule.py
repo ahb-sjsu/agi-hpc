@@ -31,17 +31,90 @@ logging.basicConfig(level=logging.INFO,
 log = logging.getLogger("dreaming")
 
 PST = timezone(timedelta(hours=-7))  # PDT in April
-DREAM_START_HOUR = 2   # 2 AM PST
-DREAM_END_HOUR = 4     # 4 AM PST
+DREAM_START_HOUR = 2   # legacy fallback window
+DREAM_END_HOUR = 4
 TASK_DIR = Path("/archive/neurogolf")
 MEMORY_PATH = TASK_DIR / "arc_scientist_memory.json"
 CURRICULUM_PATH = TASK_DIR / "src/compiler/CURRICULUM.md"
 
+# Activity-based dream tiers — idle seconds since last solve
+IDLE_MICRO = 30        # >30s idle → microsleep
+IDLE_MEDIUM = 120      # >2min idle → mediumsleep
+IDLE_DEEP = 900        # >15min idle → deepsleep (QLoRA)
+
 
 def is_dream_time() -> bool:
-    """Check if current time is in the 2AM-4AM PST window."""
+    """Check if current time is in the 2AM-4AM PST window (legacy)."""
     now = datetime.now(PST)
     return DREAM_START_HOUR <= now.hour < DREAM_END_HOUR
+
+
+def seconds_since_last_solve() -> float:
+    """How long since Erebus last verified a solve (mtime on memory file).
+
+    Uses file mtime, which the scientist updates on every attempt — so
+    this is really 'seconds since last attempt' but it's close enough for
+    idle detection without parsing the JSON every poll.
+    """
+    try:
+        return time.time() - MEMORY_PATH.stat().st_mtime
+    except FileNotFoundError:
+        return float("inf")
+
+
+def classify_idle(idle_s: float) -> str:
+    """Return which dream tier should fire for this idle duration."""
+    if idle_s < IDLE_MICRO:
+        return "active"
+    if idle_s < IDLE_MEDIUM:
+        return "micro"
+    if idle_s < IDLE_DEEP:
+        return "medium"
+    return "deep"
+
+
+def run_microsleep():
+    """Cheap, <1-min reflection work: cluster failures, log top patterns."""
+    from agi.autonomous.erebus_compiler_tools import cluster_failures
+    today = datetime.now().strftime("%Y-%m-%d")
+    clusters = cluster_failures(day=today)
+    classified = [c for c in clusters if c["pattern"] != "unclassified"]
+    log.info(f"[microsleep] {len(classified)} classified clusters today")
+    for c in classified[:5]:
+        log.info(f"  cluster {c['error_type']}/{c['pattern'][:40]} "
+                 f"— {c['n_unique_tasks']} tasks")
+
+
+def run_mediumsleep():
+    """Compiler synthesis cycle (no QLoRA): analyze, synthesize, verify."""
+    log.info("=== MEDIUMSLEEP (compiler synthesis) ===")
+    successes = get_days_successes()
+    failures = get_days_failures()
+    if not successes and not failures:
+        return
+    analysis = dream_analyze_failures(failures)
+    new_module = dream_synthesize_compiler(successes, analysis)
+    if new_module:
+        from agi.autonomous.erebus_compiler_tools import (
+            cluster_failures, write_compiler_module)
+        code = _extract_python_block(new_module)
+        if code:
+            today = datetime.now().strftime("%Y-%m-%d")
+            tag = datetime.now().strftime("%Y%m%d_%H%M")
+            clusters = cluster_failures(day=today)
+            test_task_nums = clusters[0]["tasks"][:5] if clusters else []
+            result = write_compiler_module(
+                code, test_task_nums, tag, min_solved_ratio=0.4)
+            if result.get("promoted"):
+                log.info(f"mediumsleep promoted: {result['path']}")
+    dream_update_wiki(analysis or "", new_module or "")
+
+
+def run_deepsleep():
+    """Full dream: mediumsleep + QLoRA training on accumulated pairs."""
+    log.info("=== DEEPSLEEP (compiler + QLoRA) ===")
+    run_mediumsleep()
+    run_qlora_training(min_pairs=10)
 
 
 def get_days_successes() -> list[dict]:
@@ -355,29 +428,65 @@ def run_dream_cycle():
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--now", action="store_true", help="Run dream cycle immediately")
+    ap.add_argument("--now", action="store_true",
+                    help="Run full dream cycle immediately")
+    ap.add_argument("--mode", choices=("activity", "window"), default="activity",
+                    help="activity: trigger on idle gaps. window: 2-4AM PST.")
     args = ap.parse_args()
 
     if args.now:
         run_dream_cycle()
         return
 
-    log.info("Erebus dreaming scheduler started")
-    log.info(f"Dream window: {DREAM_START_HOUR}:00 - {DREAM_END_HOUR}:00 PST")
+    log.info(f"Erebus dreaming scheduler started (mode={args.mode})")
+    if args.mode == "window":
+        log.info(f"Dream window: {DREAM_START_HOUR}:00 - {DREAM_END_HOUR}:00 PST")
+        was_dreaming = False
+        while True:
+            if is_dream_time():
+                if not was_dreaming:
+                    log.info("Entering dream window")
+                    was_dreaming = True
+                    run_dream_cycle()
+            else:
+                if was_dreaming:
+                    log.info("Exiting dream window")
+                    was_dreaming = False
+            time.sleep(300)
+        return
 
-    was_dreaming = False
+    # Activity-based scheduler — fires tiers as idle time grows, resets
+    # each time the scientist posts new activity.
+    last_activity = time.time()
+    fired: set[str] = set()  # which tiers have fired for the current idle
+    last_mtime = 0.0
     while True:
-        if is_dream_time():
-            if not was_dreaming:
-                log.info("Entering dream window")
-                was_dreaming = True
-                run_dream_cycle()
-        else:
-            if was_dreaming:
-                log.info("Exiting dream window")
-                was_dreaming = False
+        try:
+            mtime = MEMORY_PATH.stat().st_mtime
+        except FileNotFoundError:
+            mtime = 0.0
+        if mtime > last_mtime:
+            last_mtime = mtime
+            last_activity = time.time()
+            if fired:
+                log.info("Activity resumed — resetting dream tiers")
+            fired = set()
 
-        time.sleep(300)  # Check every 5 minutes
+        idle = time.time() - last_activity
+        tier = classify_idle(idle)
+        if tier != "active" and tier not in fired:
+            log.info(f"Idle {idle:.0f}s → {tier}sleep")
+            fired.add(tier)
+            try:
+                if tier == "micro":
+                    run_microsleep()
+                elif tier == "medium":
+                    run_mediumsleep()
+                elif tier == "deep":
+                    run_deepsleep()
+            except Exception as e:
+                log.warning(f"{tier}sleep failed: {e}")
+        time.sleep(15)
 
 
 if __name__ == "__main__":
