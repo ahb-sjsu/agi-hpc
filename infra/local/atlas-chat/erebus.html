@@ -9,6 +9,29 @@
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#0a0e17;--surface:#131a2b;--surface2:#1a2340;--border:#2a3555;--text:#e0e6f0;--dim:#7a8ba8;--accent:#4a9eff;--glow:rgba(74,158,255,0.15)}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column}
+.main{flex:1;display:flex;overflow:hidden}
+.chat-col{flex:1;display:flex;flex-direction:column;min-width:0}
+.activity{width:380px;border-left:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;overflow:hidden}
+.activity .ahdr{padding:10px 14px;border-bottom:1px solid var(--border);font-size:11px;font-family:'Cascadia Code',monospace;color:var(--dim);display:flex;justify-content:space-between;align-items:center}
+.activity .ahdr .live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#4ade80;margin-right:6px;animation:pulse 2s ease-in-out infinite}
+.activity .afilters{padding:6px 12px;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:4px;font-size:10px}
+.activity .afilters label{cursor:pointer;padding:2px 6px;border-radius:3px;background:var(--surface2);color:var(--dim);user-select:none}
+.activity .afilters label input{display:none}
+.activity .afilters label.on{color:var(--text);background:var(--glow);border:1px solid var(--accent)}
+.astream{flex:1;overflow-y:auto;padding:6px 10px;font-family:'Cascadia Code','Consolas',monospace;font-size:11px;line-height:1.45}
+.arow{padding:4px 6px;border-radius:4px;margin:1px 0;border-left:2px solid transparent;display:flex;gap:6px;word-break:break-word}
+.arow .ats{color:var(--dim);flex-shrink:0;opacity:.6;font-size:10px}
+.arow .atx{flex:1;min-width:0}
+.arow.k-attempt{border-left-color:#4a9eff}
+.arow.k-solved{border-left-color:#22c55e;background:rgba(34,197,94,.06)}
+.arow.k-help{border-left-color:#f59e0b;background:rgba(245,158,11,.04)}
+.arow.k-meta{border-left-color:#a78bfa}
+.arow.k-dream{border-left-color:#ec4899}
+.arow.k-error{border-left-color:#ef4444;background:rgba(239,68,68,.05);color:#fca5a5}
+.arow.k-info{opacity:.75}
+.arow .asrc{color:var(--dim);font-size:9px;opacity:.7}
+@media (max-width:900px){.activity{width:300px}}
+@media (max-width:700px){.activity{display:none}}
 .header{display:flex;align-items:center;gap:16px;padding:12px 24px;border-bottom:1px solid var(--border);background:var(--surface)}
 .header h1{font-size:22px;font-weight:600;background:linear-gradient(135deg,var(--accent),#7cc4ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .header .sub{font-size:11px;color:var(--dim);margin-top:2px}
@@ -67,12 +90,31 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
   <span id="stat-help" style="color:#f59e0b;cursor:pointer" onclick="showHelp()" title="Click to see Erebus's questions"></span>
 </div>
 
-<div class="chat" id="chat"></div>
-
-<div class="input-area">
-  <textarea id="input" placeholder="Talk to Erebus..." rows="1"
-    onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}"></textarea>
-  <button id="send" onclick="send()">Send</button>
+<div class="main">
+  <div class="chat-col">
+    <div class="chat" id="chat"></div>
+    <div class="input-area">
+      <textarea id="input" placeholder="Talk to Erebus..." rows="1"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}"></textarea>
+      <button id="send" onclick="send()">Send</button>
+    </div>
+  </div>
+  <aside class="activity">
+    <div class="ahdr">
+      <span><span class="live-dot"></span>Live activity</span>
+      <span id="activity-seq">seq --</span>
+    </div>
+    <div class="afilters" id="activity-filters">
+      <label data-kind="attempt" class="on"><input type="checkbox" checked>attempts</label>
+      <label data-kind="solved" class="on"><input type="checkbox" checked>solved</label>
+      <label data-kind="help" class="on"><input type="checkbox" checked>help</label>
+      <label data-kind="meta" class="on"><input type="checkbox" checked>meta</label>
+      <label data-kind="dream" class="on"><input type="checkbox" checked>dream</label>
+      <label data-kind="error" class="on"><input type="checkbox" checked>error</label>
+      <label data-kind="info"><input type="checkbox">info</label>
+    </div>
+    <div class="astream" id="activity-stream"></div>
+  </aside>
 </div>
 
 <script>
@@ -195,6 +237,72 @@ pollStatus();
 pollHelp();
 setInterval(pollStatus, 15000);
 setInterval(pollHelp, 30000);
+
+// ── Activity sidebar ──────────────────────────────────────────
+var activitySeq = 0;
+var activityFilters = {
+  attempt: true, solved: true, help: true, meta: true,
+  dream: true, error: true, info: false,
+};
+
+function initActivityFilters() {
+  var root = document.getElementById('activity-filters');
+  root.querySelectorAll('label').forEach(function(lbl) {
+    var kind = lbl.dataset.kind;
+    var cb = lbl.querySelector('input');
+    cb.addEventListener('change', function() {
+      activityFilters[kind] = cb.checked;
+      lbl.classList.toggle('on', cb.checked);
+      document.querySelectorAll('.arow.k-' + kind).forEach(function(r) {
+        r.style.display = cb.checked ? '' : 'none';
+      });
+    });
+  });
+}
+
+function fmtTs(ts) {
+  var d = new Date(ts * 1000);
+  return d.toTimeString().slice(0, 8);
+}
+
+function addActivityRow(e) {
+  var stream = document.getElementById('activity-stream');
+  var row = document.createElement('div');
+  row.className = 'arow k-' + e.kind;
+  if (!activityFilters[e.kind]) row.style.display = 'none';
+  var ts = document.createElement('span');
+  ts.className = 'ats';
+  ts.textContent = fmtTs(e.ts);
+  var tx = document.createElement('span');
+  tx.className = 'atx';
+  var srcTag = '<span class="asrc">[' + e.source + ']</span> ';
+  tx.innerHTML = srcTag + escapeHtml(e.text);
+  row.appendChild(ts);
+  row.appendChild(tx);
+  stream.appendChild(row);
+  // Cap at 300 rows
+  while (stream.children.length > 300) stream.removeChild(stream.firstChild);
+  // Auto-scroll if near bottom
+  if (stream.scrollTop + stream.clientHeight >= stream.scrollHeight - 40) {
+    stream.scrollTop = stream.scrollHeight;
+  }
+}
+
+async function pollActivity() {
+  try {
+    var res = await fetch('/api/erebus/activity?since=' + activitySeq + '&limit=200');
+    var d = await res.json();
+    (d.entries || []).forEach(addActivityRow);
+    if (d.seq !== undefined) {
+      activitySeq = d.seq;
+      document.getElementById('activity-seq').textContent = 'seq ' + d.seq;
+    }
+  } catch(e) {}
+}
+
+initActivityFilters();
+pollActivity();
+setInterval(pollActivity, 2000);
 
 // Welcome message
 addMsg('erebus', 'I am Erebus \u2014 the darkness before discovery. I am learning to solve ARC-AGI puzzles through a scientific loop of hypothesis, experiment, and reflection. Ask me anything about my progress, my strategies, or what I have learned.');

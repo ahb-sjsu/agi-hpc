@@ -1148,6 +1148,94 @@ def _get_nrp_nats_telemetry():
         }
 
 
+# ── Erebus activity stream ───────────────────────────────────
+# Ring buffer of the last ~500 log lines from arc_scientist /
+# onnx_scientist / dreaming_schedule, each tagged with a monotonic seq.
+# The chat UI sidebar polls /api/erebus/activity?since=SEQ for new entries.
+import collections as _collections  # noqa: E402 (grouped with other local state)
+import re as _re  # noqa: E402
+
+_EREBUS_ACTIVITY_LOGS = [
+    ("scientist", "/archive/neurogolf/scientist.log"),
+    ("onnx", "/archive/neurogolf/onnx_scientist.log"),
+    ("dream", "/archive/neurogolf/dreaming_schedule.log"),
+]
+_EREBUS_ACTIVITY_MAX = 500
+_EREBUS_ACTIVITY = _collections.deque(maxlen=_EREBUS_ACTIVITY_MAX)
+_EREBUS_ACTIVITY_SEQ = {"n": 0}
+_EREBUS_ACTIVITY_LOCK = threading.Lock()
+
+
+def _classify_activity(line: str) -> str:
+    """Color-code line by kind. Used by the sidebar to style each entry."""
+    lo = line.lower()
+    if "solved" in lo and "/" in lo:
+        return "solved"
+    if "help requested" in lo or "help_requested" in lo:
+        return "help"
+    if "meta-pattern" in lo or "patterns" in lo:
+        return "meta"
+    if "dream" in lo or "qlora" in lo or "microsleep" in lo or "deepsleep" in lo:
+        return "dream"
+    if "error" in lo or "traceback" in lo or "failed" in lo:
+        return "error"
+    if _re.search(r"\[\d+/\d+\]", line):
+        return "attempt"
+    return "info"
+
+
+def _tail_erebus_logs():
+    """Background thread: tail the 3 scientist logs, append to ring buffer."""
+    positions: dict[str, int] = {}
+    # Seed positions at each file's current end so we only show new activity
+    for _, path in _EREBUS_ACTIVITY_LOGS:
+        try:
+            positions[path] = os.path.getsize(path)
+        except OSError:
+            positions[path] = 0
+
+    while True:
+        for source, path in _EREBUS_ACTIVITY_LOGS:
+            try:
+                size = os.path.getsize(path)
+                if size < positions.get(path, 0):
+                    # Log rotated/truncated — restart from 0.
+                    positions[path] = 0
+                if size > positions[path]:
+                    with open(path, "rb") as f:
+                        f.seek(positions[path])
+                        chunk = f.read(size - positions[path])
+                    positions[path] = size
+                    text = chunk.decode("utf-8", errors="replace")
+                    for raw in text.splitlines():
+                        line = raw.strip()
+                        if not line:
+                            continue
+                        with _EREBUS_ACTIVITY_LOCK:
+                            _EREBUS_ACTIVITY_SEQ["n"] += 1
+                            _EREBUS_ACTIVITY.append(
+                                {
+                                    "seq": _EREBUS_ACTIVITY_SEQ["n"],
+                                    "ts": time.time(),
+                                    "source": source,
+                                    "text": line[:500],
+                                    "kind": _classify_activity(line),
+                                }
+                            )
+            except FileNotFoundError:
+                continue
+            except Exception as _e:
+                log.debug(f"[activity-tail] {path}: {_e}")
+        time.sleep(1.0)
+
+
+def _get_erebus_activity(since: int = 0, limit: int = 200) -> dict:
+    with _EREBUS_ACTIVITY_LOCK:
+        rows = [e for e in _EREBUS_ACTIVITY if e["seq"] > since][-limit:]
+        seq = _EREBUS_ACTIVITY_SEQ["n"]
+    return {"seq": seq, "entries": rows}
+
+
 # ── NRP utilization watchdog ──────────────────────────────────
 # NRP Cluster Policy:
 #   - Max 4 pods with GPU>40% / CPU 20-200% / RAM 20-150%
@@ -2086,6 +2174,13 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
             self._json_response(_get_erebus_status())
         elif self.path == "/api/erebus/help" or self.path.startswith("/api/erebus/help?"):
             self._json_response(_get_erebus_help_queue())
+        elif self.path.startswith("/api/erebus/activity"):
+            from urllib.parse import parse_qs, urlparse
+
+            qs = parse_qs(urlparse(self.path).query)
+            since = int(qs.get("since", ["0"])[0])
+            limit = min(int(qs.get("limit", ["200"])[0]), 500)
+            self._json_response(_get_erebus_activity(since=since, limit=limit))
         elif self.path.startswith("/api/"):
             self._json_response({})
         else:
@@ -2284,6 +2379,7 @@ if __name__ == "__main__":
         log.warning("initial snapshot failed (will retry in background): %s", e)
     threading.Thread(target=_refresher, daemon=True, name="snapshot").start()
     threading.Thread(target=_nrp_nats_listener, daemon=True, name="nrp-nats").start()
+    threading.Thread(target=_tail_erebus_logs, daemon=True, name="activity-tail").start()
     _start_nats_subscriber()
 
     # Pre-load Erebus fingerprints in background so first chat is fast
