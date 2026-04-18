@@ -1166,37 +1166,61 @@ def _nrp_watchdog_check(pods: list[dict]):
     # Clear violations for pods that no longer exist
     _nrp_violations = {k: v for k, v in _nrp_violations.items() if k in current_names}
 
+    def _parse_cpu_m(val):
+        """Parse CPU value to millicores: '946m' -> 946, '4' -> 4000."""
+        if not val:
+            return 0
+        val = str(val).strip()
+        if val.endswith("m"):
+            return int(val[:-1])
+        return int(float(val) * 1000)
+
+    def _parse_mem_mi(val):
+        """Parse memory to MiB: '710Mi' -> 710, '16Gi' -> 16384, '4 GB' -> 4096."""
+        if not val:
+            return 0
+        val = str(val).strip().replace(" ", "")
+        if val.endswith("Mi"):
+            return int(val[:-2])
+        if val.endswith("Gi"):
+            return int(float(val[:-2]) * 1024)
+        if val.endswith("GB"):
+            return int(float(val[:-2]) * 1024)
+        if val.endswith("Ki"):
+            return int(val[:-2]) // 1024
+        return 0
+
     for pod in active:
         name = pod["name"]
         usage = pod.get("usage", {})
         gpu_live = pod.get("gpu_live", {})
         res = pod.get("resources", {})
-
-        # Skip pods with <=2GB memory (exempt per NRP rules)
-        mem_req = res.get("memory", "")
-        if mem_req and mem_req.endswith("Gi") and int(mem_req.replace("Gi","")) <= 2:
-            continue
-
         violations = []
 
-        # GPU check: must be >40% if GPU allocated
+        # ── GPU: must be >40% if allocated ──
         if res.get("gpu") and gpu_live.get("gpu_util_pct") is not None:
             if gpu_live["gpu_util_pct"] < 40:
                 violations.append(f"GPU {gpu_live['gpu_util_pct']}% (<40%)")
 
-        # CPU check: parse usage like "946m" or "2"
-        cpu_used = usage.get("cpu_used", "")
-        cpu_req = res.get("cpu", "")
-        if cpu_used and cpu_req:
-            try:
-                used_m = int(cpu_used.rstrip("m")) if cpu_used.endswith("m") else int(float(cpu_used) * 1000)
-                req_m = int(cpu_req.rstrip("m")) if cpu_req.endswith("m") else int(float(cpu_req) * 1000)
-                if req_m > 1000:  # exempt <=1 CPU
-                    pct = used_m * 100 // req_m
-                    if pct < 20:
-                        violations.append(f"CPU {pct}% (<20%)")
-            except (ValueError, ZeroDivisionError):
-                pass
+        # ── CPU: must be 20%-200% of requested. Ignored if <=1 CPU ──
+        cpu_req_m = _parse_cpu_m(res.get("cpu", ""))
+        cpu_used_m = _parse_cpu_m(usage.get("cpu_used", ""))
+        if cpu_req_m > 1000 and cpu_used_m > 0:  # exempt <=1 CPU
+            cpu_pct = cpu_used_m * 100 // cpu_req_m
+            if cpu_pct < 20:
+                violations.append(f"CPU {cpu_pct}% (<20%)")
+            elif cpu_pct > 200:
+                violations.append(f"CPU {cpu_pct}% (>200%)")
+
+        # ── Memory: must be 20%-150% of requested. Ignored if <=2GB ──
+        mem_req_mi = _parse_mem_mi(res.get("memory", ""))
+        mem_used_mi = _parse_mem_mi(usage.get("mem_used", ""))
+        if mem_req_mi > 2048 and mem_used_mi > 0:  # exempt <=2GB
+            mem_pct = mem_used_mi * 100 // mem_req_mi
+            if mem_pct < 20:
+                violations.append(f"MEM {mem_pct}% (<20%)")
+            elif mem_pct > 150:
+                violations.append(f"MEM {mem_pct}% (>150%)")
 
         if violations:
             _nrp_violations[name] = _nrp_violations.get(name, 0) + 1
