@@ -47,9 +47,10 @@ def main():
     task_dir = Path(os.environ.get("TASK_DIR", "/work/tasks"))
     compiler_dir = Path(os.environ.get("COMPILER_DIR", "/work/src/compiler"))
 
-    # Local imports so the pod image doesn't need transformers/peft/etc.
+    # Pod layout: /work/src holds both compile_attempt.py and
+    # erebus_compiler_tools.py (flat), so no package prefix.
     sys.path.insert(0, "/work/src")
-    from agi.autonomous.erebus_compiler_tools import (
+    from erebus_compiler_tools import (
         get_few_shot_modules, write_compiler_module,
     )
 

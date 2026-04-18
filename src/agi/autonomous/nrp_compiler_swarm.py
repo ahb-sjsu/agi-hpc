@@ -69,10 +69,11 @@ spec:
           set -e
           mkdir -p /work && cd /work
           git clone --depth 1 https://github.com/{bundle}.git bundle
-          tar -C /work -xzf bundle/tasks.tar.gz || true
+          mkdir -p /work/tasks
+          tar -C /work/tasks -xzf bundle/data/tasks.tar.gz
           cp -r bundle/src /work/src
           pip install --quiet openai onnx onnxruntime numpy
-          python3 -u /work/src/agi/autonomous/compile_attempt.py
+          python3 -u /work/src/compile_attempt.py
 """
 
 
