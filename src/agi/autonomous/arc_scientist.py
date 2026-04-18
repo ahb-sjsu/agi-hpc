@@ -58,7 +58,12 @@ CLASSIFY_PROMPT = (
 
 @dataclass
 class TaskFingerprint:
-    """Lightweight structural signature for clustering tasks."""
+    """Structural signature for clustering tasks.
+
+    Enriched per Erebus's request: includes transformation-level
+    features (same_colors, shape_change, content_overlap) not just
+    surface features (grid size, color count).
+    """
     task_num: int
     input_h: int
     input_w: int
@@ -71,6 +76,12 @@ class TaskFingerprint:
     ratio_w: float
     has_symmetry: bool
     dominant_color: int
+    # Enriched features (Erebus's request)
+    same_colors: bool = True         # do input/output use same color set?
+    shape_change: str = "same"       # same|crop|scale|other
+    content_overlap: float = 0.0     # fraction of output pixels present in input
+    inferred_class: str = ""         # populated after first attempt (from similar_to)
+    task_summary: str = ""           # compact text summary for memory
 
 
 def fingerprint_task(task: dict, tn: int) -> TaskFingerprint:
@@ -81,41 +92,75 @@ def fingerprint_task(task: dict, tn: int) -> TaskFingerprint:
     ih, iw = inp.shape if inp.ndim == 2 else (0, 0)
     oh, ow = out.shape if out.ndim == 2 else (0, 0)
 
-    colors_in = len(set(inp.flatten())) if inp.size else 0
-    colors_out = len(set(out.flatten())) if out.size else 0
+    colors_in = set(inp.flatten().tolist()) if inp.size else set()
+    colors_out = set(out.flatten().tolist()) if out.size else set()
+    same_colors = colors_in == colors_out
 
-    # Simple symmetry check
+    # Shape change classification
+    if ih == oh and iw == ow:
+        shape_change = "same"
+    elif oh <= ih and ow <= iw:
+        shape_change = "crop"
+    elif ih > 0 and iw > 0 and oh % ih == 0 and ow % iw == 0:
+        shape_change = "scale"
+    else:
+        shape_change = "other"
+
+    # Content overlap: what fraction of output non-bg pixels appear in input?
+    overlap = 0.0
+    if inp.size and out.size and ih == oh and iw == ow:
+        non_bg = out != 0
+        if non_bg.any():
+            overlap = float(np.sum((inp == out) & non_bg) / np.sum(non_bg))
+
+    # Symmetry check
     has_sym = False
     if inp.size and inp.ndim == 2:
         has_sym = (np.array_equal(inp, inp[::-1]) or
                    np.array_equal(inp, inp[:, ::-1]) or
                    (ih == iw and np.array_equal(inp, inp.T)))
 
-    dominant = int(Counter(inp.flatten()).most_common(1)[0][0]) if inp.size else 0
+    dominant = int(Counter(inp.flatten().tolist()).most_common(1)[0][0]) if inp.size else 0
+
+    # Compact task summary for episodic memory
+    summary = (f"{ih}x{iw}->{oh}x{ow} "
+               f"colors:{len(colors_in)}->{len(colors_out)} "
+               f"{shape_change} overlap:{overlap:.0%}")
 
     return TaskFingerprint(
         task_num=tn,
         input_h=ih, input_w=iw,
         output_h=oh, output_w=ow,
         same_shape=(ih == oh and iw == ow),
-        n_colors_in=colors_in,
-        n_colors_out=colors_out,
+        n_colors_in=len(colors_in),
+        n_colors_out=len(colors_out),
         ratio_h=oh / max(ih, 1),
         ratio_w=ow / max(iw, 1),
         has_symmetry=has_sym,
         dominant_color=dominant,
+        same_colors=same_colors,
+        shape_change=shape_change,
+        content_overlap=overlap,
+        task_summary=summary,
     )
 
 
 def task_distance(a: TaskFingerprint, b: TaskFingerprint) -> float:
-    """Simple distance metric between two task fingerprints."""
+    """Distance metric using both surface and transformation features."""
     d = 0.0
-    d += 0 if a.same_shape == b.same_shape else 2.0
+    # Surface features (lower weight)
+    d += 0 if a.same_shape == b.same_shape else 1.0
     d += abs(a.ratio_h - b.ratio_h) + abs(a.ratio_w - b.ratio_w)
-    d += abs(a.n_colors_in - b.n_colors_in) * 0.5
-    d += abs(a.n_colors_out - b.n_colors_out) * 0.5
-    d += abs(a.input_h - b.input_h) * 0.1 + abs(a.input_w - b.input_w) * 0.1
-    d += 0 if a.has_symmetry == b.has_symmetry else 1.0
+    d += abs(a.n_colors_in - b.n_colors_in) * 0.3
+    d += abs(a.input_h - b.input_h) * 0.05 + abs(a.input_w - b.input_w) * 0.05
+    d += 0 if a.has_symmetry == b.has_symmetry else 0.5
+    # Transformation features (higher weight — Erebus's insight)
+    d += 0 if a.same_colors == b.same_colors else 1.5
+    d += 0 if a.shape_change == b.shape_change else 2.0
+    d += abs(a.content_overlap - b.content_overlap) * 2.0
+    # Inferred class match (strongest signal when available)
+    if a.inferred_class and b.inferred_class:
+        d += 0 if a.inferred_class == b.inferred_class else 3.0
     return d
 
 
@@ -137,6 +182,7 @@ class Attempt:
     code: str = ""
     insight: str = ""
     similar_to: str = ""       # which ARC pattern this resembles
+    task_summary: str = ""     # compact description so memory is self-contained
 
 
 @dataclass
@@ -685,7 +731,8 @@ class ARCScientist:
             n_prior = len(tk.attempts) if tk else 0
             r_strategy = random.random()
 
-            if tk and tk.error_types and r_strategy < 0.3:
+            # Aggressive diagnostic: trigger after any classified failure, not just 3+
+            if tk and tk.error_types and r_strategy < 0.35:
                 # Diagnostic: we have classified failures
                 strategy_name = "diagnostic"
                 last_classified = {}
@@ -770,6 +817,10 @@ class ARCScientist:
             verified = correct == total and total > 0
 
             # ── 5. REFLECT ──
+            # Get task summary for memory enrichment
+            fp = self.fingerprints.get(tn)
+            tsummary = fp.task_summary if fp else ""
+
             if verified:
                 solved_this_cycle += 1
                 attempts_this_cycle += 1
@@ -777,22 +828,26 @@ class ARCScientist:
                     task_num=tn, timestamp=datetime.now().isoformat(),
                     strategy=strategy_name, model=model,
                     verified=True, correct=correct, total=total,
-                    code=code
+                    code=code, task_summary=tsummary,
                 ))
                 unsolved.remove(tn)
                 print(f"-> SOLVED {correct}/{total}", flush=True)
             else:
                 attempts_this_cycle += 1
 
-                # Structured reflection — classify the error
+                # Structured reflection — classify on ANY failure with code
                 reflection = {}
-                if correct > 0 and code:
+                if code:
                     reflection = self._structured_reflection(
                         task, tn, code, correct, total)
 
                 error_type = reflection.get("error_type", "")
                 diagnosis = reflection.get("diagnosis", "")
                 similar_to = reflection.get("similar_to", "")
+
+                # Feed inferred_class back into fingerprint
+                if similar_to and tn in self.fingerprints:
+                    self.fingerprints[tn].inferred_class = similar_to
 
                 error_desc = f"partial_{correct}/{total}"
                 if correct == 0:
@@ -804,6 +859,7 @@ class ARCScientist:
                     verified=False, correct=correct, total=total,
                     error=error_desc, error_type=error_type,
                     code=code, insight=diagnosis, similar_to=similar_to,
+                    task_summary=tsummary,
                 ))
 
                 if diagnosis:
