@@ -348,15 +348,32 @@ class EpisodicMemory:
         self.save()
         return patterns
 
-    def get_unsolved_tasks(self, all_tasks: list[int]) -> list[int]:
+    def get_unsolved_tasks(
+        self, all_tasks: list[int], max_attempts_soft_cap: int = 20
+    ) -> list[int]:
+        """Return unsolved tasks, deprioritizing ones Erebus has already
+        thrashed on (> max_attempts_soft_cap unsuccessful attempts).
+
+        The thrashed tasks aren't dropped — they go to the end of the list
+        so Erebus still gets to them eventually, but tries fresh tasks first.
+        """
         unsolved = [
             t for t in all_tasks if t not in self.tasks or not self.tasks[t].solved
         ]
-        unsolved.sort(
-            key=lambda t: self.tasks[t].best_correct if t in self.tasks else 0,
-            reverse=True,
-        )
-        return unsolved
+        # Partition: hot (not thrashed yet) vs. cold (many failed attempts)
+        hot, cold = [], []
+        for t in unsolved:
+            if t in self.tasks and len(self.tasks[t].attempts) > max_attempts_soft_cap:
+                cold.append(t)
+            else:
+                hot.append(t)
+        # Within each bucket, sort by best_correct desc (closer to solved first)
+        for bucket in (hot, cold):
+            bucket.sort(
+                key=lambda t: self.tasks[t].best_correct if t in self.tasks else 0,
+                reverse=True,
+            )
+        return hot + cold
 
     def pick_strategy(self) -> str:
         if not self.strategies:
