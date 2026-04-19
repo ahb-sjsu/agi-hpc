@@ -1,536 +1,383 @@
-# Atlas AI -- Architecture Overview
+# Atlas AI — Architecture Overview
 
-This document describes the production architecture of Atlas AI as deployed at SJSU: a psychoanalytic multi-agent cognitive architecture running three local LLMs coordinated by NATS JetStream, backed by PostgreSQL + pgvector semantic memory, with burst compute via NRP Nautilus.
+This document describes the production architecture of Atlas AI as deployed at SJSU: a psychoanalytic multi-agent cognitive architecture coordinated by NATS JetStream, backed by PostgreSQL + pgvector semantic memory, with frontier LLM access via NRP Nautilus and an always-on Claude-style teaching layer (The Primer) that auto-generates verified reference implementations for the autonomous ARC Scientist.
 
 ---
 
-## System Overview
+## System overview
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│                          ATLAS AI — PRODUCTION DEPLOYMENT                                │
-│                          HP Z840 · 2x GV100 32GB · 251GB RAM                             │
-├──────────────────────────────────────────────────────────────────────────────────────────┤
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│                         ATLAS AI — PRODUCTION DEPLOYMENT                                │
+│                         HP Z840 · 2× GV100 32 GB · 251 GB RAM                           │
+├─────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                         │
+│  ┌─────────────────────┐  ┌──────────────────────┐  ┌───────────────────────────────┐   │
+│  │ EGO (Kirk)          │  │ SUPEREGO (Spock)     │  │ DIVINE COUNCIL                │   │
+│  │ Balanced decision-  │  │ Logic, rules,        │  │ 7 advocate agents (CPU)       │   │
+│  │ maker; the self     │  │ ethical evaluation   │  │                               │   │
+│  │                     │  │                      │  │ Judge · Advocate               │   │
+│  │ Qwen 3 32B Q5_K_M   │  │ Gemma 4 31B Q5_K_M   │  │ Synthesizer · Ethicist        │   │
+│  │ GPU 1 · :8082       │  │ GPU 0 · :8080        │  │ Historian · Futurist          │   │
+│  │ (local server)      │  │                      │  │ Pragmatist                     │   │
+│  │                     │  │                      │  │                               │   │
+│  │ + NRP fallback:     │  │ + NRP fallback:      │  │ Kimi K2.5 1T on NRP           │   │
+│  │ Qwen 3.5 397B       │  │ Gemma 4              │  │ + atlas-ego.service --par 8   │   │
+│  │                     │  │                      │  │                               │   │
+│  │ NATS: agi.rh.*      │  │ NATS: agi.safety.*   │  │ NATS: agi.ego.deliberate      │   │
+│  └─────────┬───────────┘  └──────────┬───────────┘  └───────────────┬───────────────┘   │
+│            │                         │                              │                    │
+│  ┌─────────▼─────────────────────────▼──────────────────────────────▼───────────────┐   │
+│  │                  NATS JETSTREAM EVENT FABRIC                                      │   │
+│  │                  :4222 (local) · :7422 (leaf to NRP, TLS + compression)           │   │
+│  │                                                                                   │   │
+│  │   Subjects: agi.rh.* · agi.safety.* · agi.ego.deliberate                          │   │
+│  │             agi.meta.monitor.* · agi.memory.* · agi.dreaming.*                    │   │
+│  │             agi.autonomous.* · agi.primer.teach                                   │   │
+│  └──┬────────────────────┬────────────────────┬──────────────────────┬───────────────┘   │
+│     │                    │                    │                      │                    │
+│  ┌──▼─────────────┐ ┌────▼───────────┐ ┌──────▼──────────────┐ ┌─────▼─────────────┐   │
+│  │ AUTONOMOUS     │ │ SAFETY         │ │ MEMORY              │ │ SUPPORT            │   │
+│  │                │ │                │ │                     │ │                    │   │
+│  │ ARC Scientist  │ │ 3-layer:       │ │ PostgreSQL +        │ │ RAG server (:8081) │   │
+│  │  closed loop   │ │  Reflex <100µs │ │  pgvector           │ │ Telemetry (:8085)  │   │
+│  │  mentor        │ │  Tactical 10ms │ │                     │ │ Caddy + OAuth2     │   │
+│  │  preamble      │ │  Strategic pol │ │ 3.3 M PCA-384       │ │ Thermal guardian   │   │
+│  │                │ │                │ │  IVFFlat vectors    │ │ Watchdog           │   │
+│  │ The Primer     │ │ ErisML:        │ │                     │ │ Operations dash    │   │
+│  │  vMOE tutor    │ │  Bond Index    │ │ 5-tier retrieval    │ │  /schematic.html   │   │
+│  │  verify-only   │ │  Hohfeld       │ │  L0 Dream           │ │                    │   │
+│  │  publish       │ │  hash chains   │ │  L1 Sensei wiki     │ │ Dreaming (idle     │   │
+│  │                │ │                │ │  L2 Vector          │ │  consolidation)    │   │
+│  │ Vision burst   │ │ Input/Output/  │ │  L3 FTS             │ │                    │   │
+│  │  GLM-4.1V on   │ │  Privilege     │ │  L4 Episodic        │ │ Backup (daily)     │   │
+│  │  NRP Jobs      │ │  Gates         │ │                     │ │                    │   │
+│  └────────────────┘ └────────────────┘ └─────────────────────┘ └────────────────────┘   │
 │                                                                                          │
-│   ┌──────────────────────┐  ┌──────────────────────┐  ┌──────────────────────────────┐  │
-│   │   ID (Kirk)          │  │ SUPEREGO (Spock)      │  │  EGO (McCoy)                 │  │
-│   │   System 1: Fast     │  │ System 2: Deliberate  │  │  Arbitrator: Debate          │  │
-│   │                      │  │                       │  │                              │  │
-│   │   Qwen 3 32B Q5_K_M  │  │ Gemma 4 31B Q5_K_M   │  │  Gemma 4 26B-A4B MoE Q4_K_XL│  │
-│   │   GPU 1 · :8082      │  │ GPU 0 · :8080         │  │  CPU x24 · :8084             │  │
-│   │   12 threads          │  │ 12 threads            │  │  8 parallel slots            │  │
-│   │                      │  │                       │  │                              │  │
-│   │   NATS: agi.rh.*     │  │ NATS: agi.safety.*    │  │  NATS: agi.ego.deliberate    │  │
-│   └──────────┬───────────┘  └──────────┬────────────┘  └──────────────┬───────────────┘  │
-│              │                         │                              │                   │
-│              └─────────────────────────┼──────────────────────────────┘                   │
-│                                        │                                                  │
-│                          ┌─────────────▼──────────────┐                                  │
-│                          │   DIVINE COUNCIL            │                                  │
-│                          │   7 Advocate Agents (CPU)   │                                  │
-│                          │                             │                                  │
-│                          │   Judge · Advocate           │                                  │
-│                          │   Synthesizer · Ethicist     │                                  │
-│                          │   Historian · Futurist       │                                  │
-│                          │   Pragmatist                 │                                  │
-│                          │                             │                                  │
-│                          │   Heartbeat: agi.meta.*     │                                  │
-│                          └─────────────┬───────────────┘                                  │
-│                                        │                                                  │
-│   ┌────────────────────────────────────▼────────────────────────────────────────────────┐ │
-│   │                     NATS JETSTREAM EVENT FABRIC                                      │ │
-│   │                     :4222 (local) · :7422 (leaf node to NRP)                         │ │
-│   │                                                                                      │ │
-│   │   Subjects: agi.rh.request · agi.safety.* · agi.ego.deliberate                      │ │
-│   │             agi.meta.monitor.* · agi.memory.* · agi.dreaming.*                      │ │
-│   └───────┬────────────────────────┬──────────────────────────┬──────────────────────────┘ │
-│           │                        │                          │                            │
-│   ┌───────▼──────────┐    ┌───────▼──────────┐    ┌─────────▼────────────────────────┐   │
-│   │ SAFETY SUBSYSTEM │    │ MEMORY SUBSYSTEM │    │ SUPPORT SERVICES                 │   │
-│   │                  │    │                  │    │                                   │   │
-│   │ 3-Layer Safety:  │    │ PostgreSQL +     │    │ RAG Server (:8081)               │   │
-│   │  Reflex (<100us) │    │   pgvector       │    │ Telemetry (:8085)                │   │
-│   │  Tactical (10ms) │    │                  │    │ Caddy (reverse proxy)            │   │
-│   │  Strategic (pol) │    │ 3.3M PCA-384     │    │ OAuth2 Proxy (:4180)             │   │
-│   │                  │    │ IVFFlat vectors  │    │ Thermal Guardian                 │   │
-│   │ ErisML:          │    │                  │    │ Watchdog                         │   │
-│   │  Bond Index      │    │ 5-Tier Retrieval │    │ Operations Dashboard             │   │
-│   │  Hohfeld rights  │    │  L1: Dream-wiki  │    │   /schematic.html                │   │
-│   │  Decision proofs │    │  L2: Wiki        │    │                                   │   │
-│   │                  │    │  L3: Vector       │    │ Dreaming (idle consolidation)    │   │
-│   │ Input/Output/    │    │  L4: FTS          │    │                                   │   │
-│   │ Privilege Gates  │    │  L5: Live         │    │                                   │   │
-│   └──────────────────┘    └──────────────────┘    └───────────────────────────────────┘   │
-│                                                                                           │
-└──────────────────────────────────────────────────────────────────────────────────────────┘
+└─────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## NATS Topology and NRP Bursting
+## NATS topology and NRP burst
 
 ```
-                    ┌──────────────────────────────┐
-                    │      NRP NAUTILUS             │
-                    │      (100+ university nodes)  │
-                    │                               │
-                    │   ┌───────────────────────┐   │
-                    │   │ CPU Pods               │   │
-                    │   │  Prompt fuzzing (AFL)  │   │
-                    │   │  Kimi K2.5 1T API      │   │
-                    │   │  Qwen3.5 397B API      │   │
-                    │   └───────────────────────┘   │
-                    │                               │
-                    │   ┌───────────────────────┐   │
-                    │   │ GPU Pods               │   │
-                    │   │  A100 80GB             │   │
-                    │   │  L4 24GB               │   │
-                    │   │  L40 48GB / L40S       │   │
-                    │   │  Conv training         │   │
-                    │   └───────────────────────┘   │
-                    │                               │
-                    │   NATS leaf node :7422        │
-                    └──────────────┬────────────────┘
-                                   │
-                         Tailscale VPN mesh
-                         100.68.134.21
-                                   │
-                    ┌──────────────▼────────────────┐
-                    │      ATLAS WORKSTATION        │
-                    │      HP Z840 · SJSU           │
-                    │                               │
-                    │   NATS JetStream :4222        │
-                    │   ┌───────────────────────┐   │
-                    │   │ GPU 0: Superego       │   │
-                    │   │   Gemma 4 31B · :8080 │   │
-                    │   ├───────────────────────┤   │
-                    │   │ GPU 1: Id             │   │
-                    │   │   Qwen 3 32B · :8082  │   │
-                    │   ├───────────────────────┤   │
-                    │   │ CPU: Ego              │   │
-                    │   │   Gemma 4 26B · :8084 │   │
-                    │   ├───────────────────────┤   │
-                    │   │ PostgreSQL + pgvector  │   │
-                    │   │ RAG Server · :8081     │   │
-                    │   │ Telemetry · :8085      │   │
-                    │   └───────────────────────┘   │
-                    │                               │
-                    │   atlas-sjsu.duckdns.org      │
-                    │   Caddy -> OAuth2 -> RAG      │
-                    └───────────────────────────────┘
+                        ┌────────────────────────────────────────┐
+                        │      NRP NAUTILUS                      │
+                        │      (100+ university nodes)           │
+                        │                                        │
+                        │  Managed LLM API (https://ellm.nrp-    │
+                        │  nautilus.io/v1) — OpenAI-compatible   │
+                        │  and /anthropic proxy:                 │
+                        │    Kimi K2.5 1T                        │
+                        │    Qwen 3.5 397B                       │
+                        │    GLM-4.7 358B                        │
+                        │    MiniMax M2.7                        │
+                        │    Gemma 4                             │
+                        │    (zero marginal cost, shared pool)   │
+                        │                                        │
+                        │  Burst Jobs (ephemeral K8s Jobs):      │
+                        │    GLM-4.1V vision (4× L40/L40S/A10)   │
+                        │                                        │
+                        │  Worker Pools (Deployments):           │
+                        │    erebus-workers (8× nats-bursting)   │
+                        │                                        │
+                        │  Storage: CephFS PVC erebus-ego-models │
+                        │           300 Gi, rook-cephfs class    │
+                        │                                        │
+                        │  NATS leaf node :7422 (TLS, s2_fast)   │
+                        └───────────────────┬────────────────────┘
+                                            │
+                                   Tailscale VPN mesh
+                                   100.68.134.21
+                                            │
+                        ┌───────────────────▼────────────────────┐
+                        │        ATLAS WORKSTATION                │
+                        │        HP Z840 · SJSU                   │
+                        │                                         │
+                        │  NATS JetStream :4222                   │
+                        │                                         │
+                        │  ┌────────────────────────────────┐    │
+                        │  │ GPU 0 (Superego): Gemma 4 31B   │    │
+                        │  │   llama.cpp · :8080              │    │
+                        │  ├────────────────────────────────┤    │
+                        │  │ GPU 1 (Ego): Qwen 3 32B         │    │
+                        │  │   llama.cpp · :8082              │    │
+                        │  ├────────────────────────────────┤    │
+                        │  │ CPU (Council): Gemma 4 26B-A4B  │    │
+                        │  │   llama.cpp · :8084 ·  --par 8   │    │
+                        │  ├────────────────────────────────┤    │
+                        │  │ PostgreSQL + pgvector           │    │
+                        │  │ RAG Server · :8081              │    │
+                        │  │ Telemetry · :8085               │    │
+                        │  ├────────────────────────────────┤    │
+                        │  │ atlas-primer.service            │    │
+                        │  │   (CPU-only, vMOE tutor)        │    │
+                        │  │ arc_scientist.py                │    │
+                        │  │   (ARC closed loop)             │    │
+                        │  └────────────────────────────────┘    │
+                        │                                         │
+                        │  atlas-sjsu.duckdns.org                │
+                        │  Caddy → oauth2-proxy → service        │
+                        └─────────────────────────────────────────┘
 ```
 
 ---
 
-## Core Components
+## Core components
 
-### Divine Council -- Freudian Psyche
+### Freudian agents
 
-The system implements a psychoanalytic model where three LLMs serve as Freudian agents:
+The system implements a psychoanalytic decision model. Star Trek analogues show the functional mapping:
 
-**Id (Kirk)** -- System 1 processing. Fast, intuitive, pattern-matching reasoning. Runs Qwen 3 32B on GPU 1 via llama.cpp. Subscribes to `agi.rh.request` via NATS.
+**Ego (Kirk)** — balanced decision-maker, the self that speaks and learns. Qwen 3 32B on GPU 1 (`atlas-id.service`, historical name); fallback to Qwen 3.5 397B on NRP when local GPU 1 is busy or fine-tuning. Subject: `agi.rh.request.>`.
 
-**Superego (Spock)** -- System 2 processing. Slow, deliberative, ethical reasoning. Runs Gemma 4 31B on GPU 0 via llama.cpp. Subscribes to `agi.safety.*` via NATS.
+**Superego (Spock)** — logic, rules, ethical evaluation. Gemma 4 31B on GPU 0 (`atlas-superego.service`); NRP Gemma 4 fallback. Subject: `agi.safety.*`.
 
-**Ego (McCoy)** -- Arbitrator. Runs Gemma 4 26B-A4B MoE on CPU with 8 parallel slots. Hosts 7 council advocate roles (Judge, Advocate, Synthesizer, Ethicist, Historian, Futurist, Pragmatist) that run concurrent structured debates. Subscribes to `agi.ego.deliberate`. Publishes heartbeat to `agi.meta.monitor.ego`.
+**Divine Council** — multi-perspective deliberation. Seven concurrent advocate roles (Judge, Advocate, Synthesizer, Ethicist, Historian, Futurist, Pragmatist) run on Kimi K2.5 1T via NRP, with an `atlas-ego.service --parallel 8` CPU fallback. Subject: `agi.ego.deliberate`.
 
-**Location:** `src/agi/reasoning/`
+**The Id** — currently unfilled at the LLM slot. Fast instinct / pattern-match is served by subcortical local-GPU procedural memory (pattern nets + A* search) rather than a dedicated language model.
 
-| File | Description |
-|------|-------------|
+Location: `src/agi/reasoning/`
+
+| File | Purpose |
+|---|---|
 | `divine_council.py` | Council orchestration and debate protocol |
 | `_council_backend.py` | LLM backend integration for council agents |
-| `_council_metrics.py` | Council performance and reliability metrics |
+| `_council_metrics.py` | Council performance + reliability |
 | `tree_of_thought.py` | Tree-of-Thought reasoning for structured debate |
-| `nats_service.py` | NATS JetStream pub/sub for council coordination |
+| `nats_service.py` | NATS pub/sub for council coordination |
 
-### Left Hemisphere -- Deliberative Processing
+### Autonomous learning — ARC Scientist
 
-Handles planning, reasoning, and metacognition pipeline.
+Closed-loop scientific reasoning against the NeuroGolf 2026 / ARC-AGI task set. Location: `src/agi/autonomous/`.
 
-**Location:** `src/agi/lh/`
+```
+  OBSERVE ─► HYPOTHESIZE ─► EXPERIMENT ─► EVALUATE ─► REFLECT ─► ADAPT ─► LEARN ─┐
+                                                                                  │
+                                  ◄───────────────────────────────────────────────┘
+```
 
-| Component | Description |
-|-----------|-------------|
-| Planner | Hierarchical planning with PlanGraph/PlanStep |
-| Plan Service | gRPC service orchestrating the planning pipeline |
+| Stage | Mechanism |
+|---|---|
+| Observe | Tier-weighted task pick (similarity to solved / near-miss exploitation / exploration) |
+| Hypothesize | LLM prompt in one of 5 strategies: `direct`, `failure_aware`, `example_chain`, `diagnostic`, `primitives_guided` |
+| Experiment | Generate candidate Python `transform(grid)` |
+| Evaluate | Verify against **every** training example; any mismatch rejects the candidate |
+| Learn | Store attempt with structured error classification (`reasoning` / `execution` / `perception` / `specification`) |
+| Reflect | LLM diagnoses *why* a transform failed; result becomes context for the next attempt |
+| Adapt | Thompson sampling shifts strategy weights by Bayesian evidence |
+
+**Mentor preamble** — if `wiki/sensei_task_NNN.md` exists, its YAML-stripped body is prepended to every prompt for that task. Notes are either human-written or Primer-generated.
+
+**Vision burst** — when ≥ 10 perception-error tasks accumulate, `arc_scientist._dispatch_vision_burst()` fires a K8s Job with 4 GLM-4.1V-9B-Thinking vision pods on NRP (L40 / L40S / A10 nodeAffinity). Results write back via `/api/erebus/result` webhook.
+
+### The Primer — auto-sensei
+
+Always-on Claude-style tutor. Watches the Scientist's help queue, uses a **virtual MoE ensemble** of frontier NRP models to propose verified reference implementations for stuck tasks, publishes them as wiki articles. Design principle: frontier reasoning + project memory + verify-before-publish.
+
+- Location: `src/agi/primer/` — `vmoe.py`, `service.py`, `validator.py`, `health.py`.
+- Systemd: `atlas-primer.service` on Atlas (CPU-only, `MemoryMax=4G`).
+- Poll: 10 min. Tier-1 (partial progress) > Tier-2 (zero progress), most-attempted first.
+- Safety invariant: **only code that passes 100 % of `task.train` is published.** See [`THE_PRIMER.md`](THE_PRIMER.md).
+- Orchestration substrate: [`VMOE.md`](VMOE.md).
+
+### Left Hemisphere — deliberative
+
+Planning, reasoning, metacognition. Location: `src/agi/lh/`.
+
+| Component | Purpose |
+|---|---|
+| Planner | Hierarchical planning with `PlanGraph` / `PlanStep` |
+| Plan Service | gRPC orchestration |
 | Memory Client | Interface to memory services for context |
 | Safety Client | Interface to Safety Gateway |
-| Metacognition | Self-monitoring and plan review |
-| LLM Integration | Language model backends |
+| Metacognition | Self-monitoring + plan review |
 | Performance | LRU cache with TTL, async operation batcher |
-| HPC Deploy | Slurm launcher, Apptainer container runner |
+| HPC Deploy | Slurm launcher, Apptainer runner |
 | Resilience | Circuit breaker, retry, graceful degradation |
 
-### Right Hemisphere -- Reactive Processing
+### Right Hemisphere — reactive
 
-Handles perception, world modeling, and motor control.
+Perception, world model, motor control. Location: `src/agi/rh/`.
 
-**Location:** `src/agi/rh/`
-
-| Component | Directory | Description |
-|-----------|-----------|-------------|
+| Component | Directory | Purpose |
+|---|---|---|
 | Perception | `perception/` | Sensor fusion, object recognition |
 | World Model | `world_model/` | Physics simulation, state prediction |
-| Control | `control/` | Motor primitives, trajectory, realtime control, simulation |
+| Control | `control/` | Motor primitives, trajectory, realtime |
 
-### Safety Subsystem
+### Safety subsystem
 
-Three-layer safety architecture with ErisML ethical reasoning.
-
-**Location:** `src/agi/safety/`
-
-```
-                           ┌─────────────────────────────┐
-                           │     SAFETY GATEWAY          │
-                           │     gateway.py              │
-                           ├─────────────────────────────┤
-                           │                             │
-                           │  ┌────────┐  ┌──────────┐  │
-    Input Gate ────────────>│  │ Reflex │  │ Tactical │  │
-    input_gate.py          │  │ <100us │  │  10-100ms│  │
-                           │  └────┬───┘  └────┬─────┘  │
-    Output Gate <──────────│       │           │        │
-    output_gate.py         │  ┌────▼───────────▼─────┐  │
-                           │  │     Strategic         │  │
-    Privilege Gate         │  │     (policy)          │  │
-    privilege_gate.py      │  └────┬─────────────────┘  │
-                           │       │                    │
-                           │  ┌────▼─────────────────┐  │
-                           │  │  ErisML              │  │
-                           │  │  Bond Index          │  │
-                           │  │  Hohfeldian rights   │  │
-                           │  │  Decision proofs     │  │
-                           │  └──────────────────────┘  │
-                           │                             │
-                           │  NATS: agi.safety.*         │
-                           └─────────────────────────────┘
-```
+Location: `src/agi/safety/`. Three-layer architecture:
 
 | Layer | Latency | Function |
-|-------|---------|----------|
-| Reflex | <100us | Emergency stops, collision avoidance |
-| Tactical | 10-100ms | ErisML ethical evaluation, Bond Index |
-| Strategic | >100ms | Policy enforcement, human oversight triggers |
+|---|---|---|
+| Reflex | < 100 µs | Emergency stops, thermal limits, PII / prompt-injection gates |
+| Tactical | 10–100 ms | ErisML `MoralVector`, Bond Index, Hohfeldian rights analysis |
+| Strategic | > 100 ms | Policy enforcement, SHA-256 hash-chained decision proofs, human oversight |
 
-Additional modules:
-- `learning/` -- Bayesian rule weight updates, anomaly detection
-- `rules/` -- Rule engine for banned tools, constraints, risk scoring
-- `dcgm_attestation.py` -- GPU attestation
-- `adapter.py`, `deme_gateway.py` -- Safety adapters and DEME pipeline
+### Memory subsystem
 
-### Memory Subsystem
+Location: `src/agi/memory/`. 5-tier retrieval over PostgreSQL + pgvector + sensei wiki:
 
-PostgreSQL + pgvector with 3.3M PCA-384 IVFFlat vectors. Five-tier retrieval hierarchy.
+| Tier | Source | Latency | Typical use |
+|---|---|---|---|
+| L0 | Dream-consolidated summaries | < 1 ms | Idle-time synthesized insights |
+| L1 | Sensei wiki (`wiki/sensei_*.md`) | < 1 ms | Human + Primer-written teaching articles |
+| L2 | PCA-384 IVFFlat vectors (3.3 M) | 1–5 ms | Semantic similarity |
+| L3 | tsvector full-text search | 1–10 ms | Keyword / phrase queries |
+| L4 | Episodic memory (per-session) | 5–20 ms | Interaction history, debate traces |
 
-**Location:** `src/agi/memory/`
+**Primer writes to L1.** Every verified sensei note becomes Tier-1 knowledge for RAG and for the Scientist's mentor-preamble mechanism.
 
-```
-  Query ──────────────────────────────────────────────────────────┐
-    │                                                              │
-    ▼                                                              │
-  ┌─────────────────────────────────────────────────────────────┐  │
-  │                   5-TIER RETRIEVAL                           │  │
-  │                                                             │  │
-  │   L1: Dream-wiki articles (1.5x relevance boost)           │  │
-  │   L2: Wiki corpus (encyclopedic knowledge)                 │  │
-  │   L3: pgvector semantic search (3.3M PCA-384 IVFFlat)      │  │
-  │   L4: Full-text search (PostgreSQL tsvector)               │  │
-  │   L5: Live retrieval (real-time web/API)                   │  │
-  │                                                             │  │
-  └─────────────────────────────────────────────────────────────┘  │
-    │                                                              │
-    ▼                                                              │
-  ┌─────────────────────────────────────────────────────────────┐  │
-  │                   MEMORY TYPES                               │  │
-  │                                                             │  │
-  │   Episodic     Event sequences, experiences, decision proofs│  │
-  │   Semantic     Facts, concepts, relationships (pgvector)    │  │
-  │   Procedural   Skills, learned behaviors, motor programs    │  │
-  │   Knowledge    Structured knowledge base                    │  │
-  │   Unified      Cross-type query interface                   │  │
-  │                                                             │  │
-  └─────────────────────────────────────────────────────────────┘  │
-    │                                                              │
-    ▼                                                              │
-  ┌─────────────────────────────────────────────────────────────┐  │
-  │   DREAMING (idle consolidation)                              │  │
-  │   Synaptic plasticity + wiki article synthesis               │──┘
-  │   Location: src/agi/dreaming/                                │
-  └─────────────────────────────────────────────────────────────┘
-```
+### Metacognition + dreaming
 
-### Metacognition
+Location: `src/agi/metacognition/` + `src/agi/dreaming/`.
 
-Monitors cognitive processes, detects anomalies, and manages executive function.
-
-**Location:** `src/agi/metacognition/`
-
-| Module | Description |
-|--------|-------------|
-| `ego_monitor.py` | Monitors Ego performance and decision quality |
-| `consistency_checker.py` | Detects contradictions across agents |
-| `anomaly_detector.py` | Identifies unusual patterns in reasoning |
-| `executive_function.py` | Goal management and attention allocation |
-| `adaptive_router.py` | Routes tasks to appropriate agents |
-| `reasoning_analyzer.py` | Evaluates reasoning chain quality |
-| `research_loop.py` | Autonomous research and learning |
-| `curriculum_planner.py` | Curriculum planning for training |
-| `reflector.py` | Self-reflection and introspection |
-| `temporal.py` | Temporal reasoning and prediction |
-| `nats_service.py` | NATS integration for monitoring events |
-
-### Core Infrastructure
-
-**Location:** `src/agi/core/`
-
-**Event Fabric** (`events/`):
-
-| Backend | File | Use Case |
-|---------|------|----------|
-| Local | `fabric.py` (LocalBackend) | In-process testing |
-| ZeroMQ | `fabric.py` (ZmqBackend) | Multi-process dev |
-| Redis | `redis_backend.py` | Persistent streams |
-| NATS JetStream | `nats_backend.py`, `nats_fabric.py` | **Production** -- at-least-once delivery, durable consumers |
-| Broker | `broker.py` | Event routing and fan-out |
-
-Set via `AGI_FABRIC_MODE` environment variable: `local`, `zmq`, `redis`, `nats`, `ucx`.
-
-**Other core modules:**
-- `api/` -- Base gRPC server infrastructure
-- `dht/` -- Distributed hash table (observability, HPC transport via UCX, mTLS security)
-- `llm/` -- Shared LLM client with provider abstraction and middleware
+- **Monitor** — latency percentiles, hemisphere ratio, veto rate, throughput.
+- **Reflector** — periodic self-assessment every 10 interactions.
+- **Adjuster** — auto-tunes `max_tokens`, safety thresholds, routing balance.
+- **Dreaming consolidator** — runs during idle windows (not fixed 2–4 am). QLoRA fine-tuning produces adapters on `/archive/neurogolf/adapters`, cached on NRP PVC. Currently blocked on chat-ego cutover for a fine-tunable base model (see [`AGI_ROADMAP.md`](AGI_ROADMAP.md) Phase 2–3).
 
 ---
 
-## Deployment Architecture
+## Infrastructure
 
-### Systemd Services
+### Fabric
 
-All 19 services run under `atlas.target`:
+- **NATS JetStream** — global workspace at `:4222`, monitoring at `:8222`. `AGI_EVENTS` stream with `agi.>` wildcard, 1 GB max, 7-day retention. Leaf node at `:7422` bridges to NRP (TLS, `s2_fast` compression, 24 ms RTT).
+- **Event dataclass** — `src/agi/common/event.py` with serialization.
+- **Subject hierarchy** — 10 subsystems: `rh`, `safety`, `ego`, `meta`, `memory`, `dreaming`, `autonomous`, `primer`, `dht`, `integration`.
 
-```
-atlas.target
-├── atlas-nats.service              NATS JetStream :4222
-├── atlas-id.service                Qwen 3 32B on GPU 1 :8082
-├── atlas-superego.service          Gemma 4 31B on GPU 0 :8080
-├── atlas-ego.service               Gemma 4 26B-A4B MoE on CPU :8084
-├── atlas-rag-server.service        Flask + pgvector :8081
-├── atlas-telemetry.service         Metrics + event stream :8085
-├── atlas-caddy.service             Reverse proxy
-├── atlas-oauth2-proxy.service      Authentication :4180
-├── atlas-watchdog.service          Health monitoring
-├── atlas-backup.service            Backup (timer-driven)
-├── atlas-backup.timer
-├── atlas-training.service          Training env (timer-driven)
-├── atlas-training.timer
-├── atlas-llm-kirk.service          Kirk LLM service
-├── atlas-llm-spock.service         Spock LLM service
-└── atlas-llm-dm.service            Dungeon Master LLM service
-```
+### Storage
 
-### CI/CD Pipeline
+- **PostgreSQL 15 + pgvector** — 3.3 M vectors in IVFFlat index.
+- **SQLite** — procedural memory.
+- **CephFS PVC** `erebus-ego-models` on NRP — 300 Gi, `rook-cephfs` class, RWX. Sized for a future self-hosted ego pod + LoRA adapter artifacts from dreaming.
+- **`/archive`** — 15 TB local: episodic memory JSON, task JSONs, solution artifacts, scientist log.
 
-```
-  Developer                GitHub Actions                  Atlas
-  ────────                 ──────────────                  ─────
-      │                          │                           │
-      │── git push main ────────>│                           │
-      │                          │── ruff check ────────>    │
-      │                          │── black --check ─────>    │
-      │                          │── pytest tests/unit/ ─>   │
-      │                          │                           │
-      │                          │   (all pass)              │
-      │                          │                           │
-      │                          │── SSH via Tailscale ─────>│
-      │                          │   git pull                │
-      │                          │   pip install -e .[nats]  │
-      │                          │   systemctl restart       │
-      │                          │                           │
-      │                          │── smoke test ────────────>│
-      │                          │   /health on :8080-8085   │
-      │                          │                           │
-```
+### Service stack (systemd, `atlas.target`)
 
-### Network Architecture
+| Service | Purpose |
+|---|---|
+| `atlas-nats.service` | JetStream broker |
+| `atlas-nats-leaf.service` | Leaf connection to NRP |
+| `atlas-telemetry.service` | `/api/*` endpoints + dashboard static serving |
+| `atlas-rag-server.service` | RAG search + LLM proxy |
+| `atlas-id.service` | Ego backend (Qwen 32B on GPU 1) — historical service name, functional role is Ego |
+| `atlas-superego.service` | Superego backend (Gemma 31B on GPU 0) |
+| `atlas-ego.service` | Divine Council CPU backend |
+| `atlas-dreaming.service` | Idle consolidation |
+| `atlas-metacognition.service` | Monitor / reflector / adjuster |
+| `atlas-memory.service` | Memory NATS broker |
+| `atlas-safety.service` | DEME safety NATS |
+| `atlas-victoriametrics.service` | Time-series metrics backend |
+| **`atlas-primer.service`** | The Primer tutor daemon (new 2026-04-19) |
+| `atlas-thermal.service` | Thermal guardian |
+| `atlas-watchdog.service` | Health monitor |
+| `atlas-backup.timer` | Nightly backup |
+| `atlas-training.timer` | Training window (midnight–8 am) |
+| `research-portal.service` | Atlas portal dashboard |
+| `atlas-oauth2-proxy.service` | Google OAuth |
+| `atlas-caddy.service` | Reverse proxy + HTTPS |
 
-```
-  Internet
-      │
-      ▼
-  atlas-sjsu.duckdns.org
-      │
-      ▼
-  Caddy (reverse proxy)
-      │
-      ▼
-  OAuth2 Proxy (:4180)
-      │
-      ├──> RAG Server (:8081)
-      │        │
-      │        ├──> Id/Kirk (:8082)
-      │        ├──> Superego/Spock (:8080)
-      │        └──> PostgreSQL + pgvector
-      │
-      ├──> Telemetry (:8085)
-      │
-      └──> Static files
-           /schematic.html (operations dashboard)
-           /events.html (event stream)
-```
+### Dashboard
+
+- URL: `https://atlas-sjsu.duckdns.org/schematic.html`
+- Served by `atlas-telemetry.service` on `:8085`, reverse-proxied by `atlas-caddy.service`.
+- Live panels: NATS topology (with synthetic Ego/Superego/Council/Scientist/**Primer** nodes), NATS Live (wireshark-style message stream), NRP Burst Jobs + Worker Pools (Jobs and Deployments combined), Erebus — NeuroGolf 2026 (competition score, strategy bars, vision pool, help queue, recent solves), GPU gauges, CPU temperature, memory tiers.
+- **Dynamic version stamp** — footer shows `ui:<git short sha> · <file mtime UTC>`. `telemetry_server.py` substitutes `{{UI_VERSION}}` at serve time. Exposed as JSON via `/api/version`.
 
 ---
 
-## Data Flow
+## CI / CD
 
-### Decision Pipeline
+Three workflows at `.github/workflows/`:
 
-```
-  1. Request arrives via RAG Server (:8081)
-     └── User query or system event
+| Workflow | Trigger | What it catches |
+|---|---|---|
+| **Atlas AI — CI/CD** (`ci.yaml`) | push, PR | Lint (ruff), unit tests, build; on main push also SSHes to Atlas and runs `git pull` + restarts telemetry / RAG. |
+| **Deploy Smoke** (`deploy-smoke.yaml`) | push to main + 30-min cron | Compares live `/api/version.sha` to `git rev-parse HEAD`. Asserts key widgets are present on the rendered page. |
+| **Dashboard Render** (`dashboard-render.yaml`) | dashboard code changes + 30-min cron | Playwright headless Chromium: loads page, asserts topology SVG populated, burst table has rows, version stamp format matches, no console errors. |
 
-  2. Id (Kirk) generates fast response
-     └── Qwen 3 32B on GPU 1
-     └── System 1: intuitive, pattern-matching
+Both drift-detector workflows are `continue-on-error: true` — they surface state, they don't gate PRs.
 
-  3. Superego (Spock) evaluates safety and ethics
-     └── Gemma 4 31B on GPU 0
-     └── System 2: deliberative, rule-following
+### Deploy-drift history
 
-  4. Ego (McCoy) arbitrates if conflict exists
-     └── Gemma 4 26B-A4B MoE on CPU
-     └── Runs Divine Council debate:
-         7 advocates deliberate in parallel
-         └── Judge, Advocate, Synthesizer, Ethicist,
-             Historian, Futurist, Pragmatist
-
-  5. Safety Gateway checks decision
-     ├── Reflex layer: immediate constraints
-     ├── Tactical layer: ErisML Bond Index
-     └── Strategic layer: policy enforcement
-
-  6. Memory consolidation
-     └── Log to episodic memory
-     └── Update semantic vectors if novel
-     └── Dream-wiki synthesis during idle
-```
-
-### Safety Decision Flow
-
-```
-  PlanStep ──> PlanStepToEthicalFacts ──> EthicalFactsProto
-                                                │
-                                                ▼
-                                        ErisMLService.EvaluateStep()
-                                                │
-                                                ▼
-                                   ┌────────────┴────────────┐
-                                   │    MoralVector          │
-                                   │  (8+1 dimensions)       │
-                                   └────────────┬────────────┘
-                                                │
-                                   ┌────────────▼────────────┐
-                                   │   Verdict               │
-                                   │   strongly_prefer       │
-                                   │   prefer                │
-                                   │   neutral               │
-                                   │   avoid                 │
-                                   │   forbid (VETO)         │
-                                   └────────────┬────────────┘
-                                                │
-                                   ┌────────────▼────────────┐
-                                   │   DecisionProof         │
-                                   │   (hash-chained)        │
-                                   └─────────────────────────┘
-```
+Before 2026-04-19, the CI deploy step ran `cp -f atlas-chat-*.html $STATIC_PATH/*.html`. The destination was a symlink into the git tree, so `cp` followed the symlink and wrote stale content back into the working tree after every push. Sixteen commits of dashboard features were silently reverted. Fix: `ln -sfn`. Post-mortem + durable memory entry at `feedback_dashboard_deploy_drift`.
 
 ---
 
-## Protocol Buffers
+## NRP Nautilus integration
 
-All inter-service communication uses gRPC with Protocol Buffers.
+### Accounts + policy
 
-**Definitions:** `proto/`
-**Generated code:** `src/agi/proto_gen/`
+- **Namespace:** `ssu-atlas-ai`
+- **Hard ResourceQuota:** `a100-limit` = 0 (A100 gated behind reservation form; we default to A10 × 8, abundantly available)
+- **Burst pod limit:** 4 heavy-GPU Pods per namespace (Deployments + Jobs combined, per `nautilus.io/hardware=large-gpu` taint-tolerating pods)
+- **Policy:** GPU pods must sustain > 40 % utilization; interactive-only pods violate this (motivates Job-shape with idle-exit for bursts, continuous-batched serving for persistent pods)
 
-| Proto File | Package | Description |
-|------------|---------|-------------|
-| `plan.proto` | `agi.plan.v1` | Plan requests, responses, steps |
-| `erisml.proto` | `agi.erisml.v1` | Ethical facts, moral vectors, proofs |
-| `safety.proto` | `agi.safety.v1` | Safety checks, decisions, outcomes |
-| `memory.proto` | `agi.memory.v1` | Memory queries and storage |
-| `lh.proto` | `agi.lh.v1` | LH-specific messages |
-| `rh.proto` | `agi.rh.v1` | RH-specific messages |
-| `meta.proto` | `agi.meta.v1` | Metacognition messages |
-| `env.proto` | `agi.env.v1` | Environment interface |
+### Hardware availability (2026-04-19)
 
----
+| GPU type | Per node | Nodes | Accessible to `ssu-atlas-ai`? |
+|---|---|---|---|
+| A10 | 8 | 33 | Yes — abundant |
+| A40 | 8 | 1 | Yes |
+| L40 | 4 | 17 | **No** — 15 carry `csu-tide` reservation taint; rest have no free GPUs |
+| L40S | 4 | 3 | Partial — depends on current load |
+| A100 80 GB | 4 or 8 | 21 | **No** — namespace quota = 0 |
+| H100 / H200 | varies | 6 | No — reservation required |
+| V100 32 GB | 8 | 7 | Yes |
+| A6000 | 4 or 8 | 6 | Yes |
 
-## Hardware Specifications
+### Storage
 
-### Atlas Workstation
+- **CephFS** (`rook-cephfs` class) — recommended for large model weights. 16 TB per-file ceiling, parallel-read throughput.
+- **RBD** (`rook-ceph-block` default) — higher IOPS for small-files workloads.
+- **S3** (NRP Ceph S3 endpoints) — for cross-region, > 5 TiB single-file cases.
 
-| Component | Specification |
-|-----------|---------------|
-| Chassis | HP Z840 |
-| CPU | 2x Intel Xeon E5-2690 v3 (48 threads, 2.60 GHz) |
-| RAM | 251 GB DDR4 |
-| GPU 0 | NVIDIA Quadro GV100 32GB (Volta, compute 7.0) |
-| GPU 1 | NVIDIA Quadro GV100 32GB (Volta, compute 7.0) |
-| NVLink | Not available (GPUs on different CPU sockets) |
-| Storage | 15 TB at `/archive` |
-| Network | Tailscale VPN at 100.68.134.21 |
-| OS | Ubuntu Linux |
-| Python | 3.12 (venv at `/home/claude/env`) |
-| ML Stack | PyTorch 2.10.0+cu128, transformers 5.3.0, CuPy 14.0.1, bitsandbytes 0.49.2 |
-| LLM Runtime | llama.cpp (CUDA build) |
+### Managed LLM service
 
-### NRP Nautilus
-
-| Resource | Access |
-|----------|--------|
-| Namespace | `ssu-atlas-ai` |
-| Portal | [nrp.ai](https://nrp.ai) |
-| GPU Types | A100 80GB, L4 24GB, L40 48GB, L40S |
-| Nodes | 100+ across participating universities |
-| Bridge | NATS leaf node at `:7422` |
-
-### Thermal Constraints
-
-| Threshold | Temperature | Action |
-|-----------|-------------|--------|
-| Normal | < 82C | Full operation |
-| High | 82C | Alert, reduce threads |
-| Critical | 100C | Emergency throttle |
-| Thread cap | -- | 20 threads maximum (48 available) |
+- `https://ellm.nrp-nautilus.io/v1` — OpenAI-compatible. Models: `kimi`, `qwen3`, `qwen3-27b`, `glm-4.7`, `gpt-oss`, `gemma`, `gemma-4-e4b`, `minimax-m2`, `olmo`, `qwen3-embedding`, `qwen3-small`.
+- `https://ellm.nrp-nautilus.io/anthropic` — **protocol-translation proxy** (not Claude). Lets Claude Code tooling talk to the open-model pool via the Anthropic messages API.
+- Auth: Bearer token from `~/.llmtoken` (issued via `/llmtoken`).
 
 ---
 
-## Key Design Principles
+## Regression guards summary
 
-### 1. Psychoanalytic Multi-Agent Architecture
-Three LLMs implement a Freudian model: the Id generates fast intuitive responses, the Superego enforces ethical reasoning, and the Ego arbitrates conflict through structured multi-advocate debate.
-
-### 2. Safety-First Design
-Safety is not a filter at the end but woven throughout. Three layers (reflex, tactical, strategic) operate at different timescales. ErisML provides mathematically grounded ethical reasoning with auditable decision proofs.
-
-### 3. Hybrid Memory Architecture
-Five-tier retrieval hierarchy combines dream-synthesized articles, wiki knowledge, vector similarity, full-text search, and live retrieval. Memory consolidation occurs during idle cycles via the dreaming subsystem.
-
-### 4. Event-Driven Coordination
-NATS JetStream provides the "global workspace" (per Baars 1988) -- a shared broadcast medium where all agents publish and subscribe. Durable consumers ensure at-least-once delivery.
-
-### 5. Burst Compute via NRP
-Local GPUs handle inference; NRP Nautilus provides burst capacity for training and large-scale fuzzing. NATS leaf node bridges the two environments transparently.
-
-### 6. Graceful Degradation
-The system remains safe when components fail. The safety gateway works without ErisML. The Ego works without the full council. All services have fallback behaviors and are auto-restarted by the watchdog.
+| Failure mode | Caught by |
+|---|---|
+| Python bug in Atlas service | `ci.yaml` unit tests, ruff |
+| Deployed code doesn't match `main` | `deploy-smoke.yaml` (compare live SHA) |
+| HTML renders but JS breaks | `dashboard-render.yaml` (Playwright) |
+| Wiki note publishes wrong rule | Primer validator (subprocess run-against-train; `all_pass=True` required) |
+| Expert timeout cascades | vMOE `HealthTracker` degradation + cooldown |
+| Working tree drift on deploy | `ln -sfn` replaces `cp -f`; symlinks are idempotent |
+| Chat handler hangs on slow NRP | 120 s agentic / 90 s simple timeouts; eventual vMOE cascade (Phase 3) |
 
 ---
 
-## Related Documentation
+## Documentation map
 
-- [ATLAS_OPERATIONS.md](ATLAS_OPERATIONS.md) -- Production operations guide
-- [ERISML_API.md](ERISML_API.md) -- ErisML integration API reference
-- [ERISML_INTEGRATION_SKETCH.md](ERISML_INTEGRATION_SKETCH.md) -- Detailed integration design
-- [HPC_DEPLOYMENT.md](HPC_DEPLOYMENT.md) -- HPC cluster deployment guide
-- [LH_SPRINT_PLAN.md](LH_SPRINT_PLAN.md) -- Left Hemisphere development plan
-- [RH_SPRINT_PLAN.md](RH_SPRINT_PLAN.md) -- Right Hemisphere development plan
+| Doc | Topic |
+|---|---|
+| [`../README.md`](../README.md) | Front door, hardware, quickstart |
+| [`THE_PRIMER.md`](THE_PRIMER.md) | The Primer — teaching daemon, safety invariants, operation |
+| [`VMOE.md`](VMOE.md) | Virtual Mixture-of-Experts — routing, cascade, ensemble, health |
+| [`ATLAS_OPERATIONS.md`](ATLAS_OPERATIONS.md) | Workstation ops: systemd, thermal, backup, SSH |
+| [`AGI_ROADMAP.md`](AGI_ROADMAP.md) | Phase status, pending work, long-horizon plan |
+| [`CHANGELOG.md`](CHANGELOG.md) | Per-date ship log |
+| [`HPC_DEPLOYMENT.md`](HPC_DEPLOYMENT.md) | NRP / Slurm / Apptainer deployment |
+| [`API_REFERENCE.md`](API_REFERENCE.md) | gRPC + NATS subject reference |
+| [`ERISML_API.md`](ERISML_API.md) | Ethical reasoning API |
+
+---
+
+## Design principles
+
+- **Cortex = frontier LLMs (NRP), subcortical = local GPUs.** Reasoning goes cloud-ward, pattern / procedural memory stays on metal.
+- **Global workspace = NATS.** Any subsystem can see any event on `agi.>`.
+- **Multiple agents, explicit policy.** vMOE router > learned gate. Divine Council > single LLM. Each slot is debuggable and replaceable.
+- **Verified before published.** Primer never writes an unverified note. CI never claims a deploy without comparing live state.
+- **Drift detectors, not gates.** Regression workflows surface truth about the deployed state; they don't block code velocity.
+- **Teach, don't fish for.** Primer articulates rules and demonstrates with verified code; the Scientist learns to apply the technique next time. The goal is the Scientist becoming able to solve the task itself.
