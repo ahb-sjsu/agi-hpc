@@ -2291,7 +2291,7 @@ def _erebus_chat(user_message: str) -> str:
                         2,
                         extra,
                     )  # max 2 tool rounds
-                    return future.result(timeout=45)
+                    return future.result(timeout=120)
         except Exception as tool_err:
             import traceback
 
@@ -2305,7 +2305,7 @@ def _erebus_chat(user_message: str) -> str:
             max_tokens=1024,
             messages=messages,
             extra_body=extra,
-            timeout=30,
+            timeout=90,
         )
         return r.choices[0].message.content or ""
     except Exception as e:
