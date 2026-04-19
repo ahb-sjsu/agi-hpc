@@ -1,0 +1,24 @@
+[Unit]
+Description=Atlas Primer — always-on teaching daemon for Erebus (vMOE over NRP frontier models)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=claude
+WorkingDirectory=/home/claude/agi-hpc
+Environment=PYTHONPATH=/home/claude/agi-hpc/src
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=-/home/claude/.primer.env
+ExecStart=/home/claude/env/bin/python3 -m agi.primer.service
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Sanity: cap memory & CPU so a runaway prompt can't starve Atlas
+MemoryMax=4G
+CPUQuota=200%
+
+[Install]
+WantedBy=multi-user.target
