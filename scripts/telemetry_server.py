@@ -1174,19 +1174,31 @@ _EREBUS_ACTIVITY_LOCK = threading.Lock()
 
 
 def _classify_activity(line: str) -> str:
-    """Color-code line by kind. Used by the sidebar to style each entry."""
+    """Color-code line by kind. Order matters — first match wins."""
     lo = line.lower()
-    if "solved" in lo and "/" in lo:
+    if "-> solved" in lo or ("verified" in lo and "true" in lo):
         return "solved"
     if "help requested" in lo or "help_requested" in lo:
         return "help"
-    if "meta-pattern" in lo or "patterns" in lo:
+    if (
+        "meta-pattern" in lo
+        or "strategy performance" in lo
+        or "fingerprints:" in lo
+        or "cluster " in lo
+    ):
         return "meta"
-    if "dream" in lo or "qlora" in lo or "microsleep" in lo or "deepsleep" in lo:
+    if (
+        "microsleep" in lo
+        or "mediumsleep" in lo
+        or "deepsleep" in lo
+        or "qlora" in lo
+        or "dream cycle" in lo
+        or "dream tiers" in lo
+    ):
         return "dream"
-    if "error" in lo or "traceback" in lo or "failed" in lo:
+    if "traceback" in lo or "exception" in lo or lo.startswith("error"):
         return "error"
-    if _re.search(r"\[\d+/\d+\]", line):
+    if _re.search(r"\[\d+/\d+\]", line) or "-> " in line:
         return "attempt"
     return "info"
 
