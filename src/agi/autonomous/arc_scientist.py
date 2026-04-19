@@ -568,6 +568,32 @@ class ARCScientist:
         self.llm_base_url = llm_base_url
         self.client = None
         self._init_client()
+        # Mentor notes — hand-written guidance from Professor Bond, keyed by
+        # task_num as string. Injected into every prompt for that task.
+        self._mentor_notes: dict = {}
+        try:
+            mn_path = self.task_dir / "mentor_notes.json"
+            if mn_path.exists():
+                self._mentor_notes = {
+                    str(k): v
+                    for k, v in json.loads(mn_path.read_text()).items()
+                    if not str(k).startswith("_")
+                }
+        except Exception:
+            pass
+
+    def _mentor_preamble(self, tn: int) -> str:
+        notes = self._mentor_notes.get(str(tn)) or self._mentor_notes.get(
+            f"{tn:03d}"
+        )
+        if not notes:
+            return ""
+        body = "\n".join(f"- {n}" for n in notes)
+        return (
+            "\n=== GUIDANCE FROM PROFESSOR BOND (read this carefully) ===\n"
+            f"{body}\n"
+            "=== end guidance ===\n\n"
+        )
 
         self.all_tasks = sorted(
             [int(f.stem[4:]) for f in self.task_dir.glob("task*.json")]
@@ -867,6 +893,12 @@ class ARCScientist:
                     chain_examples="",
                     primitives="",
                 )
+
+            # Inject mentor notes for this task (if any) as the first
+            # thing the LLM reads — before all the examples/strategy text.
+            preamble = self._mentor_preamble(tn)
+            if preamble:
+                prompt = preamble + prompt
 
             model = random.choice(models)
 
