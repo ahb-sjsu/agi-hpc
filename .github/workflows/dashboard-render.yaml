@@ -1,0 +1,60 @@
+name: Dashboard Render
+
+# Headless render check for the Atlas operations dashboard.
+# Catches silent JS-side regressions (panels render blank, SVG empty,
+# pollers throw console errors) that raw-HTML curl checks miss.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infra/local/atlas-chat/**"
+      - "scripts/telemetry_server.py"
+      - "tests/dashboard/**"
+      - ".github/workflows/dashboard-render.yaml"
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+env:
+  DASHBOARD_URL: https://atlas-sjsu.duckdns.org
+
+jobs:
+  render:
+    name: Headless chromium smoke
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: tests/dashboard
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: tests/dashboard/package.json
+
+      - name: Wait for deploy window
+        if: github.event_name == 'push'
+        run: sleep 120
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Install chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright tests
+        run: npx playwright test
+        env:
+          DASHBOARD_URL: ${{ env.DASHBOARD_URL }}
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-trace
+          path: tests/dashboard/test-results
+          retention-days: 14
