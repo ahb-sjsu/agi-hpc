@@ -111,7 +111,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
       <label data-kind="meta" class="on"><input type="checkbox" checked>meta</label>
       <label data-kind="dream" class="on"><input type="checkbox" checked>dream</label>
       <label data-kind="error" class="on"><input type="checkbox" checked>error</label>
-      <label data-kind="info"><input type="checkbox">info</label>
+      <label data-kind="info" class="on"><input type="checkbox" checked>info</label>
     </div>
     <div class="astream" id="activity-stream"></div>
   </aside>
@@ -242,7 +242,7 @@ setInterval(pollHelp, 30000);
 var activitySeq = 0;
 var activityFilters = {
   attempt: true, solved: true, help: true, meta: true,
-  dream: true, error: true, info: false,
+  dream: true, error: true, info: true,
 };
 
 function initActivityFilters() {
