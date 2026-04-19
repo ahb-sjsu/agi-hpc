@@ -58,6 +58,8 @@ def _ui_version_stamp(html_path: str) -> str:
         return f"{sha} · {ts}"
     except Exception:
         return "?"
+
+
 PORT = int(os.environ.get("TELEMETRY_PORT", "8085"))
 DB_DSN = os.environ.get("ATLAS_DB_DSN", "dbname=atlas user=claude")
 SNAPSHOT_INTERVAL = float(os.environ.get("TELEMETRY_SNAPSHOT_S", "2.5"))
@@ -2282,9 +2284,7 @@ def _get_erebus_status():
             )
             batches = sorted(
                 {
-                    (p.get("metadata") or {})
-                    .get("labels", {})
-                    .get("job-name", "")
+                    (p.get("metadata") or {}).get("labels", {}).get("job-name", "")
                     for p in items
                 }
             )
@@ -2310,6 +2310,7 @@ def _get_erebus_status():
 
 EREBUS_HELP_PATH = "/archive/neurogolf/erebus_help_queue.json"
 PRIMER_COOLDOWN_PATH = "/archive/neurogolf/primer_cooldown.json"
+PRIMER_HEALTH_PATH = "/archive/neurogolf/primer_health.json"
 
 
 def _get_primer_status():
@@ -2319,6 +2320,7 @@ def _get_primer_status():
         "tasks_touched": 0,
         "last_touched_task": None,
         "last_touched_age_s": None,
+        "expert_health": {},
     }
     try:
         r = subprocess.run(
@@ -2334,13 +2336,22 @@ def _get_primer_status():
         cooldown = json.loads(Path(PRIMER_COOLDOWN_PATH).read_text())
         if isinstance(cooldown, dict) and cooldown:
             status["tasks_touched"] = len(cooldown)
-            # Most recent entry
             task_num, ts = max(cooldown.items(), key=lambda kv: kv[1])
-            status["last_touched_task"] = int(task_num) if str(task_num).isdigit() else task_num
+            status["last_touched_task"] = (
+                int(task_num) if str(task_num).isdigit() else task_num
+            )
             status["last_touched_age_s"] = int(time.time() - float(ts))
     except Exception:
         pass
+    try:
+        health = json.loads(Path(PRIMER_HEALTH_PATH).read_text())
+        if isinstance(health, dict):
+            status["expert_health"] = health
+    except Exception:
+        pass
     return status
+
+
 _erebus_fingerprints: dict = (
     {}
 )  # pre-cached at first chat, persists for server lifetime

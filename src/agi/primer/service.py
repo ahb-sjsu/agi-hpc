@@ -262,6 +262,16 @@ def _publish_note(task_num: int, parsed: dict, code: str, cfg: Config) -> Path:
 
 
 _COOLDOWN_STATE = Path("/archive/neurogolf/primer_cooldown.json")
+_HEALTH_STATE = Path("/archive/neurogolf/primer_health.json")
+
+
+def _save_health(moe: vMOE) -> None:
+    """Persist expert-health summary for dashboard consumption."""
+    try:
+        _HEALTH_STATE.parent.mkdir(parents=True, exist_ok=True)
+        _HEALTH_STATE.write_text(json.dumps(moe.health.summary(), indent=2))
+    except Exception as e:
+        log.warning("health save failed: %s", e)
 
 
 def _load_cooldown() -> dict[str, float]:
@@ -352,10 +362,19 @@ async def _process_one(tn: int, cfg: Config, moe: vMOE) -> bool:
         {"role": "system", "content": _SYSTEM_PROMPT},
         {"role": "user", "content": user},
     ]
-    log.info("task%03d: consulting vMOE ensemble (kimi + glm-4.7 + qwen3)", tn)
+    # Drop experts currently in a health cooldown — the canary (qwen3)
+    # being consistently slow means NRP's thinking models will definitely
+    # timeout too; don't burn 5 min each on foregone conclusions.
+    candidate = moe.healthy_subset(["kimi", "glm-4.7", "qwen3"])
+    if not candidate:
+        # All experts degraded — still probe qwen3 once to see if it
+        # recovered. A probe succeeding clears the degradation via the
+        # tracker's next ``record()`` call.
+        candidate = ["qwen3"]
+    log.info("task%03d: consulting vMOE ensemble (%s)", tn, " + ".join(candidate))
     responses = await moe.ensemble(
         messages,
-        experts=["kimi", "glm-4.7", "qwen3"],
+        experts=candidate,
         max_tokens=12000,
         temperature=0.2,
         return_all=True,
@@ -403,6 +422,7 @@ async def tick(cfg: Config, moe: vMOE) -> int:
         ok = await _process_one(tn, cfg, moe)
         cooldown[str(tn)] = time.time()  # set cooldown regardless of outcome
         _save_cooldown(cooldown)
+        _save_health(moe)
         if ok:
             published += 1
     return published

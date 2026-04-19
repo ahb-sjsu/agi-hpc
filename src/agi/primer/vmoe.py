@@ -35,6 +35,7 @@ try:
 except ImportError:  # pragma: no cover
     AsyncOpenAI = None  # type: ignore
 
+from .health import HealthTracker
 
 log = logging.getLogger(__name__)
 
@@ -161,7 +162,12 @@ class vMOE:
     (no network calls at init); clients are lazy-created per expert.
     """
 
-    def __init__(self, experts: Iterable[Expert] | None = None) -> None:
+    def __init__(
+        self,
+        experts: Iterable[Expert] | None = None,
+        *,
+        health: HealthTracker | None = None,
+    ) -> None:
         if AsyncOpenAI is None:
             raise ImportError(
                 "openai package is required; install with `pip install openai`"
@@ -170,6 +176,7 @@ class vMOE:
             e.name: e for e in (experts or default_experts())
         }
         self._clients: dict[str, AsyncOpenAI] = {}
+        self.health: HealthTracker = health or HealthTracker()
 
     # ── expert lookup ──────────────────────────────────────────────
 
@@ -178,18 +185,26 @@ class vMOE:
             raise KeyError(f"unknown expert: {name!r} (have: {list(self.experts)})")
         return self.experts[name]
 
-    def by_hint(self, hint: str | None) -> list[Expert]:
+    def by_hint(self, hint: str | None, *, only_healthy: bool = False) -> list[Expert]:
         """Return experts matching the hint, ordered by priority.
 
         ``hint=None`` returns all experts sorted by priority (lowest
         = most preferred). ``hint="code"`` returns only those with
-        that tag. Empty result if no expert matches.
+        that tag. ``only_healthy=True`` filters out experts currently
+        in a health cooldown (see ``agi.primer.health.HealthTracker``).
+        Empty result if no expert matches.
         """
         pool = list(self.experts.values())
         if hint:
             pool = [e for e in pool if hint in e.role_hints]
+        if only_healthy:
+            pool = [e for e in pool if self.health.healthy(e.name)]
         pool.sort(key=lambda e: e.priority)
         return pool
+
+    def healthy_subset(self, names: list[str]) -> list[str]:
+        """Filter a name list to just those currently marked healthy."""
+        return [n for n in names if n in self.experts and self.health.healthy(n)]
 
     # ── low-level call ────────────────────────────────────────────
 
@@ -225,24 +240,30 @@ class vMOE:
             ) or ""
             usage = getattr(completion, "usage", None)
             usage_dict = usage.model_dump() if usage is not None else {}
+            latency = time.time() - t0
+            self.health.record(expert.name, latency, True)
             return Response(
                 expert=expert.name,
                 model=expert.model,
                 content=content,
                 ok=True,
-                latency_s=time.time() - t0,
+                latency_s=latency,
                 usage=usage_dict,
             )
         except asyncio.TimeoutError:
+            latency = time.time() - t0
+            self.health.record(expert.name, latency, False)
             return Response(
                 expert=expert.name,
                 model=expert.model,
                 content="",
                 ok=False,
-                latency_s=time.time() - t0,
+                latency_s=latency,
                 error=f"timeout after {budget:.1f}s",
             )
         except Exception as e:  # noqa: BLE001 — convert any client error to Response
+            latency = time.time() - t0
+            self.health.record(expert.name, latency, False)
             return Response(
                 expert=expert.name,
                 model=expert.model,
