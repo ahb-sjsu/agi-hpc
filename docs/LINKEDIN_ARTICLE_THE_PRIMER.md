@@ -1,46 +1,42 @@
-# The Primer: giving an autonomous ARC solver a teacher
+# Teaching an Autonomous Agent: Why Verification Matters More Than the Teacher
 
-Erebus is an autonomous ARC puzzle solver we run on Atlas. It works through Kaggle's NeuroGolf task set by generating candidate Python programs, running them against each training pair, scoring itself, updating a memory file, and retrying with a different strategy. It was designed to be self-directed.
+*What I learned building The Primer, an always-on mentor for an autonomous ARC solver*
 
-It turns out "self-directed" is not the same as "self-improving". A week into running it, Erebus had accumulated 50+ attempts on several tasks without making real progress. It wasn't asking anyone for help. It was just spinning on the same wrong hypotheses. One morning I added a `_ask_for_help` tool so it could at least surface its stuck state, and by the evening it had posted entries like this to a JSON file:
+---
 
-```
-task381: I have tried 57 times (best: 2/3). Error types:
-  reasoning, execution, perception. I need guidance: is this
-  transformation local or global? Am I missing a spatial primitive?
-```
+## The problem I didn't expect
+
+We run an autonomous puzzle solver on our SJSU research cluster called Erebus. It chews through Kaggle's NeuroGolf task set on its own, generating Python programs, running them against training examples, scoring itself, updating a memory file, and retrying with different strategies. The design goal was self-direction.
+
+A week into running it, Erebus had accumulated more than 50 failed attempts on several tasks. It wasn't stuck on hard ones. It was stuck on the same *wrong hypothesis* on the same tasks, over and over. It had no way to ask anyone for help.
+
+I gave it a help channel. Within a day, it was posting messages like:
+
+> task381: I have tried 57 times (best: 2/3). Error types: reasoning, execution, perception. I need guidance: is this transformation local or global? Am I missing a spatial primitive?
 
 Nobody was reading the file.
 
-That is how the Primer got built. It is a small always-on daemon living at `src/agi/primer/service.py`, roughly 600 lines. Its only job is to read the help queue and write useful replies into a wiki that Erebus reads.
+That's how The Primer got built. It's a small always-on daemon whose only job is to read Erebus's help queue and write useful replies into a shared wiki.
 
-## The naive version actively hurt
+## The naive version actively made things worse
 
-The obvious implementation is: poll the help queue every ten minutes, pick a stuck task, send it to the smartest LLM you have, write the answer to a wiki note. I had this running for about three hours before I looked at the output.
+The obvious implementation is a ten-line loop: poll the help queue, pick a stuck task, send it to the smartest LLM you have, publish the answer. I ran that for about three hours.
 
-Kimi (running on our NRP cluster) had been asked about task 381. It returned a confident rule. The rule was wrong in two distinct ways, but it sounded plausible enough that our commit pipeline published it. Erebus picked up the note on its next tick. It started applying the wrong rule. Because the rule appeared consistent with its existing memory of the task, its internal "does this attempt make sense" check passed. The new failing attempts were logged as real failures, not as "I followed the sensei note and it didn't work."
+The LLM returned a confident rule for task 381. The rule was wrong. It sounded plausible enough that our pipeline committed it to the wiki. Erebus picked it up on its next tick, started applying the rule, and because the rule *looked* consistent with the training examples, Erebus's internal sanity check passed each new attempt as a legitimate failure.
 
-By the time I noticed, Erebus had 102 failed attempts on that one task, most of them variations of the wrong rule that the wiki told it was correct.
+By the time I noticed, Erebus had 102 failed attempts on that one task, most of them faithful variations of a wrong rule the wiki told it was correct.
 
-A wrong sensei note is worse than no sensei note. It actively entrenches a bad hypothesis and costs you the investigation that the agent would have done on its own.
+The lesson: a wrong teacher is worse than no teacher. A confidently-stated wrong hypothesis doesn't just fail to help — it displaces the investigation the agent would have done on its own.
 
-## Verify, then publish
+## What The Primer actually does
 
-The actual Primer works differently. When it picks up a stuck task, it consults the vMOE ensemble (Kimi, GLM-4.7, and Qwen3 on NRP) and asks each one for a candidate `transform(grid) -> grid` function. It does not publish their answer. Instead it hands the candidate to a validator.
-
-The validator (`src/agi/primer/validator.py`) runs the candidate in an isolated subprocess with a 10-second timeout. It loads the task file, iterates over every training example, runs the candidate, compares the output byte-for-byte with the expected output, and then does the same for the test example. Only if all comparisons match does the candidate make it through. The publisher then extracts the rule into prose and writes a sensei note that includes the verified reference implementation.
-
-In other words, the LLM proposes and a deterministic oracle disposes. The bottleneck is the oracle, not the LLM.
-
-This is roughly 60 lines of code and it is the piece that makes the whole system trustworthy.
-
-## The loop
+When The Primer picks up a stuck task, it does not publish the LLM's answer. It consults three frontier models (Kimi, GLM-4.7, Qwen3) via our NRP cluster and asks each for a candidate `transform(grid) -> grid` function. Each candidate gets handed to a validator.
 
 ```
 tick():
   stuck_tasks = read help queue, apply cooldown filter
   for task in stuck_tasks[:3]:
-      for expert in vmoe.experts (first_verified policy):
+      for expert in vmoe.experts:
           candidate = expert.propose(task)
           if validator.verify(candidate, task):
               publish_sensei_note(task, candidate)
@@ -49,42 +45,46 @@ tick():
           set_cooldown(task, 6h)
 ```
 
-The vMOE (short for "virtual mixture of experts") is a small abstraction over the three NRP-hosted LLMs. It supports four policies: route by task features, cascade cheap-to-expensive, ensemble with quorum voting, or first_verified. Production runs the last one, because it gives you the fastest useful answer without burning the ensemble budget on tasks the cheapest expert can handle.
+The validator runs each candidate in an isolated subprocess with a ten-second timeout. It iterates over every training example and the test example for the task, executes the candidate, compares the output byte-for-byte with the expected output. Only if all comparisons match does the candidate make it into the wiki, with the verified reference implementation included as part of the note.
 
-## Cooldown
+About sixty lines of code. It is the piece that makes everything else trustworthy.
 
-An obvious failure mode: if the Primer tries task 381 and no expert produces a valid candidate, and it tries the same task again ten minutes later with the same ensemble, it will waste the same budget on the same unanswerable question. Cooldown state lives in `/archive/neurogolf/primer_cooldown.json`, six hours by default, overridable via `PRIMER_COOLDOWN_S`. When a task gets solved (either by the Primer publishing a verified note, or by Erebus figuring it out on its own), the cooldown entry is cleared so the task is eligible for re-teaching in case Erebus forgets later.
+In other words: the LLM proposes, a deterministic oracle disposes. The bottleneck is the oracle, not the LLM.
 
-There is a subtle gotcha here. The cooldown file used to be written with `path.write_text(json.dumps(state))`, a two-syscall sequence. A kernel crash or a power event between truncate and write leaves the file empty. The readers were doing `try: json.loads(...) except Exception: pass`, so a corrupted file silently produced an empty cooldown dict, and the Primer would cheerfully re-ask every task on its next tick. I didn't notice for about a week. The fix (atomic writes via `tempfile + fsync + os.replace`) is now in `src/agi/common/atomic_write.py` and covers four other state files that had the same bug.
+## Why the ensemble matters less than you'd think
 
-## What actually unblocked task 381
+We wrap the three LLMs in what we call a vMOE, a virtual mixture of experts. It supports four policies: route by task features, cascade cheap-to-expensive, ensemble with quorum voting, or first-verified. Production runs first-verified because it gives you the fastest useful answer without burning the ensemble budget on tasks the cheapest expert can already solve.
 
-This afternoon I ran the existing wiki note for task 381 through the validator. It failed on all three training examples. The note had been written months ago, by hand, before the Primer existed. It said something like: "identify pairs of rectangles where widths match AND aligned vertically, OR heights match AND aligned horizontally, then fill the gap between them with the marker color." That is not the rule.
+Here's the counterintuitive part: with verification in the loop, the choice of LLM matters less than we expected. Any of the three will eventually produce a candidate that passes. A slower expert that produces valid candidates is worth more than a fast expert that produces plausible-looking wrong ones. Verification turns "how smart is the teacher" into "how fast is the teacher at getting to a verified answer," which is a much friendlier optimization target.
 
-The actual rule for task 381 is: for any two rectangles of 2s whose row ranges overlap and which are horizontally separated, fill the gap with color 9 (not the marker color), unless a third rectangle intersects both the overlap rows and the gap columns. That third-rectangle cancellation is what makes it interesting, because it means a relationship between two objects can be erased by the presence of an unrelated third object.
+## A concrete story: task 381
 
-I wrote a reference implementation, ran it against all three training examples plus the test, got exact matches, and replaced the sensei note. Erebus's next attempt on task 381 solved it.
+Earlier this week I ran the existing wiki note for task 381 through the validator. It failed on all three training examples. The note had been written months ago by hand, before The Primer existed. It said something like "identify pairs of rectangles where widths match AND aligned vertically, OR heights match AND aligned horizontally, then fill the gap between them with the marker color." That was not the rule.
 
-The lesson is not "the LLM would have gotten it right." The lesson is that the verify-before-publish invariant applied to the Primer's writes, but not to old human-written notes in the same directory. So I'm adding a pre-commit hook that refuses any `wiki/sensei_task_*.md` unless it contains a reference implementation that passes against the task's training fixtures. Same invariant, now enforced at the commit boundary.
+The actual rule: for any two rectangles of 2s whose row ranges overlap and which are horizontally separated, fill the gap with color 9 (not the marker color) — *unless* a third rectangle intersects both the overlap rows and the gap columns, in which case the entire pair is cancelled.
 
-## Things I would do earlier next time
+That cancellation clause is what makes the task interesting. The presence of a third unrelated object erases the relationship between the first two. It's a geometric primitive worth teaching deliberately.
 
-Building the Primer took about two days. If I were starting over:
+I wrote a reference implementation, verified it against the full training + test set, and replaced the sensei note. Erebus's next attempt solved it. Then I realized the failure mode that had allowed this: our verify-before-publish rule applied to The Primer's writes but not to human-authored notes in the same directory. So I'm adding a pre-commit hook that refuses any wiki note without a passing reference implementation. Same invariant, enforced at the commit boundary.
 
-Start with the validator. The verification oracle should exist before any component that could produce unverified output. I had the validator as an afterthought the first afternoon, and paid for it with three hours of wrong sensei notes.
+## Things I'd do earlier next time
 
-Emit structured logs from day one. The lifecycle logger we added later would have made the wrong-note bug visible within an hour instead of a day. Right now the Primer emits events like `primer.tick_start`, `primer.candidate_generated`, `primer.validation_passed`, `primer.note_published`. The trends dashboard renders them as a timeline per task.
+Building The Primer took about two days. If I were starting over:
 
-Write atomically. Every stateful service should use an atomic write helper from the first commit. Retrofitting it later is easy; the hard part is noticing the silent corruption.
+**Build the validator before the proposer.** The verification oracle should exist before any component that could produce unverified output. I built the validator as an afterthought the first afternoon, and paid for it with three hours of wrong sensei notes.
 
-## Pointers
+**Structured logs from day one.** Events like `primer.tick_start`, `primer.candidate_generated`, `primer.validation_passed`, `primer.note_published` give you a timeline per task. The wrong-note bug would have been visible in an hour instead of a day.
 
-- Repo: github.com/ahb-sjsu/agi-hpc
-- `src/agi/primer/service.py`, the daemon
-- `src/agi/primer/vmoe.py`, the ensemble policy
-- `src/agi/primer/validator.py`, the verification oracle
-- `src/agi/common/atomic_write.py`, crash-safe state persistence
-- `docs/THE_PRIMER.md`, operations reference
-- `docs/VMOE.md`, ensemble policy notes
+**Atomic state writes everywhere.** Every stateful service should use a tempfile + fsync + atomic-rename helper from the first commit. Retrofitting is easy; the hard part is noticing the silent corruption. We found out our cooldown file had been silently corrupting on crashes for about a week.
 
-The piece I am still working on: making the Primer proactively scan for inconsistencies between existing sensei notes and the training fixtures, not just respond to Erebus's help queue. That is how we keep a human-authored wrong note from quietly misleading the agent for 102 attempts next time.
+## Where this fits in the larger picture
+
+The Primer is a single node in a broader AGI safety research program at SJSU. Erebus is one agent. The Primer is one mentor. Our dreaming service consolidates episodic memory into wiki articles. The DEME safety gateway evaluates every proposed action through the ErisML ethical reasoning framework. All of them coordinate via a NATS event fabric and persist through PostgreSQL with pgvector.
+
+The unifying idea across all of them is the same as the one in this piece: the useful invariants are not "what the LLM believes" but "what survives verification." Agents that can be fooled by their own plausible hypotheses need oracles, not smarter priors. Giving an autonomous agent a teacher is easy. Giving it a *verifiable* teacher is the whole point.
+
+---
+
+**Open source.** The Primer and the rest of the stack live at [github.com/ahb-sjsu/agi-hpc](https://github.com/ahb-sjsu/agi-hpc) under a responsible-AI license. The relevant files are `src/agi/primer/service.py` (the daemon, ~600 lines), `src/agi/primer/validator.py` (the oracle, ~60 lines), and `docs/THE_PRIMER.md` (operations reference).
+
+**Comments welcome.** Especially from folks building autonomous research agents — the verify-before-publish invariant generalizes well beyond ARC puzzles. I'm curious what equivalents people have landed on in other domains.
