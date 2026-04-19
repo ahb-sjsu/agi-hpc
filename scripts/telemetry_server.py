@@ -2467,26 +2467,39 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
             with open(mem_path) as f:
                 mem = json.load(f)
             tasks = mem.setdefault("tasks", {})
-            tk = tasks.setdefault(str(task_num), {
-                "task_num": task_num, "attempts": [], "solved": False,
-                "best_correct": 0, "best_total": 0, "strategies_tried": [],
-                "failure_patterns": [], "error_types": [], "hypotheses": [],
-            })
+            tk = tasks.setdefault(
+                str(task_num),
+                {
+                    "task_num": task_num,
+                    "attempts": [],
+                    "solved": False,
+                    "best_correct": 0,
+                    "best_total": 0,
+                    "strategies_tried": [],
+                    "failure_patterns": [],
+                    "error_types": [],
+                    "hypotheses": [],
+                },
+            )
             correct = int(data.get("correct") or 0)
             total = int(data.get("total") or 0)
             verified = correct == total and total > 0
             import datetime as _dt
-            tk["attempts"].append({
-                "task_num": task_num,
-                "timestamp": data.get("ts") or _dt.datetime.utcnow().isoformat() + "Z",
-                "strategy": "vision",
-                "model": data.get("model") or "glm-4.1v",
-                "verified": verified,
-                "correct": correct,
-                "total": total,
-                "code": (data.get("code") or "")[:4000],
-                "error": (data.get("error") or "")[:200],
-            })
+
+            tk["attempts"].append(
+                {
+                    "task_num": task_num,
+                    "timestamp": data.get("ts")
+                    or _dt.datetime.utcnow().isoformat() + "Z",
+                    "strategy": "vision",
+                    "model": data.get("model") or "glm-4.1v",
+                    "verified": verified,
+                    "correct": correct,
+                    "total": total,
+                    "code": (data.get("code") or "")[:4000],
+                    "error": (data.get("error") or "")[:200],
+                }
+            )
             if verified:
                 tk["solved"] = True
             if correct > tk.get("best_correct", 0):
@@ -2494,7 +2507,9 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
                 tk["best_total"] = total
             with open(mem_path, "w") as f:
                 json.dump(mem, f, indent=2)
-            log.info(f"[vision-result] task{task_num:03d} -> {correct}/{total} solved={verified}")
+            log.info(
+                f"[vision-result] task{task_num:03d} -> {correct}/{total} solved={verified}"
+            )
         except Exception as e:
             log.warning(f"[vision-result] memory write failed: {e}")
 
