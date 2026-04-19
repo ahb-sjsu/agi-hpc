@@ -304,11 +304,27 @@ class SafetyGateway:
         self,
         config: Optional[GatewayConfig] = None,
         adapter: Optional[SafetyAdapter] = None,
+        dcgm_attestor: Optional[Any] = None,
+        nats_publish: Optional[Any] = None,
     ) -> None:
+        """Construct a safety gateway.
+
+        Args:
+            config: GatewayConfig instance or ``None`` for defaults.
+            adapter: SafetyAdapter or ``None`` for a fresh one.
+            dcgm_attestor: Optional ``DCGMAttestor`` instance used by
+                :meth:`check_hardware_attestation`. Pass ``None`` to
+                auto-construct one on first use.
+            nats_publish: Optional callable ``(subject: str, payload:
+                dict) -> None`` invoked to publish attestation events on
+                ``agi.safety.attestation``. Pass ``None`` to skip NATS.
+        """
         self._config = config or GatewayConfig.default()
         self._adapter = adapter or SafetyAdapter()
         self._deme: Optional[Any] = None
         self._audit_log: List[Dict[str, Any]] = []
+        self._dcgm_attestor = dcgm_attestor
+        self._nats_publish = nats_publish
 
         # Initialise DEME pipeline if available and enabled
         if (
@@ -330,6 +346,153 @@ class SafetyGateway:
     def has_deme(self) -> bool:
         """Return True if the DEME tactical layer is available."""
         return self._deme is not None
+
+    def _get_attestor(self, gpu_index: int = 0):
+        """Lazy-construct or return the injected DCGMAttestor."""
+        if self._dcgm_attestor is None:
+            from agi.safety.dcgm_attestation import DCGMAttestor
+
+            self._dcgm_attestor = DCGMAttestor(gpu_index=gpu_index)
+        return self._dcgm_attestor
+
+    def check_hardware_attestation(
+        self,
+        *,
+        before: Optional[Any] = None,
+        after: Optional[Any] = None,
+        trace_samples: Optional[List[Dict[str, Any]]] = None,
+        gpu_index: int = 0,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> "SafetyResult":
+        """Hardware-level attestation that a forward pass actually occurred.
+
+        Call this around any LLM forward pass whose trustworthiness depends
+        on "the GPU really did compute this, not a replay." Two calling
+        modes, pick whichever fits your integration:
+
+        **Snapshot-pair mode** — pass ``before`` and ``after`` GPUSnapshot
+        objects captured around the forward pass. Uses
+        :meth:`DCGMAttestor.attest`.
+
+        **Trace mode** — pass ``trace_samples`` (a list of nvidia-smi
+        samples from ``scripts.collect_gpu_power_trace``). Uses
+        :meth:`DCGMAttestor.attest_trace`; richer verdict because it
+        examines the full power-curve shape.
+
+        **Graceful degradation** — if DCGM is not installed, returns a
+        ``SafetyResult`` with ``passed=True`` and a ``dcgm_unavailable``
+        flag, plus a warning in the log. Callers that want fail-closed
+        semantics can check ``flags`` for ``dcgm_unavailable``.
+
+        Emits one NATS event on ``agi.safety.attestation`` if
+        ``nats_publish`` was provided at construction.
+        """
+        t0 = time.perf_counter()
+        ctx = context or {}
+        attestor = self._get_attestor(gpu_index=gpu_index)
+
+        # Graceful degradation when DCGM isn't available on this host
+        if not attestor.available:
+            latency_ms = (time.perf_counter() - t0) * 1000.0
+            logger.warning(
+                "[safety-gateway] DCGM unavailable; skipping hardware attestation"
+            )
+            result = SafetyResult(
+                passed=True,
+                score=1.0,
+                flags=["dcgm_unavailable"],
+                decision_proof={"reason": "DCGM not installed on host"},
+                gate="attestation",
+                latency_ms=latency_ms,
+            )
+            self._publish_attestation_event(
+                passed=True,
+                reason="dcgm_unavailable",
+                mode="skipped",
+                gpu_index=gpu_index,
+                context=ctx,
+            )
+            return result
+
+        # Pick attestation mode
+        if trace_samples is not None:
+            att = attestor.attest_trace(trace_samples)
+            mode = "trace"
+        elif before is not None and after is not None:
+            att = attestor.attest(before, after)
+            mode = "snapshot_pair"
+        else:
+            raise ValueError(
+                "check_hardware_attestation requires either (before, after) "
+                "snapshots or trace_samples"
+            )
+
+        latency_ms = (time.perf_counter() - t0) * 1000.0
+        flags = []
+        if not att.passed:
+            flags.append("attestation_failed")
+        if not att.computation:
+            flags.append("no_compute_signal")
+        if not att.integrity:
+            flags.append("ecc_violation")
+        if not att.resource_match:
+            flags.append("resource_mismatch")
+
+        result = SafetyResult(
+            passed=att.passed,
+            score=1.0 if att.passed else 0.0,
+            flags=flags,
+            decision_proof={
+                "mode": mode,
+                "reason": att.reason,
+                "computation": att.computation,
+                "integrity": att.integrity,
+                "resource_match": att.resource_match,
+            },
+            gate="attestation",
+            latency_ms=latency_ms,
+        )
+
+        self._publish_attestation_event(
+            passed=att.passed,
+            reason=att.reason,
+            mode=mode,
+            gpu_index=gpu_index,
+            context=ctx,
+        )
+        self._log_decision(result, f"gpu{gpu_index} {mode}")
+        return result
+
+    def _publish_attestation_event(
+        self,
+        *,
+        passed: bool,
+        reason: str,
+        mode: str,
+        gpu_index: int,
+        context: Dict[str, Any],
+    ) -> None:
+        """Publish one attestation outcome on ``agi.safety.attestation``.
+
+        Silent no-op when ``nats_publish`` is not configured. Any error
+        from the callback is caught and logged; attestation itself is
+        never blocked by the publish path."""
+        if self._nats_publish is None:
+            return
+        try:
+            payload = {
+                "ts": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                "passed": passed,
+                "reason": reason,
+                "mode": mode,
+                "gpu_index": gpu_index,
+                "context": context,
+            }
+            self._nats_publish("agi.safety.attestation", payload)
+        except Exception:
+            logger.exception(
+                "[safety-gateway] attestation NATS publish failed (non-fatal)"
+            )
 
     @property
     def audit_log(self) -> List[Dict[str, Any]]:
