@@ -2076,6 +2076,12 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
             _synthetic:true, _online: true,
             _hw: '\u{1F7E2} NRP LLM \u00b7 self-improving'});
         }
+        if(!conns.some(function(c){return connKey(c).indexOf('Primer')!==-1;})){
+          var primerOnline = (window._primerStatus && window._primerStatus.running) || false;
+          synthetics.push({name:'The Primer', subs_list:['agi.primer.teach'], lang:'atlas-primer',
+            _synthetic:true, _online: primerOnline,
+            _hw: '\u{1F4D6} NRP vMOE \u00b7 kimi+glm-4.7+qwen3'});
+        }
         synthetics.forEach(function(sc){
           var k = connKey(sc);
           if(slots[k]===undefined){ while(usedSlots[nextSlot]) nextSlot++; slots[k]=nextSlot; usedSlots[nextSlot]=true; }
@@ -2373,16 +2379,28 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     } catch(e){}
   }
 
+  // ─── The Primer status ───
+  window._primerStatus = null;
+  async function pollPrimer(){
+    try {
+      var res = await fetch('/api/primer/status');
+      if(!res.ok) return;
+      window._primerStatus = await res.json();
+    } catch(e){}
+  }
+
   // ─── Init ───
   poll();
   pollEvents();
   pollNRP();
   pollNatsLive();
   pollErebus();
+  pollPrimer();
   setInterval(poll, 5000);
   setInterval(pollEvents, 15000);
   setInterval(pollNRP, 30000);
   setInterval(pollErebus, 5000);
+  setInterval(pollPrimer, 10000);
 
   // ─── Pod log tooltip ───
   var _logTip = document.createElement('div');

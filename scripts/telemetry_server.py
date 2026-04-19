@@ -2309,6 +2309,38 @@ def _get_erebus_status():
 
 
 EREBUS_HELP_PATH = "/archive/neurogolf/erebus_help_queue.json"
+PRIMER_COOLDOWN_PATH = "/archive/neurogolf/primer_cooldown.json"
+
+
+def _get_primer_status():
+    """Light status probe for the Primer daemon used by the dashboard."""
+    status = {
+        "running": False,
+        "tasks_touched": 0,
+        "last_touched_task": None,
+        "last_touched_age_s": None,
+    }
+    try:
+        r = subprocess.run(
+            ["pgrep", "-f", "agi.primer.service"],
+            capture_output=True,
+            text=True,
+            timeout=4,
+        )
+        status["running"] = r.returncode == 0
+    except Exception:
+        pass
+    try:
+        cooldown = json.loads(Path(PRIMER_COOLDOWN_PATH).read_text())
+        if isinstance(cooldown, dict) and cooldown:
+            status["tasks_touched"] = len(cooldown)
+            # Most recent entry
+            task_num, ts = max(cooldown.items(), key=lambda kv: kv[1])
+            status["last_touched_task"] = int(task_num) if str(task_num).isdigit() else task_num
+            status["last_touched_age_s"] = int(time.time() - float(ts))
+    except Exception:
+        pass
+    return status
 _erebus_fingerprints: dict = (
     {}
 )  # pre-cached at first chat, persists for server lifetime
@@ -2591,6 +2623,8 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
             since = int(qs.get("since", ["0"])[0])
             limit = min(int(qs.get("limit", ["200"])[0]), 500)
             self._json_response(_get_erebus_activity(since=since, limit=limit))
+        elif self.path == "/api/primer/status":
+            self._json_response(_get_primer_status())
         elif self.path == "/api/version":
             self._json_response(
                 {
