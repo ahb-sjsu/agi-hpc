@@ -107,7 +107,7 @@ def default_experts() -> list[Expert]:
             base_url=nrp,
             api_key_env=nrp_key,
             role_hints=frozenset({"code", "agentic", "long_context", "default"}),
-            timeout_s=180.0,
+            timeout_s=300.0,
             priority=10,
         ),
         Expert(
@@ -116,7 +116,7 @@ def default_experts() -> list[Expert]:
             base_url=nrp,
             api_key_env=nrp_key,
             role_hints=frozenset({"reason", "chat", "long_context"}),
-            timeout_s=180.0,
+            timeout_s=300.0,
             priority=20,
         ),
         Expert(
@@ -125,7 +125,7 @@ def default_experts() -> list[Expert]:
             base_url=nrp,
             api_key_env=nrp_key,
             role_hints=frozenset({"structured", "fast", "code"}),
-            timeout_s=120.0,
+            timeout_s=240.0,
             priority=30,
         ),
         Expert(
@@ -134,7 +134,7 @@ def default_experts() -> list[Expert]:
             base_url=nrp,
             api_key_env=nrp_key,
             role_hints=frozenset({"tool_use", "long_context"}),
-            timeout_s=180.0,
+            timeout_s=300.0,
             priority=40,
         ),
         Expert(

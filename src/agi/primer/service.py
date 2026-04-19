@@ -341,7 +341,7 @@ async def _process_one(tn: int, cfg: Config, moe: vMOE) -> bool:
     responses = await moe.ensemble(
         messages,
         experts=["kimi", "glm-4.7", "qwen3"],
-        max_tokens=6000,
+        max_tokens=12000,
         temperature=0.2,
         return_all=True,
     )
@@ -365,6 +365,11 @@ async def _process_one(tn: int, cfg: Config, moe: vMOE) -> bool:
             )
             return True
         log.info("task%03d: %s did not verify: %s", tn, r.expert, vr.diagnostic[:200])
+        # Log a peek at the raw response so we can see WHY extraction
+        # or validation failed (missing code block, wrong format,
+        # truncated output, etc).
+        peek = (r.content or "").replace("\n", " \u23ce ")[:400]
+        log.info("task%03d: %s raw-peek: %s", tn, r.expert, peek)
     log.info("task%03d: no expert produced a verified solution this round", tn)
     return False
 
