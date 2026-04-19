@@ -13,10 +13,12 @@ Refresh quarterly or whenever a cluster closes.
 | **#35** | Deployment runbooks + on-call playbook | `docs/DEPLOYMENT_RUNBOOK.md` + `docs/ONCALL_PLAYBOOK.md` shipped (ee7f588) |
 | **#36** | Inventory existing metrics, logs, evaluation artifacts | `docs/METRICS_INVENTORY.md` shipped (ee7f588) |
 | **#37** | Define core SLOs / KPIs | `docs/SLOS_AND_KPIS.md` shipped (ee7f588) |
+| **#38** | Instrument core job lifecycle paths | `agi.common.structured_log` + `arc_scientist` + `Primer` instrumented + `/api/jobs/recent` (7728724) |
 | **#39** | Basic evaluation harness | `evals/` package + 9 tests (d96e394) |
 | **#40** | Dashboard design for ops + evaluation | `/api/trends/erebus` + 30-day sparkline (484736a) |
 | **#42** | Document Evaluation & Metrics practices | `docs/METRICS_CONTRIBUTOR_GUIDE.md` shipped (ee7f588) |
 | **#34** | Deployment observability (umbrella) | Split into #78 / #79 / #80 / #81 (see Cluster A below) |
+| **#45–#65** | bip-fusion sprints 1–6 (21 issues) | **Transferred to [`ahb-sjsu/bip-fusion`](https://github.com/ahb-sjsu/bip-fusion)** (issues #1–#21 there). Tracking stub: agi-hpc#82. |
 
 ---
 
@@ -148,34 +150,15 @@ Hardware-level verification that GPU work actually happened. Three issues; the f
 
 ---
 
-## Cluster C — BIP-fusion Sprint 1–6 (#45–65)
+## Cluster C — BIP-fusion (extracted 2026-04-19)
 
-Twenty-one issues across six sprints, implementing a **separate research package** (`bip_fusion`) that applies the BIP framework to fusion-reactor stabilization. Despite living as issues on this repo, the code would likely go in a sibling package.
+**Resolved by extraction.** The twenty-one fusion-reactor issues (original `#45`–`#65`) have been moved to a dedicated repository:
 
-### Recommendation: extract to its own repo
+**New home:** https://github.com/ahb-sjsu/bip-fusion
 
-The bip-fusion work is a distinct research program from Atlas cognitive architecture. Carrying 21 issues on `ahb-sjsu/agi-hpc` obscures the rest of the roadmap.
+Issue-number mapping is documented in the tracking stub `agi-hpc#82`. Sprint 1–6 work continues there at its own cadence.
 
-**Plan:**
-1. Create `ahb-sjsu/bip-fusion` with a proper package skeleton.
-2. Move issues #45–65 to the new repo (GitHub supports issue transfer).
-3. Leave a single tracking issue on `agi-hpc` linking to the new repo.
-4. Continue work at the natural cadence in the fusion repo.
-
-**Estimate:** 30 minutes to set up repo + transfer issues. Substantial research work afterward, but decoupled from agi-hpc's release cadence.
-
-### If staying in this repo
-
-If you want to keep bip-fusion under `agi-hpc` for coherence:
-
-- **Sprint 1 (#45–48)** — scaffolding + grounding + canonicalization + theorem property tests. All code-only, no hardware. Estimate: 2 sessions for skeleton + canonical library; 1 session for theorem tests.
-- **Sprint 2 (#49–52)** — stratified space + stratum classifier + decidability checker + frontier validator. Math-heavy; needs careful type design. Estimate: 3 sessions.
-- **Sprint 3 (#53–55)** — invariance + transformation-group library + cross-machine transfer. Estimate: 2 sessions.
-- **Sprint 4 (#56–59)** — shot archive + replay harness + reconstructor + synthetic generator. DIII-D data access required (#56 is the blocking step). Estimate: open-ended pending data.
-- **Sprint 5 (#60–62)** — latency profiler + FPGA harness + DeepMind RL baseline. Each is a whole subsystem. Estimate: 4+ sessions per.
-- **Sprint 6 (#63–65)** — rank-4 tensor + cryptographic audit + verifier CLI. Estimate: 3 sessions.
-
-Total if in-repo: **20+ sessions** of focused work. This is why extraction to a sibling repo is the methodical answer.
+The extraction was ~30 minutes of admin (create repo, seed README, transfer 21 issues, write tracking stub) and removed the biggest single distraction from the agi-hpc roadmap. The two programs share Atlas workstation + NRP account + operational memory but have independent issue queues now.
 
 ---
 
