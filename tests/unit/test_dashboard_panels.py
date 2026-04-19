@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-DASHBOARD = Path("atlas-chat-schematic.html")
+DASHBOARD = Path("infra/local/atlas-chat/schematic.html")
 
 
 class TestDashboardExists:
