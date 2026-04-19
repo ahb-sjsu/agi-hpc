@@ -1425,8 +1425,82 @@ def _pod_is_violating(pod) -> str | None:
     return None
 
 
+def _pod_owner(name: str, ns: str, kubeconfig: str) -> tuple[str, str]:
+    """Walk ownerReferences to find the top-level controller that will
+    respawn this pod if we kill it. Returns ``(kind, name)`` where kind
+    is one of ``'Deployment'``, ``'Job'``, ``'StatefulSet'``,
+    ``'ReplicaSet'``, or ``''`` if the pod is standalone.
+
+    A pod's direct owner is usually a ReplicaSet (for Deployments) or a
+    Job. We walk one more hop for ReplicaSets to find the Deployment —
+    otherwise deleting the ReplicaSet just gets the Deployment to
+    recreate it.
+    """
+    try:
+        r = subprocess.run(
+            [
+                "kubectl",
+                "--kubeconfig",
+                kubeconfig,
+                "-n",
+                ns,
+                "get",
+                "pod",
+                name,
+                "-o",
+                "jsonpath={.metadata.ownerReferences[0].kind}:{.metadata.ownerReferences[0].name}",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if r.returncode != 0 or ":" not in r.stdout:
+            return ("", "")
+        kind, owner = r.stdout.strip().split(":", 1)
+        if not kind:
+            return ("", "")
+        if kind != "ReplicaSet":
+            return (kind, owner)
+        # Walk up: ReplicaSet → Deployment
+        r2 = subprocess.run(
+            [
+                "kubectl",
+                "--kubeconfig",
+                kubeconfig,
+                "-n",
+                ns,
+                "get",
+                "replicaset",
+                owner,
+                "-o",
+                "jsonpath={.metadata.ownerReferences[0].kind}:{.metadata.ownerReferences[0].name}",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if r2.returncode != 0 or ":" not in r2.stdout:
+            return ("ReplicaSet", owner)
+        rs_kind, rs_owner = r2.stdout.strip().split(":", 1)
+        if rs_kind and rs_owner:
+            return (rs_kind, rs_owner)
+        return ("ReplicaSet", owner)
+    except Exception:
+        return ("", "")
+
+
 def _nrp_watchdog_check(pods: list[dict]):
-    """Enforce NRP utilization rules. Kill violating pods."""
+    """Enforce NRP utilization rules. Kill violating pods AND the
+    controllers that would respawn them.
+
+    Without the controller-walking step, a Deployment whose pods fail
+    NRP admission ends up in a tight schedule → kill → respawn loop
+    that spams the watchdog log for hours. We saw exactly this on
+    2026-04-19 with a leftover ``erebus-ego`` probe Deployment. The
+    watchdog now walks pod.ownerReferences up to the top-level
+    controller (Deployment / Job / StatefulSet) and deletes *that*,
+    so the respawn loop actually stops.
+    """
     global _nrp_violations
     kubeconfig = os.path.expanduser("~/.kube/config")
     ns = "ssu-atlas-ai"
@@ -1454,12 +1528,22 @@ def _nrp_watchdog_check(pods: list[dict]):
         else:
             _nrp_violations.pop(name, None)
 
-    # Kill pods with 2+ consecutive violations
+    # Kill pods with 2+ consecutive violations — and the controllers that
+    # would respawn them (walks ownerReferences: Pod → ReplicaSet → Deployment)
     for name, pod, violation in pods_to_kill:
-        log.warning(f"[nrp-watchdog] KILLING {name}: {violation}")
+        kind, owner = _pod_owner(name, ns, kubeconfig)
+        if kind in ("Deployment", "Job", "StatefulSet") and owner:
+            # Delete the controller — stops the respawn loop.
+            log.warning(
+                f"[nrp-watchdog] KILLING {kind} {owner} (via pod {name}): "
+                f"{violation}"
+            )
+            target = (kind.lower(), owner)
+        else:
+            # Standalone pod or unknown owner — delete the pod itself.
+            log.warning(f"[nrp-watchdog] KILLING pod {name}: {violation}")
+            target = ("pod", name)
         try:
-            job_name = pod.get("job", "")
-            target = ("job", job_name) if job_name else ("pod", name)
             subprocess.run(
                 [
                     "kubectl",
@@ -1475,21 +1559,29 @@ def _nrp_watchdog_check(pods: list[dict]):
                 timeout=10,
             )
         except Exception as e:
-            log.error(f"[nrp-watchdog] Failed to kill {name}: {e}")
+            log.error(f"[nrp-watchdog] Failed to kill {target[0]}/{target[1]}: {e}")
         _nrp_violations.pop(name, None)
 
-    # Emergency: if 4+ pods violating simultaneously, kill ALL violators immediately
+    # Emergency: if 4+ pods violating simultaneously, kill ALL violators
+    # AND their controllers immediately.
     if n_violating >= 4:
         log.warning(
             f"[nrp-watchdog] EMERGENCY: {n_violating} pods violating "
-            f"(ban threshold is 4). Killing all violators."
+            f"(ban threshold is 4). Killing all violators + controllers."
         )
+        killed_controllers: set[tuple[str, str]] = set()
         for pod in active:
             name = pod["name"]
             if _pod_is_violating(pod):
+                kind, owner = _pod_owner(name, ns, kubeconfig)
+                if kind in ("Deployment", "Job", "StatefulSet") and owner:
+                    target = (kind.lower(), owner)
+                else:
+                    target = ("pod", name)
+                if target in killed_controllers:
+                    continue  # already deleted this controller
+                killed_controllers.add(target)
                 try:
-                    job_name = pod.get("job", "")
-                    target = ("job", job_name) if job_name else ("pod", name)
                     subprocess.run(
                         [
                             "kubectl",
@@ -1545,6 +1637,90 @@ def _nrp_watchdog_check(pods: list[dict]):
             )
         except Exception as e:
             log.warning(f"[nrp-watchdog] Failed to write Erebus feedback: {e}")
+
+    # Stuck-Pending check — Deployments whose pods can't schedule for a
+    # long time should be deleted so they stop churning. The 2026-04-19
+    # erebus-ego incident had a 4× L40 Deployment stuck in Pending for
+    # 17 hours while the L40 pool was fully reserved for csu-tide. The
+    # watchdog was killing the respawned pods correctly but not the
+    # controller, so it looped. Now: if a pod has been Pending > 15 min
+    # AND requests GPU AND is controlled by a Deployment, delete the
+    # controller.
+    pending = [p for p in pods if p.get("phase") == "Pending"]
+    for pod in pending:
+        name = pod["name"]
+        res = pod.get("resources", {})
+        if not res.get("gpu"):
+            continue  # non-GPU Pending pods are usually transient
+        # Parse creation time. creationTimestamp format: 2026-04-19T...Z
+        created = pod.get("created", "")
+        if not created:
+            continue
+        try:
+            from datetime import datetime as _dt, timezone as _tz
+
+            ts = _dt.strptime(created.rstrip("Z"), "%Y-%m-%dT%H:%M:%S").replace(
+                tzinfo=_tz.utc
+            )
+            age_min = (_dt.now(_tz.utc) - ts).total_seconds() / 60.0
+        except Exception:
+            continue
+        if age_min < 15:
+            continue
+        kind, owner = _pod_owner(name, ns, kubeconfig)
+        if kind not in ("Deployment", "StatefulSet") or not owner:
+            continue
+        log.warning(
+            f"[nrp-watchdog] KILLING {kind} {owner} (via pod {name}): "
+            f"Pending {age_min:.0f}min with {res.get('gpu')} GPU — can't schedule"
+        )
+        try:
+            subprocess.run(
+                [
+                    "kubectl",
+                    "--kubeconfig",
+                    kubeconfig,
+                    "-n",
+                    ns,
+                    "delete",
+                    kind.lower(),
+                    owner,
+                ],
+                capture_output=True,
+                timeout=10,
+            )
+            # Feedback message
+            try:
+                help_file = Path(EREBUS_HELP_PATH)
+                queue = []
+                if help_file.exists():
+                    queue = json.loads(help_file.read_text())
+                from datetime import datetime as _dt2
+
+                queue.append(
+                    {
+                        "task": 0,
+                        "question": (
+                            f"[WATCHDOG CONTROLLER-KILL] {kind} '{owner}' "
+                            f"deleted: its pods stayed Pending {age_min:.0f}min "
+                            f"unable to schedule ({res.get('gpu')} GPU requested). "
+                            f"Leftover probe Deployments cause NRP watchdog spam "
+                            f"and contribute toward ban thresholds. Before creating "
+                            f"a GPU Deployment, verify capacity with "
+                            f"`kubectl get nodes -l nvidia.com/gpu.product=<kind>` "
+                            f"and check ResourceQuota + reservation taints. Do NOT "
+                            f"repeat this mistake."
+                        ),
+                        "timestamp": _dt2.now().isoformat(),
+                        "source": "watchdog",
+                        "severity": "controller_killed",
+                    }
+                )
+                help_file.write_text(json.dumps(queue[-30:], indent=2))
+            except Exception:
+                pass
+        except Exception as e:
+            log.error(f"[nrp-watchdog] Failed to delete stuck {kind} {owner}: {e}")
 
     if n_active > 0:
         log.info(f"[nrp-watchdog] {n_active} pods, {n_violating} violating")
