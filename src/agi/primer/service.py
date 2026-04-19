@@ -278,8 +278,9 @@ _HEALTH_STATE = Path("/archive/neurogolf/primer_health.json")
 def _save_health(moe: vMOE) -> None:
     """Persist expert-health summary for dashboard consumption."""
     try:
-        _HEALTH_STATE.parent.mkdir(parents=True, exist_ok=True)
-        _HEALTH_STATE.write_text(json.dumps(moe.health.summary(), indent=2))
+        from agi.common.atomic_write import atomic_write_text
+
+        atomic_write_text(_HEALTH_STATE, json.dumps(moe.health.summary(), indent=2))
     except Exception as e:
         log.warning("health save failed: %s", e)
 
@@ -293,8 +294,9 @@ def _load_cooldown() -> dict[str, float]:
 
 def _save_cooldown(state: dict[str, float]) -> None:
     try:
-        _COOLDOWN_STATE.parent.mkdir(parents=True, exist_ok=True)
-        _COOLDOWN_STATE.write_text(json.dumps(state))
+        from agi.common.atomic_write import atomic_write_text
+
+        atomic_write_text(_COOLDOWN_STATE, json.dumps(state))
     except Exception as e:
         log.warning("cooldown save failed: %s", e)
 

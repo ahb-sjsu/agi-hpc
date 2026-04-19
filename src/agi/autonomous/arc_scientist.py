@@ -277,7 +277,9 @@ class EpisodicMemory:
             "total_solves": self.total_solves,
             "last_updated": datetime.now().isoformat(),
         }
-        self.path.write_text(json.dumps(data, indent=2))
+        from agi.common.atomic_write import atomic_write_text
+
+        atomic_write_text(self.path, json.dumps(data, indent=2))
 
     def record_attempt(self, attempt: Attempt):
         self.total_attempts += 1
@@ -866,7 +868,9 @@ class ARCScientist:
             pass
         queue.append(question)
         # Keep last 20
-        help_file.write_text(json.dumps(queue[-20:], indent=2))
+        from agi.common.atomic_write import atomic_write_text
+
+        atomic_write_text(help_file, json.dumps(queue[-20:], indent=2))
 
         print(
             f"    [HELP REQUESTED] task{tn:03d}: {question['question'][:80]}",

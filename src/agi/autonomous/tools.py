@@ -598,7 +598,9 @@ class ToolExecutor:
             "source": "tool_call",
         }
         queue.append(entry)
-        help_file.write_text(json.dumps(queue[-20:], indent=2))
+        from agi.common.atomic_write import atomic_write_text
+
+        atomic_write_text(help_file, json.dumps(queue[-20:], indent=2))
 
         return {"status": "posted", "queue_length": len(queue)}
 
