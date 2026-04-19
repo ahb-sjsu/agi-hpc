@@ -583,9 +583,7 @@ class ARCScientist:
             pass
 
     def _mentor_preamble(self, tn: int) -> str:
-        notes = self._mentor_notes.get(str(tn)) or self._mentor_notes.get(
-            f"{tn:03d}"
-        )
+        notes = self._mentor_notes.get(str(tn)) or self._mentor_notes.get(f"{tn:03d}")
         if not notes:
             return ""
         body = "\n".join(f"- {n}" for n in notes)
