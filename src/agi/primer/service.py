@@ -49,6 +49,16 @@ from .vmoe import Response, vMOE, default_experts
 
 log = logging.getLogger("primer")
 
+# Parallel lifecycle stream for the dashboard / evaluation pipeline.
+# Wrapped in try so the service still runs if the module can't be
+# imported (dev environments without the common package installed).
+try:
+    from agi.common.structured_log import LifecycleLogger
+
+    _lifecycle = LifecycleLogger("primer")
+except Exception:
+    _lifecycle = None
+
 
 # ── paths & config ───────────────────────────────────────────────
 
@@ -379,6 +389,14 @@ async def _process_one(tn: int, cfg: Config, moe: vMOE) -> bool:
         temperature=0.2,
         return_all=True,
     )
+    if _lifecycle:
+        _lifecycle.emit(
+            "ensemble_complete",
+            task=tn,
+            experts=[r.expert for r in responses],
+            latencies_s={r.expert: round(r.latency_s, 2) for r in responses},
+            errors={r.expert: r.error for r in responses if not r.ok},
+        )
     for r in responses:
         if not r.ok:
             log.info("task%03d: %s failed (%s)", tn, r.expert, r.error)
@@ -397,6 +415,15 @@ async def _process_one(tn: int, cfg: Config, moe: vMOE) -> bool:
                 r.expert,
                 r.latency_s,
             )
+            if _lifecycle:
+                _lifecycle.emit(
+                    "publish",
+                    task=tn,
+                    expert=r.expert,
+                    latency_s=round(r.latency_s, 2),
+                    family=(parsed.get("family") or ""),
+                    note_path=path.name,
+                )
             return True
         log.info("task%03d: %s did not verify: %s", tn, r.expert, vr.diagnostic[:200])
         # Log a peek at the raw response so we can see WHY extraction
@@ -404,6 +431,14 @@ async def _process_one(tn: int, cfg: Config, moe: vMOE) -> bool:
         # truncated output, etc).
         peek = (r.content or "").replace("\n", " \u23ce ")[:400]
         log.info("task%03d: %s raw-peek: %s", tn, r.expert, peek)
+        if _lifecycle:
+            _lifecycle.emit(
+                "verify_fail",
+                task=tn,
+                expert=r.expert,
+                latency_s=round(r.latency_s, 2),
+                diagnostic=vr.diagnostic[:200],
+            )
     log.info("task%03d: no expert produced a verified solution this round", tn)
     return False
 
@@ -414,8 +449,17 @@ async def tick(cfg: Config, moe: vMOE) -> int:
     picks = _pick_stuck_tasks(cfg)
     if not picks:
         log.info("tick: no stuck tasks ready to process")
+        if _lifecycle:
+            _lifecycle.emit("tick_empty", candidates=0)
         return 0
     log.info("tick: %d candidate stuck tasks; processing top 3", len(picks))
+    if _lifecycle:
+        _lifecycle.emit(
+            "tick_start",
+            candidates=len(picks),
+            will_process=min(3, len(picks)),
+            picks=picks[:3],
+        )
     cooldown = _load_cooldown()
     published = 0
     for tn in picks[:3]:
@@ -425,6 +469,13 @@ async def tick(cfg: Config, moe: vMOE) -> int:
         _save_health(moe)
         if ok:
             published += 1
+    if _lifecycle:
+        _lifecycle.emit(
+            "tick_complete",
+            candidates=len(picks),
+            processed=min(3, len(picks)),
+            published=published,
+        )
     return published
 
 

@@ -878,6 +878,17 @@ class ARCScientist:
         if models is None:
             models = ["kimi", "qwen3"]
 
+        # Structured lifecycle logger — parallel stream to the pretty
+        # scientist.log for machine consumption. See
+        # agi.common.structured_log + docs/METRICS_INVENTORY.md.
+        if not hasattr(self, "_lifecycle"):
+            try:
+                from agi.common.structured_log import LifecycleLogger
+
+                self._lifecycle = LifecycleLogger("scientist")
+            except Exception:
+                self._lifecycle = None
+
         mentor_nums = set()
         for k in self._mentor_notes.keys():
             try:
@@ -889,6 +900,16 @@ class ARCScientist:
         )
         print("Erebus starting learning cycle")
         print(f"  Tasks: {len(self.all_tasks)} total, {len(unsolved)} unsolved")
+        if self._lifecycle:
+            self._lifecycle.emit(
+                "cycle_start",
+                total_tasks=len(self.all_tasks),
+                unsolved=len(unsolved),
+                max_attempts=max_attempts,
+                models=models,
+                prior_attempts=self.memory.total_attempts,
+                prior_solves=self.memory.total_solves,
+            )
 
         # Vision burst trigger: when enough perception-error tasks have
         # piled up, dispatch them to the GLM-4.1V multimodal pool. Fires
@@ -1102,6 +1123,18 @@ class ARCScientist:
                     self.task_dir, tn, task, code, strategy_name, model
                 )
                 print(f"-> SOLVED {correct}/{total}", flush=True)
+                if self._lifecycle:
+                    self._lifecycle.emit(
+                        "attempt_end",
+                        task=tn,
+                        attempt=attempt_num + 1,
+                        max_attempts=max_attempts,
+                        strategy=strategy_name,
+                        model=model,
+                        outcome="pass",
+                        correct=correct,
+                        total=total,
+                    )
             else:
                 attempts_this_cycle += 1
 
@@ -1149,6 +1182,24 @@ class ARCScientist:
                     )
                 else:
                     print(f"-> {correct}/{total}", flush=True)
+                if self._lifecycle:
+                    outcome = (
+                        "fail"
+                        if correct == 0
+                        else ("partial" if correct < total else "pass")
+                    )
+                    self._lifecycle.emit(
+                        "attempt_end",
+                        task=tn,
+                        attempt=attempt_num + 1,
+                        max_attempts=max_attempts,
+                        strategy=strategy_name,
+                        model=model,
+                        outcome=outcome,
+                        correct=correct,
+                        total=total,
+                        error_type=error_type,
+                    )
 
             # ── 6. ADAPT: periodic meta-pattern detection ──
             if (attempt_num + 1) % 10 == 0:
@@ -1173,6 +1224,15 @@ class ARCScientist:
             f"/ {self.memory.total_attempts} total attempts"
         )
         print(self.memory.get_strategy_report())
+        if self._lifecycle:
+            self._lifecycle.emit(
+                "cycle_end",
+                solved_this_cycle=solved_this_cycle,
+                attempts_this_cycle=attempts_this_cycle,
+                rate=(solved_this_cycle / max(attempts_this_cycle, 1)),
+                total_solves=self.memory.total_solves,
+                total_attempts=self.memory.total_attempts,
+            )
 
         return solved_this_cycle
 

@@ -2138,6 +2138,56 @@ def _get_erebus_memory():
 _trends_cache = {"ts": 0.0, "data": {}}
 
 
+LIFECYCLE_DIR = Path(
+    os.environ.get("ATLAS_LIFECYCLE_DIR", "/archive/neurogolf/lifecycle")
+)
+
+
+def _get_lifecycle_recent(subsystem: str, limit: int = 100):
+    """Return the last ``limit`` lifecycle events for a subsystem.
+
+    Delegates to ``agi.common.structured_log.read_recent`` if importable
+    (the canonical implementation), otherwise falls back to an inline
+    tail read. The inline fallback keeps telemetry independent of the
+    agi package — telemetry is designed to run standalone."""
+    try:
+        import sys as _sys
+
+        _sys.path.insert(0, "/home/claude/agi-hpc/src")
+        from agi.common.structured_log import read_recent
+
+        return {
+            "events": read_recent(subsystem, limit=limit, lifecycle_dir=LIFECYCLE_DIR)
+        }
+    except Exception:
+        pass
+    # Fallback — inline jsonl tail
+    path = LIFECYCLE_DIR / f"{subsystem}.jsonl"
+    if not path.exists():
+        return {"events": []}
+    try:
+        with open(path, "rb") as f:
+            f.seek(0, os.SEEK_END)
+            size = f.tell()
+            tail = min(size, max(4096, limit * 800))
+            f.seek(size - tail)
+            chunk = f.read().decode("utf-8", errors="replace")
+    except Exception:
+        return {"events": []}
+    events = []
+    for line in reversed(chunk.strip().split("\n")):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            events.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+        if len(events) >= limit:
+            break
+    return {"events": events}
+
+
 def _get_erebus_trends():
     """Per-day and per-week solve + attempt counts, for the dashboard
     trends panel. Reads arc_scientist_memory.json and bins timestamps.
@@ -2725,6 +2775,13 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
             self._json_response(_get_primer_status())
         elif self.path == "/api/trends/erebus":
             self._json_response(_get_erebus_trends())
+        elif self.path.startswith("/api/jobs/recent"):
+            from urllib.parse import parse_qs, urlparse
+
+            qs = parse_qs(urlparse(self.path).query)
+            subsystem = qs.get("subsystem", ["scientist"])[0]
+            limit = min(int(qs.get("limit", ["100"])[0]), 500)
+            self._json_response(_get_lifecycle_recent(subsystem, limit))
         elif self.path == "/api/version":
             self._json_response(
                 {

@@ -68,6 +68,34 @@ All of the above is described in [`ARCHITECTURE_OVERVIEW.md`](ARCHITECTURE_OVERV
 
 ---
 
+## 1b. Structured lifecycle events (2026-04-19 onwards)
+
+Shipped in #38 as the foundation for #78 (full JSON-log migration). Runs in **parallel** to the pretty-printed logs in §2 — doesn't replace them.
+
+### Emitters
+
+- `arc_scientist.py` — emits `cycle_start`, `attempt_end` (with outcome, correct, total, error_type), `cycle_end` via `LifecycleLogger("scientist")`.
+- `agi.primer.service` — emits `tick_start`, `tick_empty`, `ensemble_complete`, `publish`, `verify_fail`, `tick_complete` via `LifecycleLogger("primer")`.
+- Other services can opt in by constructing a `LifecycleLogger("<name>")`.
+
+### Storage
+
+- One JSONL file per subsystem under `/archive/neurogolf/lifecycle/`:
+  - `/archive/neurogolf/lifecycle/scientist.jsonl`
+  - `/archive/neurogolf/lifecycle/primer.jsonl`
+- Each line is one event: `{ts, subsystem, event, seq, ...}` with monotonic `seq` that survives process restarts.
+- Thread-safe (`threading.Lock` on file-write).
+
+### API
+
+- `GET /api/jobs/recent?subsystem=scientist&limit=100` — tails the JSONL, returns `{events: [...]}` newest-first.
+- Default `limit=100`, cap 500.
+- Cheap: reads only the tail of the file.
+
+### Frontend
+
+- Not yet surfaced on the dashboard — a "Recent lifecycle events" panel is the obvious next step (planned follow-up to #38).
+
 ## 2. Service logs (systemd → journalctl)
 
 All Atlas services log to journald:
