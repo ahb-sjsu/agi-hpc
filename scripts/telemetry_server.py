@@ -2423,11 +2423,9 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
     def _handle_erebus_result(self):
         """HTTP bridge for Erebus worker results.
 
-        NRP workers can't send NATS messages back through the leaf to
-        Atlas (hub→spoke subscription propagation is broken on our
-        setup). So workers POST results here instead; we re-publish
-        them on Atlas-local NATS so the dispatcher's existing
-        `erebus.results.>` subscribe picks them up transparently.
+        Workers POST here: we (1) re-publish on Atlas-local NATS for live
+        dispatchers, (2) write the attempt into arc_scientist_memory.json
+        so the scientist sees vision attempts next cycle.
         """
         length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(length) if length else b"{}"
@@ -2441,7 +2439,6 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
             self._json_response({"error": "missing task_id"}, 400)
             return
         try:
-            # Sync publish via nats-py in a tiny event loop.
             import asyncio
             import nats as _nats
 
@@ -2454,10 +2451,52 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
                 await nc.drain()
 
             asyncio.run(_publish())
-            self._json_response({"ok": True, "task_id": task_id})
         except Exception as e:
             log.warning(f"erebus result publish failed: {e}")
-            self._json_response({"error": str(e)[:200]}, 500)
+
+        self._write_to_scientist_memory(data)
+        self._json_response({"ok": True, "task_id": task_id})
+
+    def _write_to_scientist_memory(self, data: dict) -> None:
+        """Append an Attempt-shaped record to arc_scientist_memory.json."""
+        task_num = data.get("task_num")
+        if not task_num or "code" not in data:
+            return
+        mem_path = "/archive/neurogolf/arc_scientist_memory.json"
+        try:
+            with open(mem_path) as f:
+                mem = json.load(f)
+            tasks = mem.setdefault("tasks", {})
+            tk = tasks.setdefault(str(task_num), {
+                "task_num": task_num, "attempts": [], "solved": False,
+                "best_correct": 0, "best_total": 0, "strategies_tried": [],
+                "failure_patterns": [], "error_types": [], "hypotheses": [],
+            })
+            correct = int(data.get("correct") or 0)
+            total = int(data.get("total") or 0)
+            verified = correct == total and total > 0
+            import datetime as _dt
+            tk["attempts"].append({
+                "task_num": task_num,
+                "timestamp": data.get("ts") or _dt.datetime.utcnow().isoformat() + "Z",
+                "strategy": "vision",
+                "model": data.get("model") or "glm-4.1v",
+                "verified": verified,
+                "correct": correct,
+                "total": total,
+                "code": (data.get("code") or "")[:4000],
+                "error": (data.get("error") or "")[:200],
+            })
+            if verified:
+                tk["solved"] = True
+            if correct > tk.get("best_correct", 0):
+                tk["best_correct"] = correct
+                tk["best_total"] = total
+            with open(mem_path, "w") as f:
+                json.dump(mem, f, indent=2)
+            log.info(f"[vision-result] task{task_num:03d} -> {correct}/{total} solved={verified}")
+        except Exception as e:
+            log.warning(f"[vision-result] memory write failed: {e}")
 
     def _handle_erebus_chat(self):
         """Handle chat with Erebus."""
