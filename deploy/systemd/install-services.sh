@@ -27,6 +27,7 @@ SERVICES=(
     atlas-watchdog
     atlas-primer
     atlas-scientist
+    atlas-dreaming-schedule
 )
 
 # Old names to clean up
@@ -162,6 +163,7 @@ START_ORDER=(
     atlas-watchdog
     atlas-primer
     atlas-scientist
+    atlas-dreaming-schedule
 )
 for svc in "${START_ORDER[@]}"; do
     if [ -f "$SYSTEMD_DIR/$svc.service" ]; then

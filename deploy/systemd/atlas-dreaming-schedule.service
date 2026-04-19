@@ -1,0 +1,38 @@
+[Unit]
+Description=Atlas Dreaming Schedule (nightly 2-4 AM PST wall-clock trigger)
+Documentation=file:///home/claude/agi-hpc/src/agi/autonomous/dreaming_schedule.py
+After=network-online.target atlas-nats.service atlas-dreaming.service atlas-id.service
+Wants=atlas-nats.service atlas-dreaming.service
+ConditionPathExists=!/archive/neurogolf/.dreaming_schedule_disabled
+
+[Service]
+Type=simple
+User=claude
+WorkingDirectory=/archive/neurogolf
+Environment=PYTHONPATH=/home/claude/agi-hpc/src
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=-/home/claude/.erebus.env
+ExecStart=/home/claude/env/bin/python3 -u -m agi.autonomous.dreaming_schedule --mode activity
+
+# Long-running scheduler. Restart on any exit; a clean exit is a bug.
+Restart=always
+RestartSec=30s
+
+StartLimitIntervalSec=600
+StartLimitBurst=5
+RandomizedDelaySec=30
+
+KillSignal=SIGTERM
+TimeoutStopSec=60
+
+# Schedule is background; yield to inference under contention.
+Nice=10
+
+MemoryMax=4G
+CPUQuota=200%
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=atlas.target
