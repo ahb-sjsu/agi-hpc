@@ -285,16 +285,26 @@ _HELP_TASK_RE = re.compile(r"task\s*(\d+)", re.IGNORECASE)
 def _pick_stuck_tasks(cfg: Config) -> list[int]:
     """Return task numbers to process this tick, ordered by priority.
 
-    Priority: tasks with most failed attempts that haven't been
-    processed recently (per cooldown) and don't yet have a verified
-    sensei note."""
+    Priority heuristic (highest first):
+      tier 1 — tasks with partial progress (``best_correct > 0``)
+               AND at least ``min_attempts``. These are "almost-solved";
+               one good nudge is most likely to land.
+      tier 2 — tasks at 0 progress but with many attempts. Hardest,
+               most likely to fail, but we still probe them because
+               a fresh-perspective ensemble can crack genuinely novel
+               rules that arc_scientist has been pattern-matching wrong.
+
+    Within each tier we sort by descending attempt count (most-stuck
+    first). Tasks that have been touched within ``cooldown_s`` are
+    excluded regardless of tier."""
     cooldown = _load_cooldown()
     now = time.time()
     try:
         mem = json.loads(cfg.memory_path.read_text())
     except Exception:
         mem = {}
-    candidates: list[tuple[int, int]] = []
+    tier1: list[tuple[int, int]] = []  # (task_num, attempts) — partial progress
+    tier2: list[tuple[int, int]] = []  # all-zero-progress stuck
     for task_num_str, tk in (mem.get("tasks") or {}).items():
         try:
             tn = int(task_num_str)
@@ -308,9 +318,14 @@ def _pick_stuck_tasks(cfg: Config) -> list[int]:
         last_seen = cooldown.get(str(tn), 0.0)
         if now - last_seen < cfg.cooldown_s:
             continue
-        candidates.append((tn, attempts))
-    candidates.sort(key=lambda p: -p[1])  # most-tried first
-    return [tn for tn, _ in candidates]
+        best = tk.get("best_correct", 0) or 0
+        if best > 0:
+            tier1.append((tn, attempts))
+        else:
+            tier2.append((tn, attempts))
+    tier1.sort(key=lambda p: -p[1])
+    tier2.sort(key=lambda p: -p[1])
+    return [tn for tn, _ in tier1] + [tn for tn, _ in tier2]
 
 
 def _load_task(task_dir: Path, task_num: int) -> dict | None:
