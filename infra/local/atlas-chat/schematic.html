@@ -659,7 +659,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
           </div>
         </div>
         <div class="gpu-gauge" id="gpu1-gauge">
-          <div class="gauge-label">GPU 1 (Id) &mdash; <span id="gpu1-name">Quadro GV100</span></div>
+          <div class="gauge-label">GPU 1 (Ego) &mdash; <span id="gpu1-name">Quadro GV100</span></div>
           <div class="gauge-pair">
             <svg class="gauge-svg" viewBox="0 0 100 100">
               <circle class="gauge-bg" cx="50" cy="50" r="40"/>
@@ -906,7 +906,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
   <div class="stat">Repos: <span class="val" id="bot-repos">--</span></div>
   <div class="stat">Episodes: <span class="val" id="bot-episodes">--</span></div>
   <div class="stat">GPU 0 (Superego): <span class="val" id="bot-gpu0">--</span></div>
-  <div class="stat">GPU 1 (Id): <span class="val" id="bot-gpu1">--</span></div>
+  <div class="stat">GPU 1 (Ego): <span class="val" id="bot-gpu1">--</span></div>
   <div class="stat">CPU (Ego): <span class="val" id="bot-ego">--</span></div>
   <div class="stat">Services: <span class="val" id="bot-services">--</span></div>
   <span class="spacer"></span>
@@ -2047,16 +2047,17 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
           }
         });
         conns = renderConns.sort(function(a,b){ return (slots[connKey(a)]||0) - (slots[connKey(b)]||0); });
-        // Inject synthetic nodes for HTTP-only services (Kirk/Id, Divine Council)
-        // that don't have NATS subscriptions but are part of the architecture.
+        // Inject synthetic nodes for HTTP-only services (Kirk as Ego,
+        // Spock as Superego, Divine Council, etc.) that don't have
+        // NATS subscriptions but are part of the cognitive architecture.
         var tel = window._lastTelemetry || {};
         var gpus = (tel.gpus || []);
         var rh = tel.right_hemisphere || {};
         var ego = tel.ego || {};
         var synthetics = [];
-        if(!conns.some(function(c){return connKey(c).indexOf('agi.rh')!==-1 || connKey(c)==='Id (Kirk)';})){
+        if(!conns.some(function(c){return connKey(c).indexOf('agi.rh')!==-1 || connKey(c)==='Ego (Kirk)';})){
           var idLocal = rh.status==='online';
-          synthetics.push({name:'Id (Kirk)', subs_list:['agi.rh.request.>'], lang:'llama-server',
+          synthetics.push({name:'Ego (Kirk)', subs_list:['agi.rh.request.>'], lang:'llama-server',
             _synthetic:true, _online: true,
             _hw: idLocal ? '\u{1F7E0} GPU 1 \u00b7 Qwen 32B' : '\u{1F7E2} NRP \u00b7 Qwen 3.5 397B'});
         }
@@ -2127,7 +2128,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
             else if(c && c.name === 'nats-bursting') { svcName = 'nats-bursting'; svcHw = 'controller'; }
             else if(c && c.name === 'telemetry-live') { svcName = 'telemetry'; svcHw = 'live stream'; }
             else if(allSubs.indexOf('agi.ego.deliberate')!==-1) { svcName = 'Divine Council'; svcHw = 'Ego · 7 agents'; }
-            else if(allSubs.indexOf('agi.rh.request')!==-1) { svcName = 'Id (Kirk)'; svcHw = '\u{1F7E2} NRP \u00b7 Qwen 3.5 397B'; }
+            else if(allSubs.indexOf('agi.rh.request')!==-1) { svcName = 'Ego (Kirk)'; svcHw = '\u{1F7E2} NRP \u00b7 Qwen 3.5 397B'; }
             else if(allSubs.indexOf('agi.safety')!==-1) { svcName = 'Superego (Spock)'; svcHw = '\u{1F7E2} NRP \u00b7 Gemma 4'; }
             else if(allSubs.indexOf('agi.dreaming')!==-1) { svcName = 'Dreaming'; svcHw = 'CPU'; }
             else if(allSubs.indexOf('agi.memory')!==-1||allSubs.indexOf('agi.knowledge')!==-1) { svcName = 'Memory'; svcHw = 'PostgreSQL'; }
