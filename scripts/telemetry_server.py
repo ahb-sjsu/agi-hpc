@@ -2135,6 +2135,93 @@ def _get_erebus_memory():
         return {"error": "no memory file"}
 
 
+_trends_cache = {"ts": 0.0, "data": {}}
+
+
+def _get_erebus_trends():
+    """Per-day and per-week solve + attempt counts, for the dashboard
+    trends panel. Reads arc_scientist_memory.json and bins timestamps.
+
+    Cached for 60 s — this does a full pass over the attempts list
+    which can be thousands of entries.
+    """
+    now = time.time()
+    if now - _trends_cache["ts"] < 60 and _trends_cache["data"]:
+        return _trends_cache["data"]
+
+    from collections import defaultdict
+    from datetime import datetime, timedelta, timezone
+
+    try:
+        with open(EREBUS_MEMORY_PATH) as f:
+            mem = json.load(f)
+    except Exception:
+        return {"by_day": [], "by_week": [], "total_solves": 0, "window_days": 30}
+
+    solves_by_day: dict[str, int] = defaultdict(int)
+    attempts_by_day: dict[str, int] = defaultdict(int)
+
+    for _, tk in (mem.get("tasks") or {}).items():
+        for a in tk.get("attempts") or []:
+            ts = a.get("timestamp", "")
+            if not ts or len(ts) < 10:
+                continue
+            day = ts[:10]  # YYYY-MM-DD
+            attempts_by_day[day] += 1
+            if a.get("verified"):
+                solves_by_day[day] += 1
+
+    # Fill a contiguous last-30-day window so the sparkline isn't gappy
+    today = datetime.now(timezone.utc).date()
+    window_days = 30
+    by_day = []
+    for i in range(window_days - 1, -1, -1):
+        d = (today - timedelta(days=i)).isoformat()
+        by_day.append(
+            {
+                "date": d,
+                "solves": solves_by_day.get(d, 0),
+                "attempts": attempts_by_day.get(d, 0),
+            }
+        )
+
+    # Weekly aggregation (ISO week)
+    weekly_solves: dict[str, int] = defaultdict(int)
+    weekly_attempts: dict[str, int] = defaultdict(int)
+    for d_str, s in solves_by_day.items():
+        try:
+            dt = datetime.strptime(d_str, "%Y-%m-%d")
+            iso = dt.isocalendar()
+            key = f"{iso[0]}-W{iso[1]:02d}"
+            weekly_solves[key] += s
+        except Exception:
+            continue
+    for d_str, c in attempts_by_day.items():
+        try:
+            dt = datetime.strptime(d_str, "%Y-%m-%d")
+            iso = dt.isocalendar()
+            key = f"{iso[0]}-W{iso[1]:02d}"
+            weekly_attempts[key] += c
+        except Exception:
+            continue
+    weeks = sorted(set(list(weekly_solves.keys()) + list(weekly_attempts.keys())))
+    by_week = [
+        {"week": w, "solves": weekly_solves[w], "attempts": weekly_attempts[w]}
+        for w in weeks[-12:]  # last 12 weeks
+    ]
+
+    out = {
+        "by_day": by_day,
+        "by_week": by_week,
+        "total_solves": mem.get("total_solves", 0),
+        "total_attempts": mem.get("total_attempts", 0),
+        "window_days": window_days,
+    }
+    _trends_cache["ts"] = now
+    _trends_cache["data"] = out
+    return out
+
+
 def _get_erebus_status():
     """Richer status: parses the log for cycle/attempt progress,
     current-task line, and recent solves; counts vision pool pods and
@@ -2636,6 +2723,8 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
             self._json_response(_get_erebus_activity(since=since, limit=limit))
         elif self.path == "/api/primer/status":
             self._json_response(_get_primer_status())
+        elif self.path == "/api/trends/erebus":
+            self._json_response(_get_erebus_trends())
         elif self.path == "/api/version":
             self._json_response(
                 {

@@ -807,6 +807,13 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
           <span>Help queue: <b id="ec-help" style="color:var(--yellow)">0</b></span>
           <span>Strategies: <span style="color:var(--text-dim)" id="ec-strat-count">--</span></span>
         </div>
+        <!-- 30-day solve-rate sparkline — sourced from /api/trends/erebus -->
+        <div style="font-size:10px;color:var(--text-dim);margin-bottom:4px">
+          <span>Solves/day (last 30d):</span>
+          <span id="ec-trend-total" style="color:var(--green);font-weight:600">--</span>
+        </div>
+        <svg id="ec-trend-svg" viewBox="0 0 300 30" preserveAspectRatio="none"
+             style="width:100%;height:30px;display:block;margin-bottom:6px"></svg>
         <!-- Recent solves -->
         <div style="font-size:10px;color:var(--text-dim)" id="ec-recent"></div>
       </div>
@@ -2390,6 +2397,38 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     } catch(e){}
   }
 
+  // ─── Erebus 30-day trend sparkline ───
+  async function pollErebusTrends(){
+    try {
+      var res = await fetch('/api/trends/erebus');
+      if(!res.ok) return;
+      var d = await res.json();
+      var days = d.by_day || [];
+      if(!days.length) return;
+      var svg = el('ec-trend-svg');
+      if(!svg) return;
+      var maxSolves = Math.max(1, ...days.map(function(x){ return x.solves; }));
+      var windowTotal = days.reduce(function(a, x){ return a + (x.solves || 0); }, 0);
+      el('ec-trend-total').textContent = windowTotal + ' in 30d';
+      // viewBox 0..300 wide, 0..30 tall — render bars
+      var bw = 300 / days.length;     // bar width
+      var h = 28;                     // drawable height
+      var out = '';
+      days.forEach(function(dd, i){
+        var pct = (dd.solves || 0) / maxSolves;
+        var barH = pct * h;
+        var y = (30 - barH);
+        var color = pct > 0 ? 'var(--green)' : 'rgba(255,255,255,0.08)';
+        out += '<rect x="' + (i * bw).toFixed(2) + '" y="' + y.toFixed(2)
+             + '" width="' + (bw - 0.5).toFixed(2) + '" height="' + Math.max(1, barH).toFixed(2)
+             + '" fill="' + color + '">'
+             + '<title>' + dd.date + ': ' + dd.solves + ' solves, ' + dd.attempts + ' attempts</title>'
+             + '</rect>';
+      });
+      svg.innerHTML = out;
+    } catch(e){}
+  }
+
   // ─── Init ───
   poll();
   pollEvents();
@@ -2397,11 +2436,13 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
   pollNatsLive();
   pollErebus();
   pollPrimer();
+  pollErebusTrends();
   setInterval(poll, 5000);
   setInterval(pollEvents, 15000);
   setInterval(pollNRP, 30000);
   setInterval(pollErebus, 5000);
   setInterval(pollPrimer, 10000);
+  setInterval(pollErebusTrends, 60000);   // trends only shift every few minutes; cheap
 
   // ─── Pod log tooltip ───
   var _logTip = document.createElement('div');
