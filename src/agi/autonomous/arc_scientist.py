@@ -582,17 +582,6 @@ class ARCScientist:
         except Exception:
             pass
 
-    def _mentor_preamble(self, tn: int) -> str:
-        notes = self._mentor_notes.get(str(tn)) or self._mentor_notes.get(f"{tn:03d}")
-        if not notes:
-            return ""
-        body = "\n".join(f"- {n}" for n in notes)
-        return (
-            "\n=== GUIDANCE FROM PROFESSOR BOND (read this carefully) ===\n"
-            f"{body}\n"
-            "=== end guidance ===\n\n"
-        )
-
         self.all_tasks = sorted(
             [int(f.stem[4:]) for f in self.task_dir.glob("task*.json")]
         )
@@ -611,6 +600,17 @@ class ARCScientist:
             from openai import OpenAI
 
             self.client = OpenAI(api_key=self.llm_token, base_url=self.llm_base_url)
+
+    def _mentor_preamble(self, tn: int) -> str:
+        notes = self._mentor_notes.get(str(tn)) or self._mentor_notes.get(f"{tn:03d}")
+        if not notes:
+            return ""
+        body = "\n".join(f"- {n}" for n in notes)
+        return (
+            "\n=== GUIDANCE FROM PROFESSOR BOND (read this carefully) ===\n"
+            f"{body}\n"
+            "=== end guidance ===\n\n"
+        )
 
     def _load_task(self, tn: int) -> dict:
         with open(self.task_dir / f"task{tn:03d}.json") as f:
