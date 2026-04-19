@@ -782,12 +782,13 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
         <span id="ec-live-dot" title="Running?" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);margin-left:4px"></span>
       </div>
       <div id="erebus-competition" style="font-family:var(--mono);font-size:11px">
-        <!-- Top line: lifetime totals + cycle -->
+        <!-- Top line: competition score + efficiency -->
         <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:4px">
-          <span>Solves: <b style="color:var(--green)" id="ec-solves">--</b>/<span id="ec-attempts" style="color:var(--text-dim)">--</span> <span style="color:var(--text-muted)" id="ec-rate">--</span></span>
+          <span title="Unique tasks solved / total in dataset">Score: <b style="color:var(--green)" id="ec-solves">--</b>/<span id="ec-tasks-total" style="color:var(--text-dim)">400</span> <span style="color:var(--green);font-weight:700" id="ec-coverage">--</span></span>
+          <span title="Attempts per solve (lower is better)" style="color:var(--text-dim);font-size:10px">Attempts: <span id="ec-attempts">--</span> <span id="ec-rate" style="color:var(--text-muted)">--</span></span>
           <span>Cycle: <b style="color:var(--accent)" id="ec-cycle">--</b></span>
-          <span>Attempt: <b style="color:var(--accent)" id="ec-attempt">--</b></span>
-          <span>Tasks: <span style="color:var(--text-dim)" id="ec-tasks">--</span></span>
+          <span>In-cycle: <b style="color:var(--accent)" id="ec-attempt">--</b></span>
+          <span style="color:var(--text-dim);font-size:10px">Explored: <span id="ec-tasks">--</span></span>
         </div>
         <!-- This cycle progress -->
         <div style="margin-bottom:4px;font-size:10px">
@@ -2297,8 +2298,15 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       el('ec-live-dot').style.background = d.running ? 'var(--green)' : 'var(--red)';
       el('ec-solves').textContent = m.total_solves || 0;
       el('ec-attempts').textContent = m.total_attempts || 0;
-      el('ec-rate').textContent = m.lifetime_rate != null
-        ? '(' + (m.lifetime_rate*100).toFixed(1) + '%)' : '';
+      // Competition coverage = unique tasks solved / total tasks in dataset (400)
+      var cov = (m.total_solves || 0) / 400;
+      el('ec-coverage').textContent = '(' + (cov*100).toFixed(1) + '%)';
+      // Efficiency = attempts per solve
+      if(m.total_solves){
+        el('ec-rate').textContent = '(' + (m.total_attempts/m.total_solves).toFixed(1) + ' per solve)';
+      } else {
+        el('ec-rate').textContent = '';
+      }
       el('ec-cycle').textContent = cy.current ? (cy.current + '/' + cy.total) : '--';
       el('ec-attempt').textContent = a.current ? (a.current + '/' + a.total) : '--';
       el('ec-tasks').textContent = m.tasks_explored || 0;
