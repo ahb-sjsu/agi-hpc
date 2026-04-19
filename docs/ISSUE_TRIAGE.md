@@ -13,13 +13,25 @@ Refresh quarterly or whenever a cluster closes.
 | **#35** | Deployment runbooks + on-call playbook | `docs/DEPLOYMENT_RUNBOOK.md` + `docs/ONCALL_PLAYBOOK.md` shipped (ee7f588) |
 | **#36** | Inventory existing metrics, logs, evaluation artifacts | `docs/METRICS_INVENTORY.md` shipped (ee7f588) |
 | **#37** | Define core SLOs / KPIs | `docs/SLOS_AND_KPIS.md` shipped (ee7f588) |
+| **#39** | Basic evaluation harness | `evals/` package + 9 tests (d96e394) |
+| **#40** | Dashboard design for ops + evaluation | `/api/trends/erebus` + 30-day sparkline (484736a) |
 | **#42** | Document Evaluation & Metrics practices | `docs/METRICS_CONTRIBUTOR_GUIDE.md` shipped (ee7f588) |
+| **#34** | Deployment observability (umbrella) | Split into #78 / #79 / #80 / #81 (see Cluster A below) |
 
 ---
 
-## Cluster A — Remaining observability (#34, #38, #39, #40, #41)
+## Cluster A — Remaining observability (#38, #41, #78, #79, #80, #81)
 
-Four documentation/infra tickets. #34 has a long status comment (mostly shipped via deploy-smoke + dashboard-render + dynamic version stamp). The others need actual implementation work, not just docs.
+After the 2026-04-19 session, three of the original five closed (#39, #40, and #34-split). Remaining:
+
+- **#38** — Instrument job lifecycle paths
+- **#41** — Evaluation hooks for cognitive architecture
+- **#78** — Structured JSON logging (child of #34)
+- **#79** — OpenTelemetry tracing (child of #34)
+- **#80** — Alerting pipeline (child of #34)
+- **#81** — Error-budget automation (child of #34)
+
+Each of #78–#81 is a self-contained 1–3-session piece of work with its own acceptance criteria, which is why splitting the umbrella #34 made sense. See the individual issue bodies.
 
 ### #40 — Design dashboards for ops and evaluation
 
