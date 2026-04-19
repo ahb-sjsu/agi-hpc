@@ -29,6 +29,7 @@ dependencies = [
     "asyncpg>=0.29",
     "flask>=3.0",
     "numpy>=1.26",
+    "openai>=1.40",
     "psycopg2-binary>=2.9",
     "pyyaml>=6.0",
     "requests>=2.31",
