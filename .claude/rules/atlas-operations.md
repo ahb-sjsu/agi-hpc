@@ -73,6 +73,28 @@ Key services that will interfere with GPU work:
 - `atlas-superego.service` — Spock/Superego on GPU 0
 - `atlas-watchdog.service` — monitors and restarts dead services
 - `atlas-ego.service` — Divine Council on CPU (--parallel 8)
+- `atlas-scientist.service` — Erebus ARC solver. Has `ExecStartPre` preflight and sentinel-file escape hatch at `/archive/neurogolf/.erebus_disabled`. Restart via `systemctl`, never `nohup`.
+- `atlas-primer.service` — always-on teaching daemon. `Restart=always` with crash-loop cap.
+- `atlas-dreaming-schedule.service` — nightly 2-4 AM PST wall-clock scheduler.
+
+## Stateful files (atomic writes required)
+
+These files are written through `agi.common.atomic_write.atomic_write_text` (tempfile + fsync + atomic-rename). Never edit them with naive `write_text` from new code:
+- `/archive/neurogolf/arc_scientist_memory.json` — Erebus episodic memory (4 MB, saved after every attempt)
+- `/archive/neurogolf/primer_cooldown.json` — Primer task cooldown
+- `/archive/neurogolf/primer_health.json` — vMOE health summary
+- `/archive/neurogolf/erebus_help_queue.json` — Erebus stuck-task questions
+
+## Disabling a service temporarily
+
+Prefer the sentinel-file pattern over `systemctl disable`:
+
+```bash
+touch /archive/neurogolf/.erebus_disabled          # Erebus stays down
+touch /archive/neurogolf/.dreaming_schedule_disabled # schedule stays down
+```
+
+Unit stays enabled so you don't forget to re-enable. Remove the sentinel to resume.
 
 ## NEVER
 

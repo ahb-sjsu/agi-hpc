@@ -116,7 +116,8 @@ Services that **do not** auto-restart on deploy (and therefore need manual atten
 | Service | When to restart manually |
 |---|---|
 | `atlas-primer.service` | When `src/agi/primer/*` or `deploy/systemd/atlas-primer.service` changes |
-| `arc_scientist.py` (nohup process) | When `src/agi/autonomous/arc_scientist.py` changes |
+| `atlas-scientist.service` | When `src/agi/autonomous/arc_scientist.py` changes |
+| `atlas-dreaming-schedule.service` | When `src/agi/autonomous/dreaming_schedule.py` changes |
 | `atlas-id.service` | When llama.cpp model path or GPU 1 config changes |
 | `atlas-superego.service` | When GPU 0 config changes |
 | `atlas-ego.service` | When Divine Council args change |
@@ -228,26 +229,32 @@ kubectl apply -f deploy/k8s/erebus-ego-pvc.yaml
 
 ### 5.3 Arc Scientist restart
 
-The ARC Scientist runs as a nohup process (not systemd), typically launched from a bash one-liner. To restart cleanly:
+Erebus (the ARC Scientist) runs under systemd as `atlas-scientist.service`. To restart:
 
 ```bash
-ssh claude@100.68.134.21 <<'EOF'
-pkill -f "arc_scientist.py --task-dir"
-sleep 2
-cd /archive/neurogolf
-source /home/claude/env/bin/activate
-export PYTHONPATH=/home/claude/agi-hpc/src
-export NRP_LLM_TOKEN=$(cat ~/.llmtoken)
-nohup python3 -u /home/claude/agi-hpc/src/agi/autonomous/arc_scientist.py \
-  --task-dir /archive/neurogolf \
-  --memory /archive/neurogolf/arc_scientist_memory.json \
-  --attempts 400 --cycles 5 \
-  >> /archive/neurogolf/scientist.log 2>&1 </dev/null &
-disown
-EOF
+ssh claude@100.68.134.21 'sudo systemctl restart atlas-scientist.service'
+ssh claude@100.68.134.21 'sudo journalctl -u atlas-scientist.service -f'
 ```
 
-The important bit: **always pass `--memory /archive/neurogolf/arc_scientist_memory.json` explicitly.** Without it, the Scientist writes to a fresh relative-path memory file and loses the solve history.
+The unit runs `ExecStartPre=/home/claude/agi-hpc/scripts/preflight_erebus.sh` before each launch. Preflight checks GPU responsiveness (`nvidia-smi -L`), NATS reachability, `/archive` free space (≥ 5 GiB), single-instance guard (`pgrep`), and the sentinel file. Nonzero preflight aborts the launch and counts toward the crash-loop limit (`StartLimitBurst=5` over 10 min).
+
+**CLI args are baked into the unit.** Changing `--attempts` or `--cycles` means editing `deploy/systemd/atlas-scientist.service` and redeploying.
+
+**Sentinel escape hatch (disable Erebus without disabling the unit):**
+
+```bash
+# Stop and prevent restart
+ssh claude@100.68.134.21 'touch /archive/neurogolf/.erebus_disabled'
+ssh claude@100.68.134.21 'sudo systemctl stop atlas-scientist.service'
+
+# Resume
+ssh claude@100.68.134.21 'rm /archive/neurogolf/.erebus_disabled'
+ssh claude@100.68.134.21 'sudo systemctl start atlas-scientist.service'
+```
+
+The `ConditionPathExists=!` directive means systemd (and preflight) will refuse to start Erebus while the sentinel file exists. The unit stays `enabled`, so no `systemctl disable` dance when you're done.
+
+**If you absolutely need the old nohup path** (e.g., for a one-off experiment with different args), set the sentinel first so systemd doesn't fight you, then launch manually. Remember to kill the manual process and remove the sentinel when done.
 
 ### 5.4 Primer restart
 
@@ -290,6 +297,65 @@ tmux kill-session -t <runaway>
 ```
 
 See [`ATLAS_OPERATIONS.md`](ATLAS_OPERATIONS.md) §"Thermal Safety" for the full protocol.
+
+### 5.7 Reboot recovery
+
+After a planned or unplanned reboot of Atlas, verify the cognitive stack came back cleanly.
+
+**All services enabled + active:**
+
+```bash
+ssh claude@100.68.134.21 \
+  'systemctl is-enabled atlas-scientist atlas-primer atlas-dreaming-schedule \
+                          atlas-dreaming atlas-telemetry atlas-watchdog atlas-nats \
+                          atlas-id atlas-superego atlas-ego atlas-safety atlas-memory'
+# expect: enabled (x11)
+ssh claude@100.68.134.21 \
+  'systemctl is-active  atlas-scientist atlas-primer atlas-dreaming-schedule \
+                          atlas-dreaming atlas-telemetry atlas-watchdog atlas-nats \
+                          atlas-id atlas-superego atlas-ego atlas-safety atlas-memory'
+# expect: active (x11)
+```
+
+**Preflight log for Erebus's startup attempt:**
+
+```bash
+ssh claude@100.68.134.21 'tail -5 /archive/neurogolf/preflight.log'
+# Look for: preflight_erebus: OK preflight passed ...
+```
+
+**Failed starts (should be empty):**
+
+```bash
+ssh claude@100.68.134.21 'systemctl --failed --no-pager'
+```
+
+**State files intact (no leftover tempfiles from atomic writes):**
+
+```bash
+ssh claude@100.68.134.21 'ls /archive/neurogolf/*.json.*.tmp 2>/dev/null && echo WARN_TEMPFILES || echo OK'
+```
+
+**What happens during boot:**
+
+1. `atlas.target` pulls in all enabled units.
+2. Units with `RandomizedDelaySec` stagger their start across 0-30 s so llama.cpp servers, Primer, and Scientist don't all hit NATS + GPU at once.
+3. Each unit's `ExecStartPre` preflight runs (Erebus and dreaming-schedule both have preflights). Nonzero preflight aborts cleanly and counts toward the crash-loop limit instead of looping.
+4. `StartLimitBurst=5` / `StartLimitIntervalSec=600` means 5 failed starts within 10 minutes leaves the unit `failed`. That's visible to `systemctl --failed` so you see it rather than burning GPU on an unhealthy host.
+5. Atomic writes (`src/agi/common/atomic_write.py`) mean any state file open mid-crash either has the old contents or the full new contents, never partial JSON. NATS JetStream persists to `/home/claude/nats-data/jetstream`.
+
+**If anything is `failed`:**
+
+```bash
+ssh claude@100.68.134.21 'journalctl -u <service> -n 50 --no-pager'
+# Reset the failure state once root cause is fixed:
+ssh claude@100.68.134.21 'sudo systemctl reset-failed <service> && sudo systemctl start <service>'
+```
+
+**What does NOT auto-recover** (known gaps, track separately):
+
+- NRP pods that were leaking resources at crash time keep leaking until `atlas-telemetry` comes back (<1 min typical, <15 min worst case — bounded by the watchdog's stuck-Pending window). Extended Atlas outages risk the NRP ban threshold.
+- `/tmp/atlas/*` log directories (if any service expects them) are wiped by `systemd-tmpfiles-clean.timer` — services must recreate them in `ExecStartPre`.
 
 ---
 

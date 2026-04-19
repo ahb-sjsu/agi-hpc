@@ -185,6 +185,14 @@ cat /archive/neurogolf/primer_health.json
 curl -sk https://atlas-sjsu.duckdns.org/api/primer/status | jq .
 ```
 
+### Restart policy and recovery
+
+The unit sets `Restart=always`, `StartLimitBurst=5` / `StartLimitIntervalSec=600`, and `RandomizedDelaySec=15`. A clean `exit 0` from the main loop is treated as a bug (the loop shouldn't stop on its own), so systemd restarts. Five failures in ten minutes leaves the unit `failed` so a broken deploy doesn't hammer NRP.
+
+All Primer state files (`primer_cooldown.json`, `primer_health.json`, the help queue, and Erebus's `arc_scientist_memory.json`) are written through `agi.common.atomic_write.atomic_write_text`, which tempfile + fsync + atomic-renames. A crash or SIGTERM mid-save leaves either the old contents or the full new contents, never partial JSON. Before this was added, silent corruption of the cooldown file caused the Primer to re-ask recently-processed tasks for about a week; see commit `b7df908` for the fix.
+
+On reboot, the Primer comes back via `atlas.target` and picks up its cooldown state from `/archive/neurogolf/primer_cooldown.json`. No state is held in RAM that isn't recoverable from disk or from re-reading the help queue + memory file.
+
 ### Dashboard signal
 
 - **NATS topology** — a synthetic node labelled "The Primer" (`📖 NRP vMOE · kimi+glm-4.7+qwen3`). Green when the service is running, red when not.

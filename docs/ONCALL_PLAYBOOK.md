@@ -142,15 +142,21 @@ It's in the 6-hour cooldown. See [`DEPLOYMENT_RUNBOOK.md`](DEPLOYMENT_RUNBOOK.md
 
 ```bash
 ssh claude@100.68.134.21 <<'EOF'
-ps auxww | grep arc_scientist.py | grep -v grep
-tail -20 /archive/neurogolf/scientist.log
+systemctl is-active atlas-scientist.service
+systemctl status atlas-scientist.service --no-pager | head -20
+journalctl -u atlas-scientist.service -n 30 --no-pager
+tail -5 /archive/neurogolf/preflight.log
 EOF
 ```
 
 Common causes:
-- Cycle completed normally → restart per [`DEPLOYMENT_RUNBOOK.md`](DEPLOYMENT_RUNBOOK.md) §5.3.
-- Process crashed → tail the log for the exception, file an issue.
-- OOM killer → check `dmesg | grep -i oom`.
+- `active` but quiet → cycle running a long task, not actually stuck.
+- `inactive (dead)` with exit 0 → cycle completed normally. Restart per [`DEPLOYMENT_RUNBOOK.md`](DEPLOYMENT_RUNBOOK.md) §5.3.
+- `failed` → unit hit the crash-loop limit (`StartLimitBurst=5` in 10 min). Check the journal + preflight log for the root cause, fix it, then `sudo systemctl reset-failed atlas-scientist && sudo systemctl start atlas-scientist`.
+- Preflight log shows `ABORT another arc_scientist process is already running` → leftover nohup process. `pkill -TERM -f 'agi/autonomous/arc_scientist.py'`, wait 30 s, retry.
+- Preflight shows `ABORT sentinel file present` → operator disabled Erebus intentionally. `rm /archive/neurogolf/.erebus_disabled` only after confirming it's safe to resume.
+- Preflight shows `ABORT nvidia-smi hung` → GPU driver wedged. `nvidia-smi` from a shell to confirm; if still wedged, escalate before rebooting.
+- OOM killer → check `dmesg | grep -i oom` and the unit's memory peak via `systemctl status`.
 
 ### 4.2 "Scientist keeps attempting the same task and failing"
 
