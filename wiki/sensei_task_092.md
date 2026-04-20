@@ -13,8 +13,8 @@ verified_by: run-against-train (all examples pass)
 
 For each color that appears exactly twice in the input grid, connect those two pixels with a straight line of that color:
 
-- If the two pixels share the **same column**, draw a **vertical line** between them.
-- If the two pixels share the **same row**, draw a **horizontal line** between them.
+- If the two pixels share the **same column**, draw a **vertical line** between them (filling all cells from the top pixel to the bottom pixel).
+- If the two pixels share the **same row**, draw a **horizontal line** between them (filling all cells from the left pixel to the right pixel).
 
 When a vertical line and horizontal line intersect at a cell, the **vertical line takes precedence** — its color overwrites the horizontal line's color at that intersection point.
 
@@ -73,3 +73,11 @@ This task belongs to the **line-connection** primitive family. The core pattern 
 3. **Layering precedence**: When lines cross, a consistent ordering rule applies — here, vertical lines are drawn after horizontal lines, giving them visual precedence at intersections.
 
 This generalizes to any grid size and any set of color pairs. The key insight is recognizing that the output is constructed by **drawing operations with a specific order**, not by a single simultaneous transformation. The vertical-over-horizontal precedence is a common layering convention in grid-based puzzles.
+
+The implementation strategy is:
+- First, collect all colored pixels and group them by color
+- Identify which colors form vertical vs horizontal pairs
+- Draw all horizontal lines first (lower layer)
+- Draw all vertical lines second (upper layer, overwriting intersections)
+
+This two-pass drawing approach with explicit layer ordering is the canonical solution pattern for line-connection tasks with intersection rules.
