@@ -9,7 +9,7 @@ verified_by: run-against-train (all examples pass)
 
 ## The rule
 
-Each row of the input grid is reversed (mirrored horizontally). The output grid has the same dimensions as the input, with every row flipped left-to-right. This is equivalent to reflecting the entire grid across a vertical axis through its center.
+Each row of the input grid is reversed (mirrored horizontally). The output grid maintains the same dimensions as the input, with every row flipped left-to-right. This is equivalent to reflecting the entire grid across a vertical axis through its center.
 
 ## Reference implementation
 
