@@ -4,6 +4,31 @@ For when the council is misbehaving in production on Atlas.
 
 ## Quick triage — where to look first
 
+```mermaid
+flowchart TB
+    S[Symptom: Council misbehaving]
+    Q1{Is ego service up?}
+    Q2{Logs show errors?}
+    Q3{llama-server responding on 8084?}
+    Q4{Council fallback active?}
+
+    F1[systemctl restart atlas-ego]
+    F2[Inspect journalctl -n 100]
+    F3[Check GPU / CPU pressure<br/>Gemma 4 crash under load]
+    F4[Expect Spock fallback<br/>verify correlation IDs]
+    F5[Check eval harness 20-query]
+
+    S --> Q1
+    Q1 -->|no| F1
+    Q1 -->|yes| Q2
+    Q2 -->|yes| F2
+    Q2 -->|no| Q3
+    Q3 -->|no| F3
+    Q3 -->|yes| Q4
+    Q4 -->|yes| F4
+    Q4 -->|no| F5
+```
+
 ```bash
 # 1. Is the ego service up?
 sudo systemctl status atlas-ego.service

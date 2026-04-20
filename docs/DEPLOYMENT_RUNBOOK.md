@@ -23,6 +23,31 @@ This runbook focuses on the first two. PyPI releases live in each sibling repo's
 
 ## 1. Standard deploy to Atlas (happy path)
 
+```mermaid
+flowchart TB
+    DEV[git push to main]
+    CI[GitHub Actions ci.yaml]
+    TEST[ruff + black + pytest]
+    DEPLOY[SSH to Atlas pull main<br/>pip install -e NATS<br/>restart services<br/>ln -sfn dashboard HTML]
+    SMOKE[Smoke tests<br/>/api/search-status<br/>/api/telemetry]
+    DRIFT[Deploy Smoke cron<br/>every 30 min]
+    LIVE[atlas-sjsu.duckdns.org]
+
+    DEV --> CI --> TEST
+    TEST -->|pass| DEPLOY --> SMOKE --> LIVE
+    TEST -->|fail| STOP[Deploy skipped]
+    DRIFT --> LIVE
+
+    classDef dev fill:#e3f2fd,stroke:#1565c0;
+    classDef check fill:#fff3e0,stroke:#e65100;
+    classDef stop fill:#ffcdd2,stroke:#b71c1c;
+    classDef ok fill:#c8e6c9,stroke:#1b5e20;
+    class DEV,CI dev;
+    class TEST,DEPLOY,SMOKE,DRIFT check;
+    class STOP stop;
+    class LIVE ok;
+```
+
 ### 1.1 Push to `main`
 
 CI auto-deploys on every push to `main`. No manual action needed for routine changes.

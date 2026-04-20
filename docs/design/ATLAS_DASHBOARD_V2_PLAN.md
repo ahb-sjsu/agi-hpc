@@ -39,6 +39,33 @@ A single cohesive product — not a portal-plus-council-plus-chat — that lets 
 
 ## Pages and their roles
 
+```mermaid
+flowchart LR
+    subgraph DATA[Data sources]
+      TELE[telemetry_server.py<br/>DB NATS services ports]
+      METRICS[council_backend_health<br/>council_fallback_active_total<br/>council_consensus_rate]
+      RUN[Trinity runtime<br/>Superego Id Council]
+    end
+
+    subgraph UI[Dashboard v2 pages]
+      HOME[Home: Trinity visual<br/>Superego Id Council]
+      MAP[Map: CPU GPU grid]
+      FLOW[Flow: pipeline discovery]
+      CHAT[Chat: user UI]
+    end
+
+    USER[User / investor]
+    TELE --> HOME
+    METRICS --> HOME
+    RUN --> HOME
+    TELE --> MAP
+    TELE --> FLOW
+    USER --> HOME
+    USER --> MAP
+    USER --> FLOW
+    USER --> CHAT
+```
+
 | Route | Name | Purpose | Audience |
 |---|---|---|---|
 | `/` | **Cortex** | The hero. Trinity viz + live activity + headline metrics. | Everyone |

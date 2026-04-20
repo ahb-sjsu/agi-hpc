@@ -4,6 +4,29 @@
 
 This document sketches how **erisml-lib** (ethical reasoning framework) integrates with **agi-hpc** (cognitive architecture) to create a safety-governed SAI system.
 
+```mermaid
+flowchart TB
+    subgraph AGI[AGI-HPC Cognitive Layer]
+      direction LR
+      LH[Left Hemisphere<br/>Planner + goal decomposition]
+      RH[Right Hemisphere<br/>World Model + state prediction]
+    end
+
+    subgraph SG[Safety Gateway]
+      REF[Reflex under 100us<br/>PII injection emergency]
+      TAC[Tactical 10-100ms<br/>ErisML MoralVector Bond Index]
+      STR[Strategic over 100ms<br/>policy hash-chain audit]
+      DEME[DEMEPipeline.decide<br/>tiered Ethical Modules]
+    end
+
+    ACT[Actuation / output]
+
+    LH --> SG
+    RH --> SG
+    REF --> TAC --> STR --> DEME --> ACT
+    REF -.veto.-> ACT
+```
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                         AGI-HPC COGNITIVE LAYER                         │

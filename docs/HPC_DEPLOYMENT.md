@@ -11,6 +11,48 @@ AGI-HPC is designed for distributed deployment across HPC infrastructure. The ar
 - **Event-driven communication** via distributed pub/sub
 - **Graceful degradation** when components fail
 
+```mermaid
+flowchart TB
+    subgraph CN[Compute nodes]
+      LH1[LH Node 1<br/>Planner 50051]
+      LH2[LH Node 2]
+      LHN[LH Node N]
+      RH1[RH Node 1]
+      RHN[RH Node N]
+      MEM[Memory Node<br/>Postgres pgvector]
+      SAFE[Safety Node<br/>DEMEPipeline]
+      META[Metacognition Node]
+    end
+
+    subgraph FABRIC[Event fabric]
+      NATS[NATS JetStream cluster]
+    end
+
+    subgraph EXT[External]
+      DHT[DHT ring<br/>hash-sharded state]
+      GPU[GPU pool<br/>llama.cpp servers]
+      OBJ[Object store<br/>CephFS / S3]
+    end
+
+    USER[User / controller]
+
+    LH1 <--> NATS
+    LH2 <--> NATS
+    LHN <--> NATS
+    RH1 <--> NATS
+    RHN <--> NATS
+    MEM <--> NATS
+    SAFE <--> NATS
+    META <--> NATS
+    NATS --> DHT
+    LH1 -.inference.-> GPU
+    MEM --> OBJ
+    USER --> NATS
+```
+
+<details>
+<summary>ASCII version</summary>
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                         HPC CLUSTER TOPOLOGY                                 │
@@ -48,6 +90,8 @@ AGI-HPC is designed for distributed deployment across HPC infrastructure. The ar
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+</details>
 
 ## Prerequisites
 

@@ -6,6 +6,48 @@ This document describes the production architecture of Atlas AI as deployed at S
 
 ## System overview
 
+```mermaid
+flowchart TB
+    subgraph NRP[NRP Nautilus]
+      LLM[Managed LLM API Kimi Qwen GLM MiniMax Gemma]
+      VIS[Vision burst jobs GLM-4.1V]
+      WP[erebus-workers 8x nats-bursting]
+    end
+
+    LEAF[NATS leaf 7422 TLS]
+    TS[Tailscale VPN mesh]
+
+    subgraph ATLAS[Atlas Workstation HP Z840]
+      EGO[EGO Kirk Qwen 3 32B GPU1]
+      SUP[SUPEREGO Spock Gemma 4 31B GPU0]
+      COUNCIL[DIVINE COUNCIL 7 advocates]
+      NATS[NATS JetStream 4222]
+      AUTO[Autonomous ARC Scientist Primer]
+      SAFE[Safety Reflex Tactical Strategic]
+      MEM[Memory Postgres pgvector]
+      SUPP[Support RAG Telemetry Caddy]
+    end
+
+    USER[User atlas-sjsu.duckdns.org]
+
+    LLM --> LEAF
+    VIS --> LEAF
+    WP --> LEAF
+    LEAF --> TS
+    TS --> NATS
+    EGO --> NATS
+    SUP --> NATS
+    COUNCIL --> NATS
+    NATS --> AUTO
+    NATS --> SAFE
+    NATS --> MEM
+    NATS --> SUPP
+    USER --> SUPP
+```
+
+<details>
+<summary>ASCII version</summary>
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
 │                         ATLAS AI — PRODUCTION DEPLOYMENT                                │
@@ -56,6 +98,8 @@ This document describes the production architecture of Atlas AI as deployed at S
 │                                                                                          │
 └─────────────────────────────────────────────────────────────────────────────────────────┘
 ```
+
+</details>
 
 ## NATS topology and NRP burst
 
@@ -150,10 +194,24 @@ Location: `src/agi/reasoning/`
 
 Closed-loop scientific reasoning against the NeuroGolf 2026 / ARC-AGI task set. Location: `src/agi/autonomous/`.
 
-```
-  OBSERVE ─► HYPOTHESIZE ─► EXPERIMENT ─► EVALUATE ─► REFLECT ─► ADAPT ─► LEARN ─┐
-                                                                                  │
-                                  ◄───────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    OBS[OBSERVE<br/>tier-weighted task pick]
+    HYP[HYPOTHESIZE<br/>5 strategies]
+    EXP[EXPERIMENT<br/>generate transform grid]
+    EVAL[EVALUATE<br/>every training example]
+    REF[REFLECT<br/>LLM diagnoses failure]
+    ADA[ADAPT<br/>Thompson sampling]
+    LRN[LEARN<br/>store attempt + error class]
+
+    OBS --> HYP --> EXP --> EVAL --> REF --> ADA --> LRN
+    LRN --> OBS
+
+    PRIMER[The Primer vMOE<br/>mentor preamble]
+    VIS[Vision burst<br/>GLM-4.1V on NRP Jobs]
+
+    PRIMER -.-> HYP
+    EVAL -.perception errors >=10.-> VIS -.-> EVAL
 ```
 
 | Stage | Mechanism |
@@ -214,6 +272,33 @@ Location: `src/agi/safety/`. Three-layer architecture:
 | Reflex | < 100 µs | Emergency stops, thermal limits, PII / prompt-injection gates |
 | Tactical | 10–100 ms | ErisML `MoralVector`, Bond Index, Hohfeldian rights analysis |
 | Strategic | > 100 ms | Policy enforcement, SHA-256 hash-chained decision proofs, human oversight |
+
+```mermaid
+flowchart TB
+    IN[Candidate action]
+    subgraph REF[Reflex under 100us]
+      R1[Emergency stop]
+      R2[Thermal limit]
+      R3[PII / prompt-injection gates]
+    end
+    subgraph TAC[Tactical 10-100ms]
+      T1[ErisML MoralVector]
+      T2[Bond Index]
+      T3[Hohfeldian rights]
+    end
+    subgraph STR[Strategic over 100ms]
+      S1[Policy enforcement]
+      S2[SHA-256 hash-chained proofs]
+      S3[Human oversight]
+    end
+    OUT[Action + DecisionProof]
+
+    IN --> R1 --> R2 --> R3
+    R3 -->|pass| T1 --> T2 --> T3
+    T3 -->|pass| S1 --> S2 --> S3 --> OUT
+    R3 -->|veto| OUT
+    T3 -->|violation| OUT
+```
 
 ### Memory subsystem
 

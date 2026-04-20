@@ -27,6 +27,36 @@ This matches the UKG design philosophy: nodes are cheap indexes; everything else
 - Append-only JSONL with full-state snapshots per write.
 - The centralized trust gate (`is_context_eligible`) is the single place that decides what is safe for a generator to consume.
 
+```mermaid
+flowchart TB
+    USER[User interaction]
+    CHAT[Atlas chat]
+    DETECT[Dissatisfaction detector<br/>classifier + rules]
+
+    subgraph LOG[Sidecar event log JSONL]
+      EV[classification events<br/>event_id timestamp topic_key]
+    end
+
+    subgraph UKG[Unified Knowledge Graph JSONL]
+      NODE[type gap node<br/>source dissatisfaction<br/>topic_key counters]
+      EVID[evidence array event handles]
+    end
+
+    subgraph CON[Consumers]
+      AGG[Event aggregator]
+      CLU[Clustering]
+      DASH[Ops dashboard]
+      DREAM[Dreaming prioritizer<br/>consolidate weak areas]
+    end
+
+    USER --> CHAT --> DETECT
+    DETECT --> EV
+    DETECT --> NODE
+    NODE -.evidence.-> EV
+    EV --> AGG --> CLU --> DASH
+    NODE --> DREAM
+```
+
 ## 1. Settled decisions (v1)
 
 1. **Detector runs post-conversation, not inline.** Hook sits on the conversation finalization path (session close or inactivity timeout), reads the final N turns, classifies the outcome, and emits at most one event. No inline token-level cost during chat.

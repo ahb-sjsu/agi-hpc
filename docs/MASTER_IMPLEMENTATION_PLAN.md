@@ -28,6 +28,62 @@ This document provides a high-level plan for implementing all remaining sprint p
 
 ## Dependency Graph
 
+```mermaid
+flowchart TB
+    subgraph P1[Phase 1 Foundation Sprints 1-3]
+      EF[Event Fabric<br/>NATS JetStream]
+      LH1[LH Planning S1-2]
+      RH1[RH Control S1-2]
+      M1[Memory S1-2]
+      SAFE1[Safety S1]
+      LLM1[LLM S1]
+    end
+
+    subgraph P2[Phase 2 Reasoning]
+      LH2[LH Planning S3-5]
+      META1[Metacognition S1-3]
+    end
+
+    subgraph P3[Phase 3 Perception]
+      RH2[RH Control S3-5]
+      ENV1[Environment S1-3]
+    end
+
+    subgraph P4[Phase 4 Cognition integration]
+      M2[Memory + Safety + Meta]
+      INT1[Integration tests]
+    end
+
+    subgraph P5[Phase 5 Scale]
+      DHT[DHT ring + client]
+      HPC[HPC deploy]
+    end
+
+    subgraph P6[Phase 6 Polish]
+      PERF[Performance + chaos]
+      E2E[End-to-end evals]
+    end
+
+    EF --> LH2
+    EF --> RH2
+    EF --> M1 --> M2
+    LH1 --> LH2 --> M2
+    RH1 --> RH2 --> INT1
+    SAFE1 --> M2
+    LLM1 --> LH2
+    META1 --> M2
+    ENV1 --> INT1
+    M2 --> INT1
+    INT1 --> DHT
+    INT1 --> HPC
+    DHT --> PERF
+    HPC --> PERF
+    PERF --> E2E
+```
+
+<details>
+<summary>ASCII dependency graph</summary>
+
 ```
                             ┌─────────────────────────────────────────────────────┐
                             │                    PHASE 1                          │
@@ -113,6 +169,8 @@ This document provides a high-level plan for implementing all remaining sprint p
 │ Spr7-8 │    │ Spr5-6 │    │ Spr7-8 │    │  Spr8  │    │  Spr8  │    │ Spr1-4 │    │ Prod   │
 └────────┘    └────────┘    └────────┘    └────────┘    └────────┘    └────────┘    └────────┘
 ```
+
+</details>
 
 ---
 

@@ -44,10 +44,32 @@ agi.integration.{route,merge,session}
 
 ## Request Flow (Post-Implementation)
 
-```
-User -> Integration -> Safety(input) -> Memory(context) -> Router
-  -> LH (analytical) and/or RH (creative) -> Safety(output)
-  -> Memory(store episode) -> Metacognition(observe) -> User
+```mermaid
+flowchart LR
+    U[User]
+    INT[Integration<br/>:50700 router]
+
+    subgraph IN[Input phase]
+      SI[Safety input check]
+      MC[Memory context fetch]
+    end
+
+    subgraph HEMI[Hemispheres Qwen-72B dual-prompt]
+      LH[LH :50100 analytical temp 0.3]
+      RH[RH :50200 creative temp 0.8]
+    end
+
+    subgraph OUT[Output phase]
+      SO[Safety output check]
+      MS[Memory store episode]
+      META[Metacognition observe]
+    end
+
+    U --> INT --> SI --> MC --> LH
+    MC --> RH
+    LH --> SO
+    RH --> SO
+    SO --> MS --> META --> U
 ```
 
 LH and RH use the SAME Qwen-72B model but with different system prompts and sampling parameters -- like biological hemispheres using the same neural substrate with different connectivity patterns.

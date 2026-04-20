@@ -6,18 +6,21 @@ hemisphere disagreement signal.
 
 ## The Closed Loop
 
-```
-         +----------------------------------------------+
-         |                                              |
-         v                                              |
-   +----------+    +-----------+    +----------+    +------+
-   |  Monitor  |--->| Evaluator |--->|  Planner |--->| Actor |
-   | (observe) |    | (reflect) |    | (decide) |    | (do)  |
-   +----------+    +-----------+    +----------+    +------+
-        ^                                              |
-        |                                              |
-        +----------------------------------------------+
-                    (observe the effect)
+```mermaid
+flowchart LR
+    M[Monitor<br/>observe]
+    E[Evaluator<br/>reflect]
+    P[Planner<br/>decide]
+    A[Actor<br/>do]
+
+    M --> E --> P --> A
+    A -->|observe the effect| M
+
+    DISAGREE[Hemisphere disagreement<br/>BGE-M3 cosine between<br/>Spock and Kirk]
+    ECE[Expected calibration error<br/>over predicted vs observed]
+
+    A --> DISAGREE --> E
+    E --> ECE --> P
 ```
 
 ## 7.1 Hemisphere Disagreement Metric (Novel Contribution)

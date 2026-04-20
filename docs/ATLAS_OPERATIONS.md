@@ -48,6 +48,47 @@
 
 ## 2. Architecture
 
+```mermaid
+flowchart TB
+    subgraph HW[HP Z840 Atlas]
+      CPU[2x Xeon E5-2690 v3<br/>24c/48t]
+      G0[GPU0 GV100 32GB<br/>Superego Gemma 4 31B]
+      G1[GPU1 GV100 32GB<br/>Ego Qwen 3 32B]
+      RAM[252GB DDR4]
+      NVME[1.8TB NVMe]
+      R5[15TB RAID5 /archive]
+    end
+
+    subgraph NET[Network]
+      TS[Tailscale 100.68.134.21]
+      LAN[LAN 192.168.0.7]
+      CADDY[Caddy + OAuth2<br/>atlas-sjsu.duckdns.org]
+    end
+
+    subgraph SVC[systemd services atlas.target]
+      SUP[atlas-superego]
+      ID[atlas-id]
+      COUNCIL[atlas-ego council]
+      RAG[atlas-rag-server :8081]
+      TEL[atlas-telemetry :8085]
+      PRIM[atlas-primer]
+      ARC[arc_scientist]
+      THERM[thermal-guardian]
+      WATCH[watchdog]
+    end
+
+    USER[User]
+    USER --> CADDY --> RAG
+    CADDY --> TEL
+    G0 --> SUP
+    G1 --> ID
+    CPU --> COUNCIL
+    CPU --> PRIM
+    CPU --> ARC
+    NVME --> RAG
+    R5 --> ARC
+```
+
 ### 2.1 Cognitive Architecture Overview
 
 Atlas implements a 10-subsystem cognitive architecture inspired by dual-process theory (Kahneman, 2011), Global Workspace Theory (Baars, 1988), and biologically-inspired memory hierarchies.

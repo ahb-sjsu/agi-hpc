@@ -623,6 +623,24 @@ This phase is where the distinction between "AGI research platform" and "uncontr
 
 ## Timeline and Dependencies
 
+```mermaid
+flowchart LR
+    P0[Phase 0<br/>Validate Foundation<br/>~3 months]
+    P1[Phase 1<br/>Memory Consolidation<br/>Dreaming Subsystem<br/>3-9 months]
+    P2[Phase 2<br/>Genuine Metacognition<br/>6-15 months]
+    P3[Phase 3<br/>World Model +<br/>Causal Reasoning<br/>12-24 months]
+    P4[Phase 4<br/>Autonomous Agency<br/>18-30 months]
+    P5[Phase 5<br/>Recursive<br/>Self-Improvement<br/>30+ months]
+
+    P0 --> P1 --> P2 --> P3 --> P4 --> P5
+    P1 -.feeds.-> P2
+    P2 -.gates.-> P4
+    P3 -.constrains.-> P4
+```
+
+<details>
+<summary>ASCII timeline</summary>
+
 ```
 MONTH  1  2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 17 18
        ├──Phase 0──┤
@@ -638,6 +656,8 @@ MONTH  1  2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 17 18
                                                         │
                                                MONTH 18+: Phase 4-5
 ```
+
+</details>
 
 Each phase depends on the previous phase's validation. If Phase 0 shows the debate architecture doesn't help, we redesign before proceeding. If Phase 1 consolidation degrades performance, we debug before building metacognition on top.
 

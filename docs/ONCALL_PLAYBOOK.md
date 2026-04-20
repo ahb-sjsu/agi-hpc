@@ -9,17 +9,35 @@ There is no 24/7 pager rotation. This is the playbook for the operator (usually 
 
 ## Triage flowchart
 
-```
-  SYMPTOM
-    │
-    ├─► Dashboard blank / errors          → §1 Dashboard
-    ├─► Chat says "cortex timed out"      → §2 Chat / NRP ELLM
-    ├─► Primer not publishing notes        → §3 Primer
-    ├─► ARC Scientist stopped              → §4 ARC Scientist
-    ├─► CI failing for days                → §5 CI
-    ├─► Atlas unreachable (ssh timeout)    → §6 Atlas host
-    ├─► NATS leaf disconnected             → §7 Fabric
-    └─► Everything is slow / hot           → §8 Thermal / resource
+```mermaid
+flowchart TB
+    S[SYMPTOM]
+    A{Dashboard blank or errors}
+    B{Chat says cortex timed out}
+    C{Primer not publishing}
+    D{ARC Scientist stopped}
+    E{CI failing for days}
+    F{Atlas unreachable ssh timeout}
+    G{NATS leaf disconnected}
+    H{Everything slow or hot}
+
+    s1[Section 1 Dashboard]
+    s2[Section 2 Chat / NRP ELLM]
+    s3[Section 3 Primer]
+    s4[Section 4 ARC Scientist]
+    s5[Section 5 CI]
+    s6[Section 6 Atlas host]
+    s7[Section 7 Fabric]
+    s8[Section 8 Thermal / resource]
+
+    S --> A --> s1
+    S --> B --> s2
+    S --> C --> s3
+    S --> D --> s4
+    S --> E --> s5
+    S --> F --> s6
+    S --> G --> s7
+    S --> H --> s8
 ```
 
 ---

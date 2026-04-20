@@ -31,6 +31,49 @@ Explicitly out of scope for this work:
 
 ## Design
 
+```mermaid
+flowchart TB
+    REQ[Incoming query]
+    subgraph MEMBERS[7 member advocates]
+      J[Judge]
+      A[Advocate]
+      S[Synthesizer]
+      E[Ethicist]
+      H[Historian]
+      F[Futurist]
+      P[Pragmatist]
+    end
+
+    EGO[Ego backend<br/>Gemma 4 26B-A4B<br/>llama-server --parallel 8<br/>:8084]
+    SPOCK[Spock backend<br/>Qwen 2.5 72B GPU0<br/>:8080 fallback]
+
+    HC[Health check<br/>circuit breaker<br/>per-member retry]
+    VOTE[3-valued vote<br/>approve / challenge / abstain]
+    VETO[Ethicist veto<br/>moderate or serious flag]
+    OUT[Consensus + correlation_id]
+
+    REQ --> HC
+    HC -->|healthy| EGO
+    HC -->|degraded| SPOCK
+    EGO --> J
+    EGO --> A
+    EGO --> S
+    EGO --> E
+    EGO --> H
+    EGO --> F
+    EGO --> P
+    SPOCK --> J
+    J --> VOTE
+    A --> VOTE
+    S --> VOTE
+    E --> VETO
+    H --> VOTE
+    F --> VOTE
+    P --> VOTE
+    VOTE --> OUT
+    VETO -.block.-> OUT
+```
+
 ### Backend abstraction
 
 ```

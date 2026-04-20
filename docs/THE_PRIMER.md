@@ -32,6 +32,51 @@ Why each ingredient matters:
 
 ## Architecture
 
+```mermaid
+flowchart TB
+    subgraph INPUTS[Inputs read each tick]
+      M1[arc_scientist_memory + help_queue]
+      M2[task JSON + test examples]
+      M3[wiki sensei articles]
+    end
+
+    PICK[pick_stuck_tasks tier1 partial tier2 zero]
+    HEALTH[healthy_subset filter degraded experts]
+
+    subgraph VMOE[vMOE ensemble parallel]
+      K[kimi]
+      G[glm-4.7]
+      Q[qwen3]
+      MM[minimax]
+      L[Atlas Kirk local fallback]
+    end
+
+    VAL[validator subprocess SIGALRM all train pass]
+
+    FIRST[First verified wins]
+    PUB[sensei note + YAML + git push]
+    DBG[log raw-peek for debug]
+    COOL[cooldown + health summary]
+
+    INPUTS --> PICK --> HEALTH
+    HEALTH --> K
+    HEALTH --> G
+    HEALTH --> Q
+    HEALTH --> MM
+    HEALTH -.fallback.-> L
+    K --> VAL
+    G --> VAL
+    Q --> VAL
+    MM --> VAL
+    L --> VAL
+    VAL -->|pass| FIRST --> PUB
+    VAL -->|fail| DBG
+    FIRST --> COOL
+    DBG --> COOL
+```
+
+### ASCII reference
+
 ```
                                      ┌───────────────────────┐
                                      │   /archive/neurogolf  │

@@ -6,6 +6,52 @@ Live at [atlas-sjsu.duckdns.org](https://atlas-sjsu.duckdns.org).
 
 ## Architecture
 
+```mermaid
+flowchart TB
+    U[User]
+    CADDY[Caddy HTTPS]
+    AUTH[OAuth2 Google]
+    RAG[RAG Server :8081]
+    CLASS{Simple or Complex?}
+
+    subgraph S1[System 1 fast]
+      T1[Live Data + RAG + Id]
+    end
+
+    subgraph CASCADE[Search cascade]
+      TN1[Tier -1 live data]
+      T0[Tier 0 dream-consolidated]
+      T1W[Tier 1 wiki]
+      T2V[Tier 2 PCA-384 IVFFlat 3.3M]
+      T3F[Tier 3 tsvector FTS]
+    end
+
+    subgraph S2[System 2 debate]
+      SE[Superego Gemma 4 31B GPU0]
+      ID[Id Qwen 3 32B GPU1]
+      EGO[Ego Gemma 4 26B-A4B CPU]
+    end
+
+    SG[Safety Gateway]
+    CONF[Confidence from<br/>psyche disagreement]
+    RESP[Response]
+
+    U --> CADDY --> AUTH --> RAG --> CLASS
+    CLASS -->|Simple| S1
+    CLASS -->|Complex| CASCADE
+    CASCADE --> SE
+    CASCADE --> ID
+    SE <-->|4 rounds| ID
+    SE --> EGO
+    ID --> EGO
+    EGO --> SG
+    S1 --> SG
+    SG --> CONF --> RESP
+```
+
+<details>
+<summary>Text pipeline (legacy ASCII)</summary>
+
 ```
 User → Caddy (HTTPS) → OAuth2 (Google Auth) → RAG Server (8081)
   → Query Classification:
@@ -26,6 +72,8 @@ User → Caddy (HTTPS) → OAuth2 (Google Auth) → RAG Server (8081)
   → Confidence metric from psyche disagreement
   → Response to user
 ```
+
+</details>
 
 ## Subsystems (13/13 implemented)
 

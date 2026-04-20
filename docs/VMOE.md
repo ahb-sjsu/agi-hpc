@@ -2,6 +2,39 @@
 
 A thin orchestration layer over multiple LLM services, where each service is an "expert" slot and the routing policy is explicit Python rather than a gating network. Source: [`src/agi/primer/vmoe.py`](../src/agi/primer/vmoe.py).
 
+```mermaid
+flowchart TB
+    REQ[Incoming task]
+    ROUTE[Router<br/>explicit Python policy]
+
+    subgraph EXPERTS[Expert pool]
+      K[Kimi K2.5 1T<br/>agentic code long context]
+      G[GLM-4.7 358B<br/>reasoning math]
+      Q[Qwen 3.5 397B<br/>fast structured code]
+      M[MiniMax M2.7<br/>tool use long context]
+      L[Atlas Kirk Qwen 32B<br/>local resilience]
+    end
+
+    BEST[Best candidate]
+    VERIFY[Verify-before-publish<br/>100 pct of task.train passes]
+    PUB[Publish to wiki]
+
+    REQ --> ROUTE
+    ROUTE --> K
+    ROUTE --> G
+    ROUTE --> Q
+    ROUTE --> M
+    ROUTE -.fallback.-> L
+    K --> BEST
+    G --> BEST
+    Q --> BEST
+    M --> BEST
+    L --> BEST
+    BEST --> VERIFY
+    VERIFY -->|pass| PUB
+    VERIFY -->|fail| BEST
+```
+
 ---
 
 ## Why not a single model?
