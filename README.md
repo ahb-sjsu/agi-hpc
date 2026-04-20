@@ -20,7 +20,9 @@
 
 Atlas AI is a **production cognitive architecture** that mirrors the vertebrate brain's cortical / subcortical split. High-level reasoning runs on frontier cloud LLMs (the *cortex*), fast pattern learning and procedural memory run on local GPUs (the *subcortical brain*), and the two tiers are coordinated by NATS JetStream acting as a global workspace (Baars, 1988). Persistent memory lives in PostgreSQL + pgvector.
 
-A Freudian agent model — Ego, Superego, and the Divine Council — negotiates decisions through structured debate. An autonomous learning loop (**Erebus**, the ARC Scientist) improves its own problem-solving strategies over time, and **The Primer** (inspired by Stephenson's *Young Lady's Illustrated Primer*) is an always-on Claude-style tutor that teaches Erebus through verified reference implementations written back to the wiki. A **Unified Knowledge Graph** now tracks both *what has been taught* and *what is still asked-but-unanswered* as first-class nodes, so the teaching loop is observable end-to-end.
+A Freudian agent model — Ego, Id, and the Divine Council (acting as Superego) — negotiates decisions through structured debate. An autonomous learning loop (**Erebus**, the ARC Scientist) improves its own problem-solving strategies over time, and **The Primer** (inspired by Stephenson's *Young Lady's Illustrated Primer*) is an always-on Claude-style tutor that teaches Erebus through verified reference implementations written back to the wiki. A **Unified Knowledge Graph** now tracks both *what has been taught* and *what is still asked-but-unanswered* as first-class nodes, so the teaching loop is observable end-to-end.
+
+**Cognitive ensemble over one bus.** Every Ego turn, every Council deliberation, and every Primer teaching cycle is a **vMOE** (virtual Mixture-of-Experts) call that fans out across heterogeneous voices — frontier LLMs on the NRP managed API for raw reasoning capacity, paired with small locally-fine-tuned specialists on Atlas for identity, memory grounding, and value alignment. Frontier cognition comes from NRP; the *self* comes from Atlas. The synthesizer picks or merges. This is what "higher brain in the cloud, subcortical voices at home" actually looks like in production.
 
 ## One bus, many shapes
 
@@ -28,29 +30,36 @@ Every subsystem publishes on the same NATS fabric (`agi.*`). Cortex agents, subc
 
 ```mermaid
 flowchart TB
-  subgraph Cortex["Cortex — frontier LLMs on NRP Nautilus"]
-    direction LR
-    Ego["Ego<br/>(Kirk)"]
-    Super["Superego<br/>(Spock)"]
-    Council["Divine Council<br/>7 advocate agents"]
-    Sci["Erebus<br/>ARC Scientist"]
-    Prim["The Primer<br/>always-on tutor"]
+  subgraph Ensemble["vMOE cognitive ensemble — one substrate across Ego, Council, Primer"]
+    direction TB
+    subgraph Frontier["Frontier cognition — NRP Envoy Gateway (ellm.nrp-nautilus.io/v1)"]
+      direction LR
+      Qwen["qwen3 397B<br/>FP8 · 262K ctx"]
+      Kimi["kimi 1T<br/>MXFP4"]
+      GLM["glm-4.7 358B<br/>FP8"]
+      MM["minimax-m2 230B<br/>FP8"]
+      GPTOSS["gpt-oss 120B<br/>MXFP4"]
+      OLMO["olmo 32B"]
+    end
+    subgraph Local["Local specialists — Atlas GV100s (fine-tunable)"]
+      direction LR
+      Eth["ErisML voice<br/>7B QLoRA on<br/>2.4M ethical passages"]
+      MemV["Memory-RAG voice<br/>7B + pgvector<br/>indexed via<br/>qwen3-embedding"]
+      Pat["Pattern voice<br/>7B on Erebus's<br/>solved-code corpus"]
+    end
+    Frontier -. synthesis .-> Router(("vMOE router<br/>+ synthesizer"))
+    Local -. synthesis .-> Router
   end
   NATS[("NATS JetStream — global workspace · agi.*")]
-  subgraph Sub["Subcortical — Atlas (2× GV100 32 GB)"]
-    direction LR
-    Proc["Procedural memory<br/>pattern nets + A*"]
-    Kirkloc["Kirk local fallback<br/>(Qwen 32B · GPU 1)"]
-    Spocloc["Spock local<br/>(Gemma 31B · GPU 0)"]
-  end
-  subgraph Mem["Persistent memory"]
+  subgraph Mem["Persistent memory — Atlas"]
     direction LR
     PG[("PostgreSQL<br/>+ pgvector")]
     Wiki[("Sensei wiki<br/>verified notes")]
     UKG[("Unified Knowledge Graph<br/>filled + gap nodes")]
   end
-  Cortex <-->|"leaf link :7422 (TLS)"| NATS
-  Sub <-->|"local bus :4222"| NATS
+  Router <-->|"agi.ego / agi.council / agi.primer.*"| NATS
+  Frontier <-->|"leaf link :7422 (TLS)"| NATS
+  MemV -. retrieval .-> Mem
   Mem <--> NATS
 ```
 
@@ -59,73 +68,116 @@ flowchart TB
 ```mermaid
 flowchart TD
   Q{"What kind of work?"}
-  Q -->|"chat / tool-use"| Ego["Ego (Kirk)<br/>single LLM call, cascade on failure"]
-  Q -->|"ethical / policy gate"| Super["Superego (Spock)<br/>logic + rules"]
-  Q -->|"high-stakes decision"| Council["Divine Council<br/>7-agent structured debate"]
+  Q -->|"chat / tool-use"| Ego["Ego turn<br/>vMOE route by hint<br/>frontier + local specialists"]
+  Q -->|"ethical / policy gate"| Eth["ErisML voice<br/>local 7B fine-tuned specialist"]
+  Q -->|"high-stakes decision"| Council["Divine Council<br/>vMOE ensemble of heterogeneous<br/>NRP frontier models as advocates"]
+  Q -->|"memory recall /<br/>episodic context"| MemV["Memory-RAG voice<br/>local 7B + live pgvector/UKG"]
   Q -->|"ARC / NeuroGolf puzzle"| Sci{"mentor note exists?"}
   Sci -->|"yes"| SciLoop["Erebus + sensei preamble<br/>strategy library + Thompson"]
-  Sci -->|"no — stuck ≥10 attempts"| Prim["Primer vMOE ensemble<br/>writes verified sensei note"]
+  Sci -->|"no — stuck ≥10 attempts"| Prim["Primer vMOE<br/>verify-then-publish<br/>sensei note"]
   Q -->|"heavy GPU burst /<br/>parallel solver swarm"| Burst["nats-bursting →<br/>NRP Nautilus burst pool"]
-  Q -->|"nightly consolidation"| Dream["Dream subsystem<br/>QLoRA on /archive adapters"]
+  Q -->|"nightly consolidation"| Dream["Dream subsystem<br/>QLoRA specialist adapters<br/>on Atlas GV100s"]
 ```
 
 ## Architecture at a glance
 
 ```
                          ╔═══════════════════════════════════════════════════╗
-                         ║        CORTEX  —  NRP Nautilus Cloud               ║
-                         ║        Frontier LLMs via managed API               ║
+                         ║   CORTEX  —  NRP Envoy Gateway                     ║
+                         ║   ellm.nrp-nautilus.io/v1 (shared, zero marginal)  ║
                          ╠═══════════════════════════════════════════════════╣
                          ║                                                    ║
-                         ║  Ego       Kirk        GLM-4.7 (today) →          ║
-                         ║                         GLM-4.5-Air on 4× A10 →   ║
-                         ║                         Atlas llama.cpp fallback  ║
-                         ║  Superego  Spock       Gemma 4                    ║
-                         ║  Council   7 agents    Kimi K2.5 1T               ║
-                         ║  Erebus    ARC loop    Kimi / Qwen / GLM rotation ║
-                         ║  Primer    vMOE tutor  Kimi + GLM-4.7 + Qwen3 +   ║
-                         ║                         MiniMax + Kirk fallback   ║
+                         ║   qwen3         397B  FP8  · 262K ctx             ║
+                         ║   kimi          1T    MXFP4 (eval)                ║
+                         ║   glm-4.7       358B  FP8  (eval)                 ║
+                         ║   minimax-m2    230B  FP8                         ║
+                         ║   gpt-oss       120B  MXFP4                       ║
+                         ║   olmo          32B   bf16 (eval)                 ║
+                         ║   qwen3-small   27B   bf16                        ║
+                         ║   gemma         31B   bf16  · multimodal          ║
+                         ║   gemma-small   8B    bf16  · audio               ║
+                         ║   qwen3-embedding  8B  embeddings only            ║
                          ║                                                    ║
-                         ║  + Vision pods (GLM-4.1V on L40 / A10)            ║
-                         ║  + Worker pools (nats-bursting on 33-node A10)    ║
+                         ║   Consumed as experts in every Ego turn, every    ║
+                         ║   Council round, every Primer tick. Heterogeneous ║
+                         ║   lineages (Qwen / Kimi / GLM / MiniMax / OpenAI  ║
+                         ║   OSS / Allen AI / Gemma) = genuine multi-voice   ║
+                         ║   deliberation, not N samples of one voice        ║
+                         ║                                                    ║
+                         ║   + Vision pods (GLM-4.1V on L40 / A10)           ║
+                         ║   + Worker pools (nats-bursting on 33-node A10)   ║
                          ╚═══════════════════════╤════════════════════════════╝
                                                  │  NATS leaf :7422 (TLS)
                          ╔═══════════════════════╧════════════════════════════╗
                          ║   GLOBAL WORKSPACE  —  NATS JetStream :4222        ║
                          ║   Subjects: agi.*                                  ║
                          ╚═══════════════════════╤════════════════════════════╝
+                                                 │
+                         ╔═══════════════════════╧════════════════════════════╗
+                         ║   vMOE router + synthesizer                        ║
+                         ║   (agi.reasoning.vmoe — shared substrate)          ║
+                         ║                                                    ║
+                         ║   route by role hint → single expert call          ║
+                         ║   ensemble on high-stakes → fan out, merge         ║
+                         ║   cascade on failure → health-tracked fallback     ║
+                         ╚═══════════════════════╤════════════════════════════╝
            ┌─────────────────────────────────────┼─────────────────────────────┐
            │                                     │                             │
-  ╔════════╧════════════╗   ╔════════════════════╧════════╗   ╔═══════════════╧═══════╗
-  ║ SUBCORTICAL BRAIN    ║   ║ MEMORY  — PostgreSQL +      ║   ║  BRAINSTEM             ║
-  ║ 2× Quadro GV100 32GB ║   ║ pgvector · 3.3M PCA-384 vecs║   ║                        ║
-  ║                      ║   ║                             ║   ║  Thermal guardian     ║
-  ║  Conv training       ║   ║  L0  Dream-consolidated     ║   ║  Watchdog             ║
-  ║  Pattern learning    ║   ║  L1  Sensei wiki (Primer +  ║   ║  Telemetry (:8085)    ║
-  ║  Procedural memory   ║   ║       human-written)        ║   ║  Caddy proxy + OAuth2 ║
-  ║  A* search           ║   ║  L2  PCA-384 IVFFlat        ║   ║  Backup (daily)       ║
-  ║  Kirk (local ego     ║   ║  L3  tsvector full-text     ║   ║  atlas-target systemd ║
-  ║    fallback)         ║   ║  L4  Episodic memory        ║   ║                        ║
-  ║                      ║   ║  L5  Unified Knowledge      ║   ║                        ║
-  ║                      ║   ║       Graph (new)           ║   ║                        ║
-  ╚══════════════════════╝   ╚═════════════════════════════╝   ╚════════════════════════╝
+  ╔════════╧══════════════════╗   ╔══════════════╧═══════════╗   ╔════════════╧══════╗
+  ║ SUBCORTICAL SPECIALISTS   ║   ║ MEMORY  — PostgreSQL +   ║   ║  BRAINSTEM         ║
+  ║ 2× Quadro GV100 32GB      ║   ║ pgvector · 3.3M vectors  ║   ║                    ║
+  ║                           ║   ║                          ║   ║  Thermal guardian ║
+  ║  ErisML voice (7B QLoRA   ║   ║  L0  Dream-consolidated  ║   ║  Watchdog         ║
+  ║    on 2.4M ethical        ║   ║  L1  Sensei wiki         ║   ║  Telemetry :8085  ║
+  ║    passages)              ║   ║      (Primer+human)      ║   ║  Caddy + OAuth2   ║
+  ║  Memory-RAG voice (7B +   ║   ║  L2  PCA-384 IVFFlat     ║   ║  Backup (daily)   ║
+  ║    live pgvector/UKG)     ║   ║  L3  tsvector full-text  ║   ║  atlas-target     ║
+  ║  Pattern voice (7B on     ║   ║  L4  Episodic memory     ║   ║                    ║
+  ║    Erebus solved-code)    ║   ║  L5  Unified Knowledge   ║   ║                    ║
+  ║                           ║   ║      Graph (filled+gap)  ║   ║                    ║
+  ║  + procedural memory      ║   ║                          ║   ║                    ║
+  ║    (pattern nets + A*)    ║   ║                          ║   ║                    ║
+  ╚═══════════════════════════╝   ╚══════════════════════════╝   ╚═══════════════════╝
 ```
 
 Full systems view: [`docs/ARCHITECTURE_OVERVIEW.md`](docs/ARCHITECTURE_OVERVIEW.md).
 
 ## The Freudian agents
 
-Three psychoanalytic agents negotiate decisions through structured debate. The Star Trek analogues show the functional mapping — not the reverse.
+Three psychoanalytic agents negotiate decisions through structured debate, all running over the same vMOE substrate. The Star Trek analogues show the functional mapping — not the reverse.
 
-| Agent | Role | Primary backend | Current status |
+| Agent | Role | How it's realized | Status |
 |---|---|---|---|
-| **Ego (Kirk)** | Balanced decision-maker — the self that speaks and learns | Managed GLM-4.7 via NRP ellm (today) → self-hosted GLM-4.5-Air AWQ on 4× A10 pod (fine-tuning path) → Atlas llama.cpp fallback → emergency Kimi | Multi-tier cascade; fine-tuning pod gated on NRP capacity |
-| **Superego (Spock)** | Logic, rules, ethical evaluation | Gemma 4 31B on local GPU 0, Gemma 4 on NRP | Active |
-| **Divine Council** | Multi-perspective deliberation (7 advocate agents: Judge, Advocate, Synthesizer, Ethicist, Historian, Futurist, Pragmatist) | Kimi K2.5 1T on NRP, `atlas-ego.service --parallel 8` CPU backend | Active |
+| **Ego (Kirk)** | Balanced decision-maker — the self that speaks and learns | **vMOE route** per turn: frontier NRP model(s) for raw reasoning + local specialists for identity / memory / value alignment. Synthesizer merges. | Planned — next infra deliverable |
+| **Superego = Divine Council** | Internalized normative deliberation. 7 advocates (Judge, Advocate, Synthesizer, Ethicist, Historian, Futurist, Pragmatist) debate in round-based fashion | **vMOE ensemble** with one NRP model per advocate — e.g. Judge=`glm-4.7` (formal), Advocate=`qwen3` (long-context rhetoric), Synthesizer=`minimax-m2` (integrative), Ethicist=Anthropic-proxy or `olmo` (different lineage), Historian=`kimi` (1T recall), Futurist=`gpt-oss` (speculative), Pragmatist=`qwen3-small` (fast, grounded). Genuine multi-lineage debate | Active today as `kimi`-only; heterogeneous advocate routing is the upgrade |
+| **Id** | Fast, value-laden unconscious drive — the voice that reacts before deliberation | Local **ErisML voice** (7B QLoRA on the 2.4M-passage ethical corpus) on one GV100 + the basal-ganglia-style procedural memory (pattern nets + A*) | Planned — specialist adapter training is a dream-cycle workload |
 
-The **Id** role is currently unfilled; the fast-instinct pattern-matching function is served by the basal-ganglia-style local-GPU procedural memory (pattern nets + A*) rather than a dedicated LLM slot.
+**Why the Council is the Superego, not Spock:** the internalized voice-of-norms is structurally multi-voice (parental figures, societal rules, ideals) — a single critic LLM was a compressed stand-in. The Council, especially with heterogeneous advocate models from different lineages, captures the actual shape of what Freud meant. The Gemma-on-GPU-0 role shrinks to "on-ramp helper / fallback," not the Superego proper.
 
-Fallback path: when NRP is unavailable, Council and Ego fall back to local llama.cpp on the two GV100s.
+**Why the Ego isn't a single fine-tuned model:** GV100s can't host frontier weights; the NRP managed API can't be fine-tuned; renting a 70B box gets a slightly-sub-frontier model with a very expensive personality transplant. The vMOE answer is cleaner — frontier capability from NRP, identity from local tunable specialists, combined at inference time. The "self" is a synthesis, which is also what Freud's Ego actually is.
+
+## Cognitive ensemble (vMOE)
+
+One routing substrate, `agi.reasoning.vmoe` (promoted from `agi.primer.vmoe` once the Ego cutover lands), backs every cognitive act in the system:
+
+- **Experts are heterogeneous.** The pool mixes **frontier NRP models** (`qwen3`, `kimi`, `glm-4.7`, `minimax-m2`, `gpt-oss`, `olmo`, `gemma`) with **small locally-fine-tuned specialists** on the Atlas GV100s. The NRP side provides capacity we could never match locally; the Atlas side provides weights we actually own and can tune.
+- **Orchestration policies are the same four Primer already uses.** `route(hint)` picks one expert by role tag; `cascade(hint)` falls through on failure; `ensemble(experts, verify)` fans out in parallel and returns the first verified pass; `first_verified` cancels pending calls once a winner arrives. See [`docs/VMOE.md`](docs/VMOE.md).
+- **Health-tracked degradation.** If `glm-4.7` goes slow at 2 am, `HealthTracker` skips it for a 1 h cooldown and reroutes to `qwen3` or `minimax-m2`. Same mechanism the Primer uses today.
+- **Local specialists are fine-tuned in the dreaming window.** QLoRA on the 2.4 M ErisML corpus produces the ErisML voice; QLoRA on Erebus's solved-task code produces the pattern voice; the memory-RAG voice is a small base with live retrieval over pgvector + UKG + sensei wiki. All three fit on the two GV100s with room to spare.
+
+**Retrieval subsystem (new possibility from NRP catalog):** `qwen3-embedding` 8B is now offered as a managed embedding endpoint. This means the ErisML corpus can be embedded once, indexed into pgvector, and retrieval becomes a lookup — no local encoder to train. The "ErisML voice specialist" still earns its keep (value-laden *generation*, not just retrieval), but the memory-RAG layer becomes much cheaper to stand up.
+
+**Why this architecture and not a single big fine-tune:**
+
+| Dimension | Rent 70B + fine-tune | vMOE ensemble |
+|---|---|---|
+| Frontier capability | no (70B is below frontier in 2026) | yes (1T kimi, 397B qwen3) |
+| Fine-tunable identity | yes | yes (small specialists) |
+| Capex | $4–30k box or $500–2500/mo rental | $0 (reuses GV100s) |
+| Policy compliance on NRP | n/a (not on NRP) | clean (managed API is purpose-built for this) |
+| Scales with model progress | upgrade = retrain 70B | upgrade = new model appears on ellm |
+| Voice coherence | single voice, baked in | synthesis across voices |
+| Implementation effort | ~2 quarters | ~weeks (vMOE substrate exists) |
 
 ## Autonomous learning
 
