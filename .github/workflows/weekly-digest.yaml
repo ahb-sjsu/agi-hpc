@@ -1,0 +1,59 @@
+# Setup:
+#   - Repository secret DISCORD_WEBHOOK_URL: incoming webhook URL from Discord
+#     (Server Settings → Integrations → Webhooks)
+#   - GITHUB_TOKEN is provided by Actions; permissions below cover search/issues/commits.
+#     If your org restricts the default token, ensure it can read issues and pull requests.
+#
+# Schedule:
+#   - cron uses UTC. 16:00 UTC is 09:00 Pacific during PDT; during PST it is 08:00 Pacific.
+#   - For a different local time, adjust the cron hour or add a second schedule entry.
+
+name: Weekly Discord digest
+
+on:
+  schedule:
+    - cron: "0 16 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generate digest and post to Discord
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          set -euo pipefail
+          python scripts/weekly_digest.py --prefer-urllib > digest.txt
+          python -c "
+          import json, os, urllib.request
+          url = os.environ.get('DISCORD_WEBHOOK_URL', '').strip()
+          if not url:
+              raise SystemExit(
+                  'DISCORD_WEBHOOK_URL is not set. Add it under Settings → Secrets and variables → Actions.'
+              )
+          with open('digest.txt', encoding='utf-8') as f:
+              content = f.read()
+          if len(content) > 2000:
+              content = content[:1970] + '\n… *(truncated)*'
+          payload = json.dumps({'content': content}).encode('utf-8')
+          req = urllib.request.Request(
+              url,
+              data=payload,
+              headers={'Content-Type': 'application/json'},
+              method='POST',
+          )
+          urllib.request.urlopen(req, timeout=30)
+          "
