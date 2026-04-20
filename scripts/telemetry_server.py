@@ -3090,6 +3090,8 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
                 self._json_response({"error": "mode must be auto|heavy|swarm"}, 400)
         elif self.path == "/api/erebus/chat":
             self._handle_erebus_chat()
+        elif self.path == "/api/erebus/chat/finalize":
+            self._handle_erebus_chat_finalize()
         elif self.path == "/api/erebus/result":
             self._handle_erebus_result()
         else:
@@ -3190,7 +3192,15 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
             log.warning(f"[vision-result] memory write failed: {e}")
 
     def _handle_erebus_chat(self):
-        """Handle chat with Erebus."""
+        """Handle chat with Erebus.
+
+        Beyond producing the assistant reply, this is the write path
+        for the Knowledge Gap Mapping conversation buffer — each turn
+        (user + assistant) is recorded so the dissatisfaction detector
+        can classify the conversation when it finalizes. A lazy sweep
+        at the end of every turn finalizes any conversation that's
+        been idle longer than ``EREBUS_CONV_IDLE_S``.
+        """
         length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(length) if length else b"{}"
         try:
@@ -3201,10 +3211,60 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
         if not message:
             self._json_response({"error": "no message"}, 400)
             return
+        conv_id = data.get("conversation_id") or ""
+        if not conv_id:
+            import uuid as _uuid
+
+            conv_id = f"conv-{_uuid.uuid4().hex[:12]}"
+
         try:
             response = _erebus_chat(message)
-            self._json_response({"response": response})
         except Exception as e:
+            self._json_response({"error": str(e)[:200]}, 500)
+            return
+
+        # Gap Mapping plumbing: record both turns + lazy-sweep for idle
+        # conversations. All fire-and-forget — a hook failure must
+        # never fail the chat response.
+        try:
+            from agi.metacognition.conversation_hook import (
+                record_turn as _record_turn,
+                sweep_idle as _sweep_idle,
+            )
+
+            _record_turn(conv_id, "user", message)
+            _record_turn(conv_id, "assistant", response)
+            _sweep_idle()  # daemon-threaded; returns immediately
+        except Exception as e:  # noqa: BLE001
+            log.warning("gap_hook_failed: %s", str(e)[:200])
+
+        self._json_response({"response": response, "conversation_id": conv_id})
+
+    def _handle_erebus_chat_finalize(self):
+        """Explicit conversation-close endpoint.
+
+        Clients POST ``{"conversation_id": "..."}`` when they know the
+        conversation is over (tab closed, user clicks "new chat", etc).
+        Finalization runs the detector + aggregator in a daemon thread
+        so the HTTP response returns immediately.
+        """
+        length = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(length) if length else b"{}"
+        try:
+            data = json.loads(body)
+        except Exception:
+            data = {}
+        conv_id = data.get("conversation_id") or ""
+        if not conv_id:
+            self._json_response({"error": "conversation_id required"}, 400)
+            return
+        try:
+            from agi.metacognition.conversation_hook import finalize_conversation
+
+            finalize_conversation(conv_id)
+            self._json_response({"ok": True, "conversation_id": conv_id})
+        except Exception as e:  # noqa: BLE001
+            log.warning("chat_finalize_failed: %s", str(e)[:200])
             self._json_response({"error": str(e)[:200]}, 500)
 
     def _handle_training_start(self):
