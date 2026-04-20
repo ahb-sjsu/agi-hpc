@@ -586,12 +586,20 @@ class ARCScientist:
             if wiki_dir.exists():
                 import re as _re
 
+                from agi.common.sensei_note import read_if_verified
+
                 for mdfile in wiki_dir.glob("sensei_task_*.md"):
                     m = _re.search(r"sensei_task_(\d+)", mdfile.stem)
                     if not m:
                         continue
+                    body = read_if_verified(mdfile)
+                    if body is None:
+                        # Unverified notes are drafts and must not influence
+                        # Erebus's hypothesis space. A wrong sensei note is
+                        # worse than no sensei note (see task 381 incident).
+                        continue
                     task_num = str(int(m.group(1)))  # strip leading zeros
-                    self._mentor_notes[task_num] = mdfile.read_text()
+                    self._mentor_notes[task_num] = body
         except Exception:
             pass
 

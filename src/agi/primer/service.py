@@ -191,14 +191,21 @@ def _context_for_task(task_num: int, cfg: Config, task: dict) -> str:
                     f"  diagnosis: {a.get('error', '?')[:200]}\n"
                 )
 
-    # Relevant wiki articles
+    # Relevant wiki articles — verified only; drafts would mislead the
+    # proposer the same way they mislead Erebus (see task 381 incident).
+    from agi.common.sensei_note import read_if_verified
+
     wiki_snips: list[str] = []
     task_note = cfg.wiki_dir / f"sensei_task_{task_num:03d}.md"
-    if task_note.exists():
-        body = task_note.read_text()[:4000]
-        wiki_snips.append(f"### Existing sensei_task_{task_num:03d}.md\n{body}")
+    body = read_if_verified(task_note)
+    if body is not None:
+        wiki_snips.append(
+            f"### Existing sensei_task_{task_num:03d}.md\n{body[:4000]}"
+        )
     for meta in sorted(cfg.wiki_dir.glob("sensei_meta_*.md")):
-        wiki_snips.append(f"### {meta.name}\n{meta.read_text()[:3000]}")
+        meta_body = read_if_verified(meta)
+        if meta_body is not None:
+            wiki_snips.append(f"### {meta.name}\n{meta_body[:3000]}")
     if wiki_snips:
         parts.append("## Wiki context (what Erebus has already been taught)\n")
         parts.extend(wiki_snips)
