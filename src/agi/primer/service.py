@@ -246,8 +246,41 @@ _FRONTMATTER_TMPL = (
 )
 
 
+def _upsert_graph_node(task_num: int, parsed: dict, note_path: Path) -> None:
+    """Upsert the knowledge-graph node for a freshly published sensei note.
+
+    Fire-and-forget: graph writes must never fail the publish path.
+    A gap node with the same id (seeded by the help-queue import in a
+    later phase) is promoted to filled+verified with ``created_at``
+    preserved — exactly the v1 spec's gap→filled transition.
+    """
+    try:
+        from agi.knowledge.graph import normalize_tags, upsert_node
+
+        cls = (parsed.get("class") or "TRANSFORMATION").lower()
+        family = (parsed.get("family") or "").strip() or ""
+        topic = family or cls
+        tag_list = normalize_tags([cls, family, "arc", "primer"])
+        pretty = (family or cls).replace("-", " ").replace("_", " ").strip() or "task"
+        title = f"Task {task_num:03d} — {pretty}"
+        upsert_node(
+            id=f"sensei_task_{task_num:03d}",
+            type="filled",
+            status="active",
+            topic=topic,
+            tags=tag_list,
+            title=title,
+            body_ref=note_path.name,
+            verified=True,
+            source="primer",
+            evidence=[f"primer_task:{task_num:03d}"],
+        )
+    except Exception as e:  # noqa: BLE001 — never fail the publish path
+        log.warning("graph upsert failed for task %s: %s", task_num, e)
+
+
 def _publish_note(task_num: int, parsed: dict, code: str, cfg: Config) -> Path:
-    """Write the sensei note + git commit + push."""
+    """Write the sensei note + graph upsert + git commit + push."""
     cls = (parsed.get("class") or "TRANSFORMATION").lower()
     family = (parsed.get("family") or "").strip() or ""
     tags = ", ".join(t for t in [cls, family or None, "arc", "primer"] if t)
@@ -259,6 +292,9 @@ def _publish_note(task_num: int, parsed: dict, code: str, cfg: Config) -> Path:
     frontmatter = _FRONTMATTER_TMPL.format(task_num=task_num, tags=tags, date=date)
     path = cfg.wiki_dir / f"sensei_task_{task_num:03d}.md"
     path.write_text(frontmatter + body.strip() + "\n")
+    # Upsert knowledge-graph node alongside the wiki write so readers
+    # see graph + file consistently. Errors are warnings only.
+    _upsert_graph_node(task_num, parsed, path)
     # Commit + push
     subprocess.run(["git", "-C", str(cfg.repo_dir), "add", str(path)], check=True)
     msg = f"primer: verified sensei note for task {task_num:03d} ({family or cls})"
