@@ -1,13 +1,11 @@
 ---
 type: sensei_note
 task: 167
-tags: [classification, count-distinct-colors, arc, primer]
+tags: [transformation, count-distinct-colors, arc, primer]
 written_by: The Primer
 written_at: 2026-04-20
 verified_by: run-against-train (all examples pass)
 ---
-
-# Task 167 — Distinct-Color Count Selects a Pattern
 
 ## The rule
 
