@@ -385,6 +385,8 @@ Production deployment on Atlas: [`docs/ATLAS_OPERATIONS.md`](docs/ATLAS_OPERATIO
 | [`docs/METRICS_INVENTORY.md`](docs/METRICS_INVENTORY.md) | What's measured / logged today, with endpoints and gaps |
 | [`docs/METRICS_CONTRIBUTOR_GUIDE.md`](docs/METRICS_CONTRIBUTOR_GUIDE.md) | Conventions for adding metrics, logs, endpoints |
 | [`docs/AGI_ROADMAP.md`](docs/AGI_ROADMAP.md) | Phase status, pending work, long-horizon plan |
+| [`docs/UKG_ROLLOUT.md`](docs/UKG_ROLLOUT.md) | Runbook for cutting Primer retrieval over to the Unified Knowledge Graph |
+| [`docs/KNOWLEDGE_GAP_MAPPING_v1_spec.md`](docs/KNOWLEDGE_GAP_MAPPING_v1_spec.md) | v1 spec for dissatisfaction detection + gap aggregation (locked, not yet implemented) |
 | [`docs/CHANGELOG.md`](docs/CHANGELOG.md) | Per-date ship log |
 
 ## Citation

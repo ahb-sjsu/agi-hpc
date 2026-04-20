@@ -488,6 +488,8 @@ Maintain an explicit, structured map of "things I've been asked about but answer
 - The dreaming subsystem prioritizes filling these gaps during consolidation
 - The curiosity module (Phase 4) autonomously seeks information in gap areas
 
+**Status (2026-04-19):** v1 spec locked. See [`KNOWLEDGE_GAP_MAPPING_v1_spec.md`](KNOWLEDGE_GAP_MAPPING_v1_spec.md). The Unified Knowledge Graph (phases 1–6, delivered) is the storage substrate — dissatisfaction-derived gaps are `type=gap` nodes with `source="dissatisfaction"`. A sidecar `dissatisfaction_events.jsonl` carries the raw audit trail. v1 delivery is a 7-phase sequence: detector → events log → aggregator → conversation hook → dashboard → clustering proposals → dreaming priority. Curiosity (Phase 4 of this roadmap item) is explicitly out of scope for v1 — reserved for a follow-up spec.
+
 ### 2.4 Integration with Geometric Ethics
 
 The geometric ethics framework (Bond, 2026) provides a mathematical structure for moral uncertainty:

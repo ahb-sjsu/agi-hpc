@@ -238,6 +238,10 @@ Location: `src/agi/metacognition/` + `src/agi/dreaming/`.
 - **Adjuster** — auto-tunes `max_tokens`, safety thresholds, routing balance.
 - **Dreaming consolidator** — runs during idle windows (not fixed 2–4 am). QLoRA fine-tuning produces adapters on `/archive/neurogolf/adapters`, cached on NRP PVC. Currently blocked on chat-ego cutover for a fine-tunable base model (see [`AGI_ROADMAP.md`](AGI_ROADMAP.md) Phase 2–3).
 
+### Knowledge Gap Mapping (planned)
+
+Roadmap item 2.3 — v1 spec locked, not yet implemented. Detects user dissatisfaction at conversation-finalization time, clusters failures by topic, and feeds the dreaming prioritizer. Storage is the existing Unified Knowledge Graph (`type=gap`, `source="dissatisfaction"`) plus a sidecar `/archive/neurogolf/dissatisfaction_events.jsonl` for raw audit. See [`KNOWLEDGE_GAP_MAPPING_v1_spec.md`](KNOWLEDGE_GAP_MAPPING_v1_spec.md) for the full design, locked decisions, and 7-phase delivery plan.
+
 ---
 
 ## Infrastructure

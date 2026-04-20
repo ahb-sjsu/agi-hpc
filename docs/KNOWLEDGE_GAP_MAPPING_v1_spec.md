@@ -1,62 +1,72 @@
 # Knowledge Gap Mapping v1 — Implementation Specification
 
-**Status:** draft for review (authored 2026-04-19 after the UKG v1 spec was locked).
-**Purpose:** define a shippable v1 for detecting, storing, clustering, and prioritizing "things Atlas has been asked about but answered poorly," using the Unified Knowledge Graph as the storage substrate.
+**Status:** decisions locked 2026-04-19. Ready for Phase 1 coding.
+**Purpose:** define a shippable v1 for detecting, storing, clustering, and prioritizing "things Atlas has been asked about but answered poorly," using the Unified Knowledge Graph as the storage substrate and a parallel sidecar event log as the raw audit trail.
 
-This spec mirrors the structure of `unified_knowledge_graph_v1_spec.docx` and is subject to the same lock-before-code review cadence.
+This spec is scoped against the UKG v1 spec (`reference_ukg_v1_spec`). Only decisions not already settled there appear below.
 
 ## Design intent
 
-Atlas today accumulates verified knowledge (sensei notes) and open tasks (help queue). It does **not** record conversations where the user expressed dissatisfaction, asked for clarification, or corrected Atlas. Roadmap item 2.3 ("Knowledge Gap Mapping") calls for surfacing those signals so the dreaming subsystem can prioritize consolidation around weak areas and a future curiosity module can autonomously seek information in those gaps.
+Atlas today accumulates verified knowledge (sensei notes) and open tasks (help queue). It does not record conversations where the user expressed dissatisfaction, asked for clarification, or corrected Atlas. Roadmap item 2.3 ("Knowledge Gap Mapping") calls for surfacing those signals so the dreaming subsystem can prioritize consolidation around weak areas and a future curiosity module can autonomously seek information in those gaps.
 
-**Design principle:** reuse the UKG. A dissatisfaction-derived gap is a `type=gap` node with `source="dissatisfaction"`. The graph is already shaped to hold it. What we are adding is a **producer** (the detector) and **consumers** (clustering, dreaming prioritizer, dashboard), not a second store.
+**Core principle: reuse the UKG; do not build a second store.**
 
-**Load-bearing invariants (carried over from the UKG spec):**
+A dissatisfaction-derived gap is a `type=gap` node with `source="dissatisfaction"` in the existing Unified Knowledge Graph. What this spec adds is a **producer** (the detector), a **sidecar event log** (raw audit trail), and **consumers** (clustering, dashboard, dreaming prioritizer). Storage model:
+
+| Layer | Contents | Shape |
+|---|---|---|
+| UKG node | lightweight aggregate index, one per `topic_key`, with counters + timestamps | JSONL (existing graph) |
+| Sidecar event log | raw audit trail, one record per classification event | JSONL (new) |
+| UKG node → events | `evidence[]` carries `event:<event_id>` handles, never free text | — |
+
+This matches the UKG design philosophy: nodes are cheap indexes; everything else lives in a parallel log the node points at.
+
+**Load-bearing invariants (carried from the UKG spec):**
 
 - Only `filled ∧ verified ∧ active` nodes are teaching context. Dissatisfaction gaps are never fed back to a generator as truth.
 - Append-only JSONL with full-state snapshots per write.
 - The centralized trust gate (`is_context_eligible`) is the single place that decides what is safe for a generator to consume.
 
-## 1. Scope and decisions
+## 1. Settled decisions (v1)
 
-Items marked **D** are decisions I propose; they are open for your review and lock.
-
-1. **D — Detector runs post-conversation, not inline.** End-of-conversation hook reads the final N turns, classifies the outcome, and emits zero or one gap node per conversation. No inline token-level cost during chat.
-2. **D — Classification is three-way, not binary.** `{satisfied, neutral, unsatisfied}`. Only `unsatisfied` triggers a gap emit. `neutral` is explicitly left alone — the silence of "no strong signal" is different from "user was happy."
-3. **D — One gap per conversation, keyed by conversation id.** Avoids exploding the graph when a single hostile conversation has multiple clarification requests. The gap's `evidence` field carries each individual signal (`conv:abc123:turn-4`, `conv:abc123:turn-7`).
-4. **D — Topic extraction is free-text, clustered periodically.** Matches the UKG's `topic` + `topic_key` model. Detector writes whatever string best describes the topic; a separate nightly clustering job collapses near-duplicates (Levenshtein or embedding-similarity). Controlled vocab is explicitly rejected (UKG lesson #2).
-5. **D — Detector is a small LLM call, not a classifier heuristic.** The same ego/superego/council stack is already warm. A lightweight prompt to one of them is cheaper than building and maintaining a dedicated classifier, and it can extract the topic in the same call.
-6. **D — Gaps persist indefinitely; staleness is computed, not destructive.** A `last_signal_at` timestamp on each node drives a `staleness_score` in the dashboard. Old gaps fade visually but are not deleted — deletion loses signal (UKG lesson #4).
-7. **D — Atlas-originated conversations only for v1.** The Erebus chat handler (`_erebus_chat` in `scripts/telemetry_server.py`) is the one in-scope source. Other producers (a future Primer `/ask` endpoint, Claude-Code sessions, Jupyter history) are out of scope until v2 — the detector module is written with a stable `classify_conversation(turns, …)` signature so new sources plug in without a protocol change.
+1. **Detector runs post-conversation, not inline.** Hook sits on the conversation finalization path (session close or inactivity timeout), reads the final N turns, classifies the outcome, and emits at most one event. No inline token-level cost during chat.
+2. **Classification is three-way plus a failure mode.** `verdict in {"satisfied", "neutral", "unsatisfied"}`. A detector that cannot produce a usable result returns `None`. `neutral` means the detector ran successfully and found no strong signal — distinct from a classifier failure.
+3. **Topic-keyed aggregation; one event per conversation.** The UKG node is keyed by `gap_<topic_key>` and aggregates every dissatisfaction event that shares that topic. Each conversation contributes at most one event. The graph grows with topics, not with conversations.
+4. **Topic extraction is free-text, clustered periodically.** Detector returns `topic` only; `topic_key = normalize_topic_key(topic)` is computed once in the emitter so canonicalization lives in exactly one place. A separate nightly clustering job proposes near-duplicate merges.
+5. **Detector is a small LLM call.** Default model is Qwen3 (fast, cheap, already warm on NRP). Env override: `EREBUS_DETECTOR_MODEL`. Every event records `detector_model` + `detector_version` so drift and A/B comparisons are tractable without digging into logs.
+6. **Minimum-confidence gate.** Emit only if `verdict == "unsatisfied" AND score >= 0.7`. Weak model noise otherwise accumulates into false-positive topics. Threshold is tunable in a config constant.
+7. **Classify every conversation; no sampling.** Volume is low enough that the small compute overhead is cheaper than the complexity of interpreting sampled counts and priorities.
+8. **Gaps persist indefinitely; staleness is computed, not destructive.** The UKG node carries `last_signal_at`, `signal_count`, `first_signal_at`. The dashboard fades stale gaps visually but never deletes — deletion loses signal.
+9. **Atlas-originated conversations only for v1.** The Erebus chat handler (`_erebus_chat` in `scripts/telemetry_server.py`) is the one in-scope source. Other producers (a future Primer `/ask` endpoint, Claude Code sessions) plug into the stable `classify_conversation` signature without protocol change.
+10. **Dashboard: extend the existing UKG panel.** No new card.
 
 ## 2. Detector contract
-
-A single function with a stable signature. Implementations can be swapped out later (LLM → fine-tuned classifier → rules) without touching the graph.
 
 ```python
 def classify_conversation(
     *,
     conversation_id: str,
-    turns: list[dict],   # [{role: "user"|"assistant", content: str, ts: float}]
-    model_used: str,     # ego backend at the time — observability only
+    turns: list[dict],       # [{role, content, ts}, ...]
+    ego_model: str,          # the ego backend that served this conversation
 ) -> ConversationSignal | None:
     ...
 ```
 
-`ConversationSignal` returns:
+### ConversationSignal
 
-| Field | Type | Purpose |
+| Field | Type | Notes |
 |---|---|---|
-| `verdict` | `"satisfied" | "neutral" | "unsatisfied"` | three-way classification |
-| `topic` | `str` | human-readable topic description |
-| `topic_key` | `str` | derived via graph.normalize_topic_key |
-| `signal_turns` | `list[int]` | indices of turns that carried the dissatisfaction signal |
-| `rationale` | `str` | short free-text explanation (stored for audit, not re-fed to generator) |
-| `score` | `float` | 0..1 strength of the verdict; 1.0 for overt dissatisfaction |
+| `verdict` | `"satisfied" \| "neutral" \| "unsatisfied"` | classifier's call |
+| `topic` | `str` | free-text description; normalization is emitter's job |
+| `signal_turns` | `list[int]` | turn indices carrying the signal |
+| `rationale` | `str` | short free-text audit; stored in sidecar, NEVER re-fed to a generator |
+| `score` | `float` | 0..1 confidence; 1.0 for overt dissatisfaction |
+| `detector_model` | `str` | model id used for this classification |
+| `detector_version` | `str` | git short-sha or semver of the detector code |
 
-Returning `None` means "inconclusive — do not emit a gap." Use this liberally; false-negatives are fine, false-positives pollute the graph.
+Returning `None` means "classifier failure or insufficient evidence" — use liberally, false-negatives are fine, false-positives pollute the graph.
 
-### Detector prompt sketch
+### Prompt sketch
 
 ```
 System: You are a conversation auditor for Atlas AI. Classify whether
@@ -71,37 +81,96 @@ Rules:
 
 User: <last 10 turns of the conversation>
 
-Return: {"verdict": "...", "topic": "...", "signal_turns": [...], "rationale": "..."}
+Return: {"verdict": "...", "topic": "...", "signal_turns": [...],
+         "rationale": "...", "score": 0..1}
 ```
 
-## 3. Gap emitter
+## 3. Sidecar event log
 
-Thin wrapper over `agi.knowledge.graph.upsert_node`:
+Path: `/archive/neurogolf/dissatisfaction_events.jsonl`. Append-only, one JSON object per line, same atomicity discipline as the UKG log.
+
+### Event schema
+
+| Field | Example |
+|---|---|
+| `event_id` | UUIDv4 or `conv-abc123-sig` — stable, dedup-able |
+| `conversation_id` | opaque string from the chat handler |
+| `topic` | `"why is matrix rank not factorization"` |
+| `topic_key` | `"why-is-matrix-rank-not-factorization"` |
+| `signal_turns` | `[4, 7]` |
+| `rationale` | `"user repeated question after assistant reply"` |
+| `score` | `0.82` |
+| `ts` | `1713574800` |
+| `detector_model` | `"qwen3"` |
+| `detector_version` | `"gap-det-0.1.0"` |
+
+### Module surface
 
 ```python
-def emit_gap(sig: ConversationSignal, *, graph_path: Path | None = None) -> None:
-    if sig.verdict != "unsatisfied":
-        return
-    evidence = [f"conv:{sig.conversation_id}:turn-{i}" for i in sig.signal_turns]
-    upsert_node(
-        id=f"gap_{sig.topic_key}",   # shared across conversations with same topic
-        type="gap",
-        status="active",
-        topic=sig.topic,
-        topic_key=sig.topic_key,
-        tags=["dissatisfaction", *_auto_tags(sig)],
-        title=f"[gap] {sig.topic}",
-        body_ref=None,
-        verified=False,
-        source="dissatisfaction",
-        evidence=evidence,
-        path=graph_path,
-    )
+def append_event(event: dict) -> None: ...
+def iter_events(*, since: int | None = None) -> Iterator[dict]: ...
+def event_exists(event_id: str) -> bool: ...
 ```
 
-Unlike help-queue-sourced gaps (one per task number), dissatisfaction gaps are **keyed by topic**. Each new conversation signaling the same topic adds to the node's `evidence[]` rather than creating a new node, so a frequently-asked-but-poorly-answered topic accumulates weight naturally.
+`append_event` enforces a schema check and a conversation-id dedup gate (one event per conversation — a second event for the same `conversation_id` is rejected with a warning, preserving the "one event per conversation" invariant).
 
-## 4. Clustering
+## 4. Event aggregator (replaces "gap emitter")
+
+What this module *does* is: accept one dissatisfaction event, upsert a topic-keyed UKG aggregate node. "Emitter" was the wrong mental model — the module is an aggregator.
+
+```python
+def aggregate_event(sig: ConversationSignal, *, graph_path: Path | None = None) -> str | None:
+    """Append the event to the sidecar and upsert the UKG aggregate node.
+
+    Returns the UKG node id on success, None when the event is
+    rejected (verdict != unsatisfied, score below threshold, detector
+    returned None upstream, or conversation_id already has an event).
+    """
+```
+
+Behavior:
+
+1. Reject if `sig.verdict != "unsatisfied"` or `sig.score < 0.7`.
+2. Compute `topic_key = normalize_topic_key(sig.topic)`.
+3. Compose the event record, write to the sidecar (skip if duplicate conversation_id).
+4. Upsert the UKG node `id = f"gap_{topic_key}"` with:
+   - `type="gap"`, `status="active"`, `source="dissatisfaction"`
+   - `tags = ["dissatisfaction", *auto_tags_from_topic(topic_key)]`
+   - `title = f"[gap] {topic}"`
+   - `body_ref = None`, `verified = False`
+   - `evidence = [f"event:{event_id}"]` (union-appended per the UKG spec)
+5. Derive node-level aggregate fields from the event stream at upsert time:
+   - `first_signal_at` (preserved from the first event ever)
+   - `last_signal_at` (the incoming event's `ts`)
+   - `signal_count` (current event count for this topic_key)
+
+These aggregate fields are carried in the UKG node record itself — the existing append-only-snapshot semantics handle them correctly.
+
+## 5. Consumers
+
+### 5.1 Dashboard (extension of Phase 5 UKG panel)
+
+The existing `/api/ukg/status` handler adds two cheap rows:
+
+- **Top dissatisfaction topics** — a view over `source=="dissatisfaction"` gaps, ranked by `signal_count` (primary) and `last_signal_at` (tiebreaker). Implementation: a second call to `graph.summary(...)` with a `source_filter="dissatisfaction"` kwarg, returning a parallel `top_dissatisfaction_topics` list.
+- **Recent dissatisfaction events** — last N events from the sidecar, each as conversation-id + topic + age.
+
+Ranking is on the materialized node fields (`signal_count`, `last_signal_at`). The dashboard does not scan `evidence[]` to count; that would be O(n) per render.
+
+### 5.2 Dreaming prioritizer
+
+```python
+def dreaming_priority(path: Path | None = None, *, top_n: int = 5) -> list[str]:
+    """Return top-N topic_keys to rehearse in the next dream cycle."""
+```
+
+Ranks `type=gap ∧ source=="dissatisfaction"` by `signal_count * recency_weight(last_signal_at)` where `recency_weight` decays exponentially over days. Dreaming reads the list, fetches related sensei notes via the UKG topic index, and composes synthesis prompts for the next consolidation round.
+
+### 5.3 Curiosity (out of scope for v1)
+
+Reserved for roadmap Phase 4 and a separate spec.
+
+## 6. Clustering
 
 A nightly job reduces near-duplicate topic keys:
 
@@ -110,81 +179,55 @@ def cluster_topics(path: Path | None = None, *, threshold: float = 0.85) -> list
     """Return equivalence classes of topic_keys that should be merged."""
 ```
 
-v1 uses character-level Jaro-Winkler distance on the topic_key strings. v2 may upgrade to sentence-embedding similarity from the existing PCA-384 index, but only if Jaro-Winkler proves insufficient in practice.
+v1 uses character-level Jaro-Winkler on `topic_key` strings. v2 may upgrade to sentence-embedding similarity from the existing PCA-384 index, gated on evidence that Jaro-Winkler is insufficient in practice.
 
-Clusters are reported, not auto-merged. The dashboard shows proposed merges; an operator confirms each one. This keeps the graph's history clean and reversible.
+**Clusters are reported, not auto-merged.** The dashboard surfaces proposed merges; an operator confirms each one. Merge-lineage semantics (how the resulting node preserves provenance of its constituents) are explicitly **deferred to a v2 spec** — v1 clustering reports proposals only and leaves the graph untouched until an operator acts.
 
-## 5. Consumers
-
-### 5.1 Dashboard (extension of Phase 5 card)
-
-The existing "Knowledge Graph" panel gains two new rows:
-
-- **Top dissatisfaction topics** — a filtered view of `top_topics_by_gap` restricted to `source=="dissatisfaction"`, sorted by `evidence[]` length (weight).
-- **Recent dissatisfaction signals** — last 5 events, each one a line with conversation id + topic + age.
-
-Implementation: extend `graph.summary` to take an optional `source_filter` kwarg and return a parallel `top_dissatisfaction_topics` list.
-
-### 5.2 Dreaming prioritizer
-
-The dreaming subsystem currently consolidates memory without awareness of where Atlas is weak. The v1 integration:
-
-```python
-def dreaming_priority(path: Path | None = None, *, top_n: int = 5) -> list[str]:
-    """Return the top-N topic_keys to rehearse during the next dream cycle."""
-```
-
-Ranks `type=gap ∧ source=dissatisfaction` nodes by `len(evidence) * recency_weight(last_signal_at)`. Dreaming reads this list, retrieves relevant sensei notes via the UKG's topic index, and generates synthesis prompts for the next consolidation round.
-
-### 5.3 Curiosity (Phase 4, explicitly out of scope here)
-
-Reserved for a future spec. The curiosity module will query the same gap list and autonomously seek information (web search, paper retrieval, tool use) to close the gap. Not in v1.
-
-## 6. Delivery phases for v1
+## 7. Delivery phases for v1
 
 | Phase | Component | Deliverable |
 |---|---|---|
 | 1 | Detector module | `src/agi/metacognition/dissatisfaction.py` + unit tests against recorded conversations. |
-| 2 | Gap emitter | `src/agi/metacognition/gap_emitter.py` wired to UKG; idempotent re-runs. |
-| 3 | Conversation hook | Hook the detector into `_erebus_chat` in `scripts/telemetry_server.py` so it runs at end-of-turn. |
-| 4 | Clustering | `src/agi/knowledge/clustering.py` + nightly cron job + dashboard review surface. |
-| 5 | Dashboard rows | Extend `graph.summary` + `schematic.html` UKG panel. |
-| 6 | Dreaming priority | `dreaming_priority()` + integration into the existing dream scheduler. |
+| 2 | Events log | `src/agi/metacognition/dissatisfaction_events.py` — append/read/dedup + tests. |
+| 3 | Event aggregator | `src/agi/metacognition/gap_aggregator.py` — threshold gate, sidecar write, UKG upsert (with `signal_count`, `first_signal_at`, `last_signal_at` maintained on the node). |
+| 4 | Conversation hook | Hook the detector into the **conversation finalization path** in `scripts/telemetry_server.py` (triggers on session close or inactivity timeout), emitting at most one event per conversation. |
+| 5 | Dashboard rows | Extend `graph.summary(source_filter=...)` + the existing UKG panel in `schematic.html`. |
+| 6 | Clustering proposal | `src/agi/knowledge/clustering.py` + nightly cron + dashboard review surface (read-only, no auto-merge). |
+| 7 | Dreaming priority | `dreaming_priority()` + integration into the existing dream scheduler. |
 
 Each phase is a separate commit, tested in isolation, green on CI before the next.
 
-## 7. Out of scope for v1
+## 8. Out of scope for v1
 
-- Non-Atlas conversation sources (Claude-Code sessions, Jupyter, shell history).
-- Auto-merge of topic clusters (human-in-the-loop only for v1).
+- Non-Atlas conversation sources (Claude Code sessions, Jupyter, shell history).
+- Auto-merge of topic clusters (human-in-the-loop only).
+- Merge-lineage semantics for cluster operations (deferred to v2 spec).
 - Curiosity module (Phase 4 of the roadmap, separate spec).
-- Sentiment embedding models (Jaro-Winkler for clustering suffices; upgrade gated on data).
+- Sentence-embedding clustering (Jaro-Winkler for v1; upgrade gated on data).
 - Re-classifying historical conversations (v1 is forward-looking only).
 
-## 8. Acceptance criteria
+## 9. Acceptance criteria
 
-1. A fresh conversation that ends in user dissatisfaction produces exactly one `gap` node with `source="dissatisfaction"`.
-2. A second conversation on the same topic appends to the existing node's `evidence[]` rather than creating a duplicate.
-3. A satisfied or neutral conversation produces zero gap nodes.
-4. The nightly clustering job reports proposed merges without mutating the graph, and operator-confirmed merges produce valid node lineage.
-5. The dashboard surfaces top dissatisfaction topics ordered by weighted evidence count.
-6. The dreaming priority list is stable across two dreamless polls (no noise in ordering) and responds to a fresh dissatisfaction signal by re-prioritizing within one tick.
-7. No dissatisfaction-sourced gap is ever returned by `is_context_eligible()` — the existing trust gate holds.
+1. A conversation that ends in user dissatisfaction produces **exactly one dissatisfaction event** (sidecar append) and updates **exactly one topic-keyed gap node** (UKG upsert).
+2. Reprocessing the same conversation is idempotent: no duplicate event, no duplicate `evidence[]` handle on the node.
+3. A satisfied or neutral conversation produces zero events and zero graph mutations.
+4. A missing or failed detector result (detector returned `None`) produces zero events and zero graph mutations.
+5. Topic normalization is deterministic: semantically identical `topic` strings normalize to the same `topic_key`.
+6. The UKG node's `signal_count`, `first_signal_at`, and `last_signal_at` are correct after N events for the same topic.
+7. Dashboard ranking is based on the node-level `signal_count` and `last_signal_at` fields — never on a full scan of `evidence[]`.
+8. No dissatisfaction-sourced gap is ever returned by `is_context_eligible()`.
+9. The clustering job reports proposed merges without mutating the graph. (Merge semantics themselves are out of scope for v1.)
+10. The dreaming priority list is stable across two tickless polls and re-prioritizes within one tick when a fresh dissatisfaction signal arrives for a high-weighted topic.
 
-## 9. Open questions for review
+## 10. Recommended first tests
 
-1. **Detector model choice.** Ego (GLM-4.7) is flagship but expensive per call. Qwen3 is faster and cheaper. Propose: default to Qwen3, with an `EREBUS_DETECTOR_MODEL` env override. OK?
-2. **Conversation sampling.** Should we classify every conversation, or sample (e.g., 1 in 5)? Lean: classify every conversation — cost is bounded by chat volume, which is not high, and missing a real signal is worse than the small compute overhead.
-3. **Storage format for the raw rationale.** Option A: stored in `evidence[]` as free text (cheap, but evidence[] was designed for provenance handles, not content). Option B: a parallel `dissatisfaction_events.jsonl` keyed by conversation id that the graph references via `evidence[]`. Lean: Option B — respects the UKG node-as-lightweight-index principle.
-4. **Gap node id scheme.** `gap_<topic_key>` shares nodes across conversations. Alternative: `gap_conv_<conversation_id>` makes each conversation its own node. Lean: topic-keyed — conversations-as-their-own-nodes would miss the "frequently asked" signal that makes clustering useful.
-5. **Dashboard card or panel extension?** Lean: extension of existing UKG panel, not a new card. Keeps the dashboard from fragmenting.
-
-## 10. Recommended first tests (implementation sequence)
-
-1. Classify a known-satisfied conversation → `verdict=="satisfied"`, no emit.
-2. Classify a known-unsatisfied conversation → gap emitted with correct topic.
-3. Two unsatisfied conversations on the same topic → one node with two evidence entries.
-4. Two unsatisfied conversations on different topics → two distinct nodes.
-5. Verify the emitted gap is excluded from `is_context_eligible()` — no leak path.
-6. Clustering: three near-duplicate topic keys collapse to one proposed merge.
-7. Dreaming priority on an empty graph returns `[]` without error.
+1. Classify a known-satisfied conversation → `verdict=="satisfied"`, zero emits.
+2. Classify a known-unsatisfied conversation above threshold → one event, one node, `signal_count == 1`.
+3. Two unsatisfied conversations on the same topic → two events, one node, `signal_count == 2`, `first_signal_at` preserved from the earlier, `last_signal_at` matches the later.
+4. Two unsatisfied conversations on different topics → two events, two distinct nodes.
+5. Unsatisfied verdict with `score < 0.7` → zero emits.
+6. Detector returns `None` → zero emits, zero graph mutations.
+7. Aggregator called twice with the same `conversation_id` → one event, no duplicate; warning logged.
+8. Emitted gap never satisfies `is_context_eligible()` regardless of other fields.
+9. `cluster_topics()` on three near-duplicate keys returns one proposed merge; the graph is unchanged.
+10. `dreaming_priority()` on an empty graph returns `[]` without error.

@@ -1,5 +1,13 @@
 # Changelog — Atlas AI / AGI-HPC
 
+## 2026-04-19/20 — Unified Knowledge Graph (v1 shipped) + Gap Mapping spec locked
+
+**Major: UKG v1 shipped.** A single append-only JSONL (`/archive/neurogolf/knowledge_graph.jsonl`) where filled sensei notes and open gaps are both first-class nodes. Six phases delivered in order — schema + store (`src/agi/knowledge/graph.py`), wiki backfill (`backfill.py` + CLI), Primer writer hook (`_publish_note` now upserts a graph node alongside every wiki publish), help-queue → gap import (tick-level sync via `gap_import.py`), dashboard card (`/api/ukg/status` + new panel), and context-reader cutover flag (`EREBUS_CONTEXT_READER=wiki|graph`). The trust gate `is_context_eligible` centralizes the `filled ∧ verified ∧ active ∧ body-exists-on-disk` rule so no teaching surface ever re-encodes it ad-hoc. See [`docs/UKG_ROLLOUT.md`](UKG_ROLLOUT.md) for the cutover runbook.
+
+**Spec locked: Knowledge Gap Mapping v1** ([`KNOWLEDGE_GAP_MAPPING_v1_spec.md`](KNOWLEDGE_GAP_MAPPING_v1_spec.md)). Roadmap item 2.3 scoped against the UKG — dissatisfaction-derived gaps are `type=gap` nodes with `source="dissatisfaction"` and a sidecar `dissatisfaction_events.jsonl` for raw audit. 10 acceptance criteria; 7-phase delivery plan (detector → events log → aggregator → conversation hook → dashboard rows → clustering proposals → dreaming priority). Curiosity module (Phase 4 of the roadmap item) explicitly deferred to a follow-up spec.
+
+**Dashboard: Primer panel enriched.** Tasks taught, per-expert verify pass/fail, latency histogram (6 buckets, including a timeout-or-error overflow). Fed by a new append-only `primer_events.jsonl` — one event per expert response so the histogram survives daemon restarts. Dashboard also gains a first-class "Knowledge Graph" card with counts by type, fill-rate stacked bar, top gap topics, and recent fills.
+
 ## 2026-04-19 — The Primer, vMOE, and regression guards
 
 **Major: The Primer shipped.** Always-on Claude-style tutor for Erebus, inspired by Stephenson's *Young Lady's Illustrated Primer*. Watches the help queue, reads wiki + episodic memory for context, calls a **virtual Mixture-of-Experts** ensemble of frontier LLMs in parallel, verifies each returned `transform(grid)` against `task.train`, and publishes verified sensei notes to the wiki with git commit + push. See [`docs/THE_PRIMER.md`](THE_PRIMER.md).
