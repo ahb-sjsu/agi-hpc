@@ -513,9 +513,27 @@ async def _process_one(tn: int, cfg: Config, moe: vMOE) -> bool:
     return False
 
 
+def _refresh_gaps_from_help_queue(cfg: Config) -> None:
+    """Sync UKG gap nodes with Erebus's help queue. Fire-and-forget.
+
+    Called at the top of every tick so new stuck-task questions appear
+    as gaps without waiting for a daemon restart. Idempotent — skips
+    entries that are already filled or whose gap is up-to-date.
+    """
+    try:
+        from agi.knowledge.gap_import import import_help_queue
+
+        rep = import_help_queue(cfg.help_path)
+        if rep.imported or rep.refreshed or rep.failed:
+            log.info("gap_sync: %s", rep.summary())
+    except Exception as e:  # noqa: BLE001 — never fail the tick
+        log.warning("gap_sync_failed: %s", e)
+
+
 async def tick(cfg: Config, moe: vMOE) -> int:
     """One polling tick: process as many stuck tasks as verify-publish
     per tick (capped at 3 to avoid runaway wiki commits)."""
+    _refresh_gaps_from_help_queue(cfg)
     picks = _pick_stuck_tasks(cfg)
     if not picks:
         log.info("tick: no stuck tasks ready to process")
