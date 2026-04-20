@@ -39,7 +39,7 @@ def transform(grid):
 This belongs to the **most-frequent-color-fill** primitive family. The pattern consists of three steps:
 
 1. **Global aggregation**: Scan the entire input grid to compute a statistic (color frequency distribution)
-2. **Winner selection**: Pick the color with the maximum count (ties are resolved by Counter's arbitrary but deterministic ordering)
+2. **Winner selection**: Pick the color with the maximum count
 3. **Uniform expansion**: Replicate that single winning value across all output positions
 
 This generalizes to any grid size and any color palette because it depends only on counting frequencies, not on spatial relationships, specific color values, or geometric patterns. The output shape always matches the input shape (TRANSFORMATION class), making this a shape-preserving fill operation driven entirely by global color statistics.
