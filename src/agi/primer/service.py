@@ -194,26 +194,108 @@ def _context_for_task(task_num: int, cfg: Config, task: dict) -> str:
 
     # Relevant wiki articles — verified only; drafts would mislead the
     # proposer the same way they mislead Erebus (see task 381 incident).
-    from agi.common.sensei_note import read_if_verified
-
-    wiki_snips: list[str] = []
-    task_note = cfg.wiki_dir / f"sensei_task_{task_num:03d}.md"
-    body = read_if_verified(task_note)
-    if body is not None:
-        wiki_snips.append(f"### Existing sensei_task_{task_num:03d}.md\n{body[:4000]}")
-    for meta in sorted(cfg.wiki_dir.glob("sensei_meta_*.md")):
-        meta_body = read_if_verified(meta)
-        if meta_body is not None:
-            wiki_snips.append(f"### {meta.name}\n{meta_body[:3000]}")
-    if wiki_snips:
+    # Source is switched by EREBUS_CONTEXT_READER (wiki|graph, default wiki).
+    snips = _context_snippets(task_num, cfg)
+    if snips:
         parts.append("## Wiki context (what Erebus has already been taught)\n")
-        parts.extend(wiki_snips)
+        parts.extend(snips)
 
     parts.append(
         "\n## Your task\n"
         "Write a verified sensei note following the output format in the system prompt."
     )
     return "\n".join(parts)
+
+
+def _wiki_context_snippets(task_num: int, cfg: Config) -> list[str]:
+    """Legacy retrieval: glob the wiki dir for verified task + meta notes.
+
+    Reads only notes whose frontmatter carries a ``verified_by:`` field
+    (the Primer's loader-side safety rule). Task 381 incident: an
+    unverified draft note misled the ensemble, so this filter is load-
+    bearing.
+    """
+    from agi.common.sensei_note import read_if_verified
+
+    out: list[str] = []
+    task_note = cfg.wiki_dir / f"sensei_task_{task_num:03d}.md"
+    body = read_if_verified(task_note)
+    if body is not None:
+        out.append(f"### Existing sensei_task_{task_num:03d}.md\n{body[:4000]}")
+    for meta in sorted(cfg.wiki_dir.glob("sensei_meta_*.md")):
+        meta_body = read_if_verified(meta)
+        if meta_body is not None:
+            out.append(f"### {meta.name}\n{meta_body[:3000]}")
+    return out
+
+
+def _graph_context_snippets(task_num: int, cfg: Config) -> list[str]:
+    """Graph-backed retrieval: query the UKG for eligible nodes and read
+    their body files.
+
+    Eligibility gate is centralized in
+    ``agi.knowledge.graph.is_context_eligible``: a node must be
+    ``filled ∧ verified ∧ active`` and its ``body_ref`` must exist on
+    disk. Gap/stub/unverified nodes are visible to dashboards but are
+    never fed to the generator as truth.
+
+    Logs a warning if the graph returns zero eligible snippets for this
+    task — that's the signal that the graph is empty, the wiki backfill
+    hasn't run, or the body files are missing. Without this the graph
+    reader would silently return no context and make the Primer look
+    broken.
+    """
+    from agi.knowledge.graph import get_node, is_context_eligible, query_nodes
+
+    out: list[str] = []
+    task_id = f"sensei_task_{task_num:03d}"
+    task_node = get_node(task_id)
+    if task_node is not None and is_context_eligible(task_node, wiki_root=cfg.wiki_dir):
+        try:
+            body = (cfg.wiki_dir / task_node["body_ref"]).read_text(encoding="utf-8")
+            out.append(f"### Existing {task_node['body_ref']}\n{body[:4000]}")
+        except OSError as e:
+            log.warning("graph_context: cannot read %s: %s", task_node["body_ref"], e)
+
+    # Meta notes — cross-cutting wisdom, always included when eligible.
+    for meta in query_nodes(type="filled", verified=True, status="active"):
+        nid = meta.get("id") or ""
+        if not nid.startswith("sensei_meta_"):
+            continue
+        if nid == task_id:  # already included above
+            continue
+        if not is_context_eligible(meta, wiki_root=cfg.wiki_dir):
+            continue
+        try:
+            body = (cfg.wiki_dir / meta["body_ref"]).read_text(encoding="utf-8")
+        except OSError:
+            continue
+        out.append(f"### {meta['body_ref']}\n{body[:3000]}")
+
+    if not out:
+        log.warning(
+            "graph_context: zero eligible snippets for task %s "
+            "(graph empty, backfill missing, or body files absent?)",
+            task_id,
+        )
+    return out
+
+
+def _context_snippets(task_num: int, cfg: Config) -> list[str]:
+    """Dispatch to wiki or graph retrieval per EREBUS_CONTEXT_READER.
+
+    Default is ``wiki`` until graph-backed retrieval is validated in
+    practice. Per the spec's rollout-safety note, no automatic wiki
+    fallback on an empty graph result — the loud warning in
+    ``_graph_context_snippets`` is sufficient for operators to notice
+    and flip the flag back.
+    """
+    from agi.knowledge.graph import context_reader_mode
+
+    mode = context_reader_mode()
+    if mode == "graph":
+        return _graph_context_snippets(task_num, cfg)
+    return _wiki_context_snippets(task_num, cfg)
 
 
 # ── verification wrapper ─────────────────────────────────────────
