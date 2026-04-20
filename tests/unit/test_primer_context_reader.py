@@ -216,7 +216,6 @@ def test_graph_reader_ignores_filled_non_meta_other_tasks(
         source="primer",
         path=graph_path,
     )
-    caplog = logging.getLogger("primer")
     snips = _graph_context_snippets(167, cfg)
     # Should be empty — task 167 has no eligible node, and 999 is not meta.
     assert snips == []
