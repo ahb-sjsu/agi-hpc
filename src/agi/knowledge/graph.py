@@ -427,6 +427,7 @@ def upsert_node(
     evidence: list[str] | None = None,
     topic_key: str | None = None,
     now: int | None = None,
+    extra: dict[str, Any] | None = None,
     path: Path | None = None,
 ) -> Node:
     """Load current state for ``id``, merge in the patch, append full snapshot.
@@ -442,6 +443,13 @@ def upsert_node(
 
     ``verified_at`` is derived: set to ``now`` when the incoming
     ``verified`` flips True on a filled node.
+
+    ``extra`` — optional arbitrary fields merged into the record after
+    the standard fields. Used by the dissatisfaction aggregator to
+    carry node-level aggregates (``signal_count``, ``first_signal_at``,
+    ``last_signal_at``) without widening the graph's required-field
+    schema. Keys that collide with required fields are dropped (with a
+    warning) so a caller can't accidentally clobber load-bearing state.
     """
     ts = int(now if now is not None else time.time())
     existing = get_node(id, path=path)
@@ -493,6 +501,16 @@ def upsert_node(
         "last_touched_at": ts,
         "evidence": merged_evidence,
     }
+    if extra:
+        _reserved = set(REQUIRED_FIELDS)
+        for k, v in extra.items():
+            if k in _reserved:
+                log.warning(
+                    "upsert_node: extra[%r] collides with required field; ignored",
+                    k,
+                )
+                continue
+            record[k] = v
     append_node(record, path=path)
     return record
 
