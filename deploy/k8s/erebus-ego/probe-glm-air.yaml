@@ -1,0 +1,121 @@
+# Erebus Ego — probe pod.
+#
+# vLLM serving GLM-4.5-Air-AWQ on 4× A10 in namespace ssu-atlas-ai.
+# This is a single-replica Deployment (not a Job) so the weights warm
+# once and stay loaded between chats. Converted to a N-replica
+# Deployment in Phase 2 once the probe validates end-to-end latency
+# and utilization.
+#
+# Resource sizing rationale:
+#   - GLM-4.5-Air AWQ is ~30 GB in int4; 4× A10 (24 GB each) is
+#     comfortably sized with tensor-parallel=4.
+#   - cpu=4 keeps per-pod CPU usage honest without triggering the
+#     "ignored range" warning for heavy pods.
+#   - nodeSelector pins to A10 — L40 effectively reserved for csu-tide
+#     (see reference_nrp_l40_reservation memory).
+#   - PVC erebus-ego-models is pre-provisioned (300 Gi, rook-cephfs,
+#     Bound). We mount it read-only at /models so vLLM can find the
+#     AWQ artifacts without re-downloading on each pod start.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: erebus-ego-probe
+  namespace: ssu-atlas-ai
+  labels:
+    app: erebus-ego
+    phase: probe
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: erebus-ego
+  template:
+    metadata:
+      labels:
+        app: erebus-ego
+        phase: probe
+    spec:
+      nodeSelector:
+        nvidia.com/gpu.product: NVIDIA-A10
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: erebus-ego-models
+            readOnly: true
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 8Gi
+      containers:
+        - name: vllm
+          image: vllm/vllm-openai:v0.11.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - --model
+            - /models/GLM-4.5-Air-AWQ
+            - --served-model-name
+            - erebus-ego
+            - --tensor-parallel-size
+            - "4"
+            - --quantization
+            - awq
+            - --max-model-len
+            - "32768"
+            - --gpu-memory-utilization
+            - "0.90"
+            - --host
+            - 0.0.0.0
+            - --port
+            - "8000"
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          env:
+            - name: HF_HUB_OFFLINE
+              value: "1"
+            - name: TRANSFORMERS_OFFLINE
+              value: "1"
+          volumeMounts:
+            - name: models
+              mountPath: /models
+              readOnly: true
+            - name: shm
+              mountPath: /dev/shm
+          resources:
+            requests:
+              cpu: "4"
+              memory: 32Gi
+              nvidia.com/gpu: "4"
+            limits:
+              cpu: "4"
+              memory: 32Gi
+              nvidia.com/gpu: "4"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 120
+            periodSeconds: 15
+            failureThreshold: 4
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 180
+            periodSeconds: 30
+            failureThreshold: 4
+          # vLLM loads weights into VRAM once; a mid-life OOM is a signal
+          # the sizing is wrong, not a transient condition. Let K8s
+          # restart the pod rather than pretending the state is usable.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            failureThreshold: 40  # ~10 min grace for first model load

@@ -1,0 +1,19 @@
+# ClusterIP service fronting the Erebus ego pod.
+# vLLM is OpenAI-compatible at /v1/*, so Atlas's chat handler can
+# call it the same way it calls ellm.nrp-nautilus.io/v1/...
+apiVersion: v1
+kind: Service
+metadata:
+  name: erebus-ego
+  namespace: ssu-atlas-ai
+  labels:
+    app: erebus-ego
+spec:
+  type: ClusterIP
+  selector:
+    app: erebus-ego
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+      protocol: TCP
