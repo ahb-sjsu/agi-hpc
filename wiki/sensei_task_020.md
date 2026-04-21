@@ -3,7 +3,7 @@ type: sensei_note
 task: 20
 tags: [transformation, symmetry-completion, arc, primer]
 written_by: The Primer
-written_at: 2026-04-19
+written_at: 2026-04-21
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -58,7 +58,7 @@ def transform(grid):
 
 ## Why this generalizes
 
-This task belongs to the **symmetry-completion** family (see `sensei_meta_task_typology.md`). The key insight is that the input contains a partially-symmetric pattern, and the output completes it to full D2 symmetry (horizontal + vertical reflection) around the pattern's natural center.
+This task belongs to the **symmetry-completion** family. The key insight is that the input contains a partially-symmetric pattern, and the output completes it to full D2 symmetry (horizontal + vertical reflection) around the pattern's natural center.
 
 The bounding-box center is the correct symmetry point because:
 1. All training examples have non-zero cells arranged symmetrically around this center (even if some positions are missing).
