@@ -3,7 +3,7 @@ type: sensei_note
 task: 48
 tags: [classification, connectivity-classifier, arc, primer]
 written_by: The Primer
-written_at: 2026-04-20
+written_at: 2026-04-21
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -14,10 +14,12 @@ verified_by: run-against-train (all examples pass)
 This is a **classification task** where the output is always a 1x1 grid containing either 0 or 8.
 
 The rule:
-1. Identify the two 2x2 blocks of red (2) cells in the input grid. Every training example contains exactly two such blocks.
-2. Find all teal (8) cells that are adjacent (8-connectivity) to each 2x2 block.
+1. Identify the two 2x2 blocks of red (2) cells in the input grid. Every example contains exactly two such blocks.
+2. Find all teal (8) cells that are adjacent (8-connectivity, including diagonals) to each 2x2 block.
 3. Check if there exists a path of teal (8) cells connecting the two blocks. A path exists if you can travel from any 8 adjacent to the first block to any 8 adjacent to the second block by moving through adjacent 8s (using 4-connectivity: up, down, left, right).
 4. Output [[8]] if such a path exists, otherwise output [[0]].
+
+Think of the 2x2 red blocks as "terminals" and the teal cells as "wires". The task asks: is the circuit complete?
 
 ## Reference implementation
 
@@ -90,8 +92,13 @@ def transform(grid):
 This task belongs to the **connectivity-classifier** primitive family. The core pattern is:
 
 1. **Object detection**: Identify specific structured objects (2x2 blocks of a particular color)
-2. **Adjacency extraction**: Find which background/connector cells touch each object
-3. **Path existence**: Determine if a connected component of connector cells bridges the objects
+2. **Adjacency extraction**: Find which connector cells (8s) touch each object using 8-connectivity
+3. **Path existence**: Determine if a connected component of connector cells bridges the objects using 4-connectivity BFS
 4. **Binary classification**: Map connectivity (yes/no) to output values (8/0)
 
 This generalizes to any task where the output depends on whether two or more objects are connected through a specific color's connected component. The key insight is that the 2s serve as "terminals" and the 8s serve as "wires" — the classification depends on circuit completeness.
+
+**Key distinctions to remember:**
+- Adjacency to blocks uses **8-connectivity** (includes diagonals)
+- Path traversal through 8s uses **4-connectivity** (only orthogonal moves)
+- The output is always 1x1, making this a pure classification task
