@@ -265,17 +265,21 @@ def perform_checks(
     json: bool = False,
     fix: bool = False,
 ) -> list[Check]:
+    def _try_fix(check: Check, retry: CheckFn) -> Check:
+        if check.passed or not fix or not check.fix_command:
+            return check
+        print(f"  {YELLOW}⚙ Attempting fix:{RESET} {check.fix_command}")
+        ret = subprocess.run(check.fix_command, shell=True, capture_output=True)
+        if ret.returncode != 0:
+            return check
+        return retry() or check
+
     results: list[Check] = []
     for fn in check_fns:
         check = fn()
         if check is None:
             continue
-        if not check.passed and fix and check.fix_command:
-            print(f"  {YELLOW}⚙ Attempting fix:{RESET} {check.fix_command}")
-            ret = subprocess.run(check.fix_command, shell=True, capture_output=True)
-            if ret.returncode == 0:
-                check = fn()
-        results.append(check)
+        results.append(_try_fix(check, fn))
 
     if json:
         print(json_mod.dumps([asdict(c) for c in results], indent=2))
