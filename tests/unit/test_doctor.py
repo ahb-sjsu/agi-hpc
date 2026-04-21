@@ -1,5 +1,6 @@
 """Unit tests for agi.doctor checks."""
 
+import importlib.metadata
 import os
 import shutil
 import socket
@@ -66,10 +67,10 @@ class TestCheckVenvActive:
 
 
 class TestCheckCoreDependencies:
-    def test_passes_when_all_importable(self, monkeypatch):
+    def test_passes_when_all_installed(self, monkeypatch):
         monkeypatch.setattr(
             "agi.doctor._read_pyproject_dependencies",
-            lambda: ["flask", "requests"],
+            lambda: ["pip", "setuptools"],
         )
         result = check_core_dependencies()
         assert result.passed is True
@@ -185,8 +186,11 @@ class TestCheckRequiredPorts:
             def __init__(self, *a, **kw):
                 pass
 
-            def connect_ex(self, addr):
-                return 1  # refused = free
+            def setsockopt(self, *a):
+                pass
+
+            def bind(self, addr):
+                pass  # bind succeeds = port free
 
             def __enter__(self):
                 return self
@@ -203,8 +207,11 @@ class TestCheckRequiredPorts:
             def __init__(self, *a, **kw):
                 pass
 
-            def connect_ex(self, addr):
-                return 0  # connected = busy
+            def setsockopt(self, *a):
+                pass
+
+            def bind(self, addr):
+                raise OSError("Address already in use")
 
             def __enter__(self):
                 return self
@@ -215,14 +222,20 @@ class TestCheckRequiredPorts:
         monkeypatch.setattr(socket, "socket", FakeSocket)
         result = check_required_ports()
         assert result.passed is False
-        assert "8000" in result.message
+        assert "8081" in result.message
 
 
 # ── check_docker_running ────────────────────────────────────────────
 
 
 class TestCheckDockerRunning:
+    def test_skipped_when_no_docker_config(self, monkeypatch):
+        monkeypatch.setattr("agi.doctor._has_docker_config", lambda: False)
+        result = check_docker_running()
+        assert result is None
+
     def test_passes_when_docker_running(self, monkeypatch):
+        monkeypatch.setattr("agi.doctor._has_docker_config", lambda: True)
         monkeypatch.setattr(
             subprocess,
             "run",
@@ -232,6 +245,8 @@ class TestCheckDockerRunning:
         assert result.passed is True
 
     def test_fails_when_docker_not_installed(self, monkeypatch):
+        monkeypatch.setattr("agi.doctor._has_docker_config", lambda: True)
+
         def fake_run(cmd, **kw):
             raise FileNotFoundError
 
@@ -241,6 +256,8 @@ class TestCheckDockerRunning:
         assert "not installed" in result.message
 
     def test_fails_when_daemon_stopped(self, monkeypatch):
+        monkeypatch.setattr("agi.doctor._has_docker_config", lambda: True)
+
         def fake_run(cmd, **kw):
             raise subprocess.CalledProcessError(1, cmd)
 
