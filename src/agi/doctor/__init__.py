@@ -70,24 +70,15 @@ def check_venv_active() -> Check:
     )
 
 def _read_pyproject_dependencies() -> list[str]:
-    """Parse dependency names from pyproject.toml [project.dependencies]."""
-    pyproject_path = os.path.join(os.getcwd(), 'pyproject.toml')
-    if not os.path.isfile(pyproject_path):
-        return []
-    deps = []
-    in_deps = False
-    with open(pyproject_path) as f:
-        for line in f:
-            stripped = line.strip()
-            if stripped == 'dependencies = [':
-                in_deps = True
-                continue
-            if in_deps:
-                if stripped == ']':
-                    break
-                match = re.match(r'"([a-zA-Z0-9_-]+)', stripped)
-                if match:
-                    deps.append(match.group(1))
+    if sys.version_info >= (3, 11):
+        import tomllib
+    else:
+        import tomli as tomllib
+    
+    with open('pyproject.toml', 'rb') as f:
+        data = tomllib.load(f)
+    
+    deps = [re.split(r"[<>=!~ ]", d, 1)[0] for d in data.get("project", {}).get("dependencies", [])]
     return deps
 
 # Map pyproject dependency names to their Python import names
