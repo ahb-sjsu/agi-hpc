@@ -9,6 +9,8 @@ import socket
 import subprocess
 import sys
 
+REQUIRED_PORTS = (8081, 8082, 8085, 4222, 8222)
+
 def parse_args():
     parser = argparse.ArgumentParser()
 
@@ -183,22 +185,25 @@ def check_disk_space() -> Check:
         suggestion='Free up disk space',
     )
 
-def check_required_ports() -> Check:
-    PORTS = [8000, 8080]
+def check_required_ports(ports: tuple[int, ...] = REQUIRED_PORTS) -> Check:
     busy_ports = []
-    for port in PORTS:
+    for port in ports:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            if s.connect_ex(('localhost', port)) == 0:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                s.bind(('localhost', port))
+            except OSError:
                 busy_ports.append(port)
+    ports_label = '/'.join(str(p) for p in ports)
     if not busy_ports:
         return Check(
-            name='Ports 8000/8080 available',
+            name=f'Required ports available ({ports_label})',
             passed=True,
-            message='Required ports are free',
+            message='All required ports are free',
         )
     ports_str = ', '.join(str(p) for p in busy_ports)
     return Check(
-        name='Ports 8000/8080 available',
+        name=f'Required ports available ({ports_label})',
         passed=False,
         message=f'Ports in use: {ports_str}',
         suggestion=f'Kill process on port: lsof -ti:{busy_ports[0]} | xargs kill',
