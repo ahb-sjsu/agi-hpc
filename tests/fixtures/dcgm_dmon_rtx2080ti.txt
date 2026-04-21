@@ -1,0 +1,7 @@
+#Entity   GPUTL             MCUTL             POWER             TMPTR        ESVTL        EDVTL        FBUSD
+ID                                             W                 C
+GPU 0     0                 0                 20.891            22           0            0            0
+GPU 0     0                 0                 20.891            22           0            0            0
+GPU 0     0                 0                 20.891            22           0            0            0
+GPU 0     0                 0                 20.986            22           0            0            0
+GPU 0     0                 0                 20.986            22           0            0            0
