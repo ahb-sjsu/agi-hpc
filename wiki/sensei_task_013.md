@@ -88,3 +88,9 @@ def transform(grid):
 ## Why this generalizes
 
 This belongs to the **periodic-replication** primitive family. The key insight is that two source points define a fundamental period (2× their spacing), and the pattern alternates between the two source colors at that period. The direction selection rule (same row → horizontal, same column → vertical, otherwise smaller spacing) handles all observed cases consistently. This pattern appears in tasks where sparse markers should propagate across the entire grid with regular spacing.
+
+**Verification against all train examples:**
+- Example 1: Sources at (0,5)=2 and (9,7)=8, col_spacing=2 < row_spacing=9 → horizontal, period=4 ✓
+- Example 2: Sources at (0,5)=1 and (6,8)=3, col_spacing=3 < row_spacing=6 → horizontal, period=6 ✓
+- Example 3: Sources at (5,0)=2 and (7,8)=3, row_spacing=2 < col_spacing=8 → vertical, period=4 ✓
+- Example 4: Sources at (7,0)=4 and (11,0)=1, same column → vertical, period=8 ✓
