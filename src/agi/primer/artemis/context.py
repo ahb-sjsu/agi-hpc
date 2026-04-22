@@ -42,9 +42,7 @@ _SESSIONS_DIR = Path(
 
 # Default path for the bible chunks file.
 _BIBLE_PATH = Path(
-    os.environ.get(
-        "ARTEMIS_BIBLE_PATH", "/archive/artemis/bible/halyard_bible.json"
-    )
+    os.environ.get("ARTEMIS_BIBLE_PATH", "/archive/artemis/bible/halyard_bible.json")
 )
 
 # Token budgets.

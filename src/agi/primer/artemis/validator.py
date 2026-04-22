@@ -166,9 +166,7 @@ def safety_tool_check(reply: str, safety_flag: str | None) -> CheckResult:
     return CheckResult(name="safety_tool_check", passed=True)
 
 
-def forbidden_check(
-    reply: str, forbidden_phrases: tuple[str, ...]
-) -> CheckResult:
+def forbidden_check(reply: str, forbidden_phrases: tuple[str, ...]) -> CheckResult:
     lower = reply.lower()
     for phrase in forbidden_phrases:
         if phrase.lower() in lower:

@@ -94,8 +94,6 @@ def test_multiword_invocation_phrase():
 
 
 def test_keeper_without_cue_still_needs_name():
-    speak, reason = _call(
-        speaker="keeper", text="narration without cue", meta={}
-    )
+    speak, reason = _call(speaker="keeper", text="narration without cue", meta={})
     assert speak is False
     assert reason == "not_addressed"

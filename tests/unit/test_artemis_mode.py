@@ -221,9 +221,7 @@ async def test_secret_leak_is_silenced(tmp_artemis_dirs, seeded_bible):
 
 
 @pytest.mark.asyncio
-async def test_keeper_approval_required_sets_pending(
-    tmp_artemis_dirs, empty_bible
-):
+async def test_keeper_approval_required_sets_pending(tmp_artemis_dirs, empty_bible):
     state = SessionState(session_id="s1")
     llm = FakeLLM([("The readings are nominal.", "qwen3", 0.2)])
     req = TurnRequest(
@@ -250,9 +248,7 @@ async def test_keeper_approval_required_sets_pending(
 
 
 @pytest.mark.asyncio
-async def test_interface_flicker_sentinel_silences(
-    tmp_artemis_dirs, empty_bible
-):
+async def test_interface_flicker_sentinel_silences(tmp_artemis_dirs, empty_bible):
     state = SessionState(session_id="s1")
     llm = FakeLLM([("[INTERFACE_FLICKER]", "qwen3", 0.1)])
     req = TurnRequest(
@@ -277,9 +273,7 @@ async def test_interface_flicker_sentinel_silences(
 
 
 @pytest.mark.asyncio
-async def test_session_log_persists_turn_with_reply(
-    tmp_artemis_dirs, empty_bible
-):
+async def test_session_log_persists_turn_with_reply(tmp_artemis_dirs, empty_bible):
     state = SessionState(session_id="s-persist")
     llm = FakeLLM([("The ship hums steadily.", "qwen3", 0.1)])
     req = TurnRequest(
@@ -301,9 +295,7 @@ async def test_session_log_persists_turn_with_reply(
 
 
 @pytest.mark.asyncio
-async def test_session_log_persists_unanswered_turn(
-    tmp_artemis_dirs, empty_bible
-):
+async def test_session_log_persists_unanswered_turn(tmp_artemis_dirs, empty_bible):
     state = SessionState(session_id="s-unanswered")
     llm = FakeLLM([])
     req = TurnRequest(
@@ -371,9 +363,7 @@ async def test_llm_error_silences_gracefully(tmp_artemis_dirs, empty_bible):
         text="ARTEMIS, anything?",
         ts=1.0,
     )
-    resp = await handle_turn(
-        req, state=state, bible=empty_bible, llm=ExplodingLLM()
-    )
+    resp = await handle_turn(req, state=state, bible=empty_bible, llm=ExplodingLLM())
     assert resp is None
     # Session log should still record the heard turn, without a reply.
     log_file = tmp_artemis_dirs / "sessions" / "s-err.jsonl"

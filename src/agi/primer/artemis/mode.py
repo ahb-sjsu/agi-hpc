@@ -44,9 +44,7 @@ except Exception:
 
 
 # Directory for DecisionProof chains.
-_PROOFS_DIR = Path(
-    os.environ.get("ARTEMIS_PROOFS_DIR", "/archive/artemis/proofs")
-)
+_PROOFS_DIR = Path(os.environ.get("ARTEMIS_PROOFS_DIR", "/archive/artemis/proofs"))
 
 # Canonical silence sentinels.
 _FLICKER_SENTINEL = "[INTERFACE_FLICKER]"

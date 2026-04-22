@@ -99,9 +99,7 @@ def test_safety_tool_check_noops_without_flag():
 
 
 def test_forbidden_check_rejects_exact_phrase():
-    cr = forbidden_check(
-        "the elder thing awakens in the vault", ("elder thing",)
-    )
+    cr = forbidden_check("the elder thing awakens in the vault", ("elder thing",))
     assert not cr.passed
     assert "elder thing" in cr.detail.lower()
 
