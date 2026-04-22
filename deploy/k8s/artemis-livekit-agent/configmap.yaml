@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: artemis-livekit-agent-config
+  namespace: ssu-atlas-ai
+  labels:
+    app: artemis-livekit-agent
+data:
+  # ASR model — tiny / base / small / medium / large-v3
+  ARTEMIS_WHISPER_MODEL: "large-v3"
+  # Display name in the LiveKit room.
+  ARTEMIS_DISPLAY_NAME: "ARTEMIS"
+  # Agent identity (LiveKit participant identity).
+  ARTEMIS_AGENT_IDENTITY: "artemis"
+  # Keeper approval gate — the downstream ArtemisService also honours
+  # this env var; wiring it here keeps Atlas and the K8s Job aligned.
+  ARTEMIS_KEEPER_APPROVAL_REQUIRED: "true"
