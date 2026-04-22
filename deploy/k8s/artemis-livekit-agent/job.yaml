@@ -1,0 +1,80 @@
+# ARTEMIS LiveKit Agent — per-session K8s Job (NRP offload).
+#
+# Primary deployment is atlas-artemis-agent.service on Atlas. This
+# manifest is for offloading the agent to an NRP A10 when Atlas is
+# busy (e.g. during ARC vision bursts).
+#
+# Substitutes at apply-time:
+#   ${ARTEMIS_SESSION_ID}
+#   ${ARTEMIS_IMAGE_TAG}
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: artemis-livekit-agent-${ARTEMIS_SESSION_ID}
+  namespace: ssu-atlas-ai
+  labels:
+    app: artemis-livekit-agent
+    artemis.session: "${ARTEMIS_SESSION_ID}"
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 3600
+  activeDeadlineSeconds: 21600  # hard 6h ceiling
+  template:
+    metadata:
+      labels:
+        app: artemis-livekit-agent
+        artemis.session: "${ARTEMIS_SESSION_ID}"
+    spec:
+      restartPolicy: Never
+      nodeSelector:
+        nautilus.io/gpu-type: a10
+      tolerations:
+      - key: "nautilus.io/hardware"
+        operator: "Equal"
+        value: "large-gpu"
+        effect: "NoSchedule"
+      containers:
+      - name: artemis-livekit-agent
+        image: ghcr.io/ahb-sjsu/artemis-livekit-agent:${ARTEMIS_IMAGE_TAG}
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: ARTEMIS_SESSION_ID
+          value: "${ARTEMIS_SESSION_ID}"
+        - name: LIVEKIT_URL
+          valueFrom:
+            secretKeyRef:
+              name: artemis-livekit-credentials
+              key: url
+        - name: LIVEKIT_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: artemis-livekit-credentials
+              key: api_key
+        - name: LIVEKIT_API_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: artemis-livekit-credentials
+              key: api_secret
+        - name: NATS_URL
+          value: "nats://atlas-nats:4222"
+        envFrom:
+        - configMapRef:
+            name: artemis-livekit-agent-config
+        resources:
+          requests:
+            cpu: "2"
+            memory: "8Gi"
+            nvidia.com/gpu: "1"
+          limits:
+            cpu: "4"
+            memory: "16Gi"
+            nvidia.com/gpu: "1"
+        volumeMounts:
+        - name: whisper-models
+          mountPath: /models/whisper
+          readOnly: true
+      volumes:
+      - name: whisper-models
+        persistentVolumeClaim:
+          claimName: erebus-ego-models

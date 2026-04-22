@@ -1,0 +1,55 @@
+# LiveKit SFU for Atlas local dev + smoke tests.
+#
+# Brings up a single-node LiveKit server and the ARTEMIS agent
+# alongside it. Assumes NATS is already running on the host (Atlas's
+# atlas-nats.service).
+#
+# Usage:
+#   export LK_API_KEY=devkey
+#   export LK_API_SECRET=devsecret_please_change_me
+#   docker compose -f deploy/compose/livekit-atlas.yml up
+#
+# Then open https://atlas-sjsu.duckdns.org/table/test-session in a
+# browser to join. The agent will appear as "ARTEMIS" in the room.
+
+version: "3.9"
+
+services:
+  livekit:
+    image: livekit/livekit-server:latest
+    restart: unless-stopped
+    command:
+      - --dev
+      - --bind
+      - 0.0.0.0
+    environment:
+      LIVEKIT_KEYS: "${LK_API_KEY}: ${LK_API_SECRET}"
+    ports:
+      - "7880:7880"       # signalling (HTTP / WebSocket)
+      - "7881:7881"       # TURN/TLS (optional)
+      - "7882:7882/udp"   # TURN/UDP (optional)
+      - "50000-50100:50000-50100/udp"  # WebRTC media (UDP range)
+    # Exposing the UDP media range is required for WebRTC to work
+    # between the SFU container and browsers on the host network.
+
+  artemis-agent:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/artemis-livekit-agent/Dockerfile
+    depends_on:
+      - livekit
+    network_mode: "host"    # so NATS on host localhost is reachable
+    environment:
+      ARTEMIS_SESSION_ID: "${ARTEMIS_SESSION_ID:-test-session}"
+      LIVEKIT_URL: "ws://localhost:7880"
+      LIVEKIT_API_KEY: "${LK_API_KEY}"
+      LIVEKIT_API_SECRET: "${LK_API_SECRET}"
+      NATS_URL: "nats://localhost:4222"
+      ARTEMIS_WHISPER_MODEL: "${ARTEMIS_WHISPER_MODEL:-large-v3}"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

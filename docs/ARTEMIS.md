@@ -3,10 +3,11 @@
 > *"Artemis, guardian of crossroads, keeper of the sudden turn."*
 
 **ARTEMIS** is a live AI non-player character for a tabletop role-playing
-campaign run over Zoom. It is driven by the same vMOE + validator
-substrate that powers The Primer, extended with event-driven I/O,
-in-character context assembly, and an ErisML-based safety validator
-that gates every reply before it reaches the table.
+campaign run over a self-hosted **LiveKit** video room. It is driven by
+the same vMOE + validator substrate that powers The Primer, extended
+with event-driven I/O, in-character context assembly, and an ErisML-
+based safety validator that gates every reply before it reaches the
+table.
 
 This document is the plan-of-record. It is the companion to
 [`THE_PRIMER.md`](THE_PRIMER.md); if you are familiar with the Primer's
@@ -69,36 +70,39 @@ ARTEMIS inherits the four principles of the Atlas stack and adds one:
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
-│  ZOOM MEETING                                                      │
-│  Keeper · 3-5 players · ARTEMIS (named participant)                │
+│  LIVEKIT ROOM  ·  room_name = session_id                           │
+│  Browser clients (Keeper + 3–5 players) · ARTEMIS agent            │
+│  Served at https://atlas-sjsu.duckdns.org/table/<session_id>       │
 └───────────────┬───────────────────────────────────┬────────────────┘
-                │ audio streams in                 ▲ chat post back
+                │ WebRTC audio tracks              ▲ DataChannel
                 ▼                                   │
 ┌─────────────────────────────────────────────────────────────────┐
-│  NRP K8S JOB  ·  artemis-zoom-bot-<session_id>                  │
-│  ssu-atlas-ai namespace · 1× A10 · Job-shape, idle-exit         │
+│  LIVEKIT SFU  ·  docker on Atlas (or K8s on NRP for v2)         │
+│  Routes per-participant audio to the agent                      │
+└───────────────┬───────────────────────────────────┬─────────────┘
+                │                                   ▲
+                ▼                                   │
+┌─────────────────────────────────────────────────────────────────┐
+│  ARTEMIS LIVEKIT AGENT  ·  python process (systemd or K8s Job)  │
 │                                                                 │
-│  ┌──────────────────────┐   ┌──────────────────────────────┐   │
-│  │ zoom-sdk-sidecar     │   │ whisper-asr                   │   │
-│  │ (Linux Meeting SDK)  │──►│ large-v3 streaming, GPU       │   │
-│  │ captures per-speaker │   │ emits partial + final deltas  │   │
-│  │ audio frames         │   └──────────────┬───────────────┘   │
-│  │                      │                  │                    │
-│  │ receives chat/TTS    │◄─────────────────┤                    │
-│  │ to post back         │                  │                    │
-│  └──────────────────────┘                  ▼                    │
-│                           ┌─────────────────────────────────┐   │
-│                           │ nats-client                      │   │
-│                           │ connects to atlas-nats:4222      │   │
-│                           │ (leaf bridge, already up)        │   │
-│                           └───────────┬─────────────────────┘   │
-└───────────────────────────────────────┼─────────────────────────┘
-                                        │ agi.rh.artemis.heard
-                                        │ {session_id, speaker, text, ts}
-                                        │
-                      ──── NATS leaf bridge (TLS :7422) ────
-                                        │
-                                        ▼
+│  ┌──────────────────────────┐   ┌──────────────────────────┐   │
+│  │ livekit.rtc.Room         │   │ whisper-asr              │   │
+│  │  - subscribe audio tracks│──►│  faster-whisper large-v3  │   │
+│  │  - receive DataChannel   │   │  partial + final frames  │   │
+│  │                          │   └──────────┬───────────────┘   │
+│  │  publish_data(say text) ◄──────────────┤                   │
+│  │  (in-fiction reply)      │              │                    │
+│  └──────────────────────────┘              ▼                    │
+│                        ┌─────────────────────────────────────┐  │
+│                        │ nats-client → atlas-nats:4222       │  │
+│                        └─────────────────┬───────────────────┘  │
+└──────────────────────────────────────────┼──────────────────────┘
+                                           │ agi.rh.artemis.heard
+                                           │ {session_id, speaker, text}
+                                           │
+                    ──── NATS (leaf bridge if on NRP) ────
+                                           │
+                                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  ATLAS WORKSTATION                                               │
 │  atlas-primer.service  +  new artemis_mode                       │
@@ -149,35 +153,52 @@ ARTEMIS inherits the four principles of the Atlas stack and adds one:
 
 ```
 src/agi/primer/
-├── service.py          — existing, unchanged for v1
-├── vmoe.py             — existing, unchanged (reused)
-├── validator.py        — existing, Primer code-verify only
-├── events.py           — existing, extended with artemis_* subjects
-├── health.py           — existing, unchanged
-└── artemis/            — NEW
-    ├── __init__.py
-    ├── mode.py         — the handle_turn entry point
-    ├── prompt.py       — system prompt + fallback templates
-    ├── context.py      — session log + bible-chunk retrieval
-    ├── trigger.py      — should_speak policy
-    ├── validator.py    — check_reply + SHA-chained DecisionProof
-    └── nats_handler.py — subscribe loop, publish, kill-switch
+├── service.py                    — existing, unchanged
+├── vmoe.py                       — existing, unchanged (reused)
+├── validator.py                  — existing, Primer code-verify
+├── events.py                     — existing
+├── health.py                     — existing
+└── artemis/
+    ├── __init__.py               — package exports
+    ├── mode.py                   — handle_turn entry point (Phase 1)
+    ├── prompt.py                 — system prompt + fallback (Phase 1)
+    ├── context.py                — session log + bible (Phase 1)
+    ├── trigger.py                — should_speak policy (Phase 1)
+    ├── validator.py              — check_reply + DecisionProof (Phase 1)
+    ├── nats_handler.py           — ArtemisService (Phase 2)
+    ├── __main__.py               — service entry point (Phase 2)
+    └── livekit_agent/            — Phase 3
+        ├── __init__.py
+        ├── agent.py              — LiveKit ↔ NATS bridge
+        ├── token.py              — JWT minting for player joins
+        └── __main__.py           — agent worker entry
 
-deploy/k8s/artemis-zoom-bot/    — NEW (Phase 3)
-├── job.yaml            — ephemeral per-session K8s Job
-├── configmap.yaml      — env, system-prompt override
-└── README.md           — operator runbook
+deploy/
+├── docker/artemis-livekit-agent/
+│   ├── Dockerfile                — Python + faster-whisper + livekit-agents
+│   ├── entrypoint.sh
+│   └── README.md                 — build + push
+├── k8s/artemis-livekit-agent/
+│   ├── job.yaml                  — per-session Job (optional; also runs as
+│   │                               systemd on Atlas)
+│   ├── configmap.yaml
+│   └── README.md
+├── compose/
+│   └── livekit-atlas.yml         — LiveKit SFU compose for Atlas local dev
+└── systemd/
+    ├── atlas-artemis.service           — Phase 2, NATS handler
+    └── atlas-artemis-agent.service     — Phase 3, LiveKit agent worker
 
-deploy/docker/artemis-zoom-bot/  — NEW (Phase 3)
-├── Dockerfile          — zoom-sdk + whisper + nats-client
-├── entrypoint.sh       — join meeting, stream audio
-└── README.md           — build + push
-
-tests/unit/
-├── test_artemis_mode.py       — handle_turn happy path + edge
-├── test_artemis_validator.py  — each check_reply rule
-├── test_artemis_trigger.py    — trigger policy permutations
-└── test_artemis_prompt.py     — prompt assembly + caching shape
+tests/
+├── unit/
+│   ├── test_artemis_mode.py
+│   ├── test_artemis_validator.py
+│   ├── test_artemis_trigger.py
+│   ├── test_artemis_prompt.py
+│   ├── test_artemis_nats.py
+│   └── test_artemis_livekit.py   — Phase 3
+└── integration/
+    └── test_artemis_e2e.py
 ```
 
 ---
@@ -437,20 +458,46 @@ a coherent 10-turn dialogue against synthetic inputs, diffs-approved.
 
 **Gate to Phase 3:** NATS round-trip ≤ 200 ms p99 on Atlas LAN.
 
-### Phase 3 — Bot container
+### Phase 3 — LiveKit agent (pivoted 2026-04-22 from Zoom SDK)
 
-- `deploy/docker/artemis-zoom-bot/Dockerfile` — Ubuntu 22.04,
-  Zoom Meeting SDK C++ binaries, Whisper-large-v3, NATS Go client.
-- Entrypoint: parse meeting URL + session_id, join as "ARTEMIS",
-  stream audio → Whisper → NATS publish on
-  `agi.rh.artemis.heard`, subscribe to `agi.rh.artemis.say`,
-  post chat via Zoom SDK.
-- `deploy/k8s/artemis-zoom-bot/job.yaml` — ephemeral K8s Job,
-  1 A10, llmtoken from secret, NATS URL from configmap.
-- Test-join: private empty meeting, verify transcript flows.
+Originally scoped as a Zoom Meeting SDK bot. Pivoted to **self-hosted
+LiveKit** after Zoom's Feb 2026 OBF/ZAK auth changes made the Zoom
+path disproportionately expensive for this use case (Pro-tier cost,
+40-min free-tier cap, C++ Meeting SDK build friction, OAuth flow for
+external-meeting joins). See §13 for the decision log entry.
 
-**Gate to Phase 4:** clean join + stream + chat-post on a real
-empty meeting; no audio/chat leakage.
+LiveKit is Apache-2.0, self-hostable, has a purpose-built Agents
+framework for AI participants, uses JWT tokens we mint ourselves, and
+fits the Atlas ethos. The NATS contract established in Phase 2 stays
+exactly as-is; only the ears-and-mouth container changes.
+
+- **`src/agi/primer/artemis/livekit_agent/`** — Python package.
+  - `agent.py` — the bridge: subscribes to participant audio tracks,
+    runs Whisper streaming ASR, publishes `agi.rh.artemis.heard`,
+    subscribes to `agi.rh.artemis.say` (session-filtered), and posts
+    replies via LiveKit DataChannel.
+  - `token.py` — HS256 JWT minting for player join links.
+  - `__main__.py` — `python -m agi.primer.artemis.livekit_agent`
+    worker entry point; integrates with `livekit.agents.cli` if
+    available.
+- **`deploy/docker/artemis-livekit-agent/Dockerfile`** — Python 3.12
+  + `faster-whisper` + `livekit-agents` + `nats-py`. No xvfb, no
+  C++ SDK, no display.
+- **`deploy/compose/livekit-atlas.yml`** — LiveKit SFU standalone
+  for Atlas local dev. Single-node WebRTC router, fronted by Caddy.
+- **`deploy/k8s/artemis-livekit-agent/job.yaml`** — optional NRP
+  deployment for offloading agent compute to an A10 if Atlas is
+  busy.
+- **`deploy/systemd/atlas-artemis-agent.service`** — the simplest
+  deployment: agent runs on Atlas as a systemd unit alongside
+  `atlas-artemis.service` (the Phase 2 NATS handler).
+
+Player access: `https://atlas-sjsu.duckdns.org/table/<session_id>` →
+static page that loads the LiveKit JS SDK + the session's JWT.
+
+**Gate to Phase 4:** clean browser join + audio stream + DataChannel
+post on a real Atlas LiveKit room; no audio leakage across rooms;
+ARTEMIS's replies visible to all participants.
 
 ### Phase 4 — Keeper runbook + session start/stop
 
@@ -494,18 +541,31 @@ A session is **shippable** when all of:
    Keeper approval before posting. Revisit after session 2 if trust
    has been earned. Default enforced via
    `ARTEMIS_KEEPER_APPROVAL_REQUIRED=true` in
-   `deploy/k8s/artemis-zoom-bot/configmap.yaml`.
+   `deploy/k8s/artemis-livekit-agent/configmap.yaml`.
 2. **Proactive trigger** — ⏸ **Deferred to v2.** v1 ships with
    explicit-address + Keeper-cue triggers only.
 3. **TTS / voice output** — ⏸ **Deferred.** v1 is text-only; ARTEMIS
-   posts to Zoom chat. Handheld-typing is in-character and dodges the
-   uncanny-valley failure mode.
+   posts via LiveKit DataChannel. Handheld-typing is in-character and
+   dodges the uncanny-valley failure mode.
 4. **Anthropic-proxy prompt caching** — ⏸ **Deferred.** Ship v1 on the
    OpenAI-compatible `/v1` path; evaluate migration to `/anthropic` +
    `cache_control` after the first session's measured per-turn latency.
 5. **In-fiction naming** — ✅ **Keep "ARTEMIS."** The real driver
    being called The Primer is already a better meta-joke than any
    rename would be.
+6. **Meeting substrate** — ✅ **Self-hosted LiveKit on Atlas**, pivoted
+   from Zoom Meeting SDK on 2026-04-22. Rationale:
+   - Zoom's Feb/Mar 2026 enforcement of OBF/ZAK tokens for "external"
+     meetings added an OAuth-per-host workflow unsuitable for a
+     personal campaign.
+   - Zoom free tier's 40-minute meeting cap is incompatible with
+     3–4 hour sessions; Pro tier costs ~$150/yr.
+   - Zoom Meeting SDK on Linux requires a C++ binary with xvfb and
+     has a thorny build path.
+   - LiveKit Agents is purpose-built for the ARTEMIS use case, runs
+     in pure Python, self-hostable, Apache 2.0, no OAuth friction.
+   - Phase 1 and Phase 2 code are architecture-neutral and carry
+     over unchanged; only the bot container changes.
 
 ---
 

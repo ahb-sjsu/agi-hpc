@@ -1,0 +1,10 @@
+# ARTEMIS LiveKit Agent runtime deps (Phase 3).
+# Pin exact versions at build time; these are baseline picks.
+
+livekit-agents>=0.9,<2.0
+livekit>=0.17,<2.0
+faster-whisper>=1.0.0,<2.0.0
+nats-py>=2.7.0,<3.0.0
+PyJWT>=2.8.0,<3.0.0
+numpy>=1.26.0,<3.0.0
+structlog>=24.0

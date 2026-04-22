@@ -1,0 +1,38 @@
+[Unit]
+Description=Atlas ARTEMIS LiveKit Agent — ears+mouth for a live ARTEMIS session
+Documentation=file:///home/claude/agi-hpc/docs/ARTEMIS.md
+After=network-online.target atlas-nats.service
+Wants=network-online.target
+Requires=atlas-nats.service
+
+[Service]
+Type=simple
+User=claude
+WorkingDirectory=/home/claude/agi-hpc
+Environment=PYTHONPATH=/home/claude/agi-hpc/src
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=-/home/claude/.artemis-agent.env
+ExecStart=/home/claude/env/bin/python3 -m agi.primer.artemis.livekit_agent
+
+# Session-scoped: the agent exits cleanly when the session ends.
+# Restart on failure only (not on clean exit) so we don't loop forever
+# between sessions.
+Restart=on-failure
+RestartSec=10
+
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+RandomizedDelaySec=15
+
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+StandardOutput=journal
+StandardError=journal
+
+# Whisper-large-v3 needs a GPU and some memory.
+MemoryMax=12G
+
+[Install]
+WantedBy=multi-user.target
