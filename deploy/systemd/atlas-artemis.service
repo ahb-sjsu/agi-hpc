@@ -1,0 +1,42 @@
+[Unit]
+Description=Atlas ARTEMIS — event-driven NPC handler (NATS → vMOE → validator)
+Documentation=file:///home/claude/agi-hpc/docs/ARTEMIS.md
+After=network-online.target atlas-nats.service
+Wants=network-online.target
+Requires=atlas-nats.service
+
+[Service]
+Type=simple
+User=claude
+WorkingDirectory=/home/claude/agi-hpc
+Environment=PYTHONPATH=/home/claude/agi-hpc/src
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=-/home/claude/.artemis.env
+ExecStart=/home/claude/env/bin/python3 -m agi.primer.artemis
+
+# Event-driven service: restart on any exit. A clean exit means the
+# NATS loop broke — that's a bug, not success. Matches atlas-primer.
+Restart=always
+RestartSec=10
+
+# Crash-loop guard.
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+# Boot-storm smoothing.
+RandomizedDelaySec=15
+
+# Graceful stop: service.stop() drains subscriptions cleanly.
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+StandardOutput=journal
+StandardError=journal
+
+# Sanity: no reasoning happens in-process (vMOE calls NRP), so this
+# should stay well under its cap. Mirrors atlas-primer.
+MemoryMax=2G
+CPUQuota=100%
+
+[Install]
+WantedBy=multi-user.target
