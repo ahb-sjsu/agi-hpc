@@ -3,7 +3,7 @@ type: sensei_note
 task: 117
 tags: [transformation, symmetry-reflection, arc, primer]
 written_by: The Primer
-written_at: 2026-04-21
+written_at: 2026-04-22
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -108,12 +108,10 @@ def transform(grid):
 
 ## Why this generalizes
 
-This solution belongs to the **symmetry-reflection** primitive family. The key insight is recognizing that one object serves as an **intrinsic anchor** (identified by its 4-way rotational/reflection symmetry), while the other object is **content to be mirrored**.
+This solution belongs to the **symmetry-reflection** primitive family. The key insight is that one object serves as a geometric anchor (identified by its intrinsic 4-way symmetry), while the other object gets transformed relative to that anchor's coordinate system. This pattern appears in many ARC tasks where:
 
-This pattern generalizes because:
-1. **Anchor identification is intrinsic**: The symmetric shape can be detected algorithmically without hardcoded colors or positions
-2. **Reflection is coordinate-based**: Using the bounding box center ensures the transformation works regardless of where shapes appear in the grid
-3. **Color-agnostic**: The logic works for any pair of non-zero colors
-4. **Size-invariant**: Works for asymmetric shapes of any size or complexity
+1. **Anchor identification** relies on intrinsic geometric properties (symmetry) rather than position or color
+2. **Reflection operations** use the anchor's center as the transformation origin, not the grid center
+3. **Multiple copies** are generated systematically (original + reflections across both axes)
 
-Similar patterns appear in ARC tasks involving mirroring, tiling, or symmetric completion where one object defines the transformation space for another.
+The approach generalizes to any grid size, any pair of colors, and any asymmetric shape that needs reflection. The symmetry check is robust because it verifies all four quadrants of the potential anchor shape.
