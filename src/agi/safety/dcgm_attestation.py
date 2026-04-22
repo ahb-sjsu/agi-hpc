@@ -77,8 +77,6 @@ class GPUSnapshot:
     ecc_sbe: int  # single-bit (corrected) ECC errors
     ecc_dbe: int  # double-bit (uncorrected) ECC errors
     memory_used_mib: int
-    pcie_tx_bytes: int
-    pcie_rx_bytes: int
     raw: dict[str, Any] = field(default_factory=dict)
 
     @property
@@ -165,14 +163,14 @@ class DCGMAttestor:
 
         try:
             # dcgmi dmon: one-shot sample of key fields
-            # Fields: SM util, mem util, power, temp, ECC SBE/DBE total,
-            #         FB used, PCIe TX/RX
+            # Fields: SM util (203), mem util (204), power (155),
+            #         temp (150), ECC SBE (310), ECC DBE (311), FB used (252)
             out = subprocess.check_output(
                 [
                     self._dcgmi,
                     "dmon",
                     "-e",
-                    "203,204,150,140,310,311,252,253,254",
+                    "203,204,155,150,310,311,252",
                     "-c",
                     "1",
                     "-d",
@@ -316,8 +314,6 @@ class DCGMAttestor:
             ecc_sbe=0,
             ecc_dbe=0,
             memory_used_mib=0,
-            pcie_tx_bytes=0,
-            pcie_rx_bytes=0,
         )
 
     def _parse_dmon(self, raw_output: str) -> GPUSnapshot:
@@ -328,18 +324,20 @@ class DCGMAttestor:
             if not line or line.startswith("#") or line.startswith("Entity"):
                 continue
             parts = line.split()
+            # Skip unit-annotation lines (e.g. "ID    W    C")
+            if parts[0] == "ID":
+                continue
             # dcgmi dmon prefixes each data line with "GPU <idx>",
             # so skip the entity identifier columns.
-            offset = 0
-            for i, p in enumerate(parts):
-                if p.replace(".", "").replace("-", "").isdigit() or p in ("N/A", "*"):
-                    offset = i
-                    break
-            if len(parts) - offset < 9:
+            if parts[0] == "GPU" and len(parts) > 1:
+                offset = 2
+            else:
+                offset = 0
+            if len(parts) - offset < 7:
                 continue
             # Fields in order of -e flag:
-            # sm_util, mem_util, power, temp, ecc_sbe, ecc_dbe,
-            # fb_used, pcie_tx, pcie_rx
+            # 203=sm_util, 204=mem_util, 155=power, 150=temp,
+            # 310=ecc_sbe, 311=ecc_dbe, 252=fb_used
             try:
                 o = offset
                 values = {
@@ -350,8 +348,6 @@ class DCGMAttestor:
                     "ecc_sbe": self._safe_int(parts[o + 4]),
                     "ecc_dbe": self._safe_int(parts[o + 5]),
                     "memory_used_mib": self._safe_int(parts[o + 6]),
-                    "pcie_tx_bytes": self._safe_int(parts[o + 7]),
-                    "pcie_rx_bytes": self._safe_int(parts[o + 8]),
                 }
             except (IndexError, ValueError):
                 continue

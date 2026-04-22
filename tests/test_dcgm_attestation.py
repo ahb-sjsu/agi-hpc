@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import time
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -41,8 +42,6 @@ def _snap(
         ecc_sbe=ecc_sbe,
         ecc_dbe=ecc_dbe,
         memory_used_mib=mem_used,
-        pcie_tx_bytes=0,
-        pcie_rx_bytes=0,
         **kw,
     )
 
@@ -158,9 +157,11 @@ class TestSnapshot:
         assert snap.sm_utilization == 0.0
 
     def test_parses_dmon_output(self, attestor):
+        # Real dcgmi dmon output format (validated on Nautilus GPU node)
         sample_output = (
-            "# Entity   SMUTIL MEMUTIL POWER  TEMP  ECCSBE ECCDBE FBUSED  PCIETX  PCIERX\n"
-            "  GPU 0    75     42      185.3  68    0      0      28456   123456  654321\n"
+            "#Entity   GPUTL             MCUTL             POWER             TMPTR        ESVTL        EDVTL        FBUSD             \n"
+            "ID                                             W                 C                                                       \n"
+            "GPU 0     75                42                185.300           68           0            0            28456             \n"
         )
         snap = attestor._parse_dmon(sample_output)
         assert snap.sm_utilization == 75.0
@@ -171,10 +172,30 @@ class TestSnapshot:
         assert snap.ecc_dbe == 0
         assert snap.memory_used_mib == 28456
 
+    def test_parses_real_rtx2080ti_fixture(self, attestor):
+        """Parse real dcgmi dmon output captured on RTX 2080 Ti (Turing).
+
+        GPU: NVIDIA GeForce RTX 2080 Ti, driver 590.48.01
+        DCGM: 3.3.5, captured on NRP Nautilus Kubernetes cluster.
+        Command: dcgmi dmon -e 203,204,155,150,310,311,252 -c 5 -d 1
+        """
+        fixture = Path(__file__).parent / "fixtures" / "dcgm_dmon_rtx2080ti.txt"
+        raw = fixture.read_text()
+        snap = attestor._parse_dmon(raw)
+        # Last sample wins (parser overwrites on each data line)
+        assert snap.sm_utilization == 0.0
+        assert snap.memory_utilization == 0.0
+        assert snap.power_draw_w == 20.986
+        assert snap.temperature_c == 22.0
+        assert snap.ecc_sbe == 0
+        assert snap.ecc_dbe == 0
+        assert snap.memory_used_mib == 0
+
     def test_handles_na_values(self, attestor):
         sample_output = (
-            "# header\n"
-            "  GPU 0    N/A    N/A     N/A    N/A   N/A    N/A    N/A     N/A     N/A\n"
+            "#Entity   GPUTL             MCUTL             POWER             TMPTR        ESVTL        EDVTL        FBUSD             \n"
+            "ID                                             W                 C                                                       \n"
+            "GPU 0     N/A               N/A               N/A               N/A          N/A          N/A          N/A               \n"
         )
         snap = attestor._parse_dmon(sample_output)
         assert snap.sm_utilization == 0.0
