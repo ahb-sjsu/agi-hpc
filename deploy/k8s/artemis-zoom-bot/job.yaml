@@ -1,0 +1,106 @@
+# ARTEMIS Zoom Bot — Kubernetes Job (Phase 3 scaffolding).
+#
+# Per-session Job that joins a Zoom meeting, streams audio through
+# Whisper ASR, publishes transcripts on NATS, and posts ARTEMIS
+# replies back into Zoom chat. See:
+#   docs/ARTEMIS.md  (plan-of-record)
+#   deploy/docker/artemis-zoom-bot/Dockerfile  (container build)
+#   deploy/k8s/artemis-zoom-bot/README.md  (operator runbook)
+#
+# Substitute at apply-time:
+#   ${ARTEMIS_SESSION_ID}    e.g. "halyard-2026-05-04-s01"
+#   ${ZOOM_MEETING_URL}      full Zoom join URL (with passcode token)
+#   ${ARTEMIS_IMAGE_TAG}     container image tag, e.g. "2026-05-01"
+#
+# Policy notes:
+#   - Job-shape (not Deployment): respects NRP > 40 % utilization rule
+#     via short active window + idle-exit.
+#   - One A10 (large-gpu toleration). Burst ceiling in ssu-atlas-ai
+#     is 4 heavy-GPU pods namespace-wide.
+#   - backoffLimit=0: if the join fails, surface it to the Keeper;
+#     don't silently retry into a half-working session.
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: artemis-zoom-bot-${ARTEMIS_SESSION_ID}
+  namespace: ssu-atlas-ai
+  labels:
+    app: artemis-zoom-bot
+    artemis.session: "${ARTEMIS_SESSION_ID}"
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 3600   # clean up 1h after session ends
+  activeDeadlineSeconds: 21600    # hard 6h wall clock; meetings should be << this
+  template:
+    metadata:
+      labels:
+        app: artemis-zoom-bot
+        artemis.session: "${ARTEMIS_SESSION_ID}"
+    spec:
+      restartPolicy: Never
+      nodeSelector:
+        nautilus.io/gpu-type: a10
+      tolerations:
+      - key: "nautilus.io/hardware"
+        operator: "Equal"
+        value: "large-gpu"
+        effect: "NoSchedule"
+      containers:
+      - name: artemis-zoom-bot
+        image: ghcr.io/ahb-sjsu/artemis-zoom-bot:${ARTEMIS_IMAGE_TAG}
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: ARTEMIS_SESSION_ID
+          value: "${ARTEMIS_SESSION_ID}"
+        - name: ZOOM_MEETING_URL
+          valueFrom:
+            secretKeyRef:
+              name: artemis-zoom-${ARTEMIS_SESSION_ID}
+              key: meeting_url
+        - name: ZOOM_SDK_KEY
+          valueFrom:
+            secretKeyRef:
+              name: artemis-zoom-credentials
+              key: sdk_key
+        - name: ZOOM_SDK_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: artemis-zoom-credentials
+              key: sdk_secret
+        - name: NATS_URL
+          value: "nats://atlas-nats:4222"
+        - name: NATS_CREDS
+          value: "/creds/nats.creds"
+        - name: NRP_LLM_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: nrp-llmtoken
+              key: token
+        # Tunables pulled from the per-session ConfigMap.
+        envFrom:
+        - configMapRef:
+            name: artemis-zoom-bot-config
+        resources:
+          requests:
+            cpu: "2"
+            memory: "8Gi"
+            nvidia.com/gpu: "1"
+          limits:
+            cpu: "4"
+            memory: "16Gi"
+            nvidia.com/gpu: "1"
+        volumeMounts:
+        - name: nats-creds
+          mountPath: /creds
+          readOnly: true
+        - name: whisper-models
+          mountPath: /models/whisper
+          readOnly: true
+      volumes:
+      - name: nats-creds
+        secret:
+          secretName: atlas-nats-leaf-creds
+      - name: whisper-models
+        persistentVolumeClaim:
+          claimName: erebus-ego-models
