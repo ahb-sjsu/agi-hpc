@@ -1,0 +1,40 @@
+# ARTEMIS Zoom Bot — per-session ConfigMap (Phase 3 scaffolding).
+#
+# Keeper-tunable knobs for one game session. Applied before the Job.
+# Values here are loaded into the container as env vars via envFrom.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: artemis-zoom-bot-config
+  namespace: ssu-atlas-ai
+  labels:
+    app: artemis-zoom-bot
+data:
+  # ── trigger policy ─────────────────────────────────────────────
+  # Comma-separated invocation phrases. Default is just "artemis".
+  ARTEMIS_INVOCATION_PHRASES: "artemis,the handheld"
+
+  # Per-turn max reply length (tokens / paragraphs).
+  ARTEMIS_MAX_TOKENS: "300"
+  ARTEMIS_MAX_PARAGRAPHS: "3"
+
+  # Secret-leak Jaccard threshold — 0.15 is the default; raise to be
+  # stricter, lower to be more permissive.
+  ARTEMIS_LEAK_THRESHOLD: "0.15"
+
+  # ── keeper gate ────────────────────────────────────────────────
+  # When true, every reply is held for Keeper approval before posting.
+  # Recommended ON for sessions 1-2, OFF once trust is earned.
+  ARTEMIS_KEEPER_APPROVAL_REQUIRED: "true"
+
+  # ── bot I/O ────────────────────────────────────────────────────
+  # Display name in the Zoom meeting.
+  ARTEMIS_DISPLAY_NAME: "ARTEMIS"
+
+  # ASR model — smaller is faster, larger is more accurate.
+  # Valid: tiny, base, small, medium, large-v3
+  ARTEMIS_WHISPER_MODEL: "large-v3"
+
+  # Output mode. v1: "text" (Zoom chat). v2: "voice" (virtual mic).
+  ARTEMIS_OUTPUT_MODE: "text"

@@ -1,0 +1,8 @@
+# ARTEMIS Zoom Bot — Python runtime deps (Phase 3 scaffolding).
+# Pin exact versions during Phase 3 build-out; these are baseline picks.
+
+faster-whisper>=1.0.0,<2.0.0
+nats-py>=2.7.0,<3.0.0
+numpy>=1.26.0,<3.0.0
+PyYAML>=6.0
+structlog>=24.0
