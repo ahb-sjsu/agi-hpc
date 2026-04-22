@@ -12,13 +12,22 @@ I/O (NATS-driven, not poll-driven).
 
 See [`docs/ARTEMIS.md`](../../../docs/ARTEMIS.md) for the plan-of-record.
 
-This package is Phase 1: offline, text-only, unit-testable. NATS wiring
-lives in Phase 2, bot container in Phase 3.
+Phases:
+  1. offline, text-only, unit-testable      (mode, validator, prompt)
+  2. NATS wiring                             (nats_handler, __main__)
+  3. bot container                           (deploy/docker/artemis-zoom-bot/)
 """
 
 from __future__ import annotations
 
 from .mode import TurnRequest, TurnResponse, handle_turn
+from .nats_handler import (
+    SUBJECT_HEARD,
+    SUBJECT_SAY,
+    SUBJECT_SILENCE,
+    ArtemisService,
+    build_service_from_env,
+)
 from .validator import DecisionProof, check_reply
 
 __all__ = [
@@ -27,4 +36,9 @@ __all__ = [
     "DecisionProof",
     "handle_turn",
     "check_reply",
+    "ArtemisService",
+    "build_service_from_env",
+    "SUBJECT_HEARD",
+    "SUBJECT_SAY",
+    "SUBJECT_SILENCE",
 ]
