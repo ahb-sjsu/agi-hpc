@@ -11,7 +11,7 @@ verified_by: run-against-train (all examples pass)
 
 This task constructs two rectangular frames from two input color markers:
 
-1. **Locate the markers**: Find the two non-zero pixels in the input grid. One will be in the upper half (rows 0-4), one in the lower half (rows 5-9).
+1. **Locate the markers**: Find the two non-zero pixels in the input grid. One will be in the upper half (rows 0-4), one in the lower half (rows 5-9). Sort them by row position to identify which is "top" and which is "bottom".
 
 2. **Top frame (rows 0-4)**: The upper color creates a frame spanning rows 0 through 4. Within this frame:
    - Row 0 (top boundary) is filled solid with the color
@@ -22,6 +22,8 @@ This task constructs two rectangular frames from two input color markers:
    - Row 9 (bottom boundary) is filled solid with the color
    - The row where the color originally appeared is filled solid
    - All other rows show the color only at the left and right edges
+
+The column positions of the input markers are completely ignored—only their row positions and colors matter.
 
 ## Reference implementation
 
