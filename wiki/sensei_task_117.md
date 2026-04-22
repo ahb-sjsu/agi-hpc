@@ -108,11 +108,10 @@ def transform(grid):
 
 ## Why this generalizes
 
-This solution belongs to the **symmetry-reflection** primitive family. The key insight is recognizing that one object serves as a fixed anchor (identified by its intrinsic 4-way symmetry) while the other object is transformed relative to that anchor's coordinate system. This pattern appears in multiple ARC tasks where objects must be mirrored, rotated, or otherwise transformed around a reference point. The generalization strategy is:
+This solution belongs to the **symmetry-reflection** primitive family. The key insight is recognizing that one shape serves as a symmetry anchor (exhibiting 4-way rotational/reflectional symmetry) while the other shape is the "content" that gets mirrored. This pattern appears in many ARC tasks where:
 
-1. **Identify the reference frame** - Find which object defines the coordinate system (usually via symmetry, size, or position)
-2. **Compute the transformation center** - Use the reference object's geometric center
-3. **Apply the transformation** - Reflect/rotate the target object around that center
-4. **Preserve the anchor** - Keep the reference object unchanged
+1. **Anchor identification**: The symmetric shape can be detected algorithmically by checking if all points have their reflections present
+2. **Center calculation**: The bounding box center provides the reflection axis intersection point
+3. **Reflection propagation**: Each point generates up to 4 copies through the reflection group D₂ (dihedral group of order 4)
 
-This approach works regardless of the specific colors, shapes, or grid sizes, as long as the symmetry-detection logic correctly identifies the anchor object.
+This generalizes to any task where objects need to be symmetrically replicated around a central anchor point, regardless of the specific colors or shapes involved.
