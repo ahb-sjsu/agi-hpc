@@ -9,15 +9,14 @@ verified_by: run-against-train (all examples pass)
 
 ## The rule
 
-This task involves **vertical alignment** of multiple colored objects. The rule is:
+All colored objects shift vertically to align their top rows with the top row of the color-1 (blue) object. Color-1 serves as the anchor and doesn't move. Horizontal positions are preserved; only vertical positions change.
 
-1. Identify all colored objects in the grid (each color forms one object; treat all cells of the same color as one unit).
-2. Find the **top row** (minimum row index) of the color-1 object.
-3. Shift every other colored object **vertically** so that their top rows align with the top row of the color-1 object.
-4. **Horizontal positions remain unchanged** — only vertical shifting occurs.
-5. The color-1 object itself does not move (it serves as the anchor).
-
-The key insight: **color-1 is the anchor**. All other colors move to match its vertical position.
+The transformation works as follows:
+1. Identify all non-zero colored cells and group them by color
+2. Find the minimum row index (top) of the color-1 object — this is the anchor position
+3. For each color, calculate the vertical shift needed: `shift = ones_top - color_top`
+4. Apply this shift to all cells of that color, keeping column positions unchanged
+5. Place the shifted cells in the output grid
 
 ## Reference implementation
 
