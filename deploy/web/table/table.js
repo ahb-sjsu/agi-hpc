@@ -326,19 +326,20 @@
     room.on(LivekitClient.RoomEvent.ActiveSpeakersChanged, (speakers) => {
       renderParticipants();
       const names = speakers.map((s) => s.identity);
-      $("avatar-status").textContent =
-        names.length === 0 ? "IDLE" :
-        names.includes("artemis") ? "ARTEMIS · SPEAKING" :
-        "HEARING · " + names[0];
+      const flagsEl = $("scene-flags");
+      if (names.includes("artemis")) {
+        flagsEl.textContent = "ARTEMIS · SPEAKING";
+      } else if (names.length) {
+        flagsEl.textContent = "HEARING · " + names[0].toUpperCase();
+      } else {
+        flagsEl.textContent = String(state.scene.flags || "NOMINAL").toUpperCase();
+      }
     });
     room.on(LivekitClient.RoomEvent.TrackSubscribed, (track, pub, p) => {
       log("track: " + p.identity + "/" + track.kind);
-      if (p.identity === "artemis" && track.kind === "video") {
-        const el = $("artemis-video");
-        track.attach(el);
-        el.dataset.connected = "true";
-        $("avatar-placeholder").hidden = true;
-      }
+      // ARTEMIS video tile is supplied by the meeting client; we only
+      // attach her audio so this console can carry session sound when
+      // it's opened without a separate meeting client.
       if (track.kind === "audio") {
         const el = track.attach();
         el.autoplay = true;
@@ -397,7 +398,6 @@
       const statusEl = $("info-status");
       statusEl.textContent = "ERROR";
       statusEl.classList.add("critical");
-      $("avatar-status").textContent = "FAIL";
     }
   }
 
@@ -412,8 +412,6 @@
   $("leave-btn").addEventListener("click", async () => {
     if (state.room) await state.room.disconnect();
     state.room = null;
-    $("artemis-video").removeAttribute("data-connected");
-    $("avatar-placeholder").hidden = false;
     renderParticipants();
   });
 

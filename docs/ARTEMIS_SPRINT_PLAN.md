@@ -3,9 +3,11 @@
 > Consolidated plan across every feature discussed so far for ARTEMIS.
 > For your review before execution.
 
-**Date:** 2026-04-23 (rev 2)
-**Status:** S0 landed (PR #88); S1 broken into four slices (1a-d) per
-user review; executing 1a next.
+**Date:** 2026-04-22 (rev 3)
+**Status:** S0 landed (PR #88); S1 now broken into 1a–h: 1a redesigned
+as HUD-only sidecar (avatar card removed — ARTEMIS is already a meeting
+participant); 1e–h cover in-UI player chat, mobile PWA companion, GM
+narration console, and the new GM-portal sprint requested 2026-04-22.
 
 This supersedes the phase-oriented [`ARTEMIS_AVATAR_ROADMAP.md`](ARTEMIS_AVATAR_ROADMAP.md)
 by reorganizing into discrete, shippable sprints with dependencies and
@@ -78,13 +80,14 @@ table a real web UI + basic artifact downloads. Get everything off
 
 ---
 
-## Sprint 1 — Real responsiveness (split into 1a/b/c/d)
+## Sprint 1 — Real responsiveness (split into 1a–h)
 
 **Goal:** replace canned "Acknowledged" with actual LLM-generated
-replies, in parallel with a top-tier voice + live HUD. Split into
-four shippable slices so each PR is reviewable on its own.
+replies, in parallel with a top-tier voice + live HUD + in-UI chat +
+a Keeper portal. Split into eight shippable slices so each PR is
+reviewable on its own.
 
-### S1a — Expanse theming + stubbed HUD widgets
+### S1a — Expanse theming + HUD-only sidecar (avatar removed)
 
 **Effort:** ~1 hr. No backend changes.
 
@@ -95,10 +98,16 @@ four shippable slices so each PR is reviewable on its own.
 - Add HUD widget scaffolding to `table.js` / `index.html` — PC stat
   cards (name + SAN + HP + Luck + MP bars + status), scene-header
   strip, proof-chain ticker. Data is placeholder constants in v1.
+- **Redesign 2026-04-22:** drop the in-page avatar card. ARTEMIS is
+  already a participant in the meeting client — her video tile is
+  already where it belongs. This page is a HUD-only sidecar:
+  SESSION / CREW STATUS / ARTIFACTS. Mic + leave move into the
+  scene-strip.
 
 **Done when:** UI visibly looks like an Expanse ship's tactical display
 instead of a generic dark terminal; PC stat cards render with static
-placeholder data.
+placeholder data; avatar card is gone and the dashboard fits on a laptop
+without fighting the meeting window.
 
 ### S1b — Google Sheets CSV → live HUD stats
 
@@ -160,17 +169,147 @@ the user confirms it clears the "mostly-talking-game" bar.
 **Done when:** ask ARTEMIS a question → relevant reply within ~6 s
 end-to-end; Keeper sees approval prompt; DecisionProof chain grows.
 
+### S1e — In-UI player chat + persistent log
+
+**Effort:** ~3 hrs.
+
+Player UI gets a CHAT card that talks to ARTEMIS in-game — typed
+questions, whispered asides, look-ups. Every message (inbound and
+outbound) is persisted so the Keeper can search the full transcript
+after or during the session.
+
+- New CHAT card on the player table UI:
+  - Scrolling message pane, input row, send button
+  - Renders all kinds: `player→artemis`, `artemis→player`,
+    `keeper→player` (whisper), `keeper→all` (broadcast)
+  - Color-coded by kind; identity-aware (player sees only their
+    own thread + broadcasts; keeper sees all threads)
+- Transport — NATS:
+  - `agi.rh.artemis.chat.in.<player_id>`    — player's outbound
+  - `agi.rh.artemis.chat.out.<player_id>`   — ARTEMIS reply / keeper
+    whisper → that player
+  - `agi.rh.artemis.chat.broadcast`         — keeper-to-all
+- Persistence — `src/agi/primer/artemis/chat/store.py`:
+  - SQLite at `/var/lib/atlas-artemis/chat.sqlite3`
+  - Schema: `(ts, session_id, from_id, to_id, kind, body, corr_id)`
+  - Indexed on `session_id`, `from_id`, `to_id`, and FTS5 on `body`
+  - Append-only; never mutated. Part of S7 backup inclusion later.
+- Routing rules (in the chat service):
+  - `player→artemis` → Primer `handle_turn` → reply published to
+    `chat.out.<player_id>` (NOT broadcast — this is private to that
+    player, matches CoC whisper convention)
+  - `keeper→player` → direct pass-through (keeper whisper)
+  - `keeper→all` → broadcast (in-fiction comms relay)
+- Keeper view: every thread visible in S1h (GM portal), with an FTS
+  search box.
+
+**Done when:** player types into chat, ARTEMIS replies in-line within
+~3 s; Keeper can search the full session transcript; no player sees
+another player's whispers.
+
+### S1f — Mobile chat PWA (companion device)
+
+**Effort:** ~2 hrs.
+
+A lightweight PWA that is just the CHAT card, for players who want
+to keep their phone in hand instead of tabbing off the laptop. Shares
+the exact same NATS subjects as S1e, so the mobile and desktop
+chat stay in sync.
+
+- `deploy/web/chat/` — single-page PWA, installable on home screen,
+  offline-capable read (last 50 msgs cached), writes queue until
+  online.
+- Shares identity-token URL with the main table (`?t=<jwt>`).
+- No LiveKit dependency — pure NATS-over-WS.
+
+**Done when:** player opens the link on their phone, installs to home
+screen, types a question, sees the reply — all without the main table
+page open.
+
+### S1g — GM narration console (silent-GM mode)
+
+**Effort:** ~2 hrs.
+
+Keeper types scene descriptions / NPC lines → ARTEMIS speaks them in
+her voice in the live session. Enables "silent GM" play where the
+Keeper is almost entirely in-fiction via ARTEMIS.
+
+- `deploy/web/gm/narrate.html` — keeper-only page (identity gate):
+  text input, "speak as ARTEMIS" button, "speak as <NPC>" dropdown
+  (uses the voice-clone store from S1c), history of recent lines.
+- Transport: publish `agi.rh.artemis.narrate` with
+  `{text, voice_id, scene_cue}`; avatar agent queues through XTTS
+  and plays into the room (same audio path as ARTEMIS replies).
+- **Validator still runs.** Keeper narration is *not* free-form
+  injection into the proof chain — it's marked `source:"keeper"` in
+  DecisionProof so the chain stays honest about who said what.
+- Optional: a "quick clips" pane of pre-generated stock lines
+  ("You hear a distant thump", "The lights flicker") for speed.
+
+**Done when:** Keeper can run a full scene without speaking, purely by
+typing narration; audio is indistinguishable from ARTEMIS replies;
+DecisionProof records `source:"keeper"` on these turns.
+
+### S1h — GM in-session management portal ← **new sprint, 2026-04-22**
+
+**Effort:** ~4 hrs.
+
+A single keeper-only web page that brings every game-management
+surface into one place during a live session. Separate route + UI
+from the player table — this is the Keeper's cockpit.
+
+- `deploy/web/gm/` — keeper portal (identity gate = `keeper:*`):
+  - **Crew panel** — full read of every character sheet from the
+    Google Sheets CSV (S1b): characteristics, skills, equipment,
+    notes. Not just the condensed HUD view — the entire row.
+    Inline-editable (writes pushed to a private "keeper notes"
+    column; sheet remains source of truth).
+  - **Chat panel** — every thread from S1e in one scrollback,
+    FTS search, filter-by-player, "whisper to…" input row.
+  - **Narration panel** — the S1g narration console, embedded.
+  - **Scene panel** — set scene name / flags; broadcast to all.
+  - **Approval queue** — the S1d Keeper approval gate, here instead
+    of floating in the main table.
+  - **Wiki panel** — campaign memory wiki browser: searchable
+    read of the atlas-memory-wiki (NPCs, locations, handouts,
+    timeline, scene notes). Click a result to "quote to chat" or
+    "narrate now" — one-click routes text into S1e or S1g.
+  - **Dice panel** — roll d100 / d20 / bonus-penalty on behalf of
+    NPCs without tipping off players.
+- Wiki source: reuses the existing memory-wiki service
+  (`C:\source\atlas-memory-wiki` on Atlas) — no new persistence,
+  just a read API + search. `GET /api/wiki/search?q=...` backed by
+  the wiki's own FTS.
+- Memory-wiki content expected: NPC dossiers, location cards,
+  handout text, timeline, foreshadowing notes. Keeper populates this
+  outside sessions; during a session it's read-mostly.
+- Layout: four-pane grid (crew | chat | wiki | narration+scene)
+  with keyboard shortcuts (⌘1..4) to jump panes. Mobile = single
+  column with a bottom tab bar.
+
+**Done when:**
+- Keeper opens one URL at session start and never tabs away
+- Looking up an NPC's stat block happens in < 3 s via wiki search
+- Whisper-to-player flows through the same chat log S1e writes
+- Narrate-as-ARTEMIS works inline without leaving the page
+
 ### Depends on
 - S0 is in.
 - S1a → unlocks S1b (widgets exist to fill).
 - S1b → unlocks S1d (stat context available to Primer if desired).
 - S1c is independent of the others; can run in parallel.
+- S1e must ship before S1f (mobile reuses the chat backend).
+- S1e + S1g are prerequisites for S1h (portal aggregates them).
+- S1h needs a campaign wiki API — if `atlas-memory-wiki` doesn't
+  expose `/api/wiki/search`, S1h adds that tiny read endpoint.
 
 ### Sprint gate
-- All four PRs landed on main.
+- All eight PRs landed on main.
 - Latency p50 < 5 s, p95 < 10 s on the ASR → LLM → TTS loop.
 - Voice clears the "really good" bar.
 - Stats update live from Sheets.
+- Chat round-trip p50 < 3 s.
+- Keeper runs a full scene without breaking out to external tools.
 
 ---
 
@@ -531,21 +670,28 @@ Keeper-only toggle), S1 (for the decision-proof stream to have content)
 ## Sprint order (dependency-aware)
 
 ```
-S0 (current) ──┬── S1 ──┬── S3 ─── S6
-               │        │    │
-               ├── S2   │    │
-               ├── S4   │    │
+S0 (current) ──┬── S1(a..h) ──┬── S3 ─── S6
+               │              │    │
+               ├── S2         │    │
+               ├── S4         │    │
                ├── S5 (after S4)
                ├── S7 ──┬── S11
                │        │
                ├── S8 ──┤
                ├── S9 (blocked externally)
                └── S10 (after S0, S1, S4)
+
+Within S1:
+    1a ── 1b ── 1d
+    1a ── 1e ── 1f
+              └─ 1h
+    1c (parallel)
+    1d, 1e, 1g → 1h
 ```
 
-Critical path to a shippable tabletop: **S0 → S1 → S3 → S4 → S7**
-(~5-6 focused days of work). S2, S5, S6, S10 can interleave. S8/S9/S11
-are parallel-later.
+Critical path to a shippable tabletop: **S0 → S1a/b/c/d/e/h → S3 → S4 → S7**.
+S1f (mobile PWA) and S1g (silent-GM narration) are quality-of-life
+additions on top of the chat + portal core.
 
 ---
 
@@ -554,7 +700,14 @@ are parallel-later.
 | Sprint | Effort | Value | Priority |
 |---|---|---|---|
 | S0 consolidation | 2 hrs | foundation | NOW |
-| S1 real responsiveness | 1 day | must-have | next |
+| S1a HUD sidecar (theming) | 1 hr | must-have | in progress |
+| S1b Sheets → HUD | 2 hrs | must-have | next |
+| S1c XTTS voice | 2 hrs | must-have | parallel |
+| S1d ASR + LLM + gate | 4 hrs | must-have | after S1a |
+| S1e in-UI chat + log | 3 hrs | must-have | after S1a |
+| S1f mobile chat PWA | 2 hrs | high | after S1e |
+| S1g silent-GM narration | 2 hrs | high | after S1c |
+| S1h GM portal (crew + chat + wiki) | 4 hrs | must-have | after S1e+S1g |
 | S2 LiveKit polish | 1 day | high | next |
 | S3 3D avatar | 2 days | high | after S1 |
 | S4 game features | 1 day | high | after S0 |
@@ -566,8 +719,9 @@ are parallel-later.
 | S10 Atlas diagnostics in-table | 1 day | cool + meta | after S0+S4 |
 | S11 security + consent | 0.5 day | required for prod | after S7 |
 
-**Total:** ~11 days of focused engineering, spread across as many
-sessions as the calendar allows.
+**Total:** ~12 days of focused engineering (S1 is now ~2.5 days of
+its own after the 1e/f/g/h additions), spread across as many sessions
+as the calendar allows.
 
 ---
 
