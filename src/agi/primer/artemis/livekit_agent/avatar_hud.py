@@ -356,32 +356,32 @@ audio_queue: queue.Queue = queue.Queue()
 
 
 def _tts_worker() -> None:
-    log.info("loading piper voice: %s", PIPER_VOICE)
-    from piper import PiperVoice
+    """TTS worker thread — pulls text off the queue, pushes PCM.
 
-    voice = PiperVoice.load(PIPER_VOICE)
-    log.info("piper voice loaded (sr=%s)", voice.config.sample_rate)
+    Backend selection is driven by ``ARTEMIS_TTS_BACKEND``:
+      - ``xtts``       Coqui XTTS-v2 local (highest quality, CPU/GPU)
+      - ``nats_burst`` offload to NATS-subscribed worker pool
+      - ``piper``      Piper ONNX local (fast, CPU-only fallback)
+      - ``auto``       (default) — burst if a worker heartbeats, else
+                       local XTTS if prerequisites present, else Piper.
+    """
+    from .tts import build_backend_from_env
+
+    backend = build_backend_from_env()
+    log.info("TTS backend ready: %s", backend.name)
     while True:
         text = text_queue.get()
         if text is None:
+            backend.close()
             return
         try:
-            log.info("synthesizing: %s", text[:80])
-            all_pcm: list[np.ndarray] = []
-            for chunk in voice.synthesize(text):
-                pcm = np.frombuffer(chunk.audio_int16_bytes, dtype=np.int16)
-                all_pcm.append(pcm)
-            pcm = np.concatenate(all_pcm) if all_pcm else np.zeros(0, dtype=np.int16)
-            if voice.config.sample_rate != AUDIO_SR:
-                src_sr = voice.config.sample_rate
-                xs = np.arange(0, len(pcm), src_sr / AUDIO_SR)
-                pcm = np.interp(xs, np.arange(len(pcm)), pcm.astype(np.float32)).astype(
-                    np.int16
-                )
-            audio_queue.put(pcm)
+            log.info("synthesizing (%s): %s", backend.name, text[:80])
+            sample = backend.synthesize(text)
+            if sample.duration_s > 0:
+                audio_queue.put(sample.pcm)
             STATE.log_event(f"SAY {text[:40]}")
         except Exception as e:  # noqa: BLE001
-            log.exception("TTS error: %s", e)
+            log.exception("TTS error (%s): %s", backend.name, e)
 
 
 def _compute_spectrum(chunk: np.ndarray, n_bands: int = 16) -> list[float]:
