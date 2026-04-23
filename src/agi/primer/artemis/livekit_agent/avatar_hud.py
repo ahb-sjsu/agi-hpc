@@ -603,16 +603,92 @@ async def main() -> int:
         except NotImplementedError:
             pass
 
+    # S1b — optional NATS → LiveKit bridge. When
+    # ARTEMIS_SHEETS_NATS=1 (or NATS_URL is set and ARTEMIS_SHEETS_NATS
+    # is unset), subscribe to agi.rh.artemis.sheet.* and forward each
+    # payload verbatim onto the DataChannel so every table.html gets
+    # the HUD update. Opt-in so the existing Atlas deployment keeps
+    # working unchanged.
+    bridge_task: asyncio.Task | None = None
+    if os.environ.get("ARTEMIS_SHEETS_NATS", "") in ("1", "true", "yes", "on"):
+        bridge_task = asyncio.create_task(_sheets_bridge(room, running))
+
     try:
-        await asyncio.gather(
+        tasks = [
             _video_publisher(v_source, running),
             _audio_publisher(a_source, running),
-        )
+        ]
+        if bridge_task is not None:
+            tasks.append(_wait_task(bridge_task))
+        await asyncio.gather(*tasks)
     finally:
         text_queue.put(None)
+        if bridge_task is not None and not bridge_task.done():
+            bridge_task.cancel()
         await room.disconnect()
         log.info("disconnected cleanly")
     return 0
+
+
+async def _wait_task(task: asyncio.Task) -> None:
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+
+async def _sheets_bridge(room: rtc.Room, running: asyncio.Event) -> None:
+    """Subscribe to agi.rh.artemis.sheet.* and forward to DataChannel.
+
+    Messages on NATS are already shaped as ``{"name": ..., "rows": [...]}``
+    by :class:`SheetsPoller`; we wrap them as
+    ``{"kind": "artemis.sheet", "rows": [...]}`` so the existing
+    table.js handler (``case "artemis.sheet"``) picks them up.
+
+    Snapshot subjects are also forwarded — the HUD treats a snapshot
+    and a diff the same (apply rows by id).
+    """
+    try:
+        import nats  # type: ignore
+    except ImportError:
+        log.warning("nats-py not installed; sheet bridge disabled")
+        return
+
+    url = os.environ.get("NATS_URL", "nats://localhost:4222")
+    try:
+        nc = await nats.connect(servers=[url])
+    except Exception as e:  # noqa: BLE001
+        log.warning("sheet bridge: NATS connect failed (%s); disabled", e)
+        return
+    log.info("sheet bridge online: %s → DataChannel", url)
+
+    async def _on_msg(msg: "nats.aio.msg.Msg") -> None:  # type: ignore[name-defined]
+        try:
+            inner = json.loads(msg.data)
+        except Exception as e:  # noqa: BLE001
+            log.warning("sheet bridge: bad JSON on %s: %s", msg.subject, e)
+            return
+        rows = inner.get("rows") or []
+        out = json.dumps(
+            {"kind": "artemis.sheet", "name": inner.get("name"), "rows": rows},
+            separators=(",", ":"),
+        ).encode()
+        try:
+            await room.local_participant.publish_data(out, reliable=True)
+        except Exception as e:  # noqa: BLE001
+            log.warning("sheet bridge: publish_data failed: %s", e)
+
+    try:
+        await nc.subscribe("agi.rh.artemis.sheet.>", cb=_on_msg)
+        # Stay alive until the main loop signals shutdown.
+        while not running.is_set():
+            await asyncio.sleep(1)
+    finally:
+        try:
+            await nc.drain()
+        except Exception:  # noqa: BLE001
+            pass
+        log.info("sheet bridge stopped")
 
 
 if __name__ == "__main__":
