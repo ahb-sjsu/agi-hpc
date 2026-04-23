@@ -127,27 +127,32 @@ async def synthesize_via_worker(
 def compute_mouth_envelope(pcm: np.ndarray, sr: int, fps: int) -> np.ndarray:
     samples_per_frame = max(1, sr // fps)
     n_frames = max(1, len(pcm) // samples_per_frame)
-    env = np.zeros(n_frames, dtype=np.float32)
+    raw = np.zeros(n_frames, dtype=np.float32)
     for i in range(n_frames):
         chunk = pcm[i * samples_per_frame : (i + 1) * samples_per_frame]
         if chunk.size:
-            env[i] = float(np.sqrt(np.mean((chunk.astype(np.float32) / 32768.0) ** 2)))
-    ceil = float(np.percentile(env, 90)) or 1e-6
-    env = np.clip(env / ceil, 0.0, 1.0)
-    # Higher gate kills background-level RMS that otherwise holds the
-    # mouth half-open during quiet passages.
+            raw[i] = float(np.sqrt(np.mean((chunk.astype(np.float32) / 32768.0) ** 2)))
+    # The raw RMS (pre-normalization) tells us definitively when the
+    # audio is silent — we use it below to hard-reset MTH_A between
+    # sentences so the mouth can't accumulate drift across the clip.
+    SILENCE_FLOOR_RMS = 0.015  # absolute RMS below this = "silent"
+
+    ceil = float(np.percentile(raw, 90)) or 1e-6
+    env = np.clip(raw / ceil, 0.0, 1.0)
     gate = 0.15
     env = np.where(env < gate, 0.0, (env - gate) / (1 - gate))
-    # Scale to a natural mouth-open level. Previous tightening to 0.25
-    # still read as progressively-widening; dropping to 0.12 while we
-    # instrument the f-curve to see what's actually happening.
-    NATURAL_MAX = 0.12
+    NATURAL_MAX = 0.25
     env = env * NATURAL_MAX
-    # One-pole low-pass to kill per-frame jitter.
+    # One-pole low-pass to kill per-frame jitter during speech.
     alpha = 0.22
     smoothed = np.zeros_like(env)
     for i, x in enumerate(env):
         smoothed[i] = alpha * x + (1 - alpha) * (smoothed[i - 1] if i else x)
+    # Sentence-boundary hard reset: any frame where the raw audio
+    # was actually silent, snap mouth shut — overrides the IIR's
+    # slow decay. Prevents cumulative drift and ensures the mouth
+    # closes at every real pause in speech.
+    smoothed = np.where(raw < SILENCE_FLOOR_RMS, 0.0, smoothed)
     return smoothed
 
 
