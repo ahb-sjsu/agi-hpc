@@ -46,7 +46,12 @@ log = logging.getLogger("artemis.avatar")
 W, H = 960, 720
 FPS = 30
 
-AUDIO_SR = 22050
+# 24 kHz matches XTTS-v2's native output and is an Opus native rate —
+# avoids one resample step and keeps Opus in its sweet spot. Piper
+# (22050 Hz) is upsampled to 24 kHz in its adapter before reaching the
+# audio queue, so the publisher sees a single rate regardless of
+# backend.
+AUDIO_SR = 24000
 AUDIO_CHANNELS = 1
 AUDIO_FRAME_MS = 20
 AUDIO_SAMPLES_PER_FRAME = AUDIO_SR * AUDIO_FRAME_MS // 1000
@@ -402,7 +407,21 @@ def _compute_spectrum(chunk: np.ndarray, n_bands: int = 16) -> list[float]:
     return [min(1.0, b / (m + 1e-9)) for b in bands]
 
 
-async def _audio_publisher(source: rtc.AudioSource, running: asyncio.Event) -> None:
+def _audio_publisher_thread(
+    source: rtc.AudioSource,
+    loop: asyncio.AbstractEventLoop,
+    running: threading.Event,
+) -> None:
+    """Real-time audio publisher running in its own thread.
+
+    Audio quality with the asyncio-co-scheduled version was lossy and
+    jittery: every 33 ms video-encode blocks the event loop long enough
+    to miss the 20 ms audio deadline, which Opus renders as static. A
+    dedicated thread with a monotonic ``time.sleep`` loop fixes the
+    timing; ``capture_frame`` — an async method — is scheduled onto the
+    main event loop via ``run_coroutine_threadsafe`` without blocking
+    this thread.
+    """
     silence = np.zeros(AUDIO_SAMPLES_PER_FRAME, dtype=np.int16)
     frame_dt = AUDIO_FRAME_MS / 1000.0
     next_t = time.monotonic()
@@ -427,28 +446,34 @@ async def _audio_publisher(source: rtc.AudioSource, running: asyncio.Event) -> N
             rms = float(np.sqrt(np.mean(chunk.astype(np.float32) ** 2)))
             STATE.set_speaking(True, min(1.0, rms / 4000.0))
             STATE.set_spectrum(_compute_spectrum(chunk))
-            frame = rtc.AudioFrame(
-                chunk.tobytes(), AUDIO_SR, AUDIO_CHANNELS, AUDIO_SAMPLES_PER_FRAME
-            )
-            await source.capture_frame(frame)
-            if offset >= len(pending):
-                pending = None
-                STATE.set_speaking(False, 0.0)
+            frame_bytes = chunk.tobytes()
+            is_last = offset >= len(pending)
         else:
             STATE.set_speaking(False, 0.0)
-            # Ambient spectrum decay
             cur = STATE.snap()[4]
             STATE.set_spectrum([max(0.0, v * 0.9) for v in cur])
-            frame = rtc.AudioFrame(
-                silence.tobytes(), AUDIO_SR, AUDIO_CHANNELS, AUDIO_SAMPLES_PER_FRAME
-            )
-            await source.capture_frame(frame)
+            frame_bytes = silence.tobytes()
+            is_last = False
+
+        frame = rtc.AudioFrame(
+            frame_bytes, AUDIO_SR, AUDIO_CHANNELS, AUDIO_SAMPLES_PER_FRAME
+        )
+        # Fire-and-forget onto the main loop. We don't block on
+        # .result() — the LiveKit AudioSource has an internal buffer
+        # and sequencing is guaranteed by the order of submission.
+        asyncio.run_coroutine_threadsafe(source.capture_frame(frame), loop)
+
+        if is_last:
+            pending = None
+            STATE.set_speaking(False, 0.0)
 
         next_t += frame_dt
         sleep_for = next_t - time.monotonic()
         if sleep_for > 0:
-            await asyncio.sleep(sleep_for)
+            time.sleep(sleep_for)
         else:
+            # Fell behind — reset the phase, don't try to "catch up"
+            # with a burst of frames (that's what produced the pops).
             next_t = time.monotonic()
 
 
@@ -613,19 +638,30 @@ async def main() -> int:
     if os.environ.get("ARTEMIS_CHAT_NATS", "") in ("1", "true", "yes", "on"):
         bridge_tasks.append(asyncio.create_task(_chat_bridge(room, running)))
 
+    # Audio publisher runs in its own thread for hard real-time timing.
+    # Mirror the asyncio shutdown event onto a threading.Event so the
+    # thread can exit cleanly when the avatar is stopping.
+    audio_stop = threading.Event()
+    audio_thread = threading.Thread(
+        target=_audio_publisher_thread,
+        args=(a_source, loop, audio_stop),
+        name="artemis-audio",
+        daemon=True,
+    )
+    audio_thread.start()
+
     try:
-        tasks = [
-            _video_publisher(v_source, running),
-            _audio_publisher(a_source, running),
-        ]
+        tasks = [_video_publisher(v_source, running)]
         for t in bridge_tasks:
             tasks.append(_wait_task(t))
         await asyncio.gather(*tasks)
     finally:
         text_queue.put(None)
+        audio_stop.set()
         for t in bridge_tasks:
             if not t.done():
                 t.cancel()
+        audio_thread.join(timeout=2.0)
         await room.disconnect()
         log.info("disconnected cleanly")
     return 0

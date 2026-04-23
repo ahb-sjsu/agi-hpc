@@ -15,7 +15,10 @@ import numpy as np
 
 # Target sample rate for the LiveKit audio publisher. All backends
 # resample to this; the avatar's AudioSource expects exactly this rate.
-AUDIO_SR = 22050
+# 24 kHz matches XTTS-v2 native output and is an Opus native mode —
+# publishing here means zero resampling on the critical path for the
+# default backend and one clean upsample for Piper (22050 → 24000).
+AUDIO_SR = 24000
 
 
 @dataclass

@@ -96,8 +96,10 @@ def test_piper_backend_concatenates_chunks_and_resamples(monkeypatch) -> None:
     sample = backend.synthesize("hello world")
     assert sample.sample_rate == AUDIO_SR
     assert sample.pcm.dtype == np.int16
-    # 2 chunks × 100 samples @ 22050 == 200 samples (no resample).
-    assert len(sample.pcm) == 200
+    # 2 chunks × 100 samples @ 22050 → upsampled to 24000 kHz (AUDIO_SR)
+    # for Opus's native rate. 200 samples × 24000/22050 ≈ 218.
+    expected = int(round(200 * AUDIO_SR / 22050))
+    assert abs(len(sample.pcm) - expected) <= 1
 
 
 def test_piper_backend_empty_text_returns_empty() -> None:
