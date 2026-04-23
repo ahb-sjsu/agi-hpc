@@ -253,20 +253,39 @@ def _png_bytes_to_rgba(png_bytes: bytes, width: int, height: int) -> np.ndarray:
 def _default_playwright_launcher_ctx(width: int, height: int):  # pragma: no cover
     """Real Playwright launcher. Only used outside of tests.
 
+    Uses EGL so Chromium hits the NVIDIA driver directly instead of
+    the SwiftShader CPU rasterizer. Atlas ships ``libnvidia-egl-*``
+    with the driver; override via ``ARTEMIS_AVATAR3D_GL`` if the EGL
+    path ever misbehaves (fallback value: ``swiftshader``).
+
     Returns a handle exposing ``.page`` and ``.close()``; closing the
     handle tears down the browser + context.
     """
+    import os
+
     from playwright.sync_api import sync_playwright
 
+    gl_mode = os.environ.get("ARTEMIS_AVATAR3D_GL", "egl")
+    args = [
+        "--no-sandbox",
+        "--disable-dev-shm-usage",
+        f"--use-gl={gl_mode}",
+        # Force the GPU path; Chromium auto-blocklists headless Linux
+        # GPUs unless we explicitly opt in.
+        "--enable-gpu-rasterization",
+        "--ignore-gpu-blocklist",
+        "--enable-accelerated-2d-canvas",
+        "--enable-zero-copy",
+        # Useful for diagnosing the GPU path — set
+        # ARTEMIS_AVATAR3D_DEBUG_GPU=1 to see the render backend
+        # in the Chromium logs.
+    ]
+    if os.environ.get("ARTEMIS_AVATAR3D_DEBUG_GPU", "") in ("1", "true"):
+        args.append("--enable-logging=stderr")
+        args.append("--v=1")
+
     pw = sync_playwright().start()
-    browser = pw.chromium.launch(
-        headless=True,
-        args=[
-            "--no-sandbox",
-            "--disable-dev-shm-usage",
-            "--use-gl=swiftshader",
-        ],
-    )
+    browser = pw.chromium.launch(headless=True, args=args)
     context = browser.new_context(
         viewport={"width": width, "height": height},
         device_scale_factor=1.0,
