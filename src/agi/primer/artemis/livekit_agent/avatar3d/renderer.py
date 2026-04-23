@@ -127,7 +127,12 @@ class AvatarRenderer:
         """Grab a single frame as an RGBA numpy array."""
         if self._browser is None:
             raise RuntimeError("renderer not entered; use `with AvatarRenderer(...)`")
-        png = self._browser.page.screenshot(type="png", omit_background=False)
+        # Bump the per-call timeout — default 30 s is fine for a static
+        # page but a canvas tick + vrm.update + spring bones occasionally
+        # goes past 30 s on the first frame (font load, shader compile).
+        png = self._browser.page.screenshot(
+            type="png", omit_background=False, timeout=60_000
+        )
         return _png_bytes_to_rgba(png, self.config.width, self.config.height)
 
     def frames(self, *, count: int) -> Iterator[np.ndarray]:

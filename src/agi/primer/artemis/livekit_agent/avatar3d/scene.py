@@ -202,6 +202,10 @@ const VRM_MOUTH_VISEME = "aa";
 const MOUTH_SMOOTH_ALPHA = 0.22;
 function _smoothstep(t) { return t * t * (3 - 2 * t); }
 
+// Module-scoped state used by tick helpers. Declared here so later
+// function references don't hit the let/const temporal-dead-zone.
+let _lookTarget = null;
+
 const scene = new THREE.Scene();
 scene.background = new THREE.Color("$BACKGROUND");
 
@@ -402,7 +406,6 @@ function _applyMouthAndFace(tick_s) {
     _lookTarget.position.set(a.lookAt.x * 2, 1.5 + a.lookAt.y * 1.5, 2.0);
   }
 }
-let _lookTarget = null;
 
 function _buildGlasses() {
   const group = new THREE.Group();
