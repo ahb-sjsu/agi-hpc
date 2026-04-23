@@ -126,9 +126,9 @@ def compute_mouth_envelope(pcm: np.ndarray, sr: int, fps: int) -> np.ndarray:
     gate = 0.15
     env = np.where(env < gate, 0.0, (env - gate) / (1 - gate))
     # Scale to a natural mouth-open level. MTH_A at 1.0 is a full
-    # "ah" gape; normal conversational speech reads naturally in the
-    # 0.25–0.35 range.
-    NATURAL_MAX = 0.35
+    # "ah" gape; even 0.35 reads as over-wide once smoothed Bezier
+    # interpolation overshoots, so we hold to 0.25.
+    NATURAL_MAX = 0.25
     env = env * NATURAL_MAX
     # One-pole low-pass to kill per-frame jitter.
     alpha = 0.22

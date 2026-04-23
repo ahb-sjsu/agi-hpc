@@ -20,7 +20,8 @@ import os
 import sys
 
 import bpy
-from mathutils import Quaternion
+from mathutils import Quaternion, Vector
+from mathutils import noise as bnoise
 
 # ─────────────────────────────────────────────────────────────────
 # VRM shape-key + bone names (VRoid standard, Fcl_* prefix).
@@ -55,6 +56,7 @@ BONE = {
     "head": "J_Bip_C_Head",
     "neck": "J_Bip_C_Neck",
     "spine": "J_Bip_C_Spine",
+    "hips": "J_Bip_C_Hips",
     "leftUpperArm": "J_Bip_L_UpperArm",
     "rightUpperArm": "J_Bip_R_UpperArm",
     "leftLowerArm": "J_Bip_L_LowerArm",
@@ -62,10 +64,10 @@ BONE = {
 }
 
 # Split arm bones (pose-controlled) from idle bones (continuous micro-
-# motion). Head/neck/spine never get pose keyframes — their motion
+# motion). Head/neck/spine/hips never get pose keyframes — their motion
 # comes from _build_idle_micromotion so she's never dead-still.
 POSE_BONES = ("leftUpperArm", "rightUpperArm", "leftLowerArm", "rightLowerArm")
-IDLE_BONES = ("head", "neck", "spine")
+IDLE_BONES = ("head", "neck", "spine", "hips")
 
 # Pose = per-arm-bone (world_axis, angle_rad). In Blender's right-hand
 # rule, rotating around world +Y by +angle sends world +X → -Z, so a
@@ -221,19 +223,21 @@ def _apply_expression_keyframe(face, name: str, frame: int) -> None:
 
 
 def _build_idle_micromotion(arm, total_frames: int, fps: int) -> None:
-    """Coordinated low-amplitude sway on head+neck+spine throughout.
+    """Coordinated Perlin-noise sway on head+neck+spine+hips.
 
-    Each bone gets three decorrelated sines (pitch, yaw, roll) so the
-    motion never reads as a single-axis metronome. Neck follows head
-    at a reduced amplitude; spine adds a slow breathing rhythm on top.
-    Runs in LOCAL Euler space — the absolute axis direction is less
-    important here than that the motion is continuous and small.
+    Each bone samples three decorrelated Perlin channels (pitch, yaw,
+    roll) at its own time-scale, so motion reads as organic rather
+    than metronomic. Spine gets a slow breathing rhythm on top; hips
+    get a subtle weight-shift sway. Runs in LOCAL Euler space — axis
+    direction matters less than continuity and smallness.
     """
     step = max(1, fps // 3)  # ~10 Hz sampling
+    # (pitch_amp, yaw_amp, roll_amp, time_scale_s, phase_offset)
     specs = {
-        BONE["head"]: (0.035, 0.055, 0.020, 0.0),
-        BONE["neck"]: (0.018, 0.030, 0.010, -0.5),
-        BONE["spine"]: (0.015, 0.012, 0.020, 1.2),
+        BONE["head"]: (0.050, 0.070, 0.030, 5.0, 0.0),
+        BONE["neck"]: (0.025, 0.035, 0.015, 4.0, 11.3),
+        BONE["spine"]: (0.020, 0.018, 0.025, 3.5, 23.7),
+        BONE["hips"]: (0.010, 0.015, 0.022, 6.0, 41.1),
     }
     for bone_name in specs:
         pb = arm.pose.bones.get(bone_name)
@@ -242,15 +246,17 @@ def _build_idle_micromotion(arm, total_frames: int, fps: int) -> None:
 
     for f in range(1, total_frames + 1, step):
         t = f / fps
-        for bone_name, (p_amp, y_amp, r_amp, phase) in specs.items():
+        for bone_name, (p_amp, y_amp, r_amp, scale, phase) in specs.items():
             pb = arm.pose.bones.get(bone_name)
             if pb is None:
                 continue
-            pitch = p_amp * math.sin(0.44 * t + phase + 0.30)
-            yaw = y_amp * math.sin(0.27 * t + phase + 1.10)
-            roll = r_amp * math.sin(0.31 * t + phase + 2.00)
+            u = (t + phase) / scale
+            # Sample Perlin on three decorrelated lines in noise space.
+            pitch = p_amp * bnoise.noise(Vector((u, 0.0, 0.0)))
+            yaw = y_amp * bnoise.noise(Vector((0.0, u, 0.0)))
+            roll = r_amp * bnoise.noise(Vector((0.0, 0.0, u)))
             if bone_name == BONE["spine"]:
-                # breathing rhythm on top of base sway
+                # Gentle breathing — ~0.13 Hz, modulates pitch.
                 pitch += 0.012 * math.sin(0.80 * t)
             pb.rotation_euler = (pitch, yaw, roll)
             pb.keyframe_insert(data_path="rotation_euler", frame=f)
@@ -293,9 +299,21 @@ def _build_animation(cfg: dict) -> None:
                 _keyframe_shape(face, suffix, float(arg[1]), frame)
 
     # Mouth envelope per frame — drive the 'A' viseme amplitude.
+    # During the explicit emotion-demo window ALL_Surprised opens the
+    # mouth on its own; suppress MTH_A there so the two don't stack
+    # into a yawning look.
     aa_suffix = VISEME_KEYS["aa"]
     envelope = cfg.get("envelope", [])
+    emotion_windows = [
+        ev["t"]
+        for ev in cfg.get("timeline", [])
+        if ev["kind"] == "expression" and ev["arg"] not in (None, "neutral")
+    ]
     for i, level in enumerate(envelope):
+        t_s = i / fps
+        # Zero MTH_A for ~0.7s around every non-neutral expression beat.
+        if any(abs(t_s - et) < 0.7 for et in emotion_windows):
+            level = 0.0
         _keyframe_shape(face, aa_suffix, float(level), i + 1)
 
     # Randomized blinks on a coarse ~3 s cadence.
@@ -315,6 +333,24 @@ def _build_animation(cfg: dict) -> None:
     # Continuous head + neck + spine micro-motion so she's never
     # dead-still. Keyframed at ~10 Hz for the whole clip.
     _build_idle_micromotion(arm, total_frames, fps)
+
+    # Force LINEAR interpolation on shape-key f-curves. Default Bezier
+    # auto-handles overshoot between rapidly-oscillating envelope
+    # samples and progressively pushes MTH_A beyond its keyframed
+    # ceiling — reads as "mouth keeps getting wider until yawning."
+    _force_linear_shape_keys(face)
+
+
+def _force_linear_shape_keys(face) -> None:
+    sk_data = face.data.shape_keys
+    if sk_data is None or sk_data.animation_data is None:
+        return
+    action = sk_data.animation_data.action
+    if action is None:
+        return
+    for fc in action.fcurves:
+        for kp in fc.keyframe_points:
+            kp.interpolation = "LINEAR"
 
 
 def _configure_gpu() -> None:
