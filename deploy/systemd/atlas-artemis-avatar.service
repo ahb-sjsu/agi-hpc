@@ -1,0 +1,36 @@
+[Unit]
+Description=Atlas ARTEMIS Avatar Agent — HUD video + Piper TTS on LiveKit
+Documentation=file:///home/claude/agi-hpc/docs/ARTEMIS_AVATAR_ROADMAP.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=claude
+WorkingDirectory=/home/claude
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=-/home/claude/.artemis-avatar.env
+Environment=LIVEKIT_URL=ws://127.0.0.1:7880
+Environment=LIVEKIT_API_KEY=devkey
+Environment=LIVEKIT_API_SECRET=secret
+Environment=ARTEMIS_ROOM=smoke-test
+Environment=ARTEMIS_IDENTITY=artemis
+Environment=ARTEMIS_VOICE=/home/claude/piper-voices/en_US-amy-medium.onnx
+ExecStart=/home/claude/venvs/artemis-avatar/bin/python3 -m agi.primer.artemis.livekit_agent.avatar_hud
+
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+StandardOutput=journal
+StandardError=journal
+
+MemoryMax=2G
+CPUQuota=100%
+
+[Install]
+WantedBy=multi-user.target
