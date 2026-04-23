@@ -54,6 +54,10 @@ class SceneConfig:
     height: int = 720
     background: str = "#050914"  # matches the table UI bg-deep
     fps: int = 30
+    # Animation playback scaling. 1.0 = native speed from the GLB;
+    # 0.3 = the dance plays at a third speed (easier to see what the
+    # rig is doing during smoke tests). Independent of capture fps.
+    animation_speed: float = 0.3
 
     def to_template_vars(self) -> dict[str, str]:
         return {
@@ -62,6 +66,7 @@ class SceneConfig:
             "HEIGHT": str(self.height),
             "BACKGROUND": self.background,
             "FPS": str(self.fps),
+            "ANIMATION_SPEED": str(self.animation_speed),
             "THREE_VERSION": THREE_VERSION,
         }
 
@@ -157,7 +162,9 @@ loader.load(
     scene.add(model);
     if (gltf.animations && gltf.animations.length) {
       mixer = new THREE.AnimationMixer(model);
-      mixer.clipAction(gltf.animations[0]).play();
+      const action = mixer.clipAction(gltf.animations[0]);
+      action.timeScale = $ANIMATION_SPEED;
+      action.play();
     }
     window.artemis.ready = true;
   },
