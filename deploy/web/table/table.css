@@ -404,8 +404,15 @@ body {
 
 .pc-bars .bar-track {
   height: 8px;
-  background: var(--bg-deep);
+  /* Track itself is invisible — only the filled segments (bar-fill +
+     bar-reserve) are drawn. Keeps the absolute-scale positioning for
+     per-PC comparison while making the bar visibly end at THIS PC's
+     max. The unused portion past max just shows the card behind it. */
+  background: transparent;
   position: relative;
+  /* A faint 1 px bottom edge traces the full scale so the reference
+     is still visible for comparison at a glance. */
+  border-bottom: 1px solid rgba(80, 220, 240, 0.08);
   overflow: hidden;
 }
 
