@@ -44,7 +44,10 @@ log = logging.getLogger("artemis.avatar")
 # makes motion smoother and lets the codec spend bits on the right
 # frames instead of duplicates.
 W, H = 960, 720
-FPS = 30
+# Dropped from 30 → 15 fps while diagnosing audio choppiness. Every
+# video encode steals time from the main asyncio loop; 15 fps is
+# still comfortably smooth for a HUD that doesn't have fast motion.
+FPS = 15
 
 # 24 kHz matches XTTS-v2's native output and is an Opus native rate —
 # avoids one resample step and keeps Opus in its sweet spot. Piper
@@ -53,7 +56,11 @@ FPS = 30
 # backend.
 AUDIO_SR = 24000
 AUDIO_CHANNELS = 1
-AUDIO_FRAME_MS = 20
+# 40 ms frames (vs 20 ms): halves the per-frame overhead — one
+# run_coroutine_threadsafe hop per frame, one async scheduling
+# boundary. Opus handles 20, 40, and 60 ms frames natively; 40 is
+# the sweet spot for quality vs latency in voice contexts.
+AUDIO_FRAME_MS = 40
 AUDIO_SAMPLES_PER_FRAME = AUDIO_SR * AUDIO_FRAME_MS // 1000
 
 PIPER_VOICE = os.environ.get(
@@ -458,10 +465,19 @@ def _audio_publisher_thread(
         frame = rtc.AudioFrame(
             frame_bytes, AUDIO_SR, AUDIO_CHANNELS, AUDIO_SAMPLES_PER_FRAME
         )
-        # Fire-and-forget onto the main loop. We don't block on
-        # .result() — the LiveKit AudioSource has an internal buffer
-        # and sequencing is guaranteed by the order of submission.
-        asyncio.run_coroutine_threadsafe(source.capture_frame(frame), loop)
+        # Submit + WAIT for the frame to be accepted. Without this,
+        # frames pile up on the asyncio loop whenever video encode
+        # holds it for >20 ms and get delivered in a bursty cluster,
+        # which Opus renders as choppy playback. Awaiting gives real
+        # backpressure: this thread only advances when the LiveKit
+        # FFI has actually taken the frame.
+        fut = asyncio.run_coroutine_threadsafe(
+            source.capture_frame(frame), loop,
+        )
+        try:
+            fut.result(timeout=1.0)
+        except Exception as e:  # noqa: BLE001
+            log.warning("capture_frame timeout/error: %s", e)
 
         if is_last:
             pending = None
