@@ -396,21 +396,18 @@ body {
   text-transform: uppercase;
 }
 
+/* Bars are on an absolute scale per stat (SAN/Luck 0..100, HP/MP 0..20).
+   Three visible regions in each track:
+     bar-fill    (bright) current value  — 0 → pctActual
+     bar-reserve (dim)    capacity room  — pctActual → pctMax
+     (empty track)        beyond PC's max — pctMax → 100% */
+
 .pc-bars .bar-track {
   height: 8px;
   background: var(--bg-deep);
   position: relative;
   overflow: hidden;
 }
-
-/* "Stacked" actual|max visual — the track background is a dim version
-   of the stat's color (representing the max capacity), and the fill
-   is the brighter stat color on top (representing the actual value).
-   Both the used and unused portions are visually present. */
-.pc-bars .bar-track.san  { background: rgba(216, 185, 104, 0.22); }
-.pc-bars .bar-track.hp   { background: rgba(80,  220, 240, 0.22); }
-.pc-bars .bar-track.luck { background: rgba(255, 176, 48,  0.22); }
-.pc-bars .bar-track.mp   { background: rgba(232, 56,  56,  0.22); }
 
 .pc-bars .bar-fill {
   position: absolute;
@@ -424,6 +421,18 @@ body {
 .pc-bars .bar-fill.hp     { background: var(--cyan); }
 .pc-bars .bar-fill.luck   { background: var(--amber); box-shadow: 0 0 6px rgba(255,176,48,0.45); }
 .pc-bars .bar-fill.mp     { background: var(--critical); box-shadow: 0 0 6px rgba(232,56,56,0.5); }
+
+/* Dim reserve segment — represents "capacity you have but haven't
+   used". Same color as fill at ~25 % alpha. */
+.pc-bars .bar-reserve {
+  position: absolute;
+  top: 0; bottom: 0;
+  transition: left 0.4s cubic-bezier(.3, 1, .4, 1), width 0.4s cubic-bezier(.3, 1, .4, 1);
+}
+.pc-bars .bar-reserve.san  { background: rgba(216, 185, 104, 0.28); }
+.pc-bars .bar-reserve.hp   { background: rgba(80,  220, 240, 0.28); }
+.pc-bars .bar-reserve.luck { background: rgba(255, 176, 48,  0.28); }
+.pc-bars .bar-reserve.mp   { background: rgba(232, 56,  56,  0.32); }
 
 .pc-bars .bar-val {
   color: var(--ink);

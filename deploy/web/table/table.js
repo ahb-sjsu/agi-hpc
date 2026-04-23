@@ -154,6 +154,17 @@
     }
   }
 
+  // Absolute scale per stat — bar track width represents this cap.
+  // Actual value = bright fill, max = dim extension to max, rest =
+  // empty track. Shows at a glance how much headroom this PC has
+  // vs the theoretical CoC 7e cap.
+  const ABS_MAX = {
+    san: 100,
+    hp: 20,
+    luck: 100,
+    mp: 20,
+  };
+
   function buildPcCard(c) {
     const card = document.createElement("div");
     card.className = "pc-card";
@@ -172,34 +183,51 @@
 
     const bars = document.createElement("div");
     bars.className = "pc-bars";
-    addBar(bars, "SAN",  "san",  c.san,  c.san_max);
-    addBar(bars, "HP",   "hp",   c.hp,   c.hp_max);
-    addBar(bars, "LUCK", "luck", c.luck, c.luck_max);
-    addBar(bars, "MP",   "mp",   c.mp,   c.mp_max);
+    addBar(bars, "SAN",  "san",  c.san,  c.san_max,  ABS_MAX.san);
+    addBar(bars, "HP",   "hp",   c.hp,   c.hp_max,   ABS_MAX.hp);
+    addBar(bars, "LUCK", "luck", c.luck, c.luck_max, ABS_MAX.luck);
+    addBar(bars, "MP",   "mp",   c.mp,   c.mp_max,   ABS_MAX.mp);
 
     card.appendChild(head);
     card.appendChild(bars);
     return card;
   }
 
-  function addBar(parent, label, klass, value, max) {
+  function addBar(parent, label, klass, value, max, absMax) {
     const v = Number(value) || 0;
     const m = Number(max) || 1;
-    const pct = Math.max(0, Math.min(100, (v / m) * 100));
+    const cap = Math.max(absMax || 100, m);
+    // Three regions on the fixed-scale track:
+    //   0 .. pctActual  → bright fill    (current value)
+    //   pctActual .. pctMax → dim segment (remaining capacity)
+    //   pctMax .. 100   → empty track    (beyond this PC's max)
+    const pctActual = Math.max(0, Math.min(100, (v / cap) * 100));
+    const pctMax    = Math.max(0, Math.min(100, (m / cap) * 100));
+
     const lbl = document.createElement("span");
     lbl.className = "bar-label";
     lbl.textContent = label;
+
     const track = document.createElement("span");
-    // Stat class on the track so the "remaining to max" portion can be
-    // tinted with the stat's dim color (stacked actual|max visual).
-    track.className = "bar-track " + klass;
+    track.className = "bar-track";
+
+    const reserve = document.createElement("span");
+    reserve.className = "bar-reserve " + klass;
+    reserve.style.left = pctActual + "%";
+    reserve.style.width = Math.max(0, pctMax - pctActual) + "%";
+
     const fill = document.createElement("span");
     fill.className = "bar-fill " + klass;
-    fill.style.width = pct + "%";
+    fill.style.width = pctActual + "%";
+
+    // Order matters: reserve first (behind), fill on top.
+    track.appendChild(reserve);
     track.appendChild(fill);
+
     const val = document.createElement("span");
     val.className = "bar-val";
     val.textContent = `${v} / ${m}`;
+
     parent.appendChild(lbl);
     parent.appendChild(track);
     parent.appendChild(val);
