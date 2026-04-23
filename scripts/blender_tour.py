@@ -15,10 +15,12 @@ No external dependencies beyond Blender's bundled bpy. Runs headless.
 
 import argparse
 import json
+import math
 import os
 import sys
 
 import bpy
+from mathutils import Quaternion
 
 # ─────────────────────────────────────────────────────────────────
 # VRM shape-key + bone names (VRoid standard, Fcl_* prefix).
@@ -46,8 +48,9 @@ VISEME_KEYS = {
 
 BLINK_KEY = "EYE_Close"
 
-# Bone rotations are applied to these VRM humanoid bones. Values are
-# *delta* rotations from rest (pose-bone local space, Euler XYZ).
+# Bone rotations are applied to these VRM humanoid bones via the
+# world-space helper below — bone-roll independent, so the same POSES
+# dict works for any VRoid-exported VRM.
 BONE = {
     "head": "J_Bip_C_Head",
     "neck": "J_Bip_C_Neck",
@@ -58,39 +61,41 @@ BONE = {
     "rightLowerArm": "J_Bip_R_LowerArm",
 }
 
-# 5 canonical poses — same intent as the Playwright side, but with
-# angles tuned to VRM rest pose (T-pose, arms straight out). Positive
-# Z on an upper-arm bone rotates the arm DOWN from the side; negative
-# Z rotates it UP above the head.
+# Split arm bones (pose-controlled) from idle bones (continuous micro-
+# motion). Head/neck/spine never get pose keyframes — their motion
+# comes from _build_idle_micromotion so she's never dead-still.
+POSE_BONES = ("leftUpperArm", "rightUpperArm", "leftLowerArm", "rightLowerArm")
+IDLE_BONES = ("head", "neck", "spine")
+
+# Pose = per-arm-bone (world_axis, angle_rad). In Blender's right-hand
+# rule, rotating around world +Y by +angle sends world +X → -Z, so a
+# LEFT upper arm (rest along +X) goes DOWN. The right arm rests along
+# -X and takes the opposite-sign angle around +Y.
 POSES = {
+    # Relaxed arms-at-sides.
     "mountain": {
-        "leftUpperArm": (0, 0, 1.3),
-        "rightUpperArm": (0, 0, -1.3),
+        "leftUpperArm": ((0, 1, 0), 1.30),
+        "rightUpperArm": ((0, 1, 0), -1.30),
     },
+    # Both arms overhead.
     "reach": {
-        "leftUpperArm": (0, 0, -0.8),
-        "rightUpperArm": (0, 0, 0.8),
-        "spine": (-0.08, 0, 0),
-        "neck": (-0.12, 0, 0),
+        "leftUpperArm": ((0, 1, 0), -1.45),
+        "rightUpperArm": ((0, 1, 0), 1.45),
     },
+    # Front arm forward, back arm back — warrior-II silhouette.
     "warrior": {
-        "leftUpperArm": (0, 0, 0),  # stays at T-pose arms-out
-        "rightUpperArm": (0, 0, 0),
-        "spine": (0, 0.12, 0),
+        "leftUpperArm": ((0, 0, 1), 0.35),
+        "rightUpperArm": ((0, 0, 1), 0.35),
     },
+    # Arms drawn in toward chest.
     "prayer": {
-        "leftUpperArm": (0, 0, 0.6),
-        "rightUpperArm": (0, 0, -0.6),
-        "leftLowerArm": (0, -1.1, 0),
-        "rightLowerArm": (0, 1.1, 0),
-        "spine": (0.06, 0, 0),
-        "head": (0.15, 0, 0),
+        "leftUpperArm": ((0, 1, 0), 0.80),
+        "rightUpperArm": ((0, 1, 0), -0.80),
     },
+    # One arm raised (checking-watch style), other relaxed.
     "ping": {
-        "leftUpperArm": (0, 0, -0.6),
-        "rightUpperArm": (0, 0, -1.1),
-        "spine": (0, -0.1, 0.08),
-        "head": (0, 0, -0.12),
+        "leftUpperArm": ((0, 1, 0), -1.10),
+        "rightUpperArm": ((0, 1, 0), -0.20),
     },
 }
 
@@ -167,25 +172,43 @@ def _keyframe_shape(face, key: str, value: float, frame: int) -> None:
     sk.keyframe_insert(data_path="value", frame=int(frame))
 
 
-def _keyframe_bone(arm, bone_alias: str, euler, frame: int) -> None:
-    name = BONE.get(bone_alias)
-    if name is None:
+def _world_rotate_keyframe(arm, bone_name: str, axis, angle: float, frame: int) -> None:
+    """Keyframe a pose bone with a world-space rotation.
+
+    Independent of bone-roll conventions — converts the world-space
+    axis-angle to the equivalent local-basis quaternion via the bone's
+    rest rotation. Safe to use on any VRoid-exported VRM.
+    """
+    pb = arm.pose.bones.get(bone_name)
+    if pb is None:
         return
-    b = arm.pose.bones.get(name)
-    if b is None:
-        return
-    b.rotation_mode = "XYZ"
-    b.rotation_euler = euler
-    b.keyframe_insert(data_path="rotation_euler", frame=int(frame))
+    if angle == 0.0:
+        local_q = Quaternion()
+    else:
+        world_q = Quaternion(axis, angle)
+        # Bone rest in world space = armature world rot ∘ bone rest-local rot.
+        arm_rot = arm.matrix_world.to_quaternion()
+        bone_rest = pb.bone.matrix_local.to_quaternion()
+        rest_world = arm_rot @ bone_rest
+        local_q = rest_world.inverted() @ world_q @ rest_world
+    pb.rotation_mode = "QUATERNION"
+    pb.rotation_quaternion = local_q
+    pb.keyframe_insert(data_path="rotation_quaternion", frame=int(frame))
 
 
 def _apply_pose_keyframe(arm, pose_name: str, frame: int) -> None:
-    """Keyframe every bone in the target pose AND zero the ones
-    not in it (so we don't accumulate deltas from prior poses)."""
+    """Keyframe arm bones for the target pose; zero bones not in it
+    so deltas from prior poses don't accumulate. Does NOT touch
+    head/neck/spine — those are driven by idle micro-motion."""
     target = POSES.get(pose_name, {})
-    for alias in BONE:
-        euler = target.get(alias, (0.0, 0.0, 0.0))
-        _keyframe_bone(arm, alias, euler, frame)
+    for alias in POSE_BONES:
+        bone_name = BONE[alias]
+        spec = target.get(alias)
+        if spec is None:
+            _world_rotate_keyframe(arm, bone_name, (0, 1, 0), 0.0, frame)
+        else:
+            axis, angle = spec
+            _world_rotate_keyframe(arm, bone_name, axis, angle, frame)
 
 
 def _apply_expression_keyframe(face, name: str, frame: int) -> None:
@@ -195,6 +218,42 @@ def _apply_expression_keyframe(face, name: str, frame: int) -> None:
             continue
         val = 1.0 if k == name else 0.0
         _keyframe_shape(face, suffix, val, frame)
+
+
+def _build_idle_micromotion(arm, total_frames: int, fps: int) -> None:
+    """Coordinated low-amplitude sway on head+neck+spine throughout.
+
+    Each bone gets three decorrelated sines (pitch, yaw, roll) so the
+    motion never reads as a single-axis metronome. Neck follows head
+    at a reduced amplitude; spine adds a slow breathing rhythm on top.
+    Runs in LOCAL Euler space — the absolute axis direction is less
+    important here than that the motion is continuous and small.
+    """
+    step = max(1, fps // 3)  # ~10 Hz sampling
+    specs = {
+        BONE["head"]: (0.035, 0.055, 0.020, 0.0),
+        BONE["neck"]: (0.018, 0.030, 0.010, -0.5),
+        BONE["spine"]: (0.015, 0.012, 0.020, 1.2),
+    }
+    for bone_name in specs:
+        pb = arm.pose.bones.get(bone_name)
+        if pb is not None:
+            pb.rotation_mode = "XYZ"
+
+    for f in range(1, total_frames + 1, step):
+        t = f / fps
+        for bone_name, (p_amp, y_amp, r_amp, phase) in specs.items():
+            pb = arm.pose.bones.get(bone_name)
+            if pb is None:
+                continue
+            pitch = p_amp * math.sin(0.44 * t + phase + 0.30)
+            yaw = y_amp * math.sin(0.27 * t + phase + 1.10)
+            roll = r_amp * math.sin(0.31 * t + phase + 2.00)
+            if bone_name == BONE["spine"]:
+                # breathing rhythm on top of base sway
+                pitch += 0.012 * math.sin(0.80 * t)
+            pb.rotation_euler = (pitch, yaw, roll)
+            pb.keyframe_insert(data_path="rotation_euler", frame=f)
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -245,12 +304,17 @@ def _build_animation(cfg: dict) -> None:
     _r.seed(cfg.get("blink_seed", 42))
     t_blink = 1.5
     total_s = len(envelope) / fps if envelope else cfg.get("total_s", 30)
+    total_frames = max(1, int(round(total_s * fps)))
     while t_blink < total_s:
         f = int(round(t_blink * fps))
         _keyframe_shape(face, BLINK_KEY, 0.0, max(1, f - 1))
         _keyframe_shape(face, BLINK_KEY, 1.0, f)
         _keyframe_shape(face, BLINK_KEY, 0.0, f + int(fps * 0.15))
         t_blink += _r.uniform(3.0, 5.0)
+
+    # Continuous head + neck + spine micro-motion so she's never
+    # dead-still. Keyframed at ~10 Hz for the whole clip.
+    _build_idle_micromotion(arm, total_frames, fps)
 
 
 def _configure_gpu() -> None:

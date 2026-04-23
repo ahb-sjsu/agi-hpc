@@ -56,13 +56,17 @@ CAPABILITY_TIMELINE: list[dict] = [
     {"t": 22.6, "kind": "viseme", "arg": ["oh", 0.0]},
     {"t": 22.6, "kind": "viseme", "arg": ["ou", 1.0]},
     {"t": 23.3, "kind": "viseme", "arg": ["ou", 0.0]},
-    # Pose block
+    # Pose block — each yoga pose is struck briefly (~1.5s), then she
+    # returns to mountain between them. Avoids the "held static" feel.
     {"t": 25.0, "kind": "pose", "arg": "mountain"},
-    {"t": 28.0, "kind": "pose", "arg": "reach"},
-    {"t": 31.0, "kind": "pose", "arg": "warrior"},
+    {"t": 27.0, "kind": "pose", "arg": "reach"},
+    {"t": 29.0, "kind": "pose", "arg": "mountain"},
+    {"t": 30.5, "kind": "pose", "arg": "warrior"},
+    {"t": 32.5, "kind": "pose", "arg": "mountain"},
     {"t": 34.0, "kind": "pose", "arg": "prayer"},
-    {"t": 37.0, "kind": "pose", "arg": "ping"},
-    {"t": 40.0, "kind": "pose", "arg": "mountain"},
+    {"t": 36.0, "kind": "pose", "arg": "mountain"},
+    {"t": 37.5, "kind": "pose", "arg": "ping"},
+    {"t": 39.5, "kind": "pose", "arg": "mountain"},
 ]
 
 
@@ -117,10 +121,16 @@ def compute_mouth_envelope(pcm: np.ndarray, sr: int, fps: int) -> np.ndarray:
             env[i] = float(np.sqrt(np.mean((chunk.astype(np.float32) / 32768.0) ** 2)))
     ceil = float(np.percentile(env, 90)) or 1e-6
     env = np.clip(env / ceil, 0.0, 1.0)
-    gate = 0.08
+    # Higher gate kills background-level RMS that otherwise holds the
+    # mouth half-open during quiet passages.
+    gate = 0.15
     env = np.where(env < gate, 0.0, (env - gate) / (1 - gate))
-    # One-pole low-pass to kill per-frame jitter (scalar Kalman-ish
-    # EMA — same trick we used on the Playwright side).
+    # Scale to a natural mouth-open level. MTH_A at 1.0 is a full
+    # "ah" gape; normal conversational speech reads naturally in the
+    # 0.25–0.35 range.
+    NATURAL_MAX = 0.35
+    env = env * NATURAL_MAX
+    # One-pole low-pass to kill per-frame jitter.
     alpha = 0.22
     smoothed = np.zeros_like(env)
     for i, x in enumerate(env):
