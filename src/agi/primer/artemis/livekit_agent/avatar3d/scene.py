@@ -32,12 +32,15 @@ from string import Template
 # ships breaking changes. Bumped here, not silently picked up.
 THREE_VERSION = "0.165.0"
 
-# Default model — Three.js's reference female humanoid (Michelle from
-# Mixamo). Full face + body rig, built-in animation clip. Publicly
-# hosted by threejs.org; CesiumMan was rejected because its head is
-# a featureless ball. Swap via ``model_url`` or the
-# ``ARTEMIS_AVATAR_MODEL_URL`` env var when we have an RPM pick.
-DEFAULT_MODEL_URL = "https://threejs.org/examples/models/gltf/Michelle.glb"
+# Default model — Three.js's RobotExpressive. Stylized humanoid robot
+# with a real face (eyes, mouth, brow morph targets for Angry / Sad /
+# Happy / Surprised) and packaged idle/walk/dance clips. Chosen over
+# Michelle (racial identification) and CesiumMan (no face) for an AI
+# NPC: clearly artificial, unambiguously non-human, still expressive.
+# Final ARTEMIS avatar will be an RPM/VRoid pick once S3-1 lands.
+DEFAULT_MODEL_URL = (
+    "https://threejs.org/examples/models/gltf/RobotExpressive/RobotExpressive.glb"
+)
 
 
 @dataclass(frozen=True)
