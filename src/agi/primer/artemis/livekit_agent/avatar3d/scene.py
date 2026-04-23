@@ -32,14 +32,12 @@ from string import Template
 # ships breaking changes. Bumped here, not silently picked up.
 THREE_VERSION = "0.165.0"
 
-# Default model — we ship a placeholder until the user picks an RPM
-# avatar (S3-1). Khronos's CesiumMan is a rigged humanoid figure
-# guaranteed to be public.  Override via ``model_url`` or the
-# ``ARTEMIS_AVATAR_MODEL_URL`` env var read by the renderer.
-DEFAULT_MODEL_URL = (
-    "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/"
-    "master/2.0/CesiumMan/glTF-Binary/CesiumMan.glb"
-)
+# Default model — Three.js's reference female humanoid (Michelle from
+# Mixamo). Full face + body rig, built-in animation clip. Publicly
+# hosted by threejs.org; CesiumMan was rejected because its head is
+# a featureless ball. Swap via ``model_url`` or the
+# ``ARTEMIS_AVATAR_MODEL_URL`` env var when we have an RPM pick.
+DEFAULT_MODEL_URL = "https://threejs.org/examples/models/gltf/Michelle.glb"
 
 
 @dataclass(frozen=True)
