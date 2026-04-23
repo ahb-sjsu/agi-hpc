@@ -24,7 +24,10 @@ Environment=ARTEMIS_TTS_LANG=en
 # "must stay utilized" rule. systemd relaunches on next use.
 Environment=ARTEMIS_TTS_WORKER_IDLE_S=900
 EnvironmentFile=-/home/claude/.artemis.env
-ExecStart=/home/claude/env/bin/python3 -m agi.primer.artemis.livekit_agent.tts.worker
+# Runs in its own venv (/home/claude/env-xtts) — coqui-tts drags in a
+# torch + transformers combo incompatible with the main env that hosts
+# Primer / unsloth / trl. Keep them isolated.
+ExecStart=/home/claude/env-xtts/bin/python3 -m agi.primer.artemis.livekit_agent.tts.worker
 
 Restart=on-failure
 RestartSec=30

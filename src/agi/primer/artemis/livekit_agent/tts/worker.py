@@ -61,6 +61,11 @@ from .nats_burst import (
 )
 from .xtts import XttsBackend
 
+# Module-level cache so per-job voice_ref overrides don't force a
+# 2 GB model reload. Each entry keys on the reference path; the
+# XttsBackend holds the loaded model.
+_VOICE_CACHE: dict[str, XttsBackend] = {}
+
 log = logging.getLogger("artemis.tts.worker")
 
 HEARTBEAT_SUBJECT = "agi.rh.artemis.tts.workers"  # .<worker_id>.hb
@@ -120,11 +125,19 @@ async def _run() -> int:
         voice_override = req.get("voice_ref")
         t0 = time.monotonic()
         try:
-            if voice_override:
-                xtts_local = XttsBackend(
-                    reference_wav=voice_override, language=language,
-                )
-                sample = xtts_local.synthesize(text)
+            if voice_override and voice_override != ref_wav:
+                # Reuse cached backends across jobs so NPC voice
+                # switches don't re-download or re-load the model.
+                # The model weights are hot-cached inside TTS.api; a
+                # new XttsBackend reuses them via coqui's internal
+                # cache. Speaker embedding is recomputed per voice.
+                backend = _VOICE_CACHE.get(voice_override)
+                if backend is None:
+                    backend = XttsBackend(
+                        reference_wav=voice_override, language=language,
+                    )
+                    _VOICE_CACHE[voice_override] = backend
+                sample = backend.synthesize(text)
             else:
                 sample = xtts.synthesize(text)
         except Exception as e:  # noqa: BLE001
