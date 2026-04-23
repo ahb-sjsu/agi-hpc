@@ -116,7 +116,7 @@ def test_discover_ignores_readme_and_underscore(tmp_path: Path) -> None:
         "_draft.md",
         '---\nslug: draft\ntitle: "A"\n---\n',
     )
-    discovered = discover_handouts(tmp_path)
+    discovered = discover_handouts(tmp_path, include_pregens=False)
     slugs = [h.slug for h in discovered]
     assert slugs == ["s0"]
 
@@ -128,13 +128,13 @@ def test_discover_skips_bad_front_matter_logs_and_continues(
     _write_handout(tmp_path, "good.md", "---\nslug: g\ntitle: G\n---\n")
     _write_handout(tmp_path, "bad.md", "no front matter here\n")
     with caplog.at_level("WARNING"):
-        got = discover_handouts(tmp_path)
+        got = discover_handouts(tmp_path, include_pregens=False)
     assert [h.slug for h in got] == ["g"]
     assert any("bad.md" in msg for msg in caplog.messages)
 
 
 def test_discover_returns_empty_when_dir_missing(tmp_path: Path) -> None:
-    assert discover_handouts(tmp_path / "nope") == []
+    assert discover_handouts(tmp_path / "nope", include_pregens=False) == []
 
 
 # ─────────────────────────────────────────────────────────────────

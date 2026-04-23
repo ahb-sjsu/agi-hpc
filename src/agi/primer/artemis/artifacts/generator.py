@@ -65,19 +65,32 @@ class HandoutError(RuntimeError):
     """Raised when a handout can't be parsed or rendered."""
 
 
-def discover_handouts(source_dir: Path | None = None) -> list[HandoutMeta]:
-    """Return every ``.md`` handout in ``source_dir`` with its metadata."""
+def discover_handouts(
+    source_dir: Path | None = None,
+    *,
+    include_pregens: bool = True,
+) -> list[HandoutMeta]:
+    """Return every ``.md`` handout in ``source_dir`` with its metadata.
+
+    If ``include_pregens`` is True (default) the roster in
+    :mod:`.pregens` is materialized into a temp directory alongside
+    the returned list, so pregen handouts render through the same
+    pandoc pipeline as the hand-written ones. The temp directory is
+    retained for the lifetime of the process via a module-level
+    cache — on-disk churn per discovery call is zero.
+    """
     src = source_dir or HANDOUT_SOURCE_DIR
-    if not src.is_dir():
-        return []
     out: list[HandoutMeta] = []
-    for path in sorted(src.glob("*.md")):
-        if path.name.startswith("_") or path.name == "README.md":
-            continue
-        try:
-            out.append(_parse_front_matter(path))
-        except HandoutError as e:
-            log.warning("skipping %s: %s", path.name, e)
+    if src.is_dir():
+        for path in sorted(src.glob("*.md")):
+            if path.name.startswith("_") or path.name == "README.md":
+                continue
+            try:
+                out.append(_parse_front_matter(path))
+            except HandoutError as e:
+                log.warning("skipping %s: %s", path.name, e)
+    if include_pregens:
+        out.extend(_discover_pregens())
     return out
 
 
@@ -175,3 +188,38 @@ def _parse_front_matter(path: Path) -> HandoutMeta:
 
 def _default_runner(cmd: list[str]) -> "subprocess.CompletedProcess":
     return subprocess.run(cmd, capture_output=True, check=False)
+
+
+# ─────────────────────────────────────────────────────────────────
+# Pregen materialization
+# ─────────────────────────────────────────────────────────────────
+
+
+_PREGEN_CACHE: dict[str, Path] = {}
+
+
+def _discover_pregens() -> list[HandoutMeta]:
+    """Materialize pregen handouts into a process-level temp dir and parse them.
+
+    Cached: subsequent calls reuse the same on-disk files. The cache
+    is keyed by the roster tuple's ``id`` so tests that swap in a
+    test-only roster don't leak into the real one.
+    """
+    # Lazy import so cycle with pregen_handouts stays safe under
+    # partial installs.
+    from .pregen_handouts import ROSTER, write_pregen_handouts
+
+    cache_key = "::".join(p.id for p in ROSTER)
+    if cache_key not in _PREGEN_CACHE:
+        import tempfile
+
+        td = tempfile.mkdtemp(prefix="artemis-pregens-")
+        write_pregen_handouts(Path(td))
+        _PREGEN_CACHE[cache_key] = Path(td)
+    out: list[HandoutMeta] = []
+    for path in sorted(_PREGEN_CACHE[cache_key].glob("*.md")):
+        try:
+            out.append(_parse_front_matter(path))
+        except HandoutError as e:
+            log.warning("pregen parse failed %s: %s", path.name, e)
+    return out

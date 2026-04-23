@@ -26,11 +26,25 @@ from .generator import (
     discover_handouts,
     render_handout,
 )
+from .pregen_handouts import (
+    render_pregen_markdown,
+    roster_to_csv,
+    write_pregen_handouts,
+)
+from .pregens import ROSTER, Pregen, Skill, by_id, iter_roster
 
 __all__ = [
     "HANDOUT_SOURCE_DIR",
     "HandoutError",
     "HandoutMeta",
+    "Pregen",
+    "ROSTER",
+    "Skill",
+    "by_id",
     "discover_handouts",
+    "iter_roster",
     "render_handout",
+    "render_pregen_markdown",
+    "roster_to_csv",
+    "write_pregen_handouts",
 ]
