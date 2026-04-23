@@ -165,22 +165,25 @@ def test_build_status_sparkline_has_requested_bucket_count():
 
 def test_build_status_sparkline_aggregates_per_bucket():
     now = time.time()
+    # Bucket width = 60s / 6 buckets = 10s. Place both events within
+    # the final 5s so they're solidly in the tail bucket regardless
+    # of millisecond jitter between event placement and rollup time.
     events = [
         _make_event(
-            now - 10,
+            now - 3,
             site_events=[
                 {"site": "A", "error": 0.1, "alert_level": "normal", "drift": 0}
             ],
         ),
         _make_event(
-            now - 9,
+            now - 1,
             site_events=[
                 {"site": "A", "error": 0.3, "alert_level": "normal", "drift": 0}
             ],
         ),
     ]
     status = build_status(events, window_seconds=60, sparkline_buckets=6)
-    # Two events fall in the same tail bucket; max_error captures the larger.
+    # Two events in the same tail bucket; max_error captures the larger.
     nonempty = [b for b in status["sparkline"] if b["n_events"] > 0]
     assert len(nonempty) == 1
     assert nonempty[0]["n_events"] == 2
