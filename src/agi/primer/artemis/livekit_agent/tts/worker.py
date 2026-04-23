@@ -51,6 +51,8 @@ import uuid
 
 from .backend import resample_int16_to
 from .nats_burst import (
+    H_CHUNK_IDX,
+    H_CHUNK_N,
     H_ERROR,
     H_JOB,
     H_MODEL,
@@ -58,6 +60,7 @@ from .nats_burst import (
     QUEUE_GROUP,
     REPLY_PREFIX,
     SUBJECT_JOBS,
+    split_sentences,
 )
 from .xtts import XttsBackend
 
@@ -123,45 +126,60 @@ async def _run() -> int:
         # Optional per-job voice override so the keeper can narrate as
         # different NPCs later (S1g).
         voice_override = req.get("voice_ref")
-        t0 = time.monotonic()
-        try:
-            if voice_override and voice_override != ref_wav:
-                # Reuse cached backends across jobs so NPC voice
-                # switches don't re-download or re-load the model.
-                # The model weights are hot-cached inside TTS.api; a
-                # new XttsBackend reuses them via coqui's internal
-                # cache. Speaker embedding is recomputed per voice.
-                backend = _VOICE_CACHE.get(voice_override)
-                if backend is None:
-                    backend = XttsBackend(
-                        reference_wav=voice_override, language=language,
-                    )
-                    _VOICE_CACHE[voice_override] = backend
-                sample = backend.synthesize(text)
-            else:
-                sample = xtts.synthesize(text)
-        except Exception as e:  # noqa: BLE001
-            log.exception("synth failed for %s: %s", job_id, e)
-            await _reply_error(nc, reply_to, job_id, str(e)[:120])
+        if voice_override and voice_override != ref_wav:
+            backend = _VOICE_CACHE.get(voice_override)
+            if backend is None:
+                backend = XttsBackend(
+                    reference_wav=voice_override, language=language,
+                )
+                _VOICE_CACHE[voice_override] = backend
+        else:
+            backend = xtts
+
+        # Sentence-level streaming. For short inputs (<= max_chars)
+        # split_sentences returns one segment so behaviour matches the
+        # prior one-shot path. For multi-sentence utterances each
+        # sentence is synthesized + published separately, giving the
+        # client audio from the first sentence while later ones are
+        # still being generated.
+        segments = split_sentences(text)
+        if not segments:
+            await _reply_error(nc, reply_to, job_id, "empty after split")
             return
-        dt = time.monotonic() - t0
+        n = len(segments)
+        total_audio_s = 0.0
+        t_all = time.monotonic()
+        for idx, seg in enumerate(segments, start=1):
+            t_seg = time.monotonic()
+            try:
+                sample = backend.synthesize(seg)
+            except Exception as e:  # noqa: BLE001
+                log.exception("synth failed for %s seg %d: %s", job_id, idx, e)
+                await _reply_error(nc, reply_to, job_id, str(e)[:120])
+                return
+            seg_dt = time.monotonic() - t_seg
+            total_audio_s += sample.duration_s
+            pcm24 = resample_int16_to(
+                sample.pcm, sample.sample_rate, 24000,
+            )
+            hdrs = {
+                H_JOB: job_id,
+                H_SR: "24000",
+                H_MODEL: sample.source_model or "xtts",
+                H_CHUNK_IDX: str(idx),
+                H_CHUNK_N: str(n),
+            }
+            await nc.publish(reply_to, pcm24.tobytes(), headers=hdrs)
+            log.info(
+                "job %s seg %d/%d: %d chars → %.2fs audio in %.2fs",
+                job_id, idx, n, len(seg), sample.duration_s, seg_dt,
+            )
+        dt = time.monotonic() - t_all
         log.info(
-            "job %s: %d chars → %.2fs audio in %.2fs (rtx %.2f)",
-            job_id, len(text), sample.duration_s, dt,
-            sample.duration_s / max(dt, 1e-3),
+            "job %s: %d chars total → %.2fs audio in %.2fs (rtx %.2f, %d segs)",
+            job_id, len(text), total_audio_s, dt,
+            total_audio_s / max(dt, 1e-3), n,
         )
-        # The avatar resamples to 22050 again on receipt, but publishing
-        # at the model's native 24 kHz preserves the most detail over
-        # the wire. Keep native here and let the client resample.
-        # We already have the sample at AUDIO_SR because XttsBackend
-        # resamples — re-expose the native rate instead:
-        pcm24 = resample_int16_to(sample.pcm, sample.sample_rate, 24000)
-        hdrs = {
-            H_JOB: job_id,
-            H_SR: "24000",
-            H_MODEL: sample.source_model or "xtts",
-        }
-        await nc.publish(reply_to, pcm24.tobytes(), headers=hdrs)
 
     async def _heartbeat() -> None:
         hb_subject = f"{HEARTBEAT_SUBJECT}.{worker_id}.hb"

@@ -370,6 +370,11 @@ audio_queue: queue.Queue = queue.Queue()
 def _tts_worker() -> None:
     """TTS worker thread — pulls text off the queue, pushes PCM.
 
+    Uses ``synthesize_stream`` so multi-sentence utterances start
+    producing audio after only the first sentence's synth latency.
+    Each chunk goes onto ``audio_queue`` as it arrives; the audio
+    publisher thread drains them in order.
+
     Backend selection is driven by ``ARTEMIS_TTS_BACKEND``:
       - ``xtts``       Coqui XTTS-v2 local (highest quality, CPU/GPU)
       - ``nats_burst`` offload to NATS-subscribed worker pool
@@ -388,10 +393,10 @@ def _tts_worker() -> None:
             return
         try:
             log.info("synthesizing (%s): %s", backend.name, text[:80])
-            sample = backend.synthesize(text)
-            if sample.duration_s > 0:
-                audio_queue.put(sample.pcm)
             STATE.log_event(f"SAY {text[:40]}")
+            for chunk in backend.synthesize_stream(text):
+                if chunk.duration_s > 0:
+                    audio_queue.put(chunk.pcm)
         except Exception as e:  # noqa: BLE001
             log.exception("TTS error (%s): %s", backend.name, e)
 

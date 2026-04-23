@@ -9,7 +9,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Iterator, Protocol
 
 import numpy as np
 
@@ -37,18 +37,28 @@ class TTSSample:
 
 
 class TTSBackend(Protocol):
-    """Synchronous TTS interface.
+    """TTS interface — supports one-shot and streaming synthesis.
 
     Backends are expected to be stateful (model loaded once, reused
-    per call) and thread-safe with respect to ``synthesize``. The
-    avatar runs one TTS worker thread, so external serialization is
-    not required.
+    per call) and thread-safe with respect to ``synthesize`` /
+    ``synthesize_stream``. The avatar runs one TTS worker thread,
+    so external serialization is not required.
+
+    ``synthesize_stream`` is the primary path for long utterances —
+    it yields per-sentence (or per-chunk) samples as they become
+    ready, so the audio publisher can start playing the first
+    sentence while the rest is still being synthesized. This cuts
+    time-to-first-audio for multi-sentence speech from
+    O(duration) to O(first-sentence-duration).
+
+    The default stream implementation yields a single sample from
+    ``synthesize`` — adequate for backends that can't stream.
     """
 
     name: str
 
     def synthesize(self, text: str) -> TTSSample:
-        """Turn text into a PCM sample at :data:`AUDIO_SR`.
+        """Turn text into a single PCM sample at :data:`AUDIO_SR`.
 
         Implementations MUST:
           - Return empty PCM (len 0) for empty input rather than raising.
@@ -56,6 +66,16 @@ class TTSBackend(Protocol):
           - Never return None — callers check ``.duration_s``.
         """
         ...
+
+    def synthesize_stream(self, text: str) -> Iterator[TTSSample]:
+        """Yield PCM chunks as they become available.
+
+        Default implementation: yield ``synthesize(text)`` once.
+        Streaming backends override this.
+        """
+        sample = self.synthesize(text)
+        if sample.duration_s > 0:
+            yield sample
 
     def close(self) -> None:
         """Release any heavy resources (GPU memory, temp files)."""
