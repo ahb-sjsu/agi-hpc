@@ -34,11 +34,58 @@ from agi.primer.artemis.livekit_agent.avatar3d.renderer import (  # noqa: E402
 from agi.primer.artemis.livekit_agent.avatar3d.scene import SceneConfig  # noqa: E402
 
 DEFAULT_TEXT = (
-    "ARTEMIS online. This is a synchronized demonstration. "
-    "You should see my mouth move in time with the audio, "
-    "while my body cycles through a small library of poses. "
-    "Telemetry is nominal. End of test."
+    "ARTEMIS capability tour. I will demonstrate my full range of "
+    "facial expressions, mouth shapes, gaze directions, and body poses. "
+    "First, expressions. This is happy. This is sad. This is angry. "
+    "This is surprised. This is relaxed. Now, mouth shapes. Ah. Ee. Ih. "
+    "Oh. Ou. Now I will look. Left. Right. Up. Down. Now, poses. "
+    "Mountain. Reach. Warrior. Prayer. Ping. End of tour."
 )
+
+
+# Capability timeline — at each absolute time (seconds from start),
+# apply a named control. Keeps the smoke in sync with the narration
+# above. Expression "neutral" resets, visemes/lookAt zero-reset on
+# the next command naturally.
+#
+# Timings are loose; they line up with the 5 chunks XTTS tends to
+# emit for DEFAULT_TEXT. Adjust if narration drifts.
+CAPABILITY_TIMELINE: list[tuple[float, str, object]] = [
+    (0.0, "pose", 0),
+    (0.0, "expression", "neutral"),
+    (0.0, "lookAt", (0.0, 0.0)),
+    # Expressions block (~22 s each of those sentences averaged over)
+    (11.0, "expression", "happy"),
+    (12.5, "expression", "sad"),
+    (14.0, "expression", "angry"),
+    (15.5, "expression", "surprised"),
+    (17.0, "expression", "relaxed"),
+    (18.5, "expression", "neutral"),
+    # Viseme block
+    (20.5, "viseme", ("aa", 1.0)),
+    (21.2, "viseme", ("aa", 0.0)),
+    (21.2, "viseme", ("ee", 1.0)),
+    (21.9, "viseme", ("ee", 0.0)),
+    (21.9, "viseme", ("ih", 1.0)),
+    (22.6, "viseme", ("ih", 0.0)),
+    (22.6, "viseme", ("oh", 1.0)),
+    (23.3, "viseme", ("oh", 0.0)),
+    (23.3, "viseme", ("ou", 1.0)),
+    (24.0, "viseme", ("ou", 0.0)),
+    # Look-at block
+    (25.5, "lookAt", (-0.9, 0.0)),
+    (26.5, "lookAt", (0.9, 0.0)),
+    (27.5, "lookAt", (0.0, 0.9)),
+    (28.5, "lookAt", (0.0, -0.7)),
+    (29.5, "lookAt", (0.0, 0.0)),
+    # Pose block
+    (31.0, "pose", 0),
+    (33.0, "pose", 1),
+    (35.0, "pose", 2),
+    (37.0, "pose", 3),
+    (39.0, "pose", 4),
+    (42.0, "pose", None),  # release to auto-cycle
+]
 
 
 async def synthesize_via_worker(
@@ -121,21 +168,50 @@ def save_png(arr: np.ndarray, path: Path) -> None:
 
 
 def render_synced(
-    envelope: np.ndarray, out_dir: Path, *, fps: int, width: int, height: int
+    envelope: np.ndarray,
+    out_dir: Path,
+    *,
+    fps: int,
+    width: int,
+    height: int,
+    timeline: list[tuple[float, str, object]] | None = None,
 ) -> list[Path]:
+    """Render frames, driving mouth from envelope and applying the
+    timeline (if any) at the right timestamps."""
     cfg = SceneConfig(fps=fps, width=width, height=height)
     paths: list[Path] = []
+    timeline = sorted(list(timeline or []), key=lambda ev: ev[0])
+    ev_idx = 0
     with AvatarRenderer(config=cfg) as r:
         n = int(len(envelope))
         for i in range(n):
+            t = i / fps
+            # Fire every timeline event whose timestamp has passed.
+            while ev_idx < len(timeline) and timeline[ev_idx][0] <= t:
+                _apply_timeline_event(r, timeline[ev_idx])
+                ev_idx += 1
             r.set_mouth_open(float(envelope[i]))
             frame = r.capture()
             p = out_dir / f"frame_{i:04d}.png"
             save_png(frame, p)
             paths.append(p)
             if i % 30 == 0:
-                print(f"  rendered {i}/{n}")
+                print(f"  rendered {i}/{n} (t={t:.1f}s)")
     return paths
+
+
+def _apply_timeline_event(r: AvatarRenderer, ev: tuple[float, str, object]) -> None:
+    t, kind, arg = ev
+    if kind == "expression":
+        r.set_expression(str(arg))
+    elif kind == "emotion" and isinstance(arg, tuple):
+        r.set_emotion(str(arg[0]), float(arg[1]))
+    elif kind == "viseme" and isinstance(arg, tuple):
+        r.set_viseme(str(arg[0]), float(arg[1]))
+    elif kind == "lookAt" and isinstance(arg, tuple):
+        r.set_look_at(float(arg[0]), float(arg[1]))
+    elif kind == "pose":
+        r.set_pose(arg if arg is None else int(arg))
 
 
 def mux_mp4(frames_dir: Path, wav: Path, mp4: Path, *, fps: int) -> None:
@@ -202,6 +278,7 @@ def main() -> int:
         fps=args.fps,
         width=args.width,
         height=args.height,
+        timeline=CAPABILITY_TIMELINE,
     )
 
     # 4. mux — timestamped filename

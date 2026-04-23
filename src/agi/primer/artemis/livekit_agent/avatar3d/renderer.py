@@ -167,6 +167,43 @@ class AvatarRenderer:
             f'window.artemis && window.artemis.setExpression("{safe}")'
         )
 
+    def set_emotion(self, name: str, value: float) -> None:
+        """Blend a single emotion 0..1 (happy/sad/angry/surprised/relaxed)."""
+        if self._browser is None:
+            return
+        safe = str(name).replace('"', '\\"').replace("\n", "")[:40]
+        v = max(0.0, min(1.0, float(value)))
+        self._browser.page.evaluate(
+            f'window.artemis && window.artemis.setEmotion("{safe}", {v})'
+        )
+
+    def set_viseme(self, name: str, value: float) -> None:
+        """Set a single viseme shape 0..1 (aa/ih/ou/ee/oh)."""
+        if self._browser is None:
+            return
+        safe = str(name).replace('"', '\\"').replace("\n", "")[:4]
+        v = max(0.0, min(1.0, float(value)))
+        self._browser.page.evaluate(
+            f'window.artemis && window.artemis.setViseme("{safe}", {v})'
+        )
+
+    def set_look_at(self, x: float, y: float) -> None:
+        """Look direction in normalized eye-space, each axis -1..+1."""
+        if self._browser is None:
+            return
+        cx = max(-1.0, min(1.0, float(x)))
+        cy = max(-1.0, min(1.0, float(y)))
+        self._browser.page.evaluate(
+            f"window.artemis && window.artemis.setLookAt({cx}, {cy})"
+        )
+
+    def set_pose(self, index: int | None) -> None:
+        """Pin a specific pose (0..N-1) or ``None`` to resume auto-cycle."""
+        if self._browser is None:
+            return
+        arg = "null" if index is None else str(int(index))
+        self._browser.page.evaluate(f"window.artemis && window.artemis.setPose({arg})")
+
     # ── internal ────────────────────────────────────────────────
 
     def _wait_for_ready(self, timeout_s: float = 20.0) -> None:

@@ -113,16 +113,38 @@ const W = $WIDTH, H = $HEIGHT, FPS = $FPS;
 
 window.artemis = {
   ready: false,
-  mouthOpen: 0,          // target (caller-set)
-  _mouthSmoothed: 0,     // low-pass state (applied to the rig)
+  // Target values set by the caller. The rig is driven from these
+  // (possibly via a smoother) inside tick().
+  mouthOpen: 0,
+  _mouthSmoothed: 0,
+  visemes: { aa: 0, ih: 0, ou: 0, ee: 0, oh: 0 },
   expression: "neutral",
+  emotionBlend: { happy: 0, sad: 0, angry: 0, surprised: 0, relaxed: 0 },
+  lookAt: { x: 0, y: 0 },  // -1..+1 each axis
   idle: true,
-  pose: 0,  // 0..N-1, index into POSES
+  pose: null,  // null = auto-cycle through POSES; int = hold that index
   _nextBlinkAt: 0,
   setMouthOpen(v) { this.mouthOpen = Math.max(0, Math.min(1, +v || 0)); },
+  // Direct per-viseme control (mouthOpen just drives 'aa').
+  setViseme(name, v) {
+    if (name in this.visemes) {
+      this.visemes[name] = Math.max(0, Math.min(1, +v || 0));
+    }
+  },
   setExpression(n) { this.expression = String(n || "neutral"); },
+  setEmotion(name, v) {
+    if (name in this.emotionBlend) {
+      this.emotionBlend[name] = Math.max(0, Math.min(1, +v || 0));
+    }
+  },
+  setLookAt(x, y) {
+    this.lookAt.x = Math.max(-1, Math.min(1, +x || 0));
+    this.lookAt.y = Math.max(-1, Math.min(1, +y || 0));
+  },
   setIdle(on) { this.idle = !!on; },
-  setPose(i) { this.pose = Math.max(0, Math.min(POSES.length - 1, i | 0)); },
+  setPose(i) {
+    this.pose = i == null ? null : Math.max(0, Math.min(POSES.length - 1, i | 0));
+  },
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -289,18 +311,33 @@ const _quatOut = new THREE.Quaternion();
 
 function _applyPoseBlend(tick_s) {
   if (!vrm || !vrm.humanoid) return;
-  const cycle = POSE_HOLD_S + POSE_BLEND_S;
-  const phase = tick_s % cycle;
-  const slot = Math.floor(tick_s / cycle);
-  const inBlend = phase < POSE_BLEND_S;
-  // Smoothstep the blend — cubic ease-in-out kills the velocity
-  // discontinuities at the edges of the blend window. Linear SLERP
-  // looked jerky because the avatar would snap from 'still' →
-  // 'moving fast' → 'still' with no easing.
-  const rawBlend = inBlend ? phase / POSE_BLEND_S : 1.0;
-  const blend = _smoothstep(rawBlend);
-  const curIdx = (slot) % POSES.length;
-  const prevIdx = (slot + POSES.length - 1) % POSES.length;
+  const a = window.artemis;
+  let curIdx, prevIdx, blend;
+  if (a.pose != null) {
+    // Caller pinned a pose — blend from whatever we were on to it
+    // over POSE_BLEND_S from the moment setPose was called.
+    if (a._pinnedAt == null || a._pinnedPose !== a.pose) {
+      a._pinnedAt = tick_s;
+      a._pinnedFrom = a._lastIdx ?? 0;
+      a._pinnedPose = a.pose;
+    }
+    const raw = Math.min(1.0, (tick_s - a._pinnedAt) / POSE_BLEND_S);
+    blend = _smoothstep(raw);
+    prevIdx = a._pinnedFrom;
+    curIdx = a.pose;
+    a._lastIdx = a.pose;
+  } else {
+    a._pinnedAt = null;
+    const cycle = POSE_HOLD_S + POSE_BLEND_S;
+    const phase = tick_s % cycle;
+    const slot = Math.floor(tick_s / cycle);
+    const inBlend = phase < POSE_BLEND_S;
+    const rawBlend = inBlend ? phase / POSE_BLEND_S : 1.0;
+    blend = _smoothstep(rawBlend);
+    curIdx = slot % POSES.length;
+    prevIdx = (slot + POSES.length - 1) % POSES.length;
+    a._lastIdx = curIdx;
+  }
 
   const prev = POSES[prevIdx].bones;
   const cur = POSES[curIdx].bones;
@@ -324,27 +361,48 @@ function _applyPoseBlend(tick_s) {
 function _applyMouthAndFace(tick_s) {
   if (!vrm || !vrm.expressionManager) return;
   const em = vrm.expressionManager;
-  // One-pole IIR low-pass on the mouth amplitude — kills the
-  // per-frame jitter from noisy RMS without visibly lagging speech.
-  // y[n] = a * x[n] + (1 - a) * y[n-1]
-  window.artemis._mouthSmoothed =
-    MOUTH_SMOOTH_ALPHA * window.artemis.mouthOpen +
-    (1 - MOUTH_SMOOTH_ALPHA) * window.artemis._mouthSmoothed;
-  em.setValue(VRM_MOUTH_VISEME, window.artemis._mouthSmoothed);
-  // Emotion.
-  for (const n of ["happy", "sad", "angry", "surprised", "relaxed"]) {
-    em.setValue(n, window.artemis.expression === n ? 1.0 : 0.0);
+  const a = window.artemis;
+
+  // Mouth: IIR low-pass on 'aa' (driven by mouthOpen) plus any
+  // direct per-viseme overrides callers set via setViseme().
+  a._mouthSmoothed =
+    MOUTH_SMOOTH_ALPHA * a.mouthOpen + (1 - MOUTH_SMOOTH_ALPHA) * a._mouthSmoothed;
+  em.setValue("aa", Math.max(a._mouthSmoothed, a.visemes.aa));
+  em.setValue("ih", a.visemes.ih);
+  em.setValue("ou", a.visemes.ou);
+  em.setValue("ee", a.visemes.ee);
+  em.setValue("oh", a.visemes.oh);
+
+  // Emotion: explicit setEmotion() values win, else setExpression(n)
+  // binary-sets n to 1.0 and others to 0.
+  const emotions = ["happy", "sad", "angry", "surprised", "relaxed"];
+  for (const n of emotions) {
+    const blended = a.emotionBlend[n];
+    const picked = a.expression === n ? 1.0 : 0.0;
+    em.setValue(n, Math.max(blended, picked));
   }
-  // Blink — ~every 3–5 s, 150 ms closed.
-  if (tick_s > window.artemis._nextBlinkAt) {
+
+  // Blink — every ~3–5 s, 150 ms closed.
+  if (tick_s > a._nextBlinkAt) {
     em.setValue("blink", 1.0);
-    if (tick_s > window.artemis._nextBlinkAt + 0.15) {
+    if (tick_s > a._nextBlinkAt + 0.15) {
       em.setValue("blink", 0.0);
-      window.artemis._nextBlinkAt = tick_s + 3 + Math.random() * 2;
+      a._nextBlinkAt = tick_s + 3 + Math.random() * 2;
     }
   }
   em.update();
+
+  // Look-at: map normalized (-1..1) gaze onto a distant target.
+  if (vrm.lookAt) {
+    if (!_lookTarget) {
+      _lookTarget = new THREE.Object3D();
+      scene.add(_lookTarget);
+      vrm.lookAt.target = _lookTarget;
+    }
+    _lookTarget.position.set(a.lookAt.x * 2, 1.5 + a.lookAt.y * 1.5, 2.0);
+  }
 }
+let _lookTarget = null;
 
 function _buildGlasses() {
   const group = new THREE.Group();
