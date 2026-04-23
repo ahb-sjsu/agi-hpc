@@ -1,5 +1,9 @@
 // ARTEMIS table — LiveKit client + HUD state.
 // No framework; plain DOM. Token + room name come from URL params.
+//
+// S1a adds: scene-strip handling, PC stat cards (placeholder data —
+// wired to Google Sheets in S1b), DataChannel dispatch for
+// "artemis.sheet" / "artemis.scene" events.
 
 (function () {
   "use strict";
@@ -16,7 +20,22 @@
     localIdentity: null,
     micOn: false,
     startedAt: Date.now(),
+    // Characters are keyed by `sheet:row_id`; S1b replaces
+    // PLACEHOLDER_CHARS with live Sheets data.
+    characters: {},
+    scene: { name: "TRANSIT · DAY 184", flags: "NOMINAL" },
   };
+
+  // Placeholder roster so the stats card has something to render
+  // before S1b. Matches the pre-gens in Beyond_the_Heliopause
+  // Appendix E (values are illustrative, not canonical).
+  const PLACEHOLDER_CHARS = [
+    { id: "imogen",  name: "IMOGEN ROTH",    role: "Expedition Lead",     san: 70, san_max: 75, hp: 11, hp_max: 11, luck: 55, luck_max: 70, mp: 14, mp_max: 14, status: "ok" },
+    { id: "sully",   name: "ERIK SULLIVAN",  role: "Chief Engineer",      san: 62, san_max: 62, hp: 14, hp_max: 14, luck: 50, luck_max: 70, mp: 12, mp_max: 12, status: "ok" },
+    { id: "asta",    name: "ASTA NORDQUIST", role: "Medical Officer",     san: 68, san_max: 72, hp: 11, hp_max: 11, luck: 60, luck_max: 70, mp: 14, mp_max: 14, status: "ok" },
+    { id: "arlo",    name: "ARLO VANCE",     role: "Surface Ops / EVA",   san: 55, san_max: 55, hp: 15, hp_max: 15, luck: 45, luck_max: 70, mp: 11, mp_max: 11, status: "ok" },
+    { id: "saoirse", name: "SAOIRSE KELLEHER", role: "Rad / Atmo Chem",   san: 65, san_max: 70, hp: 11, hp_max: 11, luck: 40, luck_max: 60, mp: 13, mp_max: 13, status: "shaken" },
+  ];
 
   // ── tick clock ──────────────────────────────────────────────
   setInterval(() => {
@@ -61,6 +80,104 @@
     }
   }
 
+  // ── PC stats card ───────────────────────────────────────────
+  //
+  // Renders one mini-card per character with SAN / HP / Luck / MP
+  // bars. Color coded by status (ok / shaken / injured / critical /
+  // dead). In S1b, the `state.characters` dict is driven by
+  // DataChannel events of kind "artemis.sheet" — the Keeper's
+  // Google Sheet is the source of truth.
+
+  function renderStats() {
+    const grid = $("stats-grid");
+    grid.innerHTML = "";
+    const chars = Object.values(state.characters);
+    if (!chars.length) {
+      const empty = document.createElement("div");
+      empty.className = "loading";
+      empty.textContent = "no crew data";
+      grid.appendChild(empty);
+      return;
+    }
+    for (const c of chars) {
+      grid.appendChild(buildPcCard(c));
+    }
+  }
+
+  function buildPcCard(c) {
+    const card = document.createElement("div");
+    card.className = "pc-card";
+    card.dataset.status = c.status || "ok";
+
+    const head = document.createElement("div");
+    head.className = "pc-head";
+    const name = document.createElement("div");
+    name.className = "pc-name";
+    name.textContent = c.name || c.id;
+    const role = document.createElement("div");
+    role.className = "pc-role";
+    role.textContent = c.role || "";
+    head.appendChild(name);
+    head.appendChild(role);
+
+    const bars = document.createElement("div");
+    bars.className = "pc-bars";
+    addBar(bars, "SAN",  "san",  c.san,  c.san_max);
+    addBar(bars, "HP",   "hp",   c.hp,   c.hp_max);
+    addBar(bars, "LUCK", "luck", c.luck, c.luck_max);
+    addBar(bars, "MP",   "mp",   c.mp,   c.mp_max);
+
+    card.appendChild(head);
+    card.appendChild(bars);
+    return card;
+  }
+
+  function addBar(parent, label, klass, value, max) {
+    const v = Number(value) || 0;
+    const m = Number(max) || 1;
+    const pct = Math.max(0, Math.min(100, (v / m) * 100));
+    const lbl = document.createElement("span");
+    lbl.className = "bar-label";
+    lbl.textContent = label;
+    const track = document.createElement("span");
+    track.className = "bar-track";
+    const fill = document.createElement("span");
+    fill.className = "bar-fill " + klass;
+    fill.style.width = pct + "%";
+    track.appendChild(fill);
+    const val = document.createElement("span");
+    val.className = "bar-val";
+    val.textContent = `${v} / ${m}`;
+    parent.appendChild(lbl);
+    parent.appendChild(track);
+    parent.appendChild(val);
+  }
+
+  // Merge an update into state.characters. Accepts either a single
+  // character dict or an array.
+  function applySheetUpdate(payload) {
+    const rows = Array.isArray(payload) ? payload : [payload];
+    for (const r of rows) {
+      if (!r || !r.id) continue;
+      state.characters[r.id] = { ...state.characters[r.id], ...r };
+    }
+    renderStats();
+  }
+
+  // ── Scene strip ─────────────────────────────────────────────
+
+  function applyScene(scene) {
+    if (!scene) return;
+    state.scene = { ...state.scene, ...scene };
+    if (scene.name) $("scene-name").textContent = String(scene.name).toUpperCase();
+    if (scene.flags !== undefined) {
+      const flagsEl = $("scene-flags");
+      flagsEl.textContent = String(scene.flags).toUpperCase();
+    }
+  }
+
+  // ── Artifacts ───────────────────────────────────────────────
+
   async function loadArtifacts() {
     const list = $("artifact-list");
     list.innerHTML = "";
@@ -96,6 +213,8 @@
     }
   }
 
+  // ── LiveKit connect ─────────────────────────────────────────
+
   async function connect() {
     if (!token) {
       log("no token in URL — pass ?t=<jwt>", "err");
@@ -129,8 +248,8 @@
       const names = speakers.map((s) => s.identity);
       $("avatar-status").textContent =
         names.length === 0 ? "IDLE" :
-        names.includes("artemis") ? "ARTEMIS SPEAKING" :
-        "HEARING " + names[0];
+        names.includes("artemis") ? "ARTEMIS · SPEAKING" :
+        "HEARING · " + names[0];
     });
     room.on(LivekitClient.RoomEvent.TrackSubscribed, (track, pub, p) => {
       log("track: " + p.identity + "/" + track.kind);
@@ -149,8 +268,18 @@
     room.on(LivekitClient.RoomEvent.DataReceived, (payload, p) => {
       try {
         const parsed = JSON.parse(new TextDecoder().decode(payload));
-        if (parsed.kind === "artemis.say") {
-          log("ARTEMIS: " + parsed.text);
+        switch (parsed.kind) {
+          case "artemis.say":
+            log("ARTEMIS: " + parsed.text);
+            break;
+          case "artemis.sheet":
+            applySheetUpdate(parsed.rows || parsed);
+            log("stats updated from sheet");
+            break;
+          case "artemis.scene":
+            applyScene(parsed);
+            log("scene: " + (parsed.name || ""));
+            break;
         }
       } catch (_) {
         /* ignore non-JSON data */
@@ -159,27 +288,32 @@
     room.on(LivekitClient.RoomEvent.Disconnected, (reason) => {
       log("disconnected: " + (reason || ""));
       $("info-status").textContent = "DISCONNECTED";
+      $("info-status").classList.remove("critical");
+      $("info-status").classList.add("warn");
     });
 
     try {
       await room.connect(serverUrl, token);
       state.localIdentity = room.localParticipant.identity;
       $("info-identity").textContent = state.localIdentity;
-      $("info-status").textContent = "CONNECTED";
+      const statusEl = $("info-status");
+      statusEl.textContent = "CONNECTED";
+      statusEl.classList.remove("warn", "critical");
       log("connected as " + state.localIdentity);
       renderParticipants();
-      // Enable mic by default (can toggle with button).
       try {
         await room.localParticipant.setMicrophoneEnabled(true);
         state.micOn = true;
-        $("mic-btn").textContent = "MIC: ON";
+        $("mic-btn").textContent = "MIC : ON";
         $("mic-btn").classList.add("active");
       } catch (_) {
         log("mic not available (permission denied?)");
       }
     } catch (err) {
       log("connect failed: " + err.message, "err");
-      $("info-status").textContent = "ERROR";
+      const statusEl = $("info-status");
+      statusEl.textContent = "ERROR";
+      statusEl.classList.add("critical");
       $("avatar-status").textContent = "FAIL";
     }
   }
@@ -188,7 +322,7 @@
     if (!state.room) return;
     state.micOn = !state.micOn;
     await state.room.localParticipant.setMicrophoneEnabled(state.micOn);
-    $("mic-btn").textContent = state.micOn ? "MIC: ON" : "MIC: OFF";
+    $("mic-btn").textContent = state.micOn ? "MIC : ON" : "MIC : OFF";
     $("mic-btn").classList.toggle("active", state.micOn);
   });
 
@@ -202,6 +336,9 @@
 
   // ── kickoff ─────────────────────────────────────────────────
   document.addEventListener("DOMContentLoaded", () => {
+    // Seed with placeholder roster; S1b will overwrite from Sheets.
+    applySheetUpdate(PLACEHOLDER_CHARS);
+    applyScene(state.scene);
     loadArtifacts();
     connect();
   });
