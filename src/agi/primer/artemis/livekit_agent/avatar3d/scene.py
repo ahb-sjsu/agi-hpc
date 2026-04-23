@@ -113,7 +113,8 @@ const W = $WIDTH, H = $HEIGHT, FPS = $FPS;
 
 window.artemis = {
   ready: false,
-  mouthOpen: 0,
+  mouthOpen: 0,          // target (caller-set)
+  _mouthSmoothed: 0,     // low-pass state (applied to the rig)
   expression: "neutral",
   idle: true,
   pose: 0,  // 0..N-1, index into POSES
@@ -166,9 +167,18 @@ const POSES = [
   }},
 ];
 
-const POSE_HOLD_S = 4.0;     // how long we linger on a pose
-const POSE_BLEND_S = 1.2;    // SLERP duration between poses
+const POSE_HOLD_S = 10.0;    // how long we linger on a pose
+const POSE_BLEND_S = 3.0;    // SLERP duration between poses (eased)
 const VRM_MOUTH_VISEME = "aa";
+// Smoothing:
+// - Pose blend factor runs through smoothstep (cubic) so velocity
+//   starts+ends at zero, killing the jerk at blend-window edges.
+// - Mouth amplitude runs through a one-pole IIR low-pass: a scalar
+//   Kalman-ish EMA. Alpha 0.22 ≈ 5-frame window at 30 fps —
+//   enough to smooth per-frame RMS jitter without lagging the
+//   audio visibly.
+const MOUTH_SMOOTH_ALPHA = 0.22;
+function _smoothstep(t) { return t * t * (3 - 2 * t); }
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color("$BACKGROUND");
@@ -279,14 +289,16 @@ const _quatOut = new THREE.Quaternion();
 
 function _applyPoseBlend(tick_s) {
   if (!vrm || !vrm.humanoid) return;
-  // Pose cycle: every POSE_HOLD_S + POSE_BLEND_S seconds, advance
-  // one pose. During the BLEND window we SLERP between prev+next;
-  // during HOLD we sit at next.
   const cycle = POSE_HOLD_S + POSE_BLEND_S;
   const phase = tick_s % cycle;
   const slot = Math.floor(tick_s / cycle);
   const inBlend = phase < POSE_BLEND_S;
-  const blend = inBlend ? phase / POSE_BLEND_S : 1.0;
+  // Smoothstep the blend — cubic ease-in-out kills the velocity
+  // discontinuities at the edges of the blend window. Linear SLERP
+  // looked jerky because the avatar would snap from 'still' →
+  // 'moving fast' → 'still' with no easing.
+  const rawBlend = inBlend ? phase / POSE_BLEND_S : 1.0;
+  const blend = _smoothstep(rawBlend);
   const curIdx = (slot) % POSES.length;
   const prevIdx = (slot + POSES.length - 1) % POSES.length;
 
@@ -312,8 +324,13 @@ function _applyPoseBlend(tick_s) {
 function _applyMouthAndFace(tick_s) {
   if (!vrm || !vrm.expressionManager) return;
   const em = vrm.expressionManager;
-  // Mouth — audio-amplitude visemes driven from setMouthOpen.
-  em.setValue(VRM_MOUTH_VISEME, window.artemis.mouthOpen);
+  // One-pole IIR low-pass on the mouth amplitude — kills the
+  // per-frame jitter from noisy RMS without visibly lagging speech.
+  // y[n] = a * x[n] + (1 - a) * y[n-1]
+  window.artemis._mouthSmoothed =
+    MOUTH_SMOOTH_ALPHA * window.artemis.mouthOpen +
+    (1 - MOUTH_SMOOTH_ALPHA) * window.artemis._mouthSmoothed;
+  em.setValue(VRM_MOUTH_VISEME, window.artemis._mouthSmoothed);
   // Emotion.
   for (const n of ["happy", "sad", "angry", "surprised", "relaxed"]) {
     em.setValue(n, window.artemis.expression === n ? 1.0 : 0.0);
