@@ -77,30 +77,31 @@ IDLE_BONES = ("head", "neck", "spine", "hips")
 # LEFT upper arm (rest along +X) goes DOWN. The right arm rests along
 # -X and takes the opposite-sign angle around +Y.
 POSES = {
-    # Relaxed arms-at-sides.
+    # Relaxed arms-at-sides. Calibrated against this VRM's grid:
+    # Y-axis ±1.55 rad (~π/2) lands arms at proper down-at-side.
     "mountain": {
-        "leftUpperArm": ((0, 1, 0), 1.30),
-        "rightUpperArm": ((0, 1, 0), -1.30),
+        "leftUpperArm": ((0, 1, 0), 1.55),
+        "rightUpperArm": ((0, 1, 0), -1.55),
     },
-    # Both arms overhead.
+    # Both arms overhead (mirror: -1.55 on left, +1.55 on right).
     "reach": {
-        "leftUpperArm": ((0, 1, 0), -1.45),
-        "rightUpperArm": ((0, 1, 0), 1.45),
+        "leftUpperArm": ((0, 1, 0), -1.55),
+        "rightUpperArm": ((0, 1, 0), 1.55),
     },
-    # Front arm forward, back arm back — warrior-II silhouette.
+    # T-pose arms-out with a slight forward swing.
     "warrior": {
-        "leftUpperArm": ((0, 0, 1), 0.35),
-        "rightUpperArm": ((0, 0, 1), 0.35),
+        "leftUpperArm": ((0, 0, 1), 0.40),
+        "rightUpperArm": ((0, 0, 1), -0.40),
     },
-    # Arms drawn in toward chest.
+    # Arms drawn in partway toward chest.
     "prayer": {
-        "leftUpperArm": ((0, 1, 0), 0.80),
-        "rightUpperArm": ((0, 1, 0), -0.80),
+        "leftUpperArm": ((0, 1, 0), 0.85),
+        "rightUpperArm": ((0, 1, 0), -0.85),
     },
-    # One arm raised (checking-watch style), other relaxed.
+    # One arm raised (checking-watch style), other relaxed-down.
     "ping": {
         "leftUpperArm": ((0, 1, 0), -1.10),
-        "rightUpperArm": ((0, 1, 0), -0.20),
+        "rightUpperArm": ((0, 1, 0), -1.55),
     },
 }
 
@@ -254,13 +255,13 @@ def _build_idle_micromotion(arm, total_frames: int, fps: int) -> None:
     """
     step = max(1, fps // 3)  # ~10 Hz sampling
     # (pitch_amp, yaw_amp, roll_amp, time_scale_s, phase_offset)
-    # Amplitudes ~3x the first pass — earlier values were too subtle
-    # to read visually at the current camera framing.
+    # Calibrated against head pitch/yaw grid on this VRM: ~0.15-0.20
+    # rad is a clearly visible nod/turn at this camera framing.
     specs = {
-        BONE["head"]: (0.15, 0.21, 0.09, 5.0, 0.0),
-        BONE["neck"]: (0.075, 0.105, 0.045, 4.0, 11.3),
-        BONE["spine"]: (0.06, 0.054, 0.075, 3.5, 23.7),
-        BONE["hips"]: (0.03, 0.045, 0.066, 6.0, 41.1),
+        BONE["head"]: (0.20, 0.25, 0.10, 5.0, 0.0),
+        BONE["neck"]: (0.10, 0.12, 0.05, 4.0, 11.3),
+        BONE["spine"]: (0.08, 0.06, 0.08, 3.5, 23.7),
+        BONE["hips"]: (0.04, 0.05, 0.07, 6.0, 41.1),
     }
     for bone_name in specs:
         pb = arm.pose.bones.get(bone_name)
@@ -368,11 +369,51 @@ def _build_animation(cfg: dict) -> None:
     # dead-still. Keyframed at ~10 Hz for the whole clip.
     _build_idle_micromotion(arm, total_frames, fps)
 
+    # Diagnostic: print the arm f-curve state so we can verify pose
+    # keyframes actually landed on the bones.
+    _dump_arm_fcurves(arm)
+
     # Force LINEAR interpolation on shape-key f-curves. Default Bezier
     # auto-handles overshoot between rapidly-oscillating envelope
     # samples and progressively pushes MTH_A beyond its keyframed
     # ceiling — reads as "mouth keeps getting wider until yawning."
     _force_linear_shape_keys(face)
+
+
+def _dump_arm_fcurves(arm) -> None:
+    """Print keyframe stats for every pose-bone rotation f-curve.
+
+    Proves definitively whether POSES code actually landed on the arm
+    bones — previous tour frames showed arms stuck in T-pose despite
+    the helper supposedly keyframing them.
+    """
+    ad = arm.animation_data
+    if ad is None or ad.action is None:
+        print("BLENDER_TOUR: arm has NO animation_data / action", flush=True)
+        return
+    for fc in ad.action.fcurves:
+        if "UpperArm" in fc.data_path or "LowerArm" in fc.data_path:
+            vals = [kp.co[1] for kp in fc.keyframe_points]
+            n = len(vals)
+            if not n:
+                continue
+            print(
+                f"BLENDER_TOUR: arm fcurve {fc.data_path}[{fc.array_index}] "
+                f"n={n} min={min(vals):.3f} max={max(vals):.3f} "
+                f"first={vals[0]:.3f} last={vals[-1]:.3f}",
+                flush=True,
+            )
+    # Also print the pose_bone's rotation_mode — if this isn't
+    # QUATERNION, Blender uses the euler channel and ignores the
+    # quaternion keyframes entirely.
+    for alias in POSE_BONES:
+        pb = arm.pose.bones.get(BONE[alias])
+        if pb is not None:
+            print(
+                f"BLENDER_TOUR: {alias} rotation_mode={pb.rotation_mode!r} "
+                f"quat={tuple(round(x, 3) for x in pb.rotation_quaternion)}",
+                flush=True,
+            )
 
 
 def _force_linear_shape_keys(face) -> None:

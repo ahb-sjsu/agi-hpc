@@ -141,7 +141,7 @@ def compute_mouth_envelope(pcm: np.ndarray, sr: int, fps: int) -> np.ndarray:
     env = np.clip(raw / ceil, 0.0, 1.0)
     gate = 0.15
     env = np.where(env < gate, 0.0, (env - gate) / (1 - gate))
-    NATURAL_MAX = 0.25
+    NATURAL_MAX = 0.10
     env = env * NATURAL_MAX
     # One-pole low-pass to kill per-frame jitter during speech.
     alpha = 0.22
