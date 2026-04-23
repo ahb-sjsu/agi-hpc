@@ -130,7 +130,8 @@ async def _run() -> int:
             backend = _VOICE_CACHE.get(voice_override)
             if backend is None:
                 backend = XttsBackend(
-                    reference_wav=voice_override, language=language,
+                    reference_wav=voice_override,
+                    language=language,
                 )
                 _VOICE_CACHE[voice_override] = backend
         else:
@@ -160,7 +161,9 @@ async def _run() -> int:
             seg_dt = time.monotonic() - t_seg
             total_audio_s += sample.duration_s
             pcm24 = resample_int16_to(
-                sample.pcm, sample.sample_rate, 24000,
+                sample.pcm,
+                sample.sample_rate,
+                24000,
             )
             hdrs = {
                 H_JOB: job_id,
@@ -172,13 +175,22 @@ async def _run() -> int:
             await nc.publish(reply_to, pcm24.tobytes(), headers=hdrs)
             log.info(
                 "job %s seg %d/%d: %d chars → %.2fs audio in %.2fs",
-                job_id, idx, n, len(seg), sample.duration_s, seg_dt,
+                job_id,
+                idx,
+                n,
+                len(seg),
+                sample.duration_s,
+                seg_dt,
             )
         dt = time.monotonic() - t_all
         log.info(
             "job %s: %d chars total → %.2fs audio in %.2fs (rtx %.2f, %d segs)",
-            job_id, len(text), total_audio_s, dt,
-            total_audio_s / max(dt, 1e-3), n,
+            job_id,
+            len(text),
+            total_audio_s,
+            dt,
+            total_audio_s / max(dt, 1e-3),
+            n,
         )
 
     async def _heartbeat() -> None:
@@ -227,7 +239,8 @@ async def _run() -> int:
             ):
                 log.info(
                     "idle for %.0fs > %.0fs — shutting down (quota hygiene)",
-                    time.monotonic() - last_activity, IDLE_SHUTDOWN_S,
+                    time.monotonic() - last_activity,
+                    IDLE_SHUTDOWN_S,
                 )
                 stop.set()
 

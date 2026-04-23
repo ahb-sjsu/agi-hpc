@@ -175,7 +175,8 @@ class _FakeFallback:
     def synthesize(self, text: str) -> TTSSample:
         self.calls.append(text)
         return TTSSample(
-            pcm=np.ones(1024, dtype=np.int16) * 500, sample_rate=22050,
+            pcm=np.ones(1024, dtype=np.int16) * 500,
+            sample_rate=22050,
             source_model="fake_piper",
         )
 
@@ -240,7 +241,9 @@ def test_loader_auto_falls_back_to_piper_when_no_xtts_ref(monkeypatch) -> None:
     import agi.primer.artemis.livekit_agent.tts.loader as loader_mod
 
     monkeypatch.setattr(
-        loader_mod, "_burst_worker_available", lambda _url: False,
+        loader_mod,
+        "_burst_worker_available",
+        lambda _url: False,
     )
     b = build_backend_from_env()
     assert b.name == "piper"

@@ -66,7 +66,10 @@ def build_backend_from_env() -> TTSBackend:
         if fb is None:
             fb = PiperBackend(piper_path)
         return NatsBurstBackend(
-            nats_url=nats_url, voice_ref=xtts_ref, language=lang, fallback=fb,
+            nats_url=nats_url,
+            voice_ref=xtts_ref,
+            language=lang,
+            fallback=fb,
         )
 
     # ── auto ────────────────────────────────────────────────────
@@ -77,7 +80,10 @@ def build_backend_from_env() -> TTSBackend:
         log.info("TTS backend: nats_burst (auto — heartbeat seen)")
         fb = _try_xtts_fallback(xtts_ref, lang) or PiperBackend(piper_path)
         return NatsBurstBackend(
-            nats_url=nats_url, voice_ref=xtts_ref, language=lang, fallback=fb,
+            nats_url=nats_url,
+            voice_ref=xtts_ref,
+            language=lang,
+            fallback=fb,
         )
     local_xtts = _try_xtts_fallback(xtts_ref, lang)
     if local_xtts is not None:

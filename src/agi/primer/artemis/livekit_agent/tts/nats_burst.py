@@ -161,7 +161,9 @@ class NatsBurstBackend:
             model = chunk.source_model or model
         pcm = np.concatenate(pcms) if pcms else np.zeros(0, dtype=np.int16)
         return TTSSample(
-            pcm=pcm, sample_rate=self.target_sr, source_model=model,
+            pcm=pcm,
+            sample_rate=self.target_sr,
+            source_model=model,
         )
 
     def synthesize_stream(self, text: str) -> Iterator[TTSSample]:
@@ -184,7 +186,8 @@ class NatsBurstBackend:
 
         out_q: queue.Queue = queue.Queue()
         fut = asyncio.run_coroutine_threadsafe(
-            self._stream_request(text, out_q), self._loop,
+            self._stream_request(text, out_q),
+            self._loop,
         )
         try:
             while True:
@@ -223,11 +226,11 @@ class NatsBurstBackend:
         for chunk in self.synthesize_stream(text):
             pcms.append(chunk.pcm)
             model = chunk.source_model or model
-        pcm = (
-            np.concatenate(pcms) if pcms else np.zeros(0, dtype=np.int16)
-        )
+        pcm = np.concatenate(pcms) if pcms else np.zeros(0, dtype=np.int16)
         return TTSSample(
-            pcm=pcm, sample_rate=self.target_sr, source_model=model,
+            pcm=pcm,
+            sample_rate=self.target_sr,
+            source_model=model,
         )
 
     async def _stream_request(self, text: str, out_q: queue.Queue) -> None:
@@ -268,15 +271,21 @@ class NatsBurstBackend:
                 if n_received == 0:
                     log.info(
                         "burst stream first chunk: job=%s %.2fs (of %d)",
-                        job_id, time.monotonic() - t0, n,
+                        job_id,
+                        time.monotonic() - t0,
+                        n,
                     )
                 sr = int(headers.get(H_SR, "24000"))
                 model = str(headers.get(H_MODEL, "xtts"))
                 pcm = np.frombuffer(msg.data or b"", dtype=np.int16)
                 pcm = resample_int16_to(pcm, sr, self.target_sr)
-                out_q.put(TTSSample(
-                    pcm=pcm, sample_rate=self.target_sr, source_model=model,
-                ))
+                out_q.put(
+                    TTSSample(
+                        pcm=pcm,
+                        sample_rate=self.target_sr,
+                        source_model=model,
+                    )
+                )
                 n_received = max(n_received, idx)
         except asyncio.CancelledError:
             raise

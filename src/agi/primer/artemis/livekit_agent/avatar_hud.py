@@ -477,7 +477,8 @@ def _audio_publisher_thread(
         # backpressure: this thread only advances when the LiveKit
         # FFI has actually taken the frame.
         fut = asyncio.run_coroutine_threadsafe(
-            source.capture_frame(frame), loop,
+            source.capture_frame(frame),
+            loop,
         )
         try:
             fut.result(timeout=1.0)

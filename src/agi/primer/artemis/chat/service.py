@@ -36,8 +36,8 @@ from .store import ChatStore
 log = logging.getLogger("artemis.chat.service")
 
 
-SUBJECT_IN_PREFIX = "agi.rh.artemis.chat.in"        # .<player_id>
-SUBJECT_OUT_PREFIX = "agi.rh.artemis.chat.out"      # .<player_id>
+SUBJECT_IN_PREFIX = "agi.rh.artemis.chat.in"  # .<player_id>
+SUBJECT_OUT_PREFIX = "agi.rh.artemis.chat.out"  # .<player_id>
 SUBJECT_BROADCAST = "agi.rh.artemis.chat.broadcast"
 
 # Wire-protocol message kinds. String-valued so JSON payloads are
@@ -321,9 +321,7 @@ def build_service_from_env() -> ChatService:
       ARTEMIS_CHAT_DB            default /var/lib/atlas-artemis/chat.sqlite3
     """
     nats_url = os.environ.get("NATS_URL", "nats://localhost:4222")
-    db_path = os.environ.get(
-        "ARTEMIS_CHAT_DB", "/var/lib/atlas-artemis/chat.sqlite3"
-    )
+    db_path = os.environ.get("ARTEMIS_CHAT_DB", "/var/lib/atlas-artemis/chat.sqlite3")
     return ChatService(
         nats_url=nats_url,
         store=ChatStore(db_path),

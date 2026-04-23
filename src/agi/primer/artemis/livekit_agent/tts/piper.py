@@ -78,9 +78,7 @@ class PiperBackend:
             pcm = self._chunk_to_pcm(chunk)
             if len(pcm):
                 all_pcm.append(pcm)
-        pcm = (
-            np.concatenate(all_pcm) if all_pcm else np.zeros(0, dtype=np.int16)
-        )
+        pcm = np.concatenate(all_pcm) if all_pcm else np.zeros(0, dtype=np.int16)
         pcm = resample_int16_to(pcm, src_sr, self.target_sr)
         return TTSSample(
             pcm=pcm,

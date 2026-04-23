@@ -36,9 +36,7 @@ async def _run() -> int:
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
 
-    db_path = os.environ.get(
-        "ARTEMIS_CHAT_DB", "/var/lib/atlas-artemis/chat.sqlite3"
-    )
+    db_path = os.environ.get("ARTEMIS_CHAT_DB", "/var/lib/atlas-artemis/chat.sqlite3")
     port = int(os.environ.get("ARTEMIS_PORTAL_PORT", "8090"))
     nats_url = os.environ.get("NATS_URL", "nats://localhost:4222")
     wiki_url = os.environ.get("ATLAS_WIKI_URL", "").rstrip("/")

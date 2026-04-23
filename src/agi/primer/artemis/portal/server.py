@@ -66,9 +66,11 @@ async def _auth_middleware(request: web.Request, handler) -> web.StreamResponse:
     deps: PortalDeps = request.app["deps"]
     token = extract_token(
         {k: v for k, v in request.headers.items()},
-        {k: v.value for k, v in request.cookies.items()}
-        if hasattr(request.cookies, "items")
-        else dict(request.cookies),
+        (
+            {k: v.value for k, v in request.cookies.items()}
+            if hasattr(request.cookies, "items")
+            else dict(request.cookies)
+        ),
         dict(request.query),
     )
     try:
@@ -99,10 +101,12 @@ async def handle_chat_recent(request: web.Request) -> web.Response:
         return web.json_response({"error": "missing session"}, status=400)
     limit = _int_param(request, "limit", default=50, cap=500)
     msgs = deps.chat_store.recent(session_id=session, limit=limit)
-    return web.json_response({
-        "session": session,
-        "messages": [_msg_dict(m) for m in msgs],
-    })
+    return web.json_response(
+        {
+            "session": session,
+            "messages": [_msg_dict(m) for m in msgs],
+        }
+    )
 
 
 async def handle_chat_thread(request: web.Request) -> web.Response:
@@ -113,13 +117,17 @@ async def handle_chat_thread(request: web.Request) -> web.Response:
         return web.json_response({"error": "missing session"}, status=400)
     limit = _int_param(request, "limit", default=500, cap=2000)
     msgs = deps.chat_store.thread(
-        session_id=session, participant_id=participant, limit=limit,
+        session_id=session,
+        participant_id=participant,
+        limit=limit,
     )
-    return web.json_response({
-        "session": session,
-        "participant": participant,
-        "messages": [_msg_dict(m) for m in msgs],
-    })
+    return web.json_response(
+        {
+            "session": session,
+            "participant": participant,
+            "messages": [_msg_dict(m) for m in msgs],
+        }
+    )
 
 
 async def handle_chat_search(request: web.Request) -> web.Response:
@@ -128,9 +136,13 @@ async def handle_chat_search(request: web.Request) -> web.Response:
     session = request.query.get("session")
     limit = _int_param(request, "limit", default=100, cap=500)
     msgs = deps.chat_store.search(query=q, session_id=session, limit=limit)
-    return web.json_response({
-        "q": q, "session": session, "hits": [_msg_dict(m) for m in msgs],
-    })
+    return web.json_response(
+        {
+            "q": q,
+            "session": session,
+            "hits": [_msg_dict(m) for m in msgs],
+        }
+    )
 
 
 async def handle_chat_whisper(request: web.Request) -> web.Response:
@@ -151,8 +163,12 @@ async def handle_chat_whisper(request: web.Request) -> web.Response:
         ts=time.time(),
     )
     deps.chat_store.append(
-        session_id=msg.session_id, from_id=msg.from_id, to_id=msg.to_id,
-        kind=msg.kind, body=msg.body, ts=msg.ts,
+        session_id=msg.session_id,
+        from_id=msg.from_id,
+        to_id=msg.to_id,
+        kind=msg.kind,
+        body=msg.body,
+        ts=msg.ts,
     )
     subj = f"{SUBJECT_OUT_PREFIX}.{msg.to_id}"
     await deps.publish(subj, msg.to_json())
@@ -174,8 +190,12 @@ async def handle_chat_broadcast(request: web.Request) -> web.Response:
         ts=time.time(),
     )
     deps.chat_store.append(
-        session_id=msg.session_id, from_id=msg.from_id, to_id=None,
-        kind=msg.kind, body=msg.body, ts=msg.ts,
+        session_id=msg.session_id,
+        from_id=msg.from_id,
+        to_id=None,
+        kind=msg.kind,
+        body=msg.body,
+        ts=msg.ts,
     )
     await deps.publish(SUBJECT_BROADCAST, msg.to_json())
     return web.json_response({"ok": True})
@@ -184,11 +204,13 @@ async def handle_chat_broadcast(request: web.Request) -> web.Response:
 async def handle_sheet(request: web.Request) -> web.Response:
     deps: PortalDeps = request.app["deps"]
     name = request.query.get("name") or "characters"
-    return web.json_response({
-        "name": name,
-        "rows": deps.sheets.rows(name),
-        "available_sheets": deps.sheets.names(),
-    })
+    return web.json_response(
+        {
+            "name": name,
+            "rows": deps.sheets.rows(name),
+            "available_sheets": deps.sheets.names(),
+        }
+    )
 
 
 async def handle_wiki_search(request: web.Request) -> web.Response:

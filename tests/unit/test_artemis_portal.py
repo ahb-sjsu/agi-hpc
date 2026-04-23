@@ -204,8 +204,11 @@ def test_http_requires_keeper_token(aio_loop) -> None:
 def test_http_chat_search_hits_fts(aio_loop) -> None:
     deps = _mk_deps()
     deps.chat_store.append(
-        session_id="s1", from_id="player:imogen", to_id="artemis",
-        kind="player_to_artemis", body="check the vacuum seal",
+        session_id="s1",
+        from_id="player:imogen",
+        to_id="artemis",
+        kind="player_to_artemis",
+        body="check the vacuum seal",
     )
 
     async def _test():

@@ -32,10 +32,14 @@ log = logging.getLogger("artemis.sheets.parser")
 # can read them without a parser change.
 CHARACTERISTIC_COLS = ("str", "con", "siz", "dex", "app", "int", "pow", "edu")
 STAT_COLS = (
-    "san", "san_max",
-    "hp", "hp_max",
-    "luck", "luck_max",
-    "mp", "mp_max",
+    "san",
+    "san_max",
+    "hp",
+    "hp_max",
+    "luck",
+    "luck_max",
+    "mp",
+    "mp_max",
 )
 META_COLS = ("id", "name", "role", "occupation", "age", "status", "notes")
 JSON_COLS = ("skills_json", "equipment_json")
@@ -43,11 +47,17 @@ JSON_COLS = ("skills_json", "equipment_json")
 # The subset of fields the player HUD renders. Keep minimal — the
 # player table UI is cramped; everything else is portal/context-only.
 HUD_FIELDS = (
-    "id", "name", "role",
-    "san", "san_max",
-    "hp", "hp_max",
-    "luck", "luck_max",
-    "mp", "mp_max",
+    "id",
+    "name",
+    "role",
+    "san",
+    "san_max",
+    "hp",
+    "hp_max",
+    "luck",
+    "luck_max",
+    "mp",
+    "mp_max",
     "status",
 )
 

@@ -39,12 +39,20 @@ def _mk_store() -> ChatStore:
 def test_store_append_and_thread_returns_rows_in_ts_order() -> None:
     s = _mk_store()
     s.append(
-        session_id="sess", from_id="player:imogen", to_id="artemis",
-        kind="player_to_artemis", body="what do I see?", ts=1.0,
+        session_id="sess",
+        from_id="player:imogen",
+        to_id="artemis",
+        kind="player_to_artemis",
+        body="what do I see?",
+        ts=1.0,
     )
     s.append(
-        session_id="sess", from_id="artemis", to_id="player:imogen",
-        kind="artemis_to_player", body="corridor flickers", ts=2.0,
+        session_id="sess",
+        from_id="artemis",
+        to_id="player:imogen",
+        kind="artemis_to_player",
+        body="corridor flickers",
+        ts=2.0,
     )
     msgs = s.thread(session_id="sess", participant_id="player:imogen")
     assert [m.body for m in msgs] == ["what do I see?", "corridor flickers"]
@@ -54,12 +62,20 @@ def test_store_thread_player_filter_hides_other_whispers() -> None:
     s = _mk_store()
     # Keeper whispers to imogen; arlo must not see it.
     s.append(
-        session_id="sess", from_id="keeper:gm", to_id="player:imogen",
-        kind="keeper_to_player", body="you sense something", ts=1.0,
+        session_id="sess",
+        from_id="keeper:gm",
+        to_id="player:imogen",
+        kind="keeper_to_player",
+        body="you sense something",
+        ts=1.0,
     )
     s.append(
-        session_id="sess", from_id="keeper:gm", to_id=None,
-        kind="keeper_to_all", body="ship lurches", ts=2.0,
+        session_id="sess",
+        from_id="keeper:gm",
+        to_id=None,
+        kind="keeper_to_all",
+        body="ship lurches",
+        ts=2.0,
     )
     arlo_view = s.thread(session_id="sess", participant_id="player:arlo")
     bodies = [m.body for m in arlo_view]
@@ -70,12 +86,20 @@ def test_store_thread_player_filter_hides_other_whispers() -> None:
 def test_store_keeper_sees_everything() -> None:
     s = _mk_store()
     s.append(
-        session_id="sess", from_id="keeper:gm", to_id="player:imogen",
-        kind="keeper_to_player", body="psst", ts=1.0,
+        session_id="sess",
+        from_id="keeper:gm",
+        to_id="player:imogen",
+        kind="keeper_to_player",
+        body="psst",
+        ts=1.0,
     )
     s.append(
-        session_id="sess", from_id="player:arlo", to_id="artemis",
-        kind="player_to_artemis", body="status?", ts=2.0,
+        session_id="sess",
+        from_id="player:arlo",
+        to_id="artemis",
+        kind="player_to_artemis",
+        body="status?",
+        ts=2.0,
     )
     keeper_view = s.thread(session_id="sess", participant_id="keeper:gm")
     bodies = [m.body for m in keeper_view]
@@ -85,13 +109,20 @@ def test_store_keeper_sees_everything() -> None:
 def test_store_search_finds_by_fts_body() -> None:
     s = _mk_store()
     s.append(
-        session_id="sess", from_id="player:imogen", to_id="artemis",
-        kind="player_to_artemis", body="check the vacuum seal integrity",
+        session_id="sess",
+        from_id="player:imogen",
+        to_id="artemis",
+        kind="player_to_artemis",
+        body="check the vacuum seal integrity",
         ts=1.0,
     )
     s.append(
-        session_id="sess", from_id="artemis", to_id="player:imogen",
-        kind="artemis_to_player", body="seal reads nominal", ts=2.0,
+        session_id="sess",
+        from_id="artemis",
+        to_id="player:imogen",
+        kind="artemis_to_player",
+        body="seal reads nominal",
+        ts=2.0,
     )
     hits = s.search(query="vacuum")
     assert len(hits) == 1
@@ -104,12 +135,18 @@ def test_store_search_finds_by_fts_body() -> None:
 def test_store_search_scoped_to_session() -> None:
     s = _mk_store()
     s.append(
-        session_id="sess-A", from_id="p", to_id="a",
-        kind="player_to_artemis", body="mi-go vault",
+        session_id="sess-A",
+        from_id="p",
+        to_id="a",
+        kind="player_to_artemis",
+        body="mi-go vault",
     )
     s.append(
-        session_id="sess-B", from_id="p", to_id="a",
-        kind="player_to_artemis", body="mi-go vault",
+        session_id="sess-B",
+        from_id="p",
+        to_id="a",
+        kind="player_to_artemis",
+        body="mi-go vault",
     )
     hits_any = s.search(query="mi-go")
     hits_a = s.search(query="mi-go", session_id="sess-A")
@@ -120,8 +157,11 @@ def test_store_search_scoped_to_session() -> None:
 def test_store_search_empty_query_returns_empty() -> None:
     s = _mk_store()
     s.append(
-        session_id="sess", from_id="p", to_id="a",
-        kind="player_to_artemis", body="anything",
+        session_id="sess",
+        from_id="p",
+        to_id="a",
+        kind="player_to_artemis",
+        body="anything",
     )
     assert s.search(query="") == []
     assert s.search(query="   ") == []
@@ -131,8 +171,12 @@ def test_store_recent_returns_oldest_first_within_window() -> None:
     s = _mk_store()
     for i in range(10):
         s.append(
-            session_id="sess", from_id="p", to_id="a",
-            kind="player_to_artemis", body=f"m{i}", ts=float(i),
+            session_id="sess",
+            from_id="p",
+            to_id="a",
+            kind="player_to_artemis",
+            body=f"m{i}",
+            ts=float(i),
         )
     recent = s.recent(session_id="sess", limit=3)
     # Oldest-first within the 3 most recent → m7, m8, m9.
@@ -143,8 +187,11 @@ def test_store_count() -> None:
     s = _mk_store()
     assert s.count() == 0
     s.append(
-        session_id="sess", from_id="p", to_id="a",
-        kind="player_to_artemis", body="hi",
+        session_id="sess",
+        from_id="p",
+        to_id="a",
+        kind="player_to_artemis",
+        body="hi",
     )
     assert s.count() == 1
     assert s.count(session_id="sess") == 1
