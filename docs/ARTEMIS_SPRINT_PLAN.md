@@ -3,8 +3,9 @@
 > Consolidated plan across every feature discussed so far for ARTEMIS.
 > For your review before execution.
 
-**Date:** 2026-04-23
-**Status:** DRAFT — awaiting review
+**Date:** 2026-04-23 (rev 2)
+**Status:** S0 landed (PR #88); S1 broken into four slices (1a-d) per
+user review; executing 1a next.
 
 This supersedes the phase-oriented [`ARTEMIS_AVATAR_ROADMAP.md`](ARTEMIS_AVATAR_ROADMAP.md)
 by reorganizing into discrete, shippable sprints with dependencies and
@@ -77,38 +78,99 @@ table a real web UI + basic artifact downloads. Get everything off
 
 ---
 
-## Sprint 1 — Real responsiveness (ASR → reasoning → speech)
+## Sprint 1 — Real responsiveness (split into 1a/b/c/d)
 
 **Goal:** replace canned "Acknowledged" with actual LLM-generated
-replies. Wire Whisper ASR, NATS plumbing, and the Phase 2 Primer.
+replies, in parallel with a top-tier voice + live HUD. Split into
+four shippable slices so each PR is reviewable on its own.
 
-**Effort:** ~1 day
+### S1a — Expanse theming + stubbed HUD widgets
 
-**Items:**
+**Effort:** ~1 hr. No backend changes.
 
-- **S1-1** Subscribe to remote-participant audio tracks in the avatar
-  agent. Stream each into `faster-whisper` (already installed on
-  Atlas GPU).
-- **S1-2** Publish finalized utterances to `agi.rh.artemis.heard` with
-  the TurnRequest schema.
-- **S1-3** Verify `atlas-artemis.service` (Phase 2 handler, already
-  on main) picks them up and routes through vMOE.
-- **S1-4** Consume `agi.rh.artemis.say` in the avatar agent → queue
-  for TTS → played + logged.
-- **S1-5** **Keeper approval gate UI** in the browser (right-side
-  card): sidebar shows pending reply with ✓/✗. Approved replies
-  flow through; rejected are dropped + logged.
-- **S1-6** Campaign bible chunked and indexed into Atlas RAG so Primer
-  has game context.
-- **S1-7** Set `NRP_LLM_TOKEN` env on Atlas for real LLM calls via ellm.
+- Rework `deploy/web/table/table.css` to the Expanse corporate-vessel
+  aesthetic: slate-black base, cyan accent with amber alerts, angular
+  clip-path frames, Rajdhani + Share Tech Mono typography, subtle
+  hex-grid overlay.
+- Add HUD widget scaffolding to `table.js` / `index.html` — PC stat
+  cards (name + SAN + HP + Luck + MP bars + status), scene-header
+  strip, proof-chain ticker. Data is placeholder constants in v1.
 
-**Depends on:** S0 (needs UI card to put approval gate in)
+**Done when:** UI visibly looks like an Expanse ship's tactical display
+instead of a generic dark terminal; PC stat cards render with static
+placeholder data.
 
-**Done when:**
-- Ask ARTEMIS a question → relevant reply within ~6s end-to-end
-- Keeper sees approval prompt, can accept/reject
-- DecisionProof chain grows with each turn
-- Latency p50 < 5s, p95 < 10s
+### S1b — Google Sheets CSV → live HUD stats
+
+**Effort:** ~2 hrs.
+
+- New `src/agi/primer/artemis/sheets/` package:
+  - `poller.py` — polls a "publish-to-web" CSV URL every 30 s, parses
+    rows into character dicts, emits diffs on NATS
+    `agi.rh.artemis.sheet.<sheet_name>`.
+  - `__main__.py` — systemd entry point.
+- `deploy/systemd/atlas-artemis-sheets.service` — systemd unit.
+- Avatar agent: subscribe to `agi.rh.artemis.sheet.*` → publish diffs
+  to LiveKit DataChannel with kind `"artemis.sheet"`.
+- `table.js`: receive DataChannel events, update stat widgets.
+
+Config model:
+```
+ARTEMIS_SHEET_URLS='characters=<csv-url>;npcs=<csv-url>'
+ARTEMIS_SHEET_POLL_S=30
+```
+
+**Done when:** editing a cell in your published Google Sheet updates
+the HUD widget within 30 seconds.
+
+### S1c — Coqui XTTS-v2 voice upgrade
+
+**Effort:** ~2 hrs. User-stated priority for feel.
+
+- Install `TTS` (Coqui) into the artemis-avatar venv.
+- Download XTTS-v2 weights (~2 GB).
+- A/B benchmark vs Piper Amy using the same reference sentence; save
+  both clips to `Fuller/artemis-tokens/voice-benchmark/` for
+  listen-comparison.
+- Add `ARTEMIS_TTS_BACKEND=xtts|piper` env switch in `avatar_hud.py`.
+- Default to XTTS; Piper stays as fallback.
+- Optional: voice-clone from a 6-30 s reference clip — user provides
+  or I pick one from public-domain readings that matches the
+  "clinical-but-warm" ARTEMIS system-prompt voice spec.
+
+**Done when:** ARTEMIS's voice is decisively better than Piper and
+the user confirms it clears the "mostly-talking-game" bar.
+
+### S1d — Whisper ASR + NATS + Primer + Keeper approval gate
+
+**Effort:** ~4 hrs. The big one — real responsiveness.
+
+- Subscribe to remote-participant audio tracks in the avatar agent.
+  Stream each into `faster-whisper`.
+- Publish finalized utterances to `agi.rh.artemis.heard` with the
+  TurnRequest schema.
+- Verify `atlas-artemis.service` (Phase 2, on main) picks them up;
+  configure `NRP_LLM_TOKEN` on Atlas.
+- Consume `agi.rh.artemis.say` in avatar agent → XTTS queue → played.
+- **Keeper approval gate UI** in the browser: when the bot's say
+  carries `approval:"keeper_pending"`, surface a tile only the
+  Keeper sees with ✓/✗ buttons. Approved → broadcast to the room;
+  rejected → drop + log.
+
+**Done when:** ask ARTEMIS a question → relevant reply within ~6 s
+end-to-end; Keeper sees approval prompt; DecisionProof chain grows.
+
+### Depends on
+- S0 is in.
+- S1a → unlocks S1b (widgets exist to fill).
+- S1b → unlocks S1d (stat context available to Primer if desired).
+- S1c is independent of the others; can run in parallel.
+
+### Sprint gate
+- All four PRs landed on main.
+- Latency p50 < 5 s, p95 < 10 s on the ASR → LLM → TTS loop.
+- Voice clears the "really good" bar.
+- Stats update live from Sheets.
 
 ---
 
