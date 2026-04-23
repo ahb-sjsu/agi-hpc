@@ -138,11 +138,10 @@ def compute_mouth_envelope(pcm: np.ndarray, sr: int, fps: int) -> np.ndarray:
     # mouth half-open during quiet passages.
     gate = 0.15
     env = np.where(env < gate, 0.0, (env - gate) / (1 - gate))
-    # Scale to a natural mouth-open level. Previous NATURAL_MAX=0.15
-    # was paired with a silent-skip bug (wrong shape-key prefix) that
-    # suppressed mouth motion entirely — 0.25 is the real sweet spot
-    # for conversational lip movement with LINEAR interpolation.
-    NATURAL_MAX = 0.25
+    # Scale to a natural mouth-open level. Previous tightening to 0.25
+    # still read as progressively-widening; dropping to 0.12 while we
+    # instrument the f-curve to see what's actually happening.
+    NATURAL_MAX = 0.12
     env = env * NATURAL_MAX
     # One-pole low-pass to kill per-frame jitter.
     alpha = 0.22

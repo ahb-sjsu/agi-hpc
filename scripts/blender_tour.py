@@ -298,6 +298,14 @@ def _build_animation(cfg: dict) -> None:
     print(f"BLENDER_TOUR: shape-key prefix resolved to {KEY_PREFIX!r}", flush=True)
     fps = cfg["fps"]
 
+    # Zero EVERY Fcl_* shape key on the face at frame 1 so there's no
+    # import-time residual or auxiliary mouth-opening key stacking.
+    sk_blocks = face.data.shape_keys.key_blocks if face.data.shape_keys else []
+    for kb in sk_blocks:
+        if kb.name.startswith(KEY_PREFIX) and kb.name != KEY_PREFIX + "ALL_Neutral":
+            kb.value = 0.0
+            kb.keyframe_insert(data_path="value", frame=1)
+
     # Start from a known-neutral baseline at frame 1.
     _apply_expression_keyframe(face, "neutral", 1)
     for suffix in VISEME_KEYS.values():
@@ -374,9 +382,24 @@ def _force_linear_shape_keys(face) -> None:
     action = sk_data.animation_data.action
     if action is None:
         return
+    # Dump every MTH_A f-curve keyframe to stderr so we can verify the
+    # animation is actually bounded at NATURAL_MAX. Debug instrumentation.
     for fc in action.fcurves:
         for kp in fc.keyframe_points:
             kp.interpolation = "LINEAR"
+        # Set extrapolation to CONSTANT at both ends — default is
+        # CONSTANT anyway, but be explicit so no f-curve can coast
+        # above its last keyframe value.
+        fc.extrapolation = "CONSTANT"
+        if "MTH_A" in fc.data_path and "ALL" not in fc.data_path:
+            vals = [kp.co[1] for kp in fc.keyframe_points]
+            if vals:
+                print(
+                    "BLENDER_TOUR: MTH_A fcurve: "
+                    f"n={len(vals)} min={min(vals):.3f} max={max(vals):.3f} "
+                    f"first3={vals[:3]} last3={vals[-3:]}",
+                    flush=True,
+                )
 
 
 def _configure_gpu() -> None:
