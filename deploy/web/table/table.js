@@ -121,8 +121,8 @@
     // Guest view: stats card is hidden via CSS. Nothing else to do.
     if (view === "guest") return;
 
-    const chars = Object.values(state.characters);
-    if (!chars.length) {
+    const allChars = Object.values(state.characters);
+    if (!allChars.length) {
       const empty = document.createElement("div");
       empty.className = "loading";
       empty.textContent = "no crew data";
@@ -130,19 +130,27 @@
       return;
     }
 
+    // Visibility rule (CoC-convention: sheet is private):
+    //   keeper  → all crew
+    //   player  → ONLY their own card
     const mine = mySubjectId();
-    // Player view: pin your own card to the top, others after.
-    const sorted = chars.slice().sort((a, b) => {
-      if (view === "player" && a.id === mine) return -1;
-      if (view === "player" && b.id === mine) return 1;
-      return (a.name || a.id).localeCompare(b.name || b.id);
-    });
-    for (const c of sorted) {
-      const pc = buildPcCard(c);
-      if (view === "player" && c.id === mine) {
-        pc.classList.add("you-pc");
-      }
-      grid.appendChild(pc);
+    const visible =
+      view === "keeper"
+        ? allChars.slice().sort((a, b) =>
+            (a.name || a.id).localeCompare(b.name || b.id),
+          )
+        : allChars.filter((c) => c.id === mine);
+
+    if (!visible.length) {
+      const empty = document.createElement("div");
+      empty.className = "loading";
+      empty.textContent = "no character assigned to this identity";
+      grid.appendChild(empty);
+      return;
+    }
+
+    for (const c of visible) {
+      grid.appendChild(buildPcCard(c));
     }
   }
 
@@ -182,7 +190,9 @@
     lbl.className = "bar-label";
     lbl.textContent = label;
     const track = document.createElement("span");
-    track.className = "bar-track";
+    // Stat class on the track so the "remaining to max" portion can be
+    // tinted with the stat's dim color (stacked actual|max visual).
+    track.className = "bar-track " + klass;
     const fill = document.createElement("span");
     fill.className = "bar-fill " + klass;
     fill.style.width = pct + "%";

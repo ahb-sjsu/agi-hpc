@@ -397,11 +397,20 @@ body {
 }
 
 .pc-bars .bar-track {
-  height: 6px;
+  height: 8px;
   background: var(--bg-deep);
   position: relative;
   overflow: hidden;
 }
+
+/* "Stacked" actual|max visual — the track background is a dim version
+   of the stat's color (representing the max capacity), and the fill
+   is the brighter stat color on top (representing the actual value).
+   Both the used and unused portions are visually present. */
+.pc-bars .bar-track.san  { background: rgba(216, 185, 104, 0.22); }
+.pc-bars .bar-track.hp   { background: rgba(80,  220, 240, 0.22); }
+.pc-bars .bar-track.luck { background: rgba(255, 176, 48,  0.22); }
+.pc-bars .bar-track.mp   { background: rgba(232, 56,  56,  0.22); }
 
 .pc-bars .bar-fill {
   position: absolute;
@@ -411,10 +420,10 @@ body {
   transition: width 0.4s cubic-bezier(.3, 1, .4, 1);
 }
 
-.pc-bars .bar-fill.san    { background: var(--gold); box-shadow: 0 0 6px rgba(216,185,104,0.35); }
+.pc-bars .bar-fill.san    { background: var(--gold); box-shadow: 0 0 6px rgba(216,185,104,0.45); }
 .pc-bars .bar-fill.hp     { background: var(--cyan); }
-.pc-bars .bar-fill.luck   { background: var(--amber); box-shadow: 0 0 6px rgba(255,176,48,0.35); }
-.pc-bars .bar-fill.mp     { background: var(--critical); box-shadow: 0 0 6px rgba(232,56,56,0.4); }
+.pc-bars .bar-fill.luck   { background: var(--amber); box-shadow: 0 0 6px rgba(255,176,48,0.45); }
+.pc-bars .bar-fill.mp     { background: var(--critical); box-shadow: 0 0 6px rgba(232,56,56,0.5); }
 
 .pc-bars .bar-val {
   color: var(--ink);
@@ -435,8 +444,7 @@ body[data-view="guest"] #card-stats {
   display: none;
 }
 
-/* Keeper — subtle label appended to the crew status header so the
-   GM can see at a glance they're in privileged mode. */
+/* Keeper — label says "CREW STATUS · KEEPER" (all crew visible). */
 body[data-view="keeper"] #card-stats .card-label::after {
   content: " · KEEPER";
   color: var(--gold);
@@ -444,25 +452,26 @@ body[data-view="keeper"] #card-stats .card-label::after {
   text-shadow: 0 0 6px rgba(216, 185, 104, 0.4);
 }
 
-/* Player — their own PC card gets the YOU badge and a brighter
-   left border, slight glow, and a subtle gradient background. */
-.pc-card.you-pc {
-  border-left-width: 4px;
-  background: linear-gradient(90deg, var(--cyan-deep) 0%, var(--bg-card-lit) 55%);
-  box-shadow: 0 0 0 1px var(--cyan-dim), 0 0 18px rgba(80, 220, 240, 0.15);
+/* Player — sheet is private; label replaced with "YOUR CHARACTER".
+   Hide the default CREW STATUS text and inject the player label. */
+body[data-view="player"] #card-stats .card-label {
+  font-size: 0;
+}
+body[data-view="player"] #card-stats .card-label::after {
+  content: "YOUR CHARACTER";
+  font-size: 11px;
+  color: var(--cyan);
+  text-shadow: 0 0 6px var(--glow);
+}
+body[data-view="player"] #card-stats .card-status {
+  display: none;
 }
 
-.pc-card.you-pc::after {
-  content: "YOU";
-  position: absolute;
-  top: 8px;
-  right: 12px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: bold;
-  letter-spacing: 0.35em;
-  color: var(--cyan);
-  text-shadow: 0 0 8px var(--glow);
+/* Player view has exactly one card — no YOU badge needed; subtle
+   emphasis on it so it reads as "your sheet". */
+body[data-view="player"] .pc-card {
+  border-left-width: 3px;
+  background: linear-gradient(90deg, var(--cyan-deep) 0%, var(--bg-card-lit) 60%);
 }
 
 /* ─────────────────────────────────────────────────────────────
