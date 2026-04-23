@@ -234,6 +234,32 @@ async def handle_scene_get(request: web.Request) -> web.Response:
     return web.json_response(deps.scene.to_dict())
 
 
+async def handle_say_direct(request: web.Request) -> web.Response:
+    """Keeper narration: speak arbitrary text through the avatar.
+
+    Publishes to ``agi.rh.artemis.say.direct`` — the avatar's direct-say
+    NATS bridge picks the text up and synthesizes it through XTTS
+    (same voice the avatar speaks its canned lines in). Lets the
+    Keeper narrate scene beats without breaking ARTEMIS's voice.
+
+    Body::
+
+        {"text": "The lights flicker. You hear a distant thump."}
+    """
+    deps: PortalDeps = request.app["deps"]
+    payload = await _json_body(request)
+    text = str(payload.get("text") or "").strip()
+    if not text:
+        return web.json_response({"error": "text required"}, status=400)
+    if len(text) > 2000:
+        return web.json_response(
+            {"error": f"text too long ({len(text)}/2000)"}, status=400
+        )
+    out = json.dumps({"text": text}, separators=(",", ":")).encode()
+    await deps.publish("agi.rh.artemis.say.direct", out)
+    return web.json_response({"ok": True, "chars": len(text)})
+
+
 async def handle_scene_post(request: web.Request) -> web.Response:
     deps: PortalDeps = request.app["deps"]
     payload = await _json_body(request)
@@ -306,6 +332,7 @@ def build_app(*, deps: PortalDeps) -> web.Application:
     app.router.add_get("/api/wiki/search", handle_wiki_search)
     app.router.add_get("/api/scene", handle_scene_get)
     app.router.add_post("/api/scene", handle_scene_post)
+    app.router.add_post("/api/say", handle_say_direct)
     return app
 
 

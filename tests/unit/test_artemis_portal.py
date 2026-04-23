@@ -384,3 +384,102 @@ def test_http_scene_post_broadcasts_datachannel_payload(aio_loop) -> None:
             await client.close()
 
     _run(aio_loop, _test())
+
+
+# ─────────────────────────────────────────────────────────────────
+# S1g — direct narration (silent-GM mode)
+# ─────────────────────────────────────────────────────────────────
+
+
+def test_http_say_publishes_to_direct_subject(aio_loop) -> None:
+    published: list[tuple[str, bytes]] = []
+    deps = _mk_deps(published=published)
+
+    async def _test():
+        client = await _client(aio_loop, deps)
+        await client.start_server()
+        try:
+            r = await client.post(
+                "/api/say",
+                json={"text": "The lights flicker."},
+                headers=_keeper_headers(),
+            )
+            assert r.status == 200
+            data = await r.json()
+            assert data == {"ok": True, "chars": 19}
+        finally:
+            await client.close()
+
+    _run(aio_loop, _test())
+    # Published on the direct-say subject the avatar bridge subscribes to.
+    assert published, "nothing published"
+    subj, payload = published[-1]
+    assert subj == "agi.rh.artemis.say.direct"
+    import json
+
+    assert json.loads(payload) == {"text": "The lights flicker."}
+
+
+def test_http_say_rejects_empty(aio_loop) -> None:
+    published: list[tuple[str, bytes]] = []
+    deps = _mk_deps(published=published)
+
+    async def _test():
+        client = await _client(aio_loop, deps)
+        await client.start_server()
+        try:
+            r = await client.post(
+                "/api/say",
+                json={"text": "   "},
+                headers=_keeper_headers(),
+            )
+            assert r.status == 400
+        finally:
+            await client.close()
+
+    _run(aio_loop, _test())
+    # No publish on empty input — keep the avatar queue clean.
+    assert published == []
+
+
+def test_http_say_rejects_player_token(aio_loop) -> None:
+    deps = _mk_deps()
+
+    async def _test():
+        client = await _client(aio_loop, deps)
+        await client.start_server()
+        try:
+            r = await client.post(
+                "/api/say",
+                json={"text": "I should not be able to narrate."},
+                headers={"Authorization": f"Bearer {_token('player:imogen')}"},
+            )
+            assert r.status == 401
+        finally:
+            await client.close()
+
+    _run(aio_loop, _test())
+
+
+def test_http_say_rejects_oversize(aio_loop) -> None:
+    published: list[tuple[str, bytes]] = []
+    deps = _mk_deps(published=published)
+
+    async def _test():
+        client = await _client(aio_loop, deps)
+        await client.start_server()
+        try:
+            r = await client.post(
+                "/api/say",
+                json={"text": "x" * 2500},
+                headers=_keeper_headers(),
+            )
+            assert r.status == 400
+        finally:
+            await client.close()
+
+    _run(aio_loop, _test())
+    # Cap is a belt-and-suspenders — XTTS synth of 2 kB+ blows through
+    # the NATS 1 MB payload cap and makes the avatar look slow. Nothing
+    # should have been published.
+    assert published == []

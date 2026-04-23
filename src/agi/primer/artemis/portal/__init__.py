@@ -19,6 +19,7 @@ HTTP + NATS service that powers the in-session Keeper UI at
   GET  /api/wiki/search?q=&limit=
   GET  /api/scene                   (last seen scene state)
   POST /api/scene                   {name, flags}
+  POST /api/say                     {text}  — silent-GM narration
 
 Every endpoint except ``/api/healthz`` requires a bearer token whose
 identity starts with ``keeper:`` — the player UI and the avatar agent
