@@ -83,14 +83,44 @@
   // ── PC stats card ───────────────────────────────────────────
   //
   // Renders one mini-card per character with SAN / HP / Luck / MP
-  // bars. Color coded by status (ok / shaken / injured / critical /
-  // dead). In S1b, the `state.characters` dict is driven by
-  // DataChannel events of kind "artemis.sheet" — the Keeper's
-  // Google Sheet is the source of truth.
+  // bars. Color-coded by status. In S1b, state.characters is driven
+  // by DataChannel events of kind "artemis.sheet" — Keeper's Google
+  // Sheet is the source of truth.
+  //
+  // Identity-gated views (S1a extension):
+  //   keeper:*     → full crew status, optional KEEPER badge
+  //   player:<id>  → character card pinned at top with YOU badge,
+  //                  others rendered dimmer below
+  //   guest        → card hidden entirely (body[data-view="guest"])
+
+  function computeView() {
+    if (!state.localIdentity) return "guest";
+    const idx = state.localIdentity.indexOf(":");
+    if (idx < 0) return "guest";
+    const prefix = state.localIdentity.slice(0, idx);
+    const subject = state.localIdentity.slice(idx + 1);
+    if (prefix === "keeper") return "keeper";
+    if (prefix === "player" && subject && state.characters[subject]) {
+      return "player";
+    }
+    return "guest";
+  }
+
+  function mySubjectId() {
+    if (!state.localIdentity) return null;
+    const idx = state.localIdentity.indexOf(":");
+    return idx < 0 ? null : state.localIdentity.slice(idx + 1);
+  }
 
   function renderStats() {
+    const view = computeView();
+    document.body.dataset.view = view;
     const grid = $("stats-grid");
     grid.innerHTML = "";
+
+    // Guest view: stats card is hidden via CSS. Nothing else to do.
+    if (view === "guest") return;
+
     const chars = Object.values(state.characters);
     if (!chars.length) {
       const empty = document.createElement("div");
@@ -99,8 +129,20 @@
       grid.appendChild(empty);
       return;
     }
-    for (const c of chars) {
-      grid.appendChild(buildPcCard(c));
+
+    const mine = mySubjectId();
+    // Player view: pin your own card to the top, others after.
+    const sorted = chars.slice().sort((a, b) => {
+      if (view === "player" && a.id === mine) return -1;
+      if (view === "player" && b.id === mine) return 1;
+      return (a.name || a.id).localeCompare(b.name || b.id);
+    });
+    for (const c of sorted) {
+      const pc = buildPcCard(c);
+      if (view === "player" && c.id === mine) {
+        pc.classList.add("you-pc");
+      }
+      grid.appendChild(pc);
     }
   }
 
@@ -301,6 +343,9 @@
       statusEl.classList.remove("warn", "critical");
       log("connected as " + state.localIdentity);
       renderParticipants();
+      // Re-render stats now that we know who we are — view mode
+      // (player / keeper / guest) is identity-derived.
+      renderStats();
       try {
         await room.localParticipant.setMicrophoneEnabled(true);
         state.micOn = true;

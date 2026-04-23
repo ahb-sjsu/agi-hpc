@@ -424,6 +424,48 @@ body {
 }
 
 /* ─────────────────────────────────────────────────────────────
+   Identity-gated views — S1a
+   body[data-view] is set from LiveKit identity at connect time:
+     "keeper" · "player" · "guest"
+   ───────────────────────────────────────────────────────────── */
+
+/* Guests — crew card hidden entirely. Spectators hear audio and
+   see ARTEMIS but don't see party stats (per review decision). */
+body[data-view="guest"] #card-stats {
+  display: none;
+}
+
+/* Keeper — subtle label appended to the crew status header so the
+   GM can see at a glance they're in privileged mode. */
+body[data-view="keeper"] #card-stats .card-label::after {
+  content: " · KEEPER";
+  color: var(--gold);
+  margin-left: 6px;
+  text-shadow: 0 0 6px rgba(216, 185, 104, 0.4);
+}
+
+/* Player — their own PC card gets the YOU badge and a brighter
+   left border, slight glow, and a subtle gradient background. */
+.pc-card.you-pc {
+  border-left-width: 4px;
+  background: linear-gradient(90deg, var(--cyan-deep) 0%, var(--bg-card-lit) 55%);
+  box-shadow: 0 0 0 1px var(--cyan-dim), 0 0 18px rgba(80, 220, 240, 0.15);
+}
+
+.pc-card.you-pc::after {
+  content: "YOU";
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 0.35em;
+  color: var(--cyan);
+  text-shadow: 0 0 8px var(--glow);
+}
+
+/* ─────────────────────────────────────────────────────────────
    Artifacts
    ───────────────────────────────────────────────────────────── */
 
