@@ -28,7 +28,10 @@ from mathutils import noise as bnoise
 # ─────────────────────────────────────────────────────────────────
 
 FACE_MESH = "Face"
-KEY_PREFIX = "Face_Blendshape.Fcl_"
+# Default prefix — VRMs from the pixiv three-vrm sample use
+# "Face_Blendshape.Fcl_"; plain VRoid Hub exports just use "Fcl_".
+# Resolved at runtime in _resolve_key_prefix().
+KEY_PREFIX = "Fcl_"
 
 EMOTION_KEYS = {
     "neutral": None,  # zero everything
@@ -165,6 +168,24 @@ def _face() -> bpy.types.Object:
     return face
 
 
+def _resolve_key_prefix(face) -> str:
+    """Pick the shape-key prefix that actually matches this VRM.
+
+    pixiv-sample VRMs prefix every Fcl_ key with ``Face_Blendshape.``;
+    plain VRoid Hub exports don't. We probe by looking up ALL_Joy in
+    both forms and return whichever resolves. Falls back to ``Fcl_``
+    so the rest of the pipeline silently-skips rather than crashes on
+    an unfamiliar rig.
+    """
+    sk = face.data.shape_keys
+    if sk is None:
+        return "Fcl_"
+    for candidate in ("Fcl_", "Face_Blendshape.Fcl_"):
+        if (candidate + "ALL_Joy") in sk.key_blocks:
+            return candidate
+    return "Fcl_"
+
+
 def _keyframe_shape(face, key: str, value: float, frame: int) -> None:
     """Set + keyframe a single shape key by its Fcl_ suffix."""
     sk = face.data.shape_keys.key_blocks.get(KEY_PREFIX + key)
@@ -270,8 +291,11 @@ def _build_idle_micromotion(arm, total_frames: int, fps: int) -> None:
 
 
 def _build_animation(cfg: dict) -> None:
+    global KEY_PREFIX
     arm = next(o for o in bpy.data.objects if o.type == "ARMATURE")
     face = _face()
+    KEY_PREFIX = _resolve_key_prefix(face)
+    print(f"BLENDER_TOUR: shape-key prefix resolved to {KEY_PREFIX!r}", flush=True)
     fps = cfg["fps"]
 
     # Start from a known-neutral baseline at frame 1.

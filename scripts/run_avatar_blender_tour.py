@@ -39,17 +39,24 @@ DEFAULT_TEXT = (
 CAPABILITY_TIMELINE: list[dict] = [
     {"t": 0.0, "kind": "pose", "arg": "mountain"},
     {"t": 0.0, "kind": "expression", "arg": "neutral"},
-    # Expressions block — each emotion peaks for ~0.3s then immediately
-    # returns to neutral. Prevents ALL_Surprised etc. from slow-ramping
-    # the mouth open over a full second.
+    # Expressions block. Each emotion has three keyframes:
+    #   t-0.2  neutral  ← locks the baseline so LINEAR interp doesn't
+    #                    slow-ramp the emotion from t=0
+    #   t      peak     ← the demo spike (0.2s rise from neutral)
+    #   t+0.3  neutral  ← quick fall back, before the next emotion
+    {"t": 10.8, "kind": "expression", "arg": "neutral"},
     {"t": 11.0, "kind": "expression", "arg": "happy"},
     {"t": 11.3, "kind": "expression", "arg": "neutral"},
+    {"t": 12.3, "kind": "expression", "arg": "neutral"},
     {"t": 12.5, "kind": "expression", "arg": "sad"},
     {"t": 12.8, "kind": "expression", "arg": "neutral"},
+    {"t": 13.8, "kind": "expression", "arg": "neutral"},
     {"t": 14.0, "kind": "expression", "arg": "angry"},
     {"t": 14.3, "kind": "expression", "arg": "neutral"},
+    {"t": 15.3, "kind": "expression", "arg": "neutral"},
     {"t": 15.5, "kind": "expression", "arg": "surprised"},
     {"t": 15.8, "kind": "expression", "arg": "neutral"},
+    {"t": 16.8, "kind": "expression", "arg": "neutral"},
     {"t": 17.0, "kind": "expression", "arg": "relaxed"},
     {"t": 17.3, "kind": "expression", "arg": "neutral"},
     # Viseme block (explicit pulses — the audio-driven aa still runs
@@ -131,10 +138,11 @@ def compute_mouth_envelope(pcm: np.ndarray, sr: int, fps: int) -> np.ndarray:
     # mouth half-open during quiet passages.
     gate = 0.15
     env = np.where(env < gate, 0.0, (env - gate) / (1 - gate))
-    # Scale to a natural mouth-open level. VRoid MTH_A at 1.0 is a
-    # full "ah" gape; even 0.25 read as progressively-yawning, so
-    # we hold to 0.15 (subtle conversational lip motion).
-    NATURAL_MAX = 0.15
+    # Scale to a natural mouth-open level. Previous NATURAL_MAX=0.15
+    # was paired with a silent-skip bug (wrong shape-key prefix) that
+    # suppressed mouth motion entirely — 0.25 is the real sweet spot
+    # for conversational lip movement with LINEAR interpolation.
+    NATURAL_MAX = 0.25
     env = env * NATURAL_MAX
     # One-pole low-pass to kill per-frame jitter.
     alpha = 0.22
