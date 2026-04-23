@@ -30,6 +30,22 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 .arow.k-error{border-left-color:#ef4444;background:rgba(239,68,68,.05);color:#fca5a5}
 .arow.k-info{opacity:.75}
 .arow .asrc{color:var(--dim);font-size:9px;opacity:.7}
+.ieip-card{padding:10px 12px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,var(--surface2) 0%,var(--surface) 100%)}
+.ieip-card .ieip-hdr{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-family:'Cascadia Code',monospace;color:var(--dim);margin-bottom:6px}
+.ieip-card .ieip-title{display:flex;align-items:center;gap:6px;color:var(--text);font-weight:600}
+.ieip-card .ieip-dot{width:8px;height:8px;border-radius:50%;background:#4ade80;display:inline-block}
+.ieip-card .ieip-dot.elevated{background:#f59e0b;box-shadow:0 0 6px rgba(245,158,11,.6)}
+.ieip-card .ieip-dot.critical{background:#ef4444;box-shadow:0 0 6px rgba(239,68,68,.6);animation:pulse 1.5s ease-in-out infinite}
+.ieip-card svg.ieip-spark{display:block;width:100%;height:30px;margin:4px 0}
+.ieip-card .ieip-spark path{fill:none;stroke:var(--accent);stroke-width:1.5}
+.ieip-card .ieip-spark .ieip-baseline{stroke:var(--border);stroke-dasharray:2 3;stroke-width:.8}
+.ieip-card .ieip-spark .ieip-fill{fill:var(--glow);stroke:none;opacity:.5}
+.ieip-card .ieip-sites{display:flex;gap:2px;margin-top:4px;height:10px;overflow:hidden;border-radius:2px}
+.ieip-card .ieip-sites > div{flex:1;min-width:2px;background:#22c55e;opacity:.6;transition:all .3s}
+.ieip-card .ieip-sites > div[data-lvl=elevated]{background:#f59e0b;opacity:.8}
+.ieip-card .ieip-sites > div[data-lvl=critical]{background:#ef4444;opacity:1}
+.ieip-card .ieip-meta{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);margin-top:4px;font-family:'Cascadia Code',monospace}
+.ieip-card .ieip-top-site{font-size:10px;color:var(--dim);margin-top:3px;font-family:'Cascadia Code',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media (max-width:900px){.activity{width:300px}}
 @media (max-width:700px){.activity{display:none}}
 .header{display:flex;align-items:center;gap:16px;padding:12px 24px;border-bottom:1px solid var(--border);background:var(--surface)}
@@ -100,6 +116,23 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
     </div>
   </div>
   <aside class="activity">
+    <div class="ieip-card" id="ieip-card" title="I-EIP Monitor — equivariance drift across the Freudian agents">
+      <div class="ieip-hdr">
+        <span class="ieip-title"><span class="ieip-dot" id="ieip-dot"></span>I-EIP Monitor</span>
+        <span id="ieip-window">--</span>
+      </div>
+      <svg class="ieip-spark" viewBox="0 0 100 30" preserveAspectRatio="none" id="ieip-spark">
+        <path class="ieip-baseline" d="M0,28 L100,28"></path>
+        <path class="ieip-fill" id="ieip-fill" d=""></path>
+        <path id="ieip-line" d=""></path>
+      </svg>
+      <div class="ieip-sites" id="ieip-sites"></div>
+      <div class="ieip-top-site" id="ieip-top-site">no events yet</div>
+      <div class="ieip-meta">
+        <span>events: <b id="ieip-events">0</b></span>
+        <span>max ε: <b id="ieip-max">0.00</b></span>
+      </div>
+    </div>
     <div class="ahdr">
       <span><span class="live-dot"></span>Live activity</span>
       <span id="activity-seq">seq --</span>
@@ -179,6 +212,77 @@ async function send() {
   inp.focus();
 }
 
+// Poll I-EIP monitor status
+async function pollIEIP() {
+  try {
+    var res = await fetch('/api/ieip/status');
+    if (!res.ok) return;
+    var d = await res.json();
+    var dot = document.getElementById('ieip-dot');
+    dot.className = 'ieip-dot';
+    if (d.worst_alert === 'elevated') dot.classList.add('elevated');
+    else if (d.worst_alert === 'critical') dot.classList.add('critical');
+
+    document.getElementById('ieip-events').textContent = d.total_events || 0;
+    var win = (d.window_seconds || 3600) / 60;
+    document.getElementById('ieip-window').textContent = 'last ' + Math.round(win) + 'm';
+
+    // Sparkline
+    var spark = d.sparkline || [];
+    var maxE = 0;
+    for (var i = 0; i < spark.length; i++) {
+      if (spark[i].max_error > maxE) maxE = spark[i].max_error;
+    }
+    document.getElementById('ieip-max').textContent = maxE.toFixed(3);
+    var scale = maxE > 0 ? maxE : 1;
+    var linePts = [], fillPts = [];
+    var stepX = spark.length > 1 ? 100 / (spark.length - 1) : 0;
+    for (var j = 0; j < spark.length; j++) {
+      var y = 28 - (spark[j].mean_error / scale) * 26;
+      var x = j * stepX;
+      linePts.push((j === 0 ? 'M' : 'L') + x.toFixed(2) + ',' + y.toFixed(2));
+      fillPts.push((j === 0 ? 'M' + x.toFixed(2) + ',28 L' : 'L') + x.toFixed(2) + ',' + y.toFixed(2));
+    }
+    if (fillPts.length > 0) {
+      fillPts.push('L100,28 Z');
+    }
+    document.getElementById('ieip-line').setAttribute('d', linePts.join(' '));
+    document.getElementById('ieip-fill').setAttribute('d', fillPts.join(' '));
+
+    // Per-site heat bar — up to 18 most-drifted sites
+    var sites = (d.by_site || []).slice(0, 18);
+    var bar = document.getElementById('ieip-sites');
+    bar.innerHTML = '';
+    if (sites.length === 0) {
+      var empty = document.createElement('div');
+      empty.setAttribute('data-lvl', 'normal');
+      empty.style.opacity = '0.2';
+      bar.appendChild(empty);
+    } else {
+      for (var k = 0; k < sites.length; k++) {
+        var seg = document.createElement('div');
+        seg.setAttribute('data-lvl', sites[k].worst_alert || 'normal');
+        seg.title = sites[k].subsystem + '.' + sites[k].site +
+          ' — ε=' + (sites[k].max_error || 0).toFixed(3);
+        bar.appendChild(seg);
+      }
+    }
+
+    // Top drifter label
+    var top = sites[0];
+    var topEl = document.getElementById('ieip-top-site');
+    if (top && top.max_error > 0) {
+      topEl.textContent = top.subsystem + '.' + top.site +
+        ' ε=' + top.max_error.toFixed(3);
+      topEl.style.color = top.worst_alert === 'critical' ? '#fca5a5' :
+        (top.worst_alert === 'elevated' ? '#f59e0b' : 'var(--dim)');
+    } else {
+      topEl.textContent = 'all sites within tolerance';
+      topEl.style.color = 'var(--dim)';
+    }
+  } catch(e) {}
+}
+
 // Poll Erebus status
 async function pollStatus() {
   try {
@@ -235,8 +339,10 @@ async function pollHelp() {
 
 pollStatus();
 pollHelp();
+pollIEIP();
 setInterval(pollStatus, 15000);
 setInterval(pollHelp, 30000);
+setInterval(pollIEIP, 10000);
 
 // ── Activity sidebar ──────────────────────────────────────────
 var activitySeq = 0;

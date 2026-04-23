@@ -2626,6 +2626,41 @@ PRIMER_COOLDOWN_PATH = "/archive/neurogolf/primer_cooldown.json"
 PRIMER_HEALTH_PATH = "/archive/neurogolf/primer_health.json"
 PRIMER_EVENTS_PATH = "/archive/neurogolf/primer_events.jsonl"
 PRIMER_WIKI_DIR = os.environ.get("EREBUS_WIKI_DIR", "/home/claude/agi-hpc/wiki")
+IEIP_EVENTS_PATH = "/archive/neurogolf/ieip_events.jsonl"
+
+
+def _get_ieip_status():
+    """Dashboard snapshot of the I-EIP monitor event stream.
+
+    Reads the append-only JSONL sink populated by
+    ``agi.safety.ieip_monitor.Monitor`` and returns a status payload
+    suitable for the dashboard card (sparkline, per-site rollups,
+    worst alert). Missing file → empty-but-valid response so the
+    dashboard renders a flat-line baseline rather than an error card.
+
+    Graceful degradation: imports the builder lazily so the telemetry
+    server starts even if agi-hpc hasn't pulled the latest erisml-lib
+    adapter layer yet.
+    """
+    try:
+        from agi.safety.ieip_dashboard import load_status
+
+        return load_status(
+            IEIP_EVENTS_PATH,
+            window_seconds=3600,
+            sparkline_buckets=30,
+        )
+    except Exception as exc:  # pragma: no cover - lazy import safety
+        return {
+            "generated_ts": time.time(),
+            "window_seconds": 3600,
+            "total_events": 0,
+            "worst_alert": "normal",
+            "by_subsystem": [],
+            "by_site": [],
+            "sparkline": [],
+            "error": f"ieip status unavailable: {type(exc).__name__}: {exc}",
+        }
 
 
 def _get_primer_status():
@@ -3019,6 +3054,10 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
             self._json_response(_get_erebus_activity(since=since, limit=limit))
         elif self.path == "/api/primer/status":
             self._json_response(_get_primer_status())
+        elif self.path == "/api/ieip/status" or self.path.startswith(
+            "/api/ieip/status?"
+        ):
+            self._json_response(_get_ieip_status())
         elif self.path == "/api/ukg/status":
             self._json_response(_get_ukg_status())
         elif self.path == "/api/trends/erebus":
