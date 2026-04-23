@@ -31,15 +31,18 @@ from string import Template
 # Pinned CDN versions so the scene is reproducible even if upstream
 # ships breaking changes. Bumped here, not silently picked up.
 THREE_VERSION = "0.165.0"
+# three-vrm version compatible with three 0.165. three-vrm 3.x uses
+# the current three API. Bump together.
+THREE_VRM_VERSION = "3.2.0"
 
-# Default model — Three.js's RobotExpressive. Stylized humanoid robot
-# with a real face (eyes, mouth, brow morph targets for Angry / Sad /
-# Happy / Surprised) and packaged idle/walk/dance clips. Chosen over
-# Michelle (racial identification) and CesiumMan (no face) for an AI
-# NPC: clearly artificial, unambiguously non-human, still expressive.
-# Final ARTEMIS avatar will be an RPM/VRoid pick once S3-1 lands.
+# Default model — pixiv's public VRM sample (anime VTuber style,
+# hosted via GitHub Pages). Replaces RobotExpressive as the placeholder
+# after the user asked for anime-style instead of realistic-humanoid.
+# Final ARTEMIS avatar URL will come from a VRoid Hub pick; swap via
+# ``model_url`` or the ``ARTEMIS_AVATAR_MODEL_URL`` env var.
 DEFAULT_MODEL_URL = (
-    "https://threejs.org/examples/models/gltf/RobotExpressive/RobotExpressive.glb"
+    "https://pixiv.github.io/three-vrm/packages/three-vrm/examples/models/"
+    "VRM1_Constraint_Twist_Sample.vrm"
 )
 
 
@@ -71,6 +74,7 @@ class SceneConfig:
             "FPS": str(self.fps),
             "ANIMATION_SPEED": str(self.animation_speed),
             "THREE_VERSION": THREE_VERSION,
+            "THREE_VRM_VERSION": THREE_VRM_VERSION,
         }
 
 
@@ -93,7 +97,8 @@ _HTML_TEMPLATE = Template("""<!DOCTYPE html>
 {
   "imports": {
     "three": "https://unpkg.com/three@$THREE_VERSION/build/three.module.js",
-    "three/addons/": "https://unpkg.com/three@$THREE_VERSION/examples/jsm/"
+    "three/addons/": "https://unpkg.com/three@$THREE_VERSION/examples/jsm/",
+    "@pixiv/three-vrm": "https://unpkg.com/@pixiv/three-vrm@$THREE_VRM_VERSION/lib/three-vrm.module.js"
   }
 }
 </script>
@@ -102,6 +107,7 @@ _HTML_TEMPLATE = Template("""<!DOCTYPE html>
 <script type="module">
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { VRMLoaderPlugin, VRMUtils } from "@pixiv/three-vrm";
 
 const W = $WIDTH, H = $HEIGHT, FPS = $FPS;
 
@@ -142,15 +148,28 @@ document.body.appendChild(renderer.domElement);
 
 let model = null;
 let mixer = null;
+let vrm = null;  // set when a VRM file is loaded (spring bones + expressions)
 let clock = new THREE.Clock();
 
 const loader = new GLTFLoader();
+// Handle .vrm files through the same loader — VRMLoaderPlugin reads
+// the VRM extensions from the GLB container and attaches a VRM
+// instance to gltf.userData.vrm. Plain GLB files without the VRM
+// extensions still load normally (userData.vrm is undefined).
+loader.register((parser) => new VRMLoaderPlugin(parser));
+
 loader.load(
   "$MODEL_URL",
   (gltf) => {
-    model = gltf.scene;
-    // Center + scale conservatively so we frame the head/torso even
-    // for a wide variety of model rigs.
+    vrm = gltf.userData && gltf.userData.vrm ? gltf.userData.vrm : null;
+    model = vrm ? vrm.scene : gltf.scene;
+
+    // VRM models come pre-posed facing -Z; rotate to face the camera.
+    if (vrm) {
+      VRMUtils.rotateVRM0(vrm);
+    }
+
+    // Center + scale so any rig frames head-to-torso consistently.
     const box = new THREE.Box3().setFromObject(model);
     const size = box.getSize(new THREE.Vector3()).y || 1;
     const scale = 1.7 / size;
@@ -159,11 +178,14 @@ loader.load(
     const center = box.getCenter(new THREE.Vector3());
     model.position.x -= center.x;
     model.position.z -= center.z;
-    // Foot on the ground.
     const newBox = new THREE.Box3().setFromObject(model);
     model.position.y -= newBox.min.y;
     scene.add(model);
-    if (gltf.animations && gltf.animations.length) {
+
+    // Baked GLB clips only — VRM uses humanoid bone animation via
+    // expressions / look-at / manual pose instead of clips, so we
+    // skip mixer on VRM models.
+    if (!vrm && gltf.animations && gltf.animations.length) {
       mixer = new THREE.AnimationMixer(model);
       const action = mixer.clipAction(gltf.animations[0]);
       action.timeScale = $ANIMATION_SPEED;
@@ -174,8 +196,6 @@ loader.load(
   undefined,
   (err) => {
     console.error("model load failed:", err);
-    // Fall back to a placeholder cube so the renderer still produces
-    // frames the operator can see.
     const geo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
     const mat = new THREE.MeshStandardMaterial({ color: 0x50dcf0 });
     model = new THREE.Mesh(geo, mat);
@@ -189,10 +209,14 @@ loader.load(
 function tick() {
   const dt = clock.getDelta();
   if (mixer) mixer.update(dt);
+  // VRM update drives spring bones (hair / cloth physics) + look-at.
+  if (vrm) vrm.update(dt);
   if (model && window.artemis.idle) {
-    // Subtle breathing — chest scale + head tilt.
+    // Very subtle breathing — tiny body sway so the clone doesn't
+    // look frozen. Matches the "standing AI crewmate" read better
+    // than the previous rotating-statue loop.
     const t = clock.elapsedTime;
-    model.rotation.y = Math.sin(t * 0.25) * 0.08;
+    model.rotation.y = Math.sin(t * 0.15) * 0.04;
   }
   renderer.render(scene, camera);
   setTimeout(tick, 1000 / FPS);
