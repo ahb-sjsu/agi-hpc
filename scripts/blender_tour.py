@@ -233,11 +233,13 @@ def _build_idle_micromotion(arm, total_frames: int, fps: int) -> None:
     """
     step = max(1, fps // 3)  # ~10 Hz sampling
     # (pitch_amp, yaw_amp, roll_amp, time_scale_s, phase_offset)
+    # Amplitudes ~3x the first pass — earlier values were too subtle
+    # to read visually at the current camera framing.
     specs = {
-        BONE["head"]: (0.050, 0.070, 0.030, 5.0, 0.0),
-        BONE["neck"]: (0.025, 0.035, 0.015, 4.0, 11.3),
-        BONE["spine"]: (0.020, 0.018, 0.025, 3.5, 23.7),
-        BONE["hips"]: (0.010, 0.015, 0.022, 6.0, 41.1),
+        BONE["head"]: (0.15, 0.21, 0.09, 5.0, 0.0),
+        BONE["neck"]: (0.075, 0.105, 0.045, 4.0, 11.3),
+        BONE["spine"]: (0.06, 0.054, 0.075, 3.5, 23.7),
+        BONE["hips"]: (0.03, 0.045, 0.066, 6.0, 41.1),
     }
     for bone_name in specs:
         pb = arm.pose.bones.get(bone_name)

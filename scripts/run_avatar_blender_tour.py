@@ -39,13 +39,19 @@ DEFAULT_TEXT = (
 CAPABILITY_TIMELINE: list[dict] = [
     {"t": 0.0, "kind": "pose", "arg": "mountain"},
     {"t": 0.0, "kind": "expression", "arg": "neutral"},
-    # Expressions block
+    # Expressions block — each emotion peaks for ~0.3s then immediately
+    # returns to neutral. Prevents ALL_Surprised etc. from slow-ramping
+    # the mouth open over a full second.
     {"t": 11.0, "kind": "expression", "arg": "happy"},
+    {"t": 11.3, "kind": "expression", "arg": "neutral"},
     {"t": 12.5, "kind": "expression", "arg": "sad"},
+    {"t": 12.8, "kind": "expression", "arg": "neutral"},
     {"t": 14.0, "kind": "expression", "arg": "angry"},
+    {"t": 14.3, "kind": "expression", "arg": "neutral"},
     {"t": 15.5, "kind": "expression", "arg": "surprised"},
+    {"t": 15.8, "kind": "expression", "arg": "neutral"},
     {"t": 17.0, "kind": "expression", "arg": "relaxed"},
-    {"t": 18.5, "kind": "expression", "arg": "neutral"},
+    {"t": 17.3, "kind": "expression", "arg": "neutral"},
     # Viseme block (explicit pulses — the audio-driven aa still runs
     # on top, these just demonstrate the other mouth shapes exist)
     {"t": 20.5, "kind": "viseme", "arg": ["ee", 1.0]},
@@ -125,10 +131,10 @@ def compute_mouth_envelope(pcm: np.ndarray, sr: int, fps: int) -> np.ndarray:
     # mouth half-open during quiet passages.
     gate = 0.15
     env = np.where(env < gate, 0.0, (env - gate) / (1 - gate))
-    # Scale to a natural mouth-open level. MTH_A at 1.0 is a full
-    # "ah" gape; even 0.35 reads as over-wide once smoothed Bezier
-    # interpolation overshoots, so we hold to 0.25.
-    NATURAL_MAX = 0.25
+    # Scale to a natural mouth-open level. VRoid MTH_A at 1.0 is a
+    # full "ah" gape; even 0.25 read as progressively-yawning, so
+    # we hold to 0.15 (subtle conversational lip motion).
+    NATURAL_MAX = 0.15
     env = env * NATURAL_MAX
     # One-pole low-pass to kill per-frame jitter.
     alpha = 0.22
