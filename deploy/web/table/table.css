@@ -493,6 +493,119 @@ body[data-view="player"] .pc-card {
 }
 
 /* ─────────────────────────────────────────────────────────────
+   Chat card — S1e
+   ───────────────────────────────────────────────────────────── */
+
+#card-chat {
+  min-height: 280px;
+}
+
+.chat-log {
+  list-style: none;
+  flex: 1;
+  min-height: 160px;
+  max-height: 340px;
+  overflow-y: auto;
+  padding: 10px 14px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  border-bottom: 1px solid var(--rule-dim);
+}
+
+.chat-log li {
+  padding: 3px 0;
+  color: var(--ink);
+  word-wrap: break-word;
+}
+
+.chat-log li .chat-who {
+  display: inline-block;
+  min-width: 60px;
+  margin-right: 8px;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+/* Color-code by kind — same palette as the scene strip. */
+.chat-log li.kind-player_to_artemis { color: var(--cyan); }
+.chat-log li.kind-player_to_artemis .chat-who { color: var(--cyan-dim); }
+
+.chat-log li.kind-artemis_to_player { color: var(--gold); }
+.chat-log li.kind-artemis_to_player .chat-who { color: var(--gold-dim); }
+
+.chat-log li.kind-keeper_to_player {
+  color: var(--amber);
+  background: rgba(255, 176, 48, 0.06);
+  padding-left: 6px; padding-right: 6px;
+  border-left: 2px solid var(--amber);
+}
+.chat-log li.kind-keeper_to_player .chat-who { color: var(--amber-dim); }
+
+.chat-log li.kind-keeper_to_all,
+.chat-log li.kind-artemis_to_all {
+  color: var(--ink);
+  background: rgba(80, 220, 240, 0.06);
+  padding-left: 6px; padding-right: 6px;
+  border-left: 2px solid var(--cyan-dim);
+}
+
+.chat-log li.chat-hint {
+  color: var(--ink-deeper);
+  font-style: italic;
+}
+
+.chat-form {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--bg-deep);
+  align-items: stretch;
+}
+
+.chat-mode {
+  background: var(--bg-card-lit);
+  color: var(--cyan);
+  border: 1px solid var(--cyan-dim);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 0 8px;
+  max-width: 110px;
+}
+
+.chat-input {
+  flex: 1;
+  background: var(--bg-card-lit);
+  color: var(--ink);
+  border: 1px solid var(--cyan-dim);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 6px 10px;
+  outline: none;
+}
+.chat-input:focus { border-color: var(--cyan); box-shadow: 0 0 6px var(--glow); }
+
+.chat-send {
+  flex: 0 0 auto;
+  padding: 4px 12px;
+  font-size: 10px;
+}
+
+/* Guests get no chat (CoC whisper convention; no stats, no chat). */
+body[data-view="guest"] #card-chat {
+  display: none;
+}
+
+/* Player view: hide the mode dropdown — players only have one route
+   (ask ARTEMIS). Keepers get the full dropdown. */
+body[data-view="player"] .chat-mode {
+  display: none;
+}
+
+/* ─────────────────────────────────────────────────────────────
    Scrollbar
    ───────────────────────────────────────────────────────────── */
 

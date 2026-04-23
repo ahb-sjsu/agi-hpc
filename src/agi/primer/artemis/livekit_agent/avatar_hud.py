@@ -603,28 +603,29 @@ async def main() -> int:
         except NotImplementedError:
             pass
 
-    # S1b — optional NATS → LiveKit bridge. When
-    # ARTEMIS_SHEETS_NATS=1 (or NATS_URL is set and ARTEMIS_SHEETS_NATS
-    # is unset), subscribe to agi.rh.artemis.sheet.* and forward each
-    # payload verbatim onto the DataChannel so every table.html gets
-    # the HUD update. Opt-in so the existing Atlas deployment keeps
-    # working unchanged.
-    bridge_task: asyncio.Task | None = None
+    # S1b — optional NATS → LiveKit bridge for sheet updates.
+    # S1e — optional DataChannel ↔ NATS bridge for chat messages.
+    # Both are opt-in via env so the existing Atlas deployment keeps
+    # working unchanged until we flip them on.
+    bridge_tasks: list[asyncio.Task] = []
     if os.environ.get("ARTEMIS_SHEETS_NATS", "") in ("1", "true", "yes", "on"):
-        bridge_task = asyncio.create_task(_sheets_bridge(room, running))
+        bridge_tasks.append(asyncio.create_task(_sheets_bridge(room, running)))
+    if os.environ.get("ARTEMIS_CHAT_NATS", "") in ("1", "true", "yes", "on"):
+        bridge_tasks.append(asyncio.create_task(_chat_bridge(room, running)))
 
     try:
         tasks = [
             _video_publisher(v_source, running),
             _audio_publisher(a_source, running),
         ]
-        if bridge_task is not None:
-            tasks.append(_wait_task(bridge_task))
+        for t in bridge_tasks:
+            tasks.append(_wait_task(t))
         await asyncio.gather(*tasks)
     finally:
         text_queue.put(None)
-        if bridge_task is not None and not bridge_task.done():
-            bridge_task.cancel()
+        for t in bridge_tasks:
+            if not t.done():
+                t.cancel()
         await room.disconnect()
         log.info("disconnected cleanly")
     return 0
@@ -635,6 +636,81 @@ async def _wait_task(task: asyncio.Task) -> None:
         await task
     except asyncio.CancelledError:
         pass
+
+
+async def _chat_bridge(room: rtc.Room, running: asyncio.Event) -> None:
+    """Bridge chat messages between LiveKit DataChannel and NATS.
+
+    Browser → NATS:
+      Browser publishes {"kind": "artemis.chat.in", "msg": ChatMessage}
+      on DataChannel. We re-publish the inner msg to
+      ``agi.rh.artemis.chat.in.<from_id>`` so the chat service picks
+      it up, persists, and routes through Primer.
+
+    NATS → Browser:
+      Subscribe to ``agi.rh.artemis.chat.out.*`` and
+      ``agi.rh.artemis.chat.broadcast``; forward each as
+      ``{"kind": "artemis.chat", "msg": ...}`` on DataChannel so the
+      table.js handler renders it. Identity-gating already happened
+      service-side when it chose the subject.
+    """
+    try:
+        import nats  # type: ignore
+    except ImportError:
+        log.warning("nats-py not installed; chat bridge disabled")
+        return
+
+    url = os.environ.get("NATS_URL", "nats://localhost:4222")
+    try:
+        nc = await nats.connect(servers=[url])
+    except Exception as e:  # noqa: BLE001
+        log.warning("chat bridge: NATS connect failed (%s); disabled", e)
+        return
+    log.info("chat bridge online: NATS=%s", url)
+
+    async def _on_out(msg: "nats.aio.msg.Msg") -> None:  # type: ignore[name-defined]
+        try:
+            inner = json.loads(msg.data)
+        except Exception as e:  # noqa: BLE001
+            log.warning("chat bridge: bad JSON on %s: %s", msg.subject, e)
+            return
+        out = json.dumps(
+            {"kind": "artemis.chat", "msg": inner}, separators=(",", ":")
+        ).encode()
+        try:
+            await room.local_participant.publish_data(out, reliable=True)
+        except Exception as e:  # noqa: BLE001
+            log.warning("chat bridge: DataChannel publish failed: %s", e)
+
+    @room.on("data_received")
+    def _on_data(data, participant, *_rest) -> None:
+        # LiveKit Python SDK signature has varied across versions; we
+        # accept extra positional args and pick the participant from
+        # whichever slot it landed in.
+        try:
+            raw = data.data if hasattr(data, "data") else data
+            inner = json.loads(raw)
+        except Exception:  # noqa: BLE001
+            return
+        if inner.get("kind") != "artemis.chat.in":
+            return
+        chat_msg = inner.get("msg") or {}
+        from_id = chat_msg.get("from_id") or "unknown"
+        subj = f"agi.rh.artemis.chat.in.{from_id}"
+        payload = json.dumps(chat_msg, separators=(",", ":")).encode()
+        asyncio.create_task(nc.publish(subj, payload))
+
+    try:
+        await nc.subscribe("agi.rh.artemis.chat.out.*", cb=_on_out)
+        await nc.subscribe("agi.rh.artemis.chat.broadcast", cb=_on_out)
+        while not running.is_set():
+            await asyncio.sleep(1)
+    finally:
+        try:
+            await nc.drain()
+        except Exception:  # noqa: BLE001
+            pass
+        log.info("chat bridge stopped")
 
 
 async def _sheets_bridge(room: rtc.Room, running: asyncio.Event) -> None:

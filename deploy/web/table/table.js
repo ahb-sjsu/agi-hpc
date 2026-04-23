@@ -361,6 +361,13 @@
             applyScene(parsed);
             log("scene: " + (parsed.name || ""));
             break;
+          case "artemis.chat":
+            // Avatar bridge forwards each NATS chat-out / broadcast as
+            // kind=artemis.chat so every browser sees it. Service-side
+            // identity gating already filtered who the payload is for
+            // (chat.out.<id> or broadcast), so we render unconditionally.
+            applyChatMessage(parsed.msg || parsed);
+            break;
         }
       } catch (_) {
         /* ignore non-JSON data */
@@ -382,9 +389,11 @@
       statusEl.classList.remove("warn", "critical");
       log("connected as " + state.localIdentity);
       renderParticipants();
-      // Re-render stats now that we know who we are — view mode
-      // (player / keeper / guest) is identity-derived.
+      // Re-render stats + chat-modes now that we know who we are —
+      // view mode (player / keeper / guest) is identity-derived.
       renderStats();
+      renderChatModes();
+      $("chat-status").textContent = "LIVE";
       try {
         await room.localParticipant.setMicrophoneEnabled(true);
         state.micOn = true;
@@ -399,6 +408,142 @@
       statusEl.textContent = "ERROR";
       statusEl.classList.add("critical");
     }
+  }
+
+  // ── Chat card (S1e) ────────────────────────────────────────
+  //
+  // Transport contract:
+  //   outbound (browser → avatar bridge → NATS)
+  //     DataChannel payload = {kind: "artemis.chat.in", msg: ChatMessage}
+  //     the avatar re-publishes on agi.rh.artemis.chat.in.<from_id>.
+  //
+  //   inbound (NATS → avatar bridge → DataChannel)
+  //     DataChannel payload = {kind: "artemis.chat", msg: ChatMessage}
+  //     every browser receives; the chat service has already done the
+  //     identity-gating when it chose which subject to publish to.
+  //
+  // For the smoke-test / offline case (no avatar bridge running),
+  // player messages show locally so the UI still feels alive.
+
+  const CHAT_MODES_BY_VIEW = {
+    player: [
+      { kind: "player_to_artemis", label: "→ ARTEMIS" },
+    ],
+    keeper: [
+      { kind: "keeper_to_all",    label: "→ ALL" },
+      { kind: "keeper_to_player", label: "→ PLAYER…" },
+    ],
+    guest: [],
+  };
+
+  function renderChatModes() {
+    const view = computeView();
+    const sel = $("chat-mode");
+    if (!sel) return;
+    sel.innerHTML = "";
+    const modes = CHAT_MODES_BY_VIEW[view] || [];
+    for (const m of modes) {
+      const opt = document.createElement("option");
+      opt.value = m.kind;
+      opt.textContent = m.label;
+      sel.appendChild(opt);
+    }
+  }
+
+  function chatWhoLabel(msg) {
+    if (msg.kind === "artemis_to_player" || msg.kind === "artemis_to_all") {
+      return "ARTEMIS";
+    }
+    if (msg.from_id === state.localIdentity) return "YOU";
+    // Strip the "player:" / "keeper:" prefix for readability.
+    const idx = (msg.from_id || "").indexOf(":");
+    return (idx < 0 ? msg.from_id : msg.from_id.slice(idx + 1)).toUpperCase();
+  }
+
+  function applyChatMessage(msg) {
+    if (!msg || !msg.kind || !msg.body) return;
+    const logEl = $("chat-log");
+    // Remove the placeholder hint on first real message.
+    const hint = logEl.querySelector(".chat-hint");
+    if (hint) hint.remove();
+
+    const li = document.createElement("li");
+    li.className = "kind-" + msg.kind;
+    const who = document.createElement("span");
+    who.className = "chat-who";
+    who.textContent = chatWhoLabel(msg);
+    const body = document.createElement("span");
+    body.className = "chat-body";
+    body.textContent = msg.body;
+    li.appendChild(who);
+    li.appendChild(body);
+    logEl.appendChild(li);
+
+    // Keep the scrollback bounded on the client; the server has the
+    // authoritative transcript.
+    while (logEl.children.length > 200) logEl.removeChild(logEl.firstChild);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  async function sendChatMessage(body) {
+    const view = computeView();
+    if (view === "guest") return;
+    const modes = CHAT_MODES_BY_VIEW[view] || [];
+    if (!modes.length) return;
+
+    const selectedKind = $("chat-mode").value || modes[0].kind;
+    let toId = null;
+    if (selectedKind === "player_to_artemis") {
+      toId = "artemis";
+    } else if (selectedKind === "keeper_to_player") {
+      // Prompt the Keeper for a target on the fly — keeps the UI tiny
+      // for S1e. The full keeper portal (S1h) will have a proper
+      // per-player input row.
+      const target = window.prompt("whisper to which player? (e.g. imogen)", "");
+      if (!target) return;
+      toId = target.startsWith("player:") ? target : "player:" + target;
+    }
+
+    const msg = {
+      kind: selectedKind,
+      session_id: roomName || "default",
+      from_id: state.localIdentity || "guest",
+      to_id: toId,
+      body: body,
+      ts: Date.now() / 1000,
+      corr_id: Math.random().toString(36).slice(2, 14),
+    };
+
+    // Optimistically render our own message so the UI doesn't feel
+    // laggy while the round-trip happens.
+    applyChatMessage(msg);
+
+    if (state.room) {
+      const payload = new TextEncoder().encode(
+        JSON.stringify({ kind: "artemis.chat.in", msg }),
+      );
+      try {
+        await state.room.localParticipant.publishData(payload, { reliable: true });
+        $("chat-status").textContent = "LIVE";
+      } catch (err) {
+        $("chat-status").textContent = "SEND FAILED";
+        log("chat send failed: " + err.message, "err");
+      }
+    } else {
+      $("chat-status").textContent = "NOT CONNECTED";
+    }
+  }
+
+  const chatForm = $("chat-form");
+  if (chatForm) {
+    chatForm.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const input = $("chat-input");
+      const body = (input.value || "").trim();
+      if (!body) return;
+      input.value = "";
+      await sendChatMessage(body);
+    });
   }
 
   $("mic-btn").addEventListener("click", async () => {

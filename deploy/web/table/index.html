@@ -71,6 +71,31 @@
         <li class="loading">loading manifest…</li>
       </ul>
     </section>
+
+    <!-- Chat with ARTEMIS (and private Keeper whispers / broadcasts).
+         S1e — transport = LiveKit DataChannel; persistence is the
+         chat service on Atlas which writes to SQLite+FTS. -->
+    <section id="card-chat" class="card">
+      <header class="card-header">
+        <span class="card-label">CHAT</span>
+        <span id="chat-status" class="card-status">OFFLINE</span>
+      </header>
+      <ul id="chat-log" class="chat-log">
+        <li class="chat-hint">type to ARTEMIS. keeper traffic appears here.</li>
+      </ul>
+      <form id="chat-form" class="chat-form" autocomplete="off">
+        <select id="chat-mode" class="chat-mode"></select>
+        <input
+          id="chat-input"
+          class="chat-input"
+          type="text"
+          placeholder="message ARTEMIS…"
+          maxlength="600"
+          required
+        />
+        <button id="chat-send" class="btn chat-send" type="submit">SEND</button>
+      </form>
+    </section>
   </div>
 
   <!-- ARTEMIS's video track is the meeting participant tile — intentionally
