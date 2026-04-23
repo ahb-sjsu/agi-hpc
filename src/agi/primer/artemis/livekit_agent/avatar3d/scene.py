@@ -116,10 +116,59 @@ window.artemis = {
   mouthOpen: 0,
   expression: "neutral",
   idle: true,
+  pose: 0,  // 0..N-1, index into POSES
+  _nextBlinkAt: 0,
   setMouthOpen(v) { this.mouthOpen = Math.max(0, Math.min(1, +v || 0)); },
   setExpression(n) { this.expression = String(n || "neutral"); },
   setIdle(on) { this.idle = !!on; },
+  setPose(i) { this.pose = Math.max(0, Math.min(POSES.length - 1, i | 0)); },
 };
+
+// ─────────────────────────────────────────────────────────────────
+// Yoga-ish pose library. Each entry is a dict of VRM humanoid bone
+// name → [xRad, yRad, zRad] Euler rotation. Bones are always local
+// to the rig so poses retarget cleanly onto any VRM avatar.
+// Keep them simple + readable — the Edward-from-Bebop vibe is odd
+// pose, not biomechanical accuracy.
+// ─────────────────────────────────────────────────────────────────
+const P = Math.PI;
+const POSES = [
+  // 0 — Mountain / at attention
+  { name: "mountain", bones: {
+    leftUpperArm:  [0, 0,  0.08],  leftLowerArm:  [0, 0, 0],
+    rightUpperArm: [0, 0, -0.08],  rightLowerArm: [0, 0, 0],
+    spine: [0, 0, 0], neck: [0, 0, 0], head: [0, 0, 0],
+  }},
+  // 1 — Arms overhead
+  { name: "reach", bones: {
+    leftUpperArm:  [0, 0,  2.8],   leftLowerArm:  [0, 0, 0],
+    rightUpperArm: [0, 0, -2.8],   rightLowerArm: [0, 0, 0],
+    spine: [-0.08, 0, 0], neck: [-0.12, 0, 0], head: [-0.1, 0, 0],
+  }},
+  // 2 — T-pose / Warrior II-ish
+  { name: "warrior", bones: {
+    leftUpperArm:  [0, 0,  P * 0.5],  leftLowerArm:  [0, 0, 0],
+    rightUpperArm: [0, 0, -P * 0.5],  rightLowerArm: [0, 0, 0],
+    spine: [0, 0.12, 0], neck: [0, -0.12, 0], head: [0, 0, 0],
+  }},
+  // 3 — Prayer / thinking
+  { name: "prayer", bones: {
+    leftUpperArm:  [0,  0.1,  1.45], leftLowerArm:  [0,  1.1, 0],
+    rightUpperArm: [0, -0.1, -1.45], rightLowerArm: [0, -1.1, 0],
+    spine: [0.04, 0, 0], neck: [0.12, 0, 0], head: [0.15, 0, 0],
+  }},
+  // 4 — One-arm-up lean (Edward ping)
+  { name: "ping", bones: {
+    leftUpperArm:  [0, 0, 2.6],
+    rightUpperArm: [0, 0, -0.4],
+    leftLowerArm: [0, 0, 0], rightLowerArm: [0, 0, 0],
+    spine: [0, -0.1, 0.08], neck: [0, 0, -0.08], head: [0, 0, -0.12],
+  }},
+];
+
+const POSE_HOLD_S = 4.0;     // how long we linger on a pose
+const POSE_BLEND_S = 1.2;    // SLERP duration between poses
+const VRM_MOUTH_VISEME = "aa";
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color("$BACKGROUND");
@@ -191,6 +240,22 @@ loader.load(
       action.timeScale = $ANIMATION_SPEED;
       action.play();
     }
+
+    // Clark Kent disguise — attach simple glasses to the head bone
+    // so this isn't obviously the pixiv test character. Two lens
+    // rings + a bridge, dark frame + semi-transparent lenses.
+    if (vrm) {
+      const head = vrm.humanoid.getNormalizedBoneNode("head");
+      if (head) {
+        const glasses = _buildGlasses();
+        // Scale/offset are in meters in the head's local frame —
+        // VRM spec canonical head height ~0.23m tall, eyes ~0.05m
+        // out from the head origin. Tweak if they float off-face.
+        glasses.position.set(0, 0.08, 0.11);
+        glasses.scale.setScalar(0.09);
+        head.add(glasses);
+      }
+    }
     window.artemis.ready = true;
   },
   undefined,
@@ -206,16 +271,120 @@ loader.load(
   },
 );
 
+// Cached Euler → Quaternion scratch so tick() allocates nothing.
+const _eulerScratch = new THREE.Euler();
+const _quatA = new THREE.Quaternion();
+const _quatB = new THREE.Quaternion();
+const _quatOut = new THREE.Quaternion();
+
+function _applyPoseBlend(tick_s) {
+  if (!vrm || !vrm.humanoid) return;
+  // Pose cycle: every POSE_HOLD_S + POSE_BLEND_S seconds, advance
+  // one pose. During the BLEND window we SLERP between prev+next;
+  // during HOLD we sit at next.
+  const cycle = POSE_HOLD_S + POSE_BLEND_S;
+  const phase = tick_s % cycle;
+  const slot = Math.floor(tick_s / cycle);
+  const inBlend = phase < POSE_BLEND_S;
+  const blend = inBlend ? phase / POSE_BLEND_S : 1.0;
+  const curIdx = (slot) % POSES.length;
+  const prevIdx = (slot + POSES.length - 1) % POSES.length;
+
+  const prev = POSES[prevIdx].bones;
+  const cur = POSES[curIdx].bones;
+
+  // Walk every bone mentioned in either pose and SLERP it.
+  const allBones = new Set([...Object.keys(prev), ...Object.keys(cur)]);
+  for (const boneName of allBones) {
+    const node = vrm.humanoid.getNormalizedBoneNode(boneName);
+    if (!node) continue;
+    const fromE = prev[boneName] || [0, 0, 0];
+    const toE = cur[boneName] || [0, 0, 0];
+    _eulerScratch.set(fromE[0], fromE[1], fromE[2], "XYZ");
+    _quatA.setFromEuler(_eulerScratch);
+    _eulerScratch.set(toE[0], toE[1], toE[2], "XYZ");
+    _quatB.setFromEuler(_eulerScratch);
+    _quatOut.copy(_quatA).slerp(_quatB, blend);
+    node.quaternion.copy(_quatOut);
+  }
+}
+
+function _applyMouthAndFace(tick_s) {
+  if (!vrm || !vrm.expressionManager) return;
+  const em = vrm.expressionManager;
+  // Mouth — audio-amplitude visemes driven from setMouthOpen.
+  em.setValue(VRM_MOUTH_VISEME, window.artemis.mouthOpen);
+  // Emotion.
+  for (const n of ["happy", "sad", "angry", "surprised", "relaxed"]) {
+    em.setValue(n, window.artemis.expression === n ? 1.0 : 0.0);
+  }
+  // Blink — ~every 3–5 s, 150 ms closed.
+  if (tick_s > window.artemis._nextBlinkAt) {
+    em.setValue("blink", 1.0);
+    if (tick_s > window.artemis._nextBlinkAt + 0.15) {
+      em.setValue("blink", 0.0);
+      window.artemis._nextBlinkAt = tick_s + 3 + Math.random() * 2;
+    }
+  }
+  em.update();
+}
+
+function _buildGlasses() {
+  const group = new THREE.Group();
+  const frameMat = new THREE.MeshStandardMaterial({
+    color: 0x1a1a22, metalness: 0.3, roughness: 0.4,
+  });
+  const lensMat = new THREE.MeshStandardMaterial({
+    color: 0x0e2633, metalness: 0.2, roughness: 0.2,
+    transparent: true, opacity: 0.35,
+  });
+  const lensRing = new THREE.TorusGeometry(0.45, 0.06, 12, 32);
+  const lensDisc = new THREE.CircleGeometry(0.42, 24);
+  const bridge = new THREE.CylinderGeometry(0.04, 0.04, 0.22, 8);
+  const temple = new THREE.CylinderGeometry(0.04, 0.04, 1.1, 8);
+  // Left lens
+  const lL = new THREE.Mesh(lensRing, frameMat);
+  lL.position.set(-0.55, 0, 0);
+  group.add(lL);
+  const discL = new THREE.Mesh(lensDisc, lensMat);
+  discL.position.set(-0.55, 0, 0);
+  group.add(discL);
+  // Right lens
+  const lR = new THREE.Mesh(lensRing, frameMat);
+  lR.position.set(0.55, 0, 0);
+  group.add(lR);
+  const discR = new THREE.Mesh(lensDisc, lensMat);
+  discR.position.set(0.55, 0, 0);
+  group.add(discR);
+  // Bridge
+  const br = new THREE.Mesh(bridge, frameMat);
+  br.rotation.z = Math.PI / 2;
+  br.position.set(0, 0, 0);
+  group.add(br);
+  // Temples (earpieces)
+  const tL = new THREE.Mesh(temple, frameMat);
+  tL.rotation.x = Math.PI / 2;
+  tL.position.set(-1.05, 0, -0.55);
+  group.add(tL);
+  const tR = new THREE.Mesh(temple, frameMat);
+  tR.rotation.x = Math.PI / 2;
+  tR.position.set(1.05, 0, -0.55);
+  group.add(tR);
+  return group;
+}
+
 function tick() {
   const dt = clock.getDelta();
+  const t = clock.elapsedTime;
   if (mixer) mixer.update(dt);
-  // VRM update drives spring bones (hair / cloth physics) + look-at.
+  // Drive pose blending BEFORE vrm.update so spring bones follow
+  // the posed body rather than the last frame's.
+  _applyPoseBlend(t);
+  _applyMouthAndFace(t);
   if (vrm) vrm.update(dt);
   if (model && window.artemis.idle) {
-    // Very subtle breathing — tiny body sway so the clone doesn't
-    // look frozen. Matches the "standing AI crewmate" read better
-    // than the previous rotating-statue loop.
-    const t = clock.elapsedTime;
+    // Tiny body sway so the avatar doesn't look frozen between
+    // pose transitions.
     model.rotation.y = Math.sin(t * 0.15) * 0.04;
   }
   renderer.render(scene, camera);
