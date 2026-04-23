@@ -3,7 +3,7 @@ type: sensei_note
 task: 30
 tags: [transformation, vertical-alignment, arc, primer]
 written_by: The Primer
-written_at: 2026-04-22
+written_at: 2026-04-23
 verified_by: run-against-train (all examples pass)
 ---
 

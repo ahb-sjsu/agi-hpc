@@ -2,75 +2,106 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>ARTEMIS · Nithon Table</title>
+<title>MKS HALYARD · SESSION CONSOLE</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="stylesheet" href="./table.css" />
 </head>
 <body>
+  <!-- Fixed in-fiction scene strip along the very top -->
+  <header id="scene-strip">
+    <span id="scene-left">
+      MKS HALYARD · <span id="scene-name">TRANSIT · DAY 184</span>
+    </span>
+    <span id="scene-right">
+      <span id="scene-flags">NOMINAL</span>
+      <button id="mic-btn" class="btn btn-strip">MIC : OFF</button>
+      <button id="leave-btn" class="btn btn-strip danger">×</button>
+    </span>
+  </header>
+
   <div id="app">
-    <!-- Avatar card: full-height left column -->
-    <section id="card-avatar" class="card">
+    <!-- Session / room card -->
+    <section id="card-info" class="card">
       <header class="card-header">
-        <span class="card-label">AVATAR</span>
-        <span id="avatar-status" class="card-status">—</span>
+        <span class="card-label">SESSION</span>
+        <span id="clock">--:--:--</span>
       </header>
-      <div id="avatar-stage">
-        <video id="artemis-video" autoplay playsinline muted></video>
-        <div id="avatar-placeholder" class="avatar-placeholder">
-          <div class="pulse"></div>
-          <div class="placeholder-text">CONNECTING…</div>
+      <div class="info-block">
+        <div class="info-row">
+          <span class="info-k">Room</span>
+          <span id="info-room" class="info-v">—</span>
+        </div>
+        <div class="info-row">
+          <span class="info-k">Identity</span>
+          <span id="info-identity" class="info-v">—</span>
+        </div>
+        <div class="info-row">
+          <span class="info-k">Uplink</span>
+          <span id="info-status" class="info-v warn">OFFLINE</span>
         </div>
       </div>
-      <div class="avatar-controls">
-        <button id="mic-btn" class="btn">MIC: OFF</button>
-        <button id="leave-btn" class="btn danger">DISCONNECT</button>
+      <div class="participants-block">
+        <div class="block-title">Crew in meeting</div>
+        <ul id="participants" class="list"></ul>
+      </div>
+      <div class="log-block">
+        <div class="block-title">Event Log</div>
+        <ul id="event-log" class="list log"></ul>
       </div>
     </section>
 
-    <!-- Right column: two stacked cards -->
-    <div class="right-column">
-      <!-- Info / HUD card -->
-      <section id="card-info" class="card">
-        <header class="card-header">
-          <span class="card-label">SESSION</span>
-          <span id="clock">--:--:--</span>
-        </header>
-        <div class="info-block">
-          <div class="info-row">
-            <span class="info-k">ROOM</span>
-            <span id="info-room" class="info-v">—</span>
-          </div>
-          <div class="info-row">
-            <span class="info-k">IDENTITY</span>
-            <span id="info-identity" class="info-v">—</span>
-          </div>
-          <div class="info-row">
-            <span class="info-k">STATUS</span>
-            <span id="info-status" class="info-v">OFFLINE</span>
-          </div>
-        </div>
-        <div class="participants-block">
-          <div class="block-title">PARTICIPANTS</div>
-          <ul id="participants" class="list"></ul>
-        </div>
-        <div class="log-block">
-          <div class="block-title">EVENT LOG</div>
-          <ul id="event-log" class="list log"></ul>
-        </div>
-      </section>
+    <!-- Crew status / PC stats -->
+    <section id="card-stats" class="card">
+      <header class="card-header">
+        <span class="card-label">CREW STATUS</span>
+        <span class="card-status">LIVE · PLACEHOLDER</span>
+      </header>
+      <div id="stats-grid" class="stats-grid">
+        <!-- Populated by table.js. S1b replaces placeholder with Sheets data. -->
+      </div>
+    </section>
 
-      <!-- Artifacts card -->
-      <section id="card-artifacts" class="card">
-        <header class="card-header">
-          <span class="card-label">ARTIFACTS</span>
-          <span class="card-status">SESSION HANDOUTS</span>
-        </header>
-        <ul id="artifact-list" class="list">
-          <li class="loading">loading manifest…</li>
-        </ul>
-      </section>
-    </div>
+    <!-- Session artifacts -->
+    <section id="card-artifacts" class="card">
+      <header class="card-header">
+        <span class="card-label">ARTIFACTS</span>
+        <span class="card-status">SESSION HANDOUTS</span>
+      </header>
+      <ul id="artifact-list" class="list">
+        <li class="loading">loading manifest…</li>
+      </ul>
+    </section>
+
+    <!-- Chat with ARTEMIS (and private Keeper whispers / broadcasts).
+         S1e — transport = LiveKit DataChannel; persistence is the
+         chat service on Atlas which writes to SQLite+FTS. -->
+    <section id="card-chat" class="card">
+      <header class="card-header">
+        <span class="card-label">CHAT</span>
+        <span id="chat-status" class="card-status">OFFLINE</span>
+      </header>
+      <ul id="chat-log" class="chat-log">
+        <li class="chat-hint">type to ARTEMIS. keeper traffic appears here.</li>
+      </ul>
+      <form id="chat-form" class="chat-form" autocomplete="off">
+        <select id="chat-mode" class="chat-mode"></select>
+        <input
+          id="chat-input"
+          class="chat-input"
+          type="text"
+          placeholder="message ARTEMIS…"
+          maxlength="600"
+          required
+        />
+        <button id="chat-send" class="btn chat-send" type="submit">SEND</button>
+      </form>
+    </section>
   </div>
+
+  <!-- ARTEMIS's video track is the meeting participant tile — intentionally
+       NOT rendered here. Her voice streams are kept (audio attach below)
+       so the page still carries meeting audio for those using this
+       console without a separate meeting client. -->
 
   <script src="./vendor/livekit-client.umd.min.js"></script>
   <script src="./table.js"></script>
