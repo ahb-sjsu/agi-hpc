@@ -20,9 +20,11 @@ Environment=PYTHONUNBUFFERED=1
 Environment=NATS_URL=nats://localhost:4222
 Environment=ARTEMIS_VOICE_REF=/home/claude/artemis-voice-refs/artemis_ref.wav
 Environment=ARTEMIS_TTS_LANG=en
-# Idle > 15 min → auto-exit so co-tenant pods satisfy the watchdog's
-# "must stay utilized" rule. systemd relaunches on next use.
-Environment=ARTEMIS_TTS_WORKER_IDLE_S=900
+# Idle > 4 hrs → auto-exit. Short timeouts (15 min) kept killing the
+# worker mid-development session on Atlas; co-tenant watchdog hygiene
+# only matters on NRP pods, not on Atlas-local. Raise to 4 hrs so a
+# dev session can leave the worker warm without constantly restarting.
+Environment=ARTEMIS_TTS_WORKER_IDLE_S=14400
 EnvironmentFile=-/home/claude/.artemis.env
 # Runs in its own venv (/home/claude/env-xtts) — coqui-tts drags in a
 # torch + transformers combo incompatible with the main env that hosts
