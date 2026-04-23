@@ -108,6 +108,11 @@ def render_handout(
             )
         runner = _default_runner
 
+    # Keep the pandoc invocation font-agnostic — xelatex's default
+    # (Latin Modern) is always present on texlive. Forcing Helvetica
+    # etc. breaks on boxes that don't have the commercial font metrics
+    # installed. Consumers that want custom typography should pass
+    # their own template via front-matter later.
     cmd = [
         pandoc,
         str(meta.path),
@@ -116,8 +121,6 @@ def render_handout(
         "--standalone",
         "--pdf-engine=xelatex",
         "--variable=geometry:margin=1in",
-        "--variable=mainfont:Helvetica",
-        "--variable=monofont:Courier",
         "--metadata",
         f"title={meta.title}",
     ]
