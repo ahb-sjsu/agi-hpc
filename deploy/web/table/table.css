@@ -1,0 +1,321 @@
+/* ARTEMIS table UI — amber-on-black terminal.
+   Kept deliberately dense and angular; matches the handheld-device
+   aesthetic of the in-fiction ARTEMIS. */
+
+:root {
+  --bg: #06060a;
+  --card-bg: #0c0c14;
+  --amber: #ffb030;
+  --amber-dim: #804518;
+  --amber-deep: #3c2404;
+  --cyan: #50dcf0;
+  --cyan-dim: #1e6e82;
+  --white-dim: #b4b4c8;
+  --grid: #1a1a26;
+  --danger: #c84830;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  font-family: "SF Mono", "Consolas", "DejaVu Sans Mono", ui-monospace, monospace;
+  background: var(--bg);
+  color: var(--amber);
+  font-size: 13px;
+  overflow: hidden;
+  /* Faint grid */
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+#app {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 12px;
+  padding: 12px;
+  height: 100vh;
+}
+
+.right-column {
+  display: grid;
+  grid-template-rows: 1.4fr 1fr;
+  gap: 12px;
+  min-height: 0;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--amber-dim);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  box-shadow: inset 0 0 0 1px rgba(255, 176, 48, 0.06);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px;
+  background: rgba(255, 176, 48, 0.05);
+  border-bottom: 1px solid var(--amber-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-size: 11px;
+  color: var(--amber);
+}
+
+.card-label {
+  font-weight: bold;
+}
+
+.card-status {
+  color: var(--amber-dim);
+}
+
+/* ── Avatar card ─────────────────────────────────────────────── */
+
+#card-avatar {
+  position: relative;
+}
+
+#avatar-stage {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: #000;
+}
+
+#artemis-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+#artemis-video:not([data-connected="true"]) {
+  display: none;
+}
+
+.avatar-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  color: var(--amber-dim);
+}
+
+.avatar-placeholder[hidden] {
+  display: none;
+}
+
+.pulse {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 2px solid var(--amber);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 0.4; }
+  50% { transform: scale(1.2); opacity: 0.8; }
+}
+
+.placeholder-text {
+  letter-spacing: 0.3em;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.avatar-controls {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--amber-dim);
+}
+
+.btn {
+  background: transparent;
+  border: 1px solid var(--amber-dim);
+  color: var(--amber);
+  padding: 6px 14px;
+  font-family: inherit;
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn:hover {
+  border-color: var(--amber);
+  background: rgba(255, 176, 48, 0.08);
+}
+
+.btn.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.btn.danger:hover {
+  background: rgba(200, 72, 48, 0.12);
+}
+
+.btn.active {
+  background: rgba(80, 220, 240, 0.12);
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+/* ── Info card ───────────────────────────────────────────────── */
+
+#clock {
+  color: var(--amber-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.info-block {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--grid);
+  font-size: 12px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+}
+
+.info-k {
+  color: var(--amber-dim);
+  letter-spacing: 0.1em;
+}
+
+.info-v {
+  color: var(--amber);
+  font-weight: bold;
+}
+
+.participants-block,
+.log-block {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--grid);
+  overflow: hidden;
+  min-height: 0;
+}
+
+.log-block {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.block-title {
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  color: var(--amber-dim);
+  margin-bottom: 6px;
+}
+
+.list {
+  list-style: none;
+  font-size: 12px;
+}
+
+.list li {
+  padding: 3px 0;
+  color: var(--white-dim);
+}
+
+.list li.you {
+  color: var(--cyan);
+}
+
+.list li.active {
+  color: var(--amber);
+  font-weight: bold;
+}
+
+.list li.artemis {
+  color: var(--amber);
+}
+
+.list.log li {
+  font-size: 11px;
+  color: var(--amber-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.list.log li:last-child {
+  color: var(--amber);
+}
+
+/* ── Artifacts card ──────────────────────────────────────────── */
+
+#card-artifacts .list {
+  padding: 8px 14px;
+  overflow-y: auto;
+}
+
+.list li.artifact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px dotted var(--grid);
+  color: var(--amber);
+}
+
+.list li.artifact a {
+  color: var(--cyan);
+  text-decoration: none;
+  padding: 2px 10px;
+  border: 1px solid var(--cyan-dim);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.list li.artifact a:hover {
+  color: var(--cyan);
+  border-color: var(--cyan);
+  background: rgba(80, 220, 240, 0.08);
+}
+
+.list li.loading {
+  color: var(--amber-dim);
+  font-style: italic;
+}
+
+/* ── Scrollbar styling ───────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--amber-dim);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--amber);
+}
