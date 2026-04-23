@@ -71,7 +71,7 @@ CAPABILITY_TIMELINE: list[dict] = [
 
 
 async def synthesize_via_worker(
-    text: str, timeout_s: float = 60.0
+    text: str, timeout_s: float = 180.0
 ) -> tuple[np.ndarray, int]:
     import nats
 
