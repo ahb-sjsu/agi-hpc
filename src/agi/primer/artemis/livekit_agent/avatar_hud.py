@@ -646,13 +646,18 @@ async def main() -> int:
 
     # S1b — optional NATS → LiveKit bridge for sheet updates.
     # S1e — optional DataChannel ↔ NATS bridge for chat messages.
-    # Both are opt-in via env so the existing Atlas deployment keeps
+    # S1g — optional direct-say bridge (GM narration: publish text on
+    #       agi.rh.artemis.say.direct, ARTEMIS speaks it).
+    # All opt-in via env so the existing Atlas deployment keeps
     # working unchanged until we flip them on.
     bridge_tasks: list[asyncio.Task] = []
     if os.environ.get("ARTEMIS_SHEETS_NATS", "") in ("1", "true", "yes", "on"):
         bridge_tasks.append(asyncio.create_task(_sheets_bridge(room, running)))
     if os.environ.get("ARTEMIS_CHAT_NATS", "") in ("1", "true", "yes", "on"):
         bridge_tasks.append(asyncio.create_task(_chat_bridge(room, running)))
+    # Direct-say is always on when NATS is reachable — tiny, harmless,
+    # and the GM narration console needs it.
+    bridge_tasks.append(asyncio.create_task(_direct_say_bridge(running)))
 
     # Audio publisher runs in its own thread for hard real-time timing.
     # Mirror the asyncio shutdown event onto a threading.Event so the
@@ -688,6 +693,51 @@ async def _wait_task(task: asyncio.Task) -> None:
         await task
     except asyncio.CancelledError:
         pass
+
+
+async def _direct_say_bridge(running: asyncio.Event) -> None:
+    """Inject text onto ARTEMIS's TTS queue via NATS.
+
+    Publish ``{"text": "..."}`` to ``agi.rh.artemis.say.direct`` and
+    the avatar's TTS pipeline speaks it. Intended for the S1g GM
+    narration console and for ad-hoc testing.
+    """
+    try:
+        import nats  # type: ignore
+    except ImportError:
+        log.warning("nats-py not installed; direct-say bridge disabled")
+        return
+
+    url = os.environ.get("NATS_URL", "nats://localhost:4222")
+    try:
+        nc = await nats.connect(servers=[url])
+    except Exception as e:  # noqa: BLE001
+        log.warning("direct-say bridge: NATS connect failed (%s); disabled", e)
+        return
+    log.info("direct-say bridge online: agi.rh.artemis.say.direct")
+
+    async def _on_msg(msg: "nats.aio.msg.Msg") -> None:  # type: ignore[name-defined]
+        try:
+            payload = json.loads(msg.data)
+            text = str(payload.get("text") or "").strip()
+        except Exception as e:  # noqa: BLE001
+            log.warning("direct-say: bad payload: %s", e)
+            return
+        if not text:
+            return
+        log.info("direct-say: queuing %d chars", len(text))
+        text_queue.put(text)
+
+    try:
+        await nc.subscribe("agi.rh.artemis.say.direct", cb=_on_msg)
+        while not running.is_set():
+            await asyncio.sleep(1)
+    finally:
+        try:
+            await nc.drain()
+        except Exception:  # noqa: BLE001
+            pass
+        log.info("direct-say bridge stopped")
 
 
 async def _chat_bridge(room: rtc.Room, running: asyncio.Event) -> None:
