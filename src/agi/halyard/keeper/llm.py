@@ -364,6 +364,22 @@ async def run_turn(
     state = _session_state(session_id, which)
     bible = _bible_for(which)
 
+    # The chat panel is by construction an explicit address: the
+    # player picked SIGMA's or ARTEMIS's box and typed into it.
+    # The trigger policy, however, only fires on name-mention or
+    # explicit keeper_cue. Prepend the AI's name so the invocation
+    # check matches — otherwise a question like "what is your
+    # current location" silently falls through to silence.
+    import re as _re
+
+    trigger_text = user_text
+    if which == "artemis" and not _re.search(r"\bartemis\b", user_text, _re.I):
+        trigger_text = f"ARTEMIS, {user_text}"
+    elif which == "sigma4" and not _re.search(
+        r"\b(sigma(-4)?|sig)\b", user_text, _re.I
+    ):
+        trigger_text = f"SIGMA, {user_text}"
+
     # Build the right TurnRequest. The shape is identical across
     # the two packages; we dispatch the right type so each AI's
     # sentinel conventions (INTERFACE_FLICKER vs INTERFACE_SILENT)
@@ -377,7 +393,7 @@ async def run_turn(
                 session_id=session_id,
                 turn_id=turn_id,
                 speaker=speaker,
-                text=user_text,
+                text=trigger_text,
                 ts=time.time(),
                 meta=meta,
             )
@@ -389,7 +405,7 @@ async def run_turn(
                 session_id=session_id,
                 turn_id=turn_id,
                 speaker=speaker,
-                text=user_text,
+                text=trigger_text,
                 ts=time.time(),
                 meta=meta,
             )
