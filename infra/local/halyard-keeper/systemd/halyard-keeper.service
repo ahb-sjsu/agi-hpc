@@ -21,7 +21,12 @@ Environment=HALYARD_KEEPER_PORT=8091
 Environment=LOG_LEVEL=info
 # LiveKit: the existing livekit-smoke container runs with --dev
 # keys. Override for production.
-Environment=LIVEKIT_URL=ws://127.0.0.1:7880
+#
+# LIVEKIT_URL is the URL EMBEDDED IN THE MINTED TOKEN RESPONSE —
+# i.e. what the *browser* uses to connect. It must be the public
+# WSS origin that atlas-caddy fronts, NOT Atlas's loopback. The
+# keeper itself doesn't connect to LiveKit; it just signs tokens.
+Environment=LIVEKIT_URL=wss://halyard.atlas-sjsu.duckdns.org
 Environment=LIVEKIT_API_KEY=devkey
 Environment=LIVEKIT_API_SECRET=secret
 # Keeper auth: unset in dev (warnings emitted), set in prod.
