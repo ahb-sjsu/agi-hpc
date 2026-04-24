@@ -1,0 +1,55 @@
+# ────────────────────────────────────────────────────────────────
+# halyard-state.service — user-level systemd unit for the
+# Halyard Table character-sheet service.
+#
+# Install:
+#   mkdir -p ~/.config/systemd/user
+#   ln -sfn ~/src/agi-hpc/infra/local/halyard-state/systemd/halyard-state.service \
+#           ~/.config/systemd/user/halyard-state.service
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now halyard-state.service
+#
+# Enable linger so the service starts at boot without a login:
+#   sudo loginctl enable-linger $USER
+#
+# Logs:
+#   journalctl --user -u halyard-state -f
+# ────────────────────────────────────────────────────────────────
+
+[Unit]
+Description=Halyard Table character-sheet service (halyard-state)
+Documentation=file:///home/%u/src/agi-hpc/docs/HALYARD_TABLE.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+# Service reads CLI + env; env can be supplied via a .env
+# EnvironmentFile in the infra dir if needed. Defaults are sane
+# for dev; production sets NATS_URL when the bridge is wanted.
+Environment=HALYARD_STATE_HOST=0.0.0.0
+Environment=HALYARD_STATE_PORT=8090
+Environment=HALYARD_ARCHIVE_ROOT=/archive/halyard
+Environment=LOG_LEVEL=info
+# Uncomment to enable the NATS bridge:
+# Environment=NATS_URL=nats://127.0.0.1:4222
+
+WorkingDirectory=%h/src/agi-hpc
+ExecStart=%h/env/bin/python -m agi.halyard.state
+
+Restart=on-failure
+RestartSec=5s
+
+# Hardening — user-level systemd sandbox.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/archive/halyard
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+
+[Install]
+WantedBy=default.target
