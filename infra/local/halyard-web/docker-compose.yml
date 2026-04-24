@@ -24,8 +24,11 @@ services:
     container_name: halyard-web
     restart: unless-stopped
     ports:
-      # Loopback-only. atlas-caddy reverse-proxies to this port.
-      - "127.0.0.1:3000:3000"
+      # Host :3030 → container :3000. Loopback only — atlas-caddy
+      # reverse-proxies to host :3030. Port 3000 on Atlas is held
+      # by a security-radar test Express app; :3030 stays out of
+      # its way. Caddyfile's upstream must match.
+      - "127.0.0.1:3030:3000"
     environment:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
