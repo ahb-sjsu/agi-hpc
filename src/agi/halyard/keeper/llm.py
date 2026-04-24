@@ -101,7 +101,13 @@ class LLMConfig:
                 "NRP_LLM_URL", "https://ellm.nrp-nautilus.io/v1"
             ).rstrip("/"),
             api_key=key,
-            model=os.environ.get("HALYARD_LLM_MODEL", "qwen3-32b"),
+            # NRP model id. Confirmed via ``GET /v1/models``:
+            # gpt-oss, gemma, kimi, minimax-m2, olmo, gemma-small,
+            # gemma-4-e4b, glm-4.7, qwen3, qwen3-small, qwen3-27b.
+            # qwen3 is the general-purpose default; override via
+            # HALYARD_LLM_MODEL for longer-context work (kimi) or
+            # quality-focused (glm-4.7).
+            model=os.environ.get("HALYARD_LLM_MODEL", "qwen3"),
             temperature=float(os.environ.get("HALYARD_LLM_TEMPERATURE", "0.7")),
             max_tokens=int(os.environ.get("HALYARD_LLM_MAX_TOKENS", "220")),
             timeout_s=float(os.environ.get("HALYARD_LLM_TIMEOUT_S", "12.0")),
