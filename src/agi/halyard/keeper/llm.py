@@ -88,8 +88,12 @@ class LLMConfig:
     api_key: str
     model: str
     temperature: float = 0.7
-    max_tokens: int = 220
-    timeout_s: float = 12.0
+    # qwen3 is a thinking model — it uses max_tokens on an internal
+    # reasoning trace before emitting the user-visible content. 220
+    # ran out mid-thought and left content empty. 800 leaves enough
+    # headroom for the thought plus a 1–3 sentence reply.
+    max_tokens: int = 800
+    timeout_s: float = 20.0
 
     @classmethod
     def from_env(cls) -> "LLMConfig | None":
@@ -179,6 +183,29 @@ class NRPLLMCaller:
             content = "".join(
                 seg.get("text", "") for seg in content if isinstance(seg, dict)
             )
+        finish_reason = choices[0].get("finish_reason")
+        if not content.strip():
+            # Some NRP-hosted models (qwen3 in particular) emit
+            # internal reasoning in ``message.reasoning`` and only
+            # populate ``content`` once the thought is complete.
+            # If we were cut off mid-thought (``finish_reason ==
+            # "length"``), log and fall back; if there's a trailing
+            # chunk of reasoning that looks like a finished answer,
+            # fish it out.
+            reasoning = msg.get("reasoning") or ""
+            if finish_reason == "length":
+                log.warning(
+                    "NRP %s returned no content (finish=length, "
+                    "reasoning=%d chars)",
+                    self._cfg.model, len(reasoning),
+                )
+                return "", "length", time.time() - started
+            # Occasional models surface the whole answer in reasoning.
+            # Return the last non-empty paragraph as the best guess.
+            paras = [p.strip() for p in reasoning.splitlines() if p.strip()]
+            if paras:
+                return paras[-1], self._cfg.model, time.time() - started
+            return "", "empty", time.time() - started
         return content.strip(), self._cfg.model, time.time() - started
 
 
