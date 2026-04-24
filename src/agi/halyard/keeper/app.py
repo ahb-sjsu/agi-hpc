@@ -41,6 +41,7 @@ from typing import Any
 
 from aiohttp import WSMsgType, web
 
+from .ai_stub import stub_reply
 from .approvals import AiKind, ApprovalQueue, ApprovalState
 from .auth import KeeperAuthConfig, build_keeper_middleware
 from .livekit import LiveKitConfig, mint_keeper_token, mint_player_token
@@ -131,6 +132,41 @@ async def _mint_player(request: web.Request) -> web.Response:
         name=name if isinstance(name, str) else None,
     )
     return web.json_response({"token": token, "url": lk.url})
+
+
+# ─────────────────────────────────────────────────────────────────
+# Public AI-stub route — dev affordance until the real Whisper+
+# LiveKit agent ingestion lands. See ai_stub.py for the design.
+# ─────────────────────────────────────────────────────────────────
+
+
+async def _ai_stub_turn(request: web.Request) -> web.Response:
+    """POST /api/ai/{which}/stub-turn — in-persona canned reply.
+
+    Body: ``{session_id, speaker, text}``. Returns
+    ``{text, matched, ts}``. Public (no keeper auth); the request
+    is harmless (no mutation, no LLM call).
+    """
+    which = request.match_info["which"]
+    if which not in {"artemis", "sigma4"}:
+        return _json_error(404, "not_found", f"unknown ai {which!r}")
+
+    body = await _parse_body(request)
+    text = body.get("text")
+    if not isinstance(text, str) or not text.strip():
+        return _json_error(400, "bad_envelope", "text required")
+    if len(text) > 1024:
+        return _json_error(400, "too_long", "max 1024 chars")
+
+    reply = stub_reply(which=which, text=text)
+    return web.json_response(
+        {
+            "text": reply.text,
+            "matched": reply.matched,
+            "ts": reply.ts,
+            "kind": f"{which}.say",
+        }
+    )
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -310,6 +346,9 @@ def build_app(
     app.router.add_get("/healthz", _healthz, name="public.healthz")
     app.router.add_post(
         "/api/livekit/token", _mint_player, name="public.livekit_token"
+    )
+    app.router.add_post(
+        "/api/ai/{which}/stub-turn", _ai_stub_turn, name="public.ai_stub_turn"
     )
 
     # Keeper — all names prefixed so the middleware picks them up.
