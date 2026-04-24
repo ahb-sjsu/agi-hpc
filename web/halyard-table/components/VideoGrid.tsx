@@ -2,11 +2,12 @@
 
 import {
   GridLayout,
-  ParticipantTile,
   useParticipants,
   useTracks,
 } from "@livekit/components-react";
 import { RoomEvent, Track } from "livekit-client";
+
+import ParticipantTileWithMeter from "./ParticipantTileWithMeter";
 
 /**
  * VideoGrid — live participant tiles.
@@ -55,7 +56,7 @@ export default function VideoGrid() {
   return (
     <div className="relative h-full">
       <GridLayout tracks={tracks} className="h-full">
-        <ParticipantTile />
+        <ParticipantTileWithMeter />
       </GridLayout>
       {totalCount > 12 && (
         <div
