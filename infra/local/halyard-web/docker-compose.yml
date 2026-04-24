@@ -1,0 +1,45 @@
+# ────────────────────────────────────────────────────────────────
+# halyard-web — production Next.js bundle
+#
+# Built from the repo's Dockerfile at deploy/docker/halyard-web/.
+# Binds to 127.0.0.1:3000 on the host; atlas-caddy fronts it.
+#
+# Bring up:   systemctl --user start halyard-web.service
+# Bring down: systemctl --user stop  halyard-web.service
+# ────────────────────────────────────────────────────────────────
+
+services:
+  halyard-web:
+    image: halyard-web:local
+    build:
+      # Build context is the Next.js source tree. The Dockerfile
+      # lives under deploy/docker/halyard-web/ at the repo root;
+      # referenced via relative path from this compose dir.
+      context: ../../../web/halyard-table
+      dockerfile: ../../deploy/docker/halyard-web/Dockerfile
+      args:
+        NEXT_PUBLIC_LIVEKIT_URL: wss://halyard.atlas-sjsu.duckdns.org
+        NEXT_PUBLIC_STATE_HTTP: https://halyard.atlas-sjsu.duckdns.org/state
+        NEXT_PUBLIC_TOKEN_MINT_URL: https://halyard.atlas-sjsu.duckdns.org/keeper/api/livekit/token
+    container_name: halyard-web
+    restart: unless-stopped
+    ports:
+      # Loopback-only. atlas-caddy reverse-proxies to this port.
+      - "127.0.0.1:3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+      - PORT=3000
+      - HOSTNAME=0.0.0.0  # inside container; still loopback at host
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - --quiet
+        - --tries=1
+        - --spider
+        - http://localhost:3000/
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s

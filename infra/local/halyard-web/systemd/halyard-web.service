@@ -1,0 +1,36 @@
+# ────────────────────────────────────────────────────────────────
+# halyard-web.service — user-level systemd unit.
+#
+# Wraps the docker-compose.yml in infra/local/halyard-web/.
+# The image is built once on the host (scripts/halyard/atlas_deploy_web.py)
+# and then managed as a long-running container by this unit.
+# ────────────────────────────────────────────────────────────────
+
+[Unit]
+Description=Halyard Table web client (halyard-web)
+Documentation=file:///home/%u/src/agi-hpc/docs/HALYARD_TABLE.md
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+
+WorkingDirectory=%h/src/agi-hpc/infra/local/halyard-web
+ExecStart=/usr/bin/docker compose up --detach --wait
+ExecStop=/usr/bin/docker compose down
+
+Restart=on-failure
+RestartSec=30s
+
+# User-level sandbox.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+
+[Install]
+WantedBy=default.target

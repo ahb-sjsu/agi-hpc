@@ -1,0 +1,75 @@
+# ────────────────────────────────────────────────────────────────
+# atlas-caddy — Caddyfile for the Halyard Table.
+#
+# Serves halyard.atlas-sjsu.duckdns.org as the single public
+# origin for the whole runtime. Caddy handles TLS (ACME via Let's
+# Encrypt, HTTP-01 challenge on :80) and reverse-proxies to each
+# backend on loopback.
+#
+# Install:
+#   sudo cp infra/local/halyard-caddy/Caddyfile /etc/caddy/Caddyfile
+#   sudo systemctl enable --now caddy
+#   sudo systemctl reload caddy       # on subsequent edits
+#
+# Reference: https://caddyserver.com/docs/caddyfile
+# ────────────────────────────────────────────────────────────────
+
+halyard.atlas-sjsu.duckdns.org {
+  encode gzip zstd
+
+  # ── LiveKit signaling + Twirp admin ──
+  # The SFU uses /rtc/* for participant signaling (WebSocket upgrade
+  # is automatic in Caddy's reverse_proxy). /twirp/* is the admin
+  # API (room create, participant update, etc.). Both ride the same
+  # upstream.
+  reverse_proxy /rtc/* 127.0.0.1:7880 {
+    transport http {
+      versions 1.1
+    }
+    flush_interval -1
+  }
+  reverse_proxy /twirp/* 127.0.0.1:7880
+
+  # ── halyard-keeper backend ──
+  # handle_path strips the /keeper prefix before forwarding, so
+  # upstream routes like /api/livekit/token stay as-written.
+  handle_path /keeper/* {
+    reverse_proxy 127.0.0.1:8091
+  }
+
+  # ── halyard-state backend ──
+  # Same path-strip pattern. REST + WebSocket both ride through.
+  handle_path /state/* {
+    reverse_proxy 127.0.0.1:8090 {
+      transport http {
+        versions 1.1
+      }
+      flush_interval -1
+    }
+  }
+
+  # ── halyard-web (Next.js standalone bundle) ──
+  # The catch-all: everything else is the web client.
+  reverse_proxy 127.0.0.1:3000
+
+  # ── Security headers ──
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    # No CSP yet — relax when the client is under active dev, tighten
+    # in Sprint 8. The LiveKit connection plus Next.js _next chunks
+    # plus inline styles need explicit allow-lists.
+    -Server
+  }
+
+  # ── Logging ──
+  log {
+    output file /var/log/caddy/halyard.log {
+      roll_size 50mb
+      roll_keep 10
+    }
+    format json
+    level INFO
+  }
+}

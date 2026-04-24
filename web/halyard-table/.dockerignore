@@ -1,0 +1,24 @@
+# Build artifacts — always regenerated inside the container.
+.next
+node_modules
+out
+
+# Local envs — not baked into the image.
+.env
+.env.local
+.env.*.local
+
+# VCS / CI.
+.git
+.gitignore
+.github
+
+# Editor / OS.
+.vscode
+.idea
+.DS_Store
+
+# Docs / non-runtime artifacts.
+README.md
+*.log
+coverage
