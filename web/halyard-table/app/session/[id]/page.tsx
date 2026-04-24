@@ -2,7 +2,7 @@
 
 import { LiveKitRoom, useRoomContext } from "@livekit/components-react";
 import { useSearchParams } from "next/navigation";
-import { use, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 
 import AiChatPanel from "@/components/AiChatPanel";
 import CharacterSheetDrawer from "@/components/CharacterSheetDrawer";
@@ -25,13 +25,35 @@ interface Params {
  * - Renders the main three-panel layout: video grid on the
  *   left, AI chat on the right, safety bar at the bottom.
  * - Hotkey ``c`` toggles the character sheet drawer.
+ *
+ * Next.js 14 passes ``params`` as a plain object to route
+ * components (the Promise-wrapped form is Next.js 15+). The old
+ * code typed it as Promise and fed it through React.use(), which
+ * threw "expected a Promise" at runtime. Direct prop access is
+ * the 14.x shape.
  */
 export default function SessionPage({
   params,
 }: {
-  params: Promise<Params>;
+  params: Params;
 }) {
-  const { id: sessionId } = use(params);
+  const { id: sessionId } = params;
+  // useSearchParams requires a Suspense boundary during SSR —
+  // wrap the body in a Suspense fallback.
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <p className="font-mono text-text-dim">Loading {sessionId}…</p>
+        </div>
+      }
+    >
+      <SessionBody sessionId={sessionId} />
+    </Suspense>
+  );
+}
+
+function SessionBody({ sessionId }: { sessionId: string }) {
   const search = useSearchParams();
   const displayName = search.get("name") ?? "guest";
   const pcId = search.get("pc");
