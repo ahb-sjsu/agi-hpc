@@ -40,6 +40,12 @@ Environment=LIVEKIT_API_SECRET=secret
 # Environment=KEEPER_PASSWORD=
 # Environment=KEEPER_IP_ALLOWLIST=127.0.0.0/8,100.64.0.0/10
 Environment=HALYARD_ARCHIVE_ROOT=/archive/halyard
+# handle_turn writes DecisionProof chains to these dirs — redirect
+# both AIs' proof chains into /archive/halyard/ so the sandbox's
+# ReadWritePaths stays tight.
+Environment=ARTEMIS_PROOFS_DIR=/archive/halyard/proofs/artemis
+Environment=SIGMA4_PROOFS_DIR=/archive/halyard/proofs/sigma4
+Environment=ARTEMIS_SESSIONS_DIR=/archive/halyard/sessions
 
 WorkingDirectory=%h/src/agi-hpc
 ExecStart=%h/env/bin/python -m agi.halyard.keeper
