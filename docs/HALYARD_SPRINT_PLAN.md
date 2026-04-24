@@ -125,7 +125,19 @@ browsers; one 15-minute dry-run call held without disconnects.
 
 ## Sprint 2 — SIGMA-4 Skeleton
 
-**Status:** NOT STARTED.
+**Status:** PERSONA + TRIGGER + MODE HANDLER COMPLETE; FULL
+INTEGRATION PENDING.
+
+*`prompt.py`, `trigger.py`, and `mode.py` (with parallel
+`handle_turn`) are committed and green (63 tests covering
+persona invariants, trigger policy branches, and handle_turn
+happy/sad paths with injected fake LLM). NATS wiring
+(`nats_handler.py`) and the LiveKit agent (`livekit_agent/`) are
+deferred to the cross-agent refactor in post-sprint backlog — the
+current ARTEMIS wiring already shares substrate we can cleanly
+re-use once both agents are proven at this layer. Bible chunks
+(`bible/`) are a content task that can proceed in parallel with
+the web client work.*
 
 **Goal.** A functional SIGMA-4 reasoning service that can answer
 a turn, parallel to ARTEMIS. NATS plumbing, LiveKit agent fork,
