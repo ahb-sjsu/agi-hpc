@@ -35,6 +35,7 @@ from agi.halyard.keeper import (
     SessionState,
     build_app,
 )
+from agi.halyard.keeper._jwt import decode_participant_token
 from agi.halyard.keeper.approvals import compute_approval_id
 from agi.halyard.keeper.auth import ip_allowed, parse_basic_header
 from agi.halyard.keeper.livekit import (
@@ -42,7 +43,6 @@ from agi.halyard.keeper.livekit import (
     mint_keeper_token,
     mint_player_token,
 )
-from agi.primer.artemis.livekit_agent.token import decode_participant_token
 
 LK_DEV = LiveKitConfig(
     url="ws://127.0.0.1:7880",

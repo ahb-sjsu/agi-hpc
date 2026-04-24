@@ -19,10 +19,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
-from agi.primer.artemis.livekit_agent.token import (
-    GrantOptions,
-    mint_participant_token,
-)
+from ._jwt import GrantOptions, mint_participant_token
 
 
 @dataclass(frozen=True)
