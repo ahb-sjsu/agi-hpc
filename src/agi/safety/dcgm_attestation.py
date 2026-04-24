@@ -331,10 +331,13 @@ class DCGMAttestor:
             # dcgmi dmon prefixes each data line with "GPU <idx>",
             # so skip the entity identifier columns.
             offset = 0
-            for i, p in enumerate(parts):
-                if p.replace(".", "").replace("-", "").isdigit() or p in ("N/A", "*"):
-                    offset = i
-                    break
+            if len(parts) >= 2 and parts[0] == "GPU" and parts[1].isdigit():
+                offset = 2
+            else:
+                for i, p in enumerate(parts):
+                    if p.replace(".", "").replace("-", "").isdigit() or p in ("N/A", "*"):
+                        offset = i
+                        break
             if len(parts) - offset < 9:
                 continue
             # Fields in order of -e flag:
