@@ -52,7 +52,7 @@ built-in defaults.
 
 | Var                     | Default                   | Purpose                                  |
 |-------------------------|---------------------------|------------------------------------------|
-| `HALYARD_STATE_HOST`    | `0.0.0.0`                 | Bind address                              |
+| `HALYARD_STATE_HOST`    | `127.0.0.1`               | Bind address — **loopback only by default**. See note below. |
 | `HALYARD_STATE_PORT`    | `8090`                    | Bind port                                 |
 | `HALYARD_ARCHIVE_ROOT`  | `/archive/halyard`        | Sheet file root                           |
 | `NATS_URL`              | (unset → no NATS bridge)  | e.g. `nats://127.0.0.1:4222`              |
@@ -62,25 +62,39 @@ With `NATS_URL` unset the service runs REST+WS only, which is the
 recommended posture for initial deployment — it lets you smoke-
 test the HTTP surface before the NATS fabric is wired in.
 
+### A note on binding
+
+The service binds to `127.0.0.1` by default. It is designed to sit
+behind `atlas-caddy`, which provides TLS and public fronting.
+Tailscale is the operator's **out-of-band admin path**, not a
+service channel — binding on `0.0.0.0` would expose the service on
+the tailnet and defeat that isolation.
+
+If you want to reach the service from outside Atlas, the right
+answer is to add a Caddy site block that reverse-proxies
+`halyard-state.atlas-sjsu.duckdns.org` → `127.0.0.1:8090`. Do not
+rebind the service itself.
+
 ## Smoke test
 
-From any host on the tailnet (including the Atlas box itself):
+On Atlas itself (loopback — what the service binds to):
 
 ```bash
-# 1. Health.
-curl -sS http://100.68.134.21:8090/healthz | jq .
+ssh claude@100.68.134.21
+curl -sS http://127.0.0.1:8090/healthz | jq .
 # → {"ok": true, "service": "halyard-state"}
-
-# 2. Empty session lists zero PCs.
-curl -sS http://100.68.134.21:8090/api/sheets/test-session | jq .
+curl -sS http://127.0.0.1:8090/api/sheets/test-session | jq .
 # → {"session_id": "test-session", "pc_ids": []}
+```
 
-# 3. Create a sheet (substitute a real, validated sheet body).
-curl -sS -X POST \
-     -H 'content-type: application/json' \
-     -d @examples/sheet.cross.json \
-     http://100.68.134.21:8090/api/sheets/test-session/cross \
-  | jq .identity.name
+Or run the full end-to-end smoke from a workstation after Caddy
+is fronting the service — tunneling over SSH is fine for dev
+until then:
+
+```bash
+ssh -L 8090:127.0.0.1:8090 claude@100.68.134.21
+# In another shell, against localhost:
+python scripts/halyard/atlas_state_smoke.py --base http://127.0.0.1:8090
 ```
 
 ## Operating

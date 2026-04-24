@@ -27,7 +27,13 @@ Type=exec
 # Service reads CLI + env; env can be supplied via a .env
 # EnvironmentFile in the infra dir if needed. Defaults are sane
 # for dev; production sets NATS_URL when the bridge is wanted.
-Environment=HALYARD_STATE_HOST=0.0.0.0
+# Bind loopback only. The service is intended to sit behind
+# atlas-caddy, which provides TLS, authz, and public fronting.
+# Tailscale is the operator's OOB path, NOT a service channel —
+# binding on 0.0.0.0 would expose the service on the tailnet and
+# defeat that isolation. Override only when a reverse-proxy is
+# explicitly bound to :8090 on another interface.
+Environment=HALYARD_STATE_HOST=127.0.0.1
 Environment=HALYARD_STATE_PORT=8090
 Environment=HALYARD_ARCHIVE_ROOT=/archive/halyard
 Environment=LOG_LEVEL=info

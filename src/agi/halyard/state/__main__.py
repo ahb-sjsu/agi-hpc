@@ -14,10 +14,18 @@ Runnable via::
 
 All flags can also be set from env vars:
 
-- ``HALYARD_STATE_HOST``      (default ``0.0.0.0``)
+- ``HALYARD_STATE_HOST``      (default ``127.0.0.1`` — loopback only)
 - ``HALYARD_STATE_PORT``      (default ``8090``)
 - ``HALYARD_ARCHIVE_ROOT``    (default ``/archive/halyard``)
 - ``NATS_URL``                (default unset — bridge not started)
+
+**Binding policy.** The default bind is loopback — the service is
+intended to sit behind a reverse proxy (atlas-caddy) which handles
+TLS and authz. Exposing the service on ``0.0.0.0`` would make it
+reachable on every Atlas interface, including Tailscale. Tailscale
+is the operator's out-of-band admin path, not a primary service
+channel. Override ``HALYARD_STATE_HOST`` only if you know what
+you're fronting the service with.
 
 If ``NATS_URL`` is set, the service connects to NATS and wires the
 bridge so patches arriving over ``agi.rh.halyard.sheet.*.patch`` get
@@ -53,7 +61,11 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--host",
-        default=os.environ.get("HALYARD_STATE_HOST", "0.0.0.0"),
+        default=os.environ.get("HALYARD_STATE_HOST", "127.0.0.1"),
+        help="Bind address. DEFAULT LOOPBACK ONLY — the service is "
+        "intended to sit behind atlas-caddy. Do not bind to 0.0.0.0 "
+        "unless you know what is fronting it; Tailscale is the "
+        "operator's OOB path, not a service channel.",
     )
     parser.add_argument(
         "--port",

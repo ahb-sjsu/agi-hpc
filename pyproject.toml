@@ -65,6 +65,12 @@ target-version = "py310"
 select = ["E", "F", "W", "B", "I"]
 ignore = ["E402"]  # Module-level imports after try/except
 
+[tool.ruff.lint.per-file-ignores]
+# Halyard deployment / preflight scripts are largely long SSH
+# command strings. Splitting them harms readability and invites
+# shell-quoting bugs. Allow long lines there.
+"scripts/halyard/**.py" = ["E501"]
+
 [tool.black]
 line-length = 88
 target-version = ["py310"]
