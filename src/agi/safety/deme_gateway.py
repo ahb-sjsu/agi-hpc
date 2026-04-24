@@ -33,6 +33,7 @@ Phase 3 (Safety Gateway) -- Atlas integration.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import logging
 import re
@@ -463,6 +464,20 @@ class SafetyGateway:
         self._log_decision(result, f"gpu{gpu_index} {mode}")
         return result
 
+    @contextlib.contextmanager
+    def forward_pass_attestation(self, gpu_index: int = 0):
+        """Context manager to capture DCGM snapshots around a forward pass.
+
+        Yields a dict mapping {"before": GPUSnapshot, "after": GPUSnapshot}.
+        Pass this dict unpacked into `check_output`.
+        """
+        attestor = self._get_attestor(gpu_index)
+        snapshots = {"before": attestor.snapshot(), "after": None}
+        try:
+            yield snapshots
+        finally:
+            snapshots["after"] = attestor.snapshot()
+
     def _publish_attestation_event(
         self,
         *,
@@ -589,15 +604,25 @@ class SafetyGateway:
         response: str,
         user_message: str = "",
         context: Optional[Dict[str, Any]] = None,
+        gpu_before_snapshot: Optional[Any] = None,
+        gpu_after_snapshot: Optional[Any] = None,
+        gpu_trace_samples: Optional[List[Dict[str, Any]]] = None,
+        gpu_index: int = 0,
     ) -> SafetyResult:
         """Post-LLM output gate.
 
         Runs full DEME pipeline on LLM output before it reaches the user.
+        Optionally performs hardware-level attestation that a true forward 
+        pass occurred, preventing cache replay attacks (Axiom 4).
 
         Args:
             response: LLM-generated response text.
             user_message: Original user input (for context).
             context: Optional context dict.
+            gpu_before_snapshot: DCGM snapshot taken before forward pass.
+            gpu_after_snapshot: DCGM snapshot taken after forward pass.
+            gpu_trace_samples: Optional full power trace.
+            gpu_index: GPU index for attestation logging.
 
         Returns:
             SafetyResult indicating whether the output is safe.
@@ -605,6 +630,39 @@ class SafetyGateway:
         t0 = time.perf_counter()
         ctx = context or {}
         proof_layers: List[Dict[str, Any]] = []
+
+        # Layer 0: Hardware Attestation
+        if (gpu_before_snapshot is not None and gpu_after_snapshot is not None) or gpu_trace_samples is not None:
+            att_result = self.check_hardware_attestation(
+                before=gpu_before_snapshot,
+                after=gpu_after_snapshot,
+                trace_samples=gpu_trace_samples,
+                gpu_index=gpu_index,
+                context=ctx,
+            )
+            
+            # Format decision proof inline with DEME gateway layers
+            att_proof = att_result.decision_proof.copy()
+            att_proof["layer"] = "hardware_attestation"
+            att_proof["vetoed"] = not att_result.passed
+            att_proof["flags"] = att_result.flags
+            att_proof["score"] = att_result.score
+            att_proof["latency_ms"] = att_result.latency_ms
+            proof_layers.append(att_proof)
+
+            # Fail immediately if attestation fails
+            if not att_result.passed:
+                latency_ms = (time.perf_counter() - t0) * 1000.0
+                result = SafetyResult(
+                    passed=False,
+                    score=0.0,
+                    flags=att_result.flags,
+                    decision_proof=self._build_proof("output", proof_layers, response),
+                    gate="output",
+                    latency_ms=latency_ms,
+                )
+                self._log_decision(result, response)
+                return result
 
         # Layer 1: Reflex on response
         reflex_result = self._run_reflex(response, "output")
