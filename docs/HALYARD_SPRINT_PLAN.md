@@ -203,7 +203,15 @@ dialogue through NATS with all validator checks passing.
 
 ## Sprint 3 — halyard-state service
 
-**Status:** NOT STARTED.
+**Status:** CODE COMPLETE; SYSTEMD + DOCKER PACKAGING PENDING.
+
+*JSON Schema character sheet, field-level access control, JSON-Patch
+applier, on-disk Store with append-only log, NATS bridge, and
+aiohttp REST+WS API are all committed with 113 new unit tests
+(216 total in tests/unit/halyard/). Two-subscriber WS fan-out test
+passes; cross-session isolation verified. Systemd unit and
+Dockerfile for Atlas deployment are mechanical wrappers that will
+land alongside the broader Atlas rollout.*
 
 **Goal.** A running service that owns character-sheet state for
 a session, writes are accepted over NATS and REST, reads are

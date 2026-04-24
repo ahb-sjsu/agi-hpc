@@ -1,0 +1,224 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://halyard-state.atlas-sjsu.duckdns.org/schemas/character_sheet-v1.json",
+  "title": "Halyard Table character sheet",
+  "description": "Character sheet for a Beyond the Heliopause Investigator. Schema v1 — used by halyard-state, the halyard-web client, and the Keeper console. Field-level access control (player-writable / keeper-restricted) lives in access.py alongside this schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "session_id",
+    "pc_id",
+    "identity",
+    "characteristics",
+    "derived",
+    "skills",
+    "bonds",
+    "status",
+    "campaign"
+  ],
+  "properties": {
+    "schema_version": {
+      "description": "Wire-format version for this schema. Bump on any breaking change; supporting clients must refuse sheets they don't recognize.",
+      "const": "1.0"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]{3,64}$",
+      "description": "LiveKit room name / Halyard Table session identifier. Immutable after creation."
+    },
+    "pc_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]{3,64}$",
+      "description": "Stable per-character identifier within a session. Immutable after creation."
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "age", "origin", "role", "chassis", "credit_rating"],
+      "properties": {
+        "name":          {"type": "string", "minLength": 1, "maxLength": 128},
+        "age":           {"type": "integer", "minimum": 16, "maximum": 120},
+        "origin":        {"type": "string", "minLength": 1, "maxLength": 128},
+        "role": {
+          "type": "string",
+          "enum": [
+            "expedition_lead",
+            "ships_engineer",
+            "medical_officer",
+            "surface_ops_eva",
+            "radiological_chemist",
+            "xenoarchaeology_consultant",
+            "security_officer"
+          ]
+        },
+        "chassis": {
+          "type": "string",
+          "enum": [
+            "baseline_human",
+            "designed",
+            "reverse_cylinder",
+            "blank",
+            "reconstructed",
+            "long_agent"
+          ]
+        },
+        "credit_rating": {"type": "integer", "minimum": 0, "maximum": 99},
+        "pronouns":      {"type": "string", "maxLength": 64},
+        "voice":         {"type": "string", "maxLength": 256, "description": "One-sentence description of how the character sounds."},
+        "visual":        {"type": "string", "maxLength": 256, "description": "One-line visual identifier (scar, bracelet, posture)."}
+      }
+    },
+    "characteristics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["str", "con", "siz", "dex", "app", "int", "pow", "edu"],
+      "description": "Core CoC 7e characteristics (0-99). Immutable after character creation.",
+      "properties": {
+        "str": {"type": "integer", "minimum": 15, "maximum": 99},
+        "con": {"type": "integer", "minimum": 15, "maximum": 99},
+        "siz": {"type": "integer", "minimum": 15, "maximum": 99},
+        "dex": {"type": "integer", "minimum": 15, "maximum": 99},
+        "app": {"type": "integer", "minimum": 15, "maximum": 99},
+        "int": {"type": "integer", "minimum": 15, "maximum": 99},
+        "pow": {"type": "integer", "minimum": 15, "maximum": 99},
+        "edu": {"type": "integer", "minimum": 15, "maximum": 99}
+      }
+    },
+    "derived": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hp_max", "mp_max", "san_starting", "san_max", "luck_max", "move", "build", "damage_bonus", "dodge_base"],
+      "description": "Derived / starting values. Not routinely patched during play — ceiling values, not current.",
+      "properties": {
+        "hp_max":        {"type": "integer", "minimum": 1, "maximum": 99},
+        "mp_max":        {"type": "integer", "minimum": 1, "maximum": 99},
+        "san_starting":  {"type": "integer", "minimum": 1, "maximum": 99, "description": "POW×5 at creation; ceiling on recovery during play."},
+        "san_max":       {"type": "integer", "minimum": 1, "maximum": 99, "description": "Chamber-standard psych cap — 65 for this campaign. current SAN cannot exceed this."},
+        "luck_max":      {"type": "integer", "minimum": 15, "maximum": 99},
+        "move":          {"type": "integer", "minimum": 1, "maximum": 15},
+        "build":         {"type": "integer", "minimum": -2, "maximum": 6},
+        "damage_bonus":  {"type": "string", "description": "CoC 7e DB notation, e.g. '+1D4', '0', '-1'."},
+        "dodge_base":    {"type": "integer", "minimum": 0, "maximum": 99}
+      }
+    },
+    "skills": {
+      "type": "object",
+      "description": "Skill_name → current percentage. Also includes an improvement-check flag that toggles during play and resolves between sessions.",
+      "patternProperties": {
+        "^[a-z_ ()]+$": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value"],
+          "properties": {
+            "value":             {"type": "integer", "minimum": 0, "maximum": 99},
+            "improvement_check": {"type": "boolean", "default": false},
+            "base":              {"type": "integer", "minimum": 0, "maximum": 99, "description": "Starting-base value (immutable after creation). For improvement-roll comparisons."}
+          }
+        }
+      }
+    },
+    "bonds": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "tier", "name", "status"],
+        "properties": {
+          "id":     {"type": "string", "pattern": "^[a-z0-9-]+$"},
+          "tier":   {"type": "integer", "enum": [1, 2, 3]},
+          "name":   {"type": "string", "minLength": 1, "maxLength": 256},
+          "detail": {"type": "string", "maxLength": 1024},
+          "status": {
+            "type": "string",
+            "enum": ["intact", "strained", "lost", "grieved", "reaffirmed"]
+          }
+        }
+      }
+    },
+    "status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hp_current", "mp_current", "san_current", "luck_current"],
+      "description": "Live per-session state. This is the block the dice + in-session handlers patch most often.",
+      "properties": {
+        "hp_current":   {"type": "integer", "minimum": -10, "maximum": 99},
+        "mp_current":   {"type": "integer", "minimum": 0, "maximum": 99},
+        "san_current":  {"type": "integer", "minimum": 0, "maximum": 99},
+        "luck_current": {"type": "integer", "minimum": 0, "maximum": 99},
+        "conditions": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "note"],
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "major_wound",
+                  "bout_of_madness",
+                  "temporary_insanity",
+                  "indefinite_insanity",
+                  "underlying_insanity",
+                  "phobia",
+                  "mania",
+                  "drugged",
+                  "unconscious",
+                  "dying",
+                  "suit_damaged",
+                  "radiation_dose",
+                  "sleep_debt"
+                ]
+              },
+              "note":    {"type": "string", "maxLength": 512},
+              "applied_at": {"type": "number"},
+              "expires_at": {"type": "number"}
+            }
+          }
+        }
+      }
+    },
+    "equipment": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name"],
+        "properties": {
+          "id":       {"type": "string", "pattern": "^[a-z0-9-]+$"},
+          "name":     {"type": "string", "minLength": 1, "maxLength": 128},
+          "notes":    {"type": "string", "maxLength": 512},
+          "qty":      {"type": "integer", "minimum": 0, "maximum": 9999}
+        }
+      }
+    },
+    "campaign": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Beyond-the-Heliopause-specific fields. Most of these are Keeper-restricted — see access.py.",
+      "properties": {
+        "faction_loyalty": {
+          "type": "string",
+          "enum": [
+            "clean",
+            "chamber",
+            "hollow_hand",
+            "starry_wisdom",
+            "unn_signals",
+            "mi_go_long_agent",
+            "protogen"
+          ]
+        },
+        "climactic_vote_direction": {"type": "string", "maxLength": 256},
+        "personal_hook":            {"type": "string", "maxLength": 512},
+        "keeper_hook":              {"type": "string", "maxLength": 1024, "description": "Keeper-private hook, not shown to the player."},
+        "why_this_contract":        {"type": "string", "maxLength": 512},
+        "rem_log_cSv":              {"type": "number", "minimum": 0, "maximum": 10000}
+      }
+    }
+  }
+}
