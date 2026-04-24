@@ -1,0 +1,22 @@
+# ────────────────────────────────────────────────────────────────
+# LiveKit API keys — PLACEHOLDER
+#
+# Copy to `livekit-keys.yaml` and populate with a real
+# key/secret pair before bringing the SFU up. The real file is
+# gitignored (see .gitignore) — do not commit secrets.
+#
+# Format: a map of API keys to secrets. LiveKit tokens are minted
+# with one of these keys; token recipients (browsers, agents) use
+# the key to identify which secret was used to sign.
+#
+# Rotate the secret at least annually, and any time the keeper
+# laptop or a dev workstation is suspected of compromise.
+# ────────────────────────────────────────────────────────────────
+
+# Generate with:
+#   docker run --rm livekit/livekit-server:v1.7.2 \
+#     generate-keys
+# and paste both fields here.
+
+keys:
+  APIkeyHalyardDev01: "replace-with-256-bit-hmac-secret-from-generate-keys"

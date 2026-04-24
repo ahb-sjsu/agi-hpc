@@ -1,0 +1,69 @@
+# ────────────────────────────────────────────────────────────────
+# LiveKit SFU configuration — Halyard Table
+#
+# This file is public and checked in. Secrets (API keys/secrets
+# and the TURN shared secret) live in `livekit-keys.yaml` loaded
+# via --key-file, and in the `.env` file read by docker-compose.
+#
+# Reference: https://docs.livekit.io/home/self-hosting/deployment/
+# ────────────────────────────────────────────────────────────────
+
+# WebSocket signaling port. Fronted by atlas-caddy at
+# halyard.atlas-sjsu.duckdns.org:443.
+port: 7880
+
+# Bind to all interfaces so the host-network container is reachable
+# from Caddy (127.0.0.1:7880) and from the local smoke-test script.
+bind_addresses:
+  - 0.0.0.0
+
+rtc:
+  # TCP fallback for RTC when UDP is blocked client-side.
+  tcp_port: 7881
+
+  # Media UDP port range. Keep this narrow enough to enumerate in
+  # firewall rules, wide enough to not run out under load.
+  port_range_start: 50000
+  port_range_end: 60000
+
+  # Atlas is behind NAT. Set the externally-reachable IP (or DNS
+  # name) here so LiveKit advertises the right candidate. Passed in
+  # from the env at container start.
+  use_external_ip: true
+
+  # Enable TCP for media as a fallback — slower, but keeps
+  # symmetric-NAT clients connected without TURN.
+  tcp_enabled: true
+
+# Built-in TURN server — DISABLED. We use the coturn sidecar
+# instead, which gives us independent TLS and scaling.
+turn:
+  enabled: false
+
+# Room defaults for the campaign. These are overridable per-room
+# via the LiveKit admin API if a future session needs different
+# settings.
+room:
+  # Rooms auto-create on first join; halyard-keeper-backend mints
+  # the token and does not pre-create the room.
+  auto_create: true
+
+  # Keep empty rooms alive long enough to survive all players
+  # briefly dropping during a reconnect. 24 hours is long enough
+  # for a Keeper to leave a room between sessions without losing
+  # the room-side history.
+  empty_timeout: 86400
+
+  # Participant limit — 10 humans + 2 AIs + Keeper + buffer.
+  max_participants: 20
+
+# Logging — JSON structured logs to match atlas-primer conventions.
+logging:
+  level: info
+  json: true
+
+# Webhook endpoints — fire to halyard-keeper-backend on room events.
+# Filled in after halyard-keeper-backend lands in Sprint 6.
+webhook:
+  api_key: ""       # filled from livekit-keys.yaml at startup
+  urls: []

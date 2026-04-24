@@ -1,0 +1,16 @@
+# ────────────────────────────────────────────────────────────────
+# LiveKit SFU — gitignore
+#
+# Anything with secrets or runtime state must stay out of git.
+# ────────────────────────────────────────────────────────────────
+
+# Secrets
+.env
+livekit-keys.yaml
+
+# Runtime data
+data/
+logs/
+
+# Local overrides
+docker-compose.override.yml

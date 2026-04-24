@@ -1,0 +1,59 @@
+# ────────────────────────────────────────────────────────────────
+# livekit-sfu.service — user-level systemd unit for the
+# Halyard Table conference server.
+#
+# Install:
+#   mkdir -p ~/.config/systemd/user
+#   ln -s ~/src/agi-hpc/infra/local/livekit-sfu/systemd/livekit-sfu.service \
+#        ~/.config/systemd/user/livekit-sfu.service
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now livekit-sfu.service
+#
+# Enable linger so the service starts at boot without a login:
+#   sudo loginctl enable-linger $USER
+#
+# Status / logs:
+#   systemctl --user status livekit-sfu
+#   journalctl --user -u livekit-sfu -f
+# ────────────────────────────────────────────────────────────────
+
+[Unit]
+Description=Halyard Table LiveKit SFU (livekit-server + coturn)
+Documentation=file:///home/%u/src/agi-hpc/docs/HALYARD_TABLE.md
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+
+# Working directory must contain docker-compose.yml, livekit.yaml,
+# livekit-keys.yaml, turn/turnserver.conf, and .env.
+WorkingDirectory=%h/src/agi-hpc/infra/local/livekit-sfu
+
+# Use --env-file for secrets (coturn shared secret, external IP).
+# The .env is gitignored; the operator populates it from
+# .env.example at install time.
+ExecStart=/usr/bin/docker compose --env-file .env up --detach --wait
+ExecStop=/usr/bin/docker compose down
+
+# Restart the unit (not the containers) if docker compose exits.
+# Compose is `oneshot`, so this matters only if the ExecStart
+# subprocess fails; `restart: unless-stopped` on each container
+# handles normal container lifecycle.
+Restart=on-failure
+RestartSec=30s
+
+# Basic hardening — the user-level systemd sandbox is limited but
+# worth applying:
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=%h/src/agi-hpc/infra/local/livekit-sfu/data
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+
+[Install]
+WantedBy=default.target

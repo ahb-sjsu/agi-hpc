@@ -1,0 +1,75 @@
+# ────────────────────────────────────────────────────────────────
+# LiveKit SFU for the Halyard Table
+#
+# Self-hosted conference server on Atlas. See
+# docs/HALYARD_TABLE.md §4.1 and docs/HALYARD_SPRINT_PLAN.md §1.
+#
+# Bring up:  systemctl --user start livekit-sfu.service
+# Bring down: systemctl --user stop  livekit-sfu.service
+# Logs:       journalctl --user -u livekit-sfu -f
+# Direct:     docker compose --env-file .env up -d
+#
+# Network mode: host — required so the SFU's UDP media ports
+# (50000-60000) are not subjected to Docker's per-container
+# NAT, which breaks LiveKit's candidate advertisement.
+# ────────────────────────────────────────────────────────────────
+
+version: "3.8"
+
+services:
+  livekit-server:
+    image: livekit/livekit-server:v1.7.2
+    container_name: halyard-livekit-server
+    restart: unless-stopped
+    network_mode: host
+    command:
+      - --config
+      - /etc/livekit.yaml
+      - --key-file
+      - /etc/livekit-keys.yaml
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+      - ./livekit-keys.yaml:/etc/livekit-keys.yaml:ro
+      - ./data:/var/lib/livekit
+    environment:
+      # Atlas's public-facing address. LiveKit advertises this in
+      # ICE candidates so remote browsers can reach the media ports.
+      - LIVEKIT_EXTERNAL_IP=${LIVEKIT_EXTERNAL_IP}
+      - LIVEKIT_REDIS_HOST=${LIVEKIT_REDIS_HOST:-}
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - --quiet
+        - --tries=1
+        - --spider
+        - http://localhost:7880
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # coturn sidecar — external TURN so browsers behind strict NATs
+  # can still reach the SFU. LiveKit has built-in TURN too, but a
+  # dedicated coturn is more robust for asymmetric / CGNAT clients.
+  coturn:
+    image: coturn/coturn:4.6.2-alpine
+    container_name: halyard-coturn
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./turn/turnserver.conf:/etc/turnserver.conf:ro
+    command:
+      - -c
+      - /etc/turnserver.conf
+    environment:
+      - TURN_SHARED_SECRET=${LIVEKIT_TURN_SECRET}
+      - TURN_EXTERNAL_IP=${LIVEKIT_EXTERNAL_IP}
+    healthcheck:
+      test:
+        - CMD
+        - pgrep
+        - turnserver
+      interval: 30s
+      timeout: 5s
+      retries: 3

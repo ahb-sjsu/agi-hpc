@@ -61,7 +61,13 @@ committed so every subsequent sprint has a clear place to live.
 
 ## Sprint 1 — LiveKit SFU on Atlas
 
-**Status:** NOT STARTED.
+**Status:** ARTIFACTS COMPLETE; PENDING ATLAS DEPLOYMENT.
+
+*Config, runbook, smoke test, and static-config tests are all
+committed and green. The Sprint-1 acceptance gate requires bringing
+the SFU up on Atlas and running the smoke test from two real
+browsers — scheduled as a coordinated Atlas rollout after the code
+sprints (2–7) complete.*
 
 **Goal.** Stand up a self-hosted LiveKit SFU on Atlas that two
 browsers can connect to over TLS and hold a working video call.

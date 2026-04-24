@@ -1,0 +1,66 @@
+# ────────────────────────────────────────────────────────────────
+# atlas-caddy snippet — Halyard Table
+#
+# Paste (or import) into Atlas's main Caddyfile, then reload:
+#   sudo systemctl reload caddy
+#
+# This site block handles:
+#   halyard.atlas-sjsu.duckdns.org   → LiveKit SFU :7880 (WS)
+#   halyard-state.atlas-sjsu.duckdns.org → halyard-state :8090 (Sprint 3)
+#   halyard-keeper.atlas-sjsu.duckdns.org → halyard-keeper :8091 (Sprint 6)
+#
+# For Sprint 1 only the SFU block is live; the others land
+# with their respective sprints.
+#
+# Reference: https://caddyserver.com/docs/caddyfile/directives/reverse_proxy#websocket
+# ────────────────────────────────────────────────────────────────
+
+halyard.atlas-sjsu.duckdns.org {
+  # Automatic HTTPS via ACME (HTTP-01 by default; switch to DNS-01
+  # if port 80 is ever blocked upstream of Atlas).
+  encode gzip
+
+  # LiveKit's signaling WebSocket lives on this hostname. The SFU
+  # is bound to 127.0.0.1:7880 on the host (via network_mode:host
+  # in docker-compose), so the reverse proxy just hops to loopback.
+  reverse_proxy /rtc/* 127.0.0.1:7880 {
+    # WebSocket upgrade — Caddy's reverse_proxy auto-upgrades
+    # when the client requests it, but we set the transport
+    # explicitly for clarity and to disable response buffering.
+    transport http {
+      versions 1.1
+    }
+    flush_interval -1
+  }
+
+  # LiveKit room/agent REST API — same backend, path routing is
+  # handled inside LiveKit.
+  reverse_proxy /twirp/* 127.0.0.1:7880
+
+  # Health check path (used by livekit-cli and the smoke test).
+  reverse_proxy /rtc/validate 127.0.0.1:7880
+
+  # Everything else on this hostname is served by the halyard-web
+  # container (Sprint 4). Placeholder until then.
+  reverse_proxy 127.0.0.1:3000
+
+  # Logging — structured JSON, consistent with the Atlas convention.
+  log {
+    output file /var/log/caddy/halyard.atlas-sjsu.duckdns.org.log {
+      roll_size 50mb
+      roll_keep 10
+    }
+    format json
+    level INFO
+  }
+
+  # Security headers — strict for player-facing pages.
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    # CSP is populated in Sprint 4 once we know every origin the
+    # web client pulls from. For Sprint 1 leave it open — nothing
+    # sensitive is served yet.
+  }
+}
