@@ -6,26 +6,53 @@
 
 """halyard-keeper — Keeper-console backend for the Halyard Table.
 
-Small FastAPI service that handles Keeper-authenticated
-operations:
+aiohttp service that handles the Keeper-facing concerns:
 
 - LiveKit JWT minting (delegates to
   :mod:`agi.primer.artemis.livekit_agent.token`).
-- Session lifecycle (create, start, pause, end).
+- Session lifecycle (create / pause / resume / close).
 - Approval queue state for both AIs.
-- Keeper-authorized sheet overrides and scene triggers.
+- WebSocket live feed of pending approvals for the Keeper console.
 
-The package skeleton lives here so Sprint 0 lands a committable
-structure. Actual implementations land in Sprint 6. See
-``docs/HALYARD_SPRINT_PLAN.md`` §Sprint-6.
+Layout (Sprint 6):
 
-Layout (populated in Sprint 6):
+- :mod:`.app`         — aiohttp ``build_app`` factory
+- :mod:`.auth`        — HTTP Basic middleware + IP allow-list
+- :mod:`.approvals`   — pending-reply queue with fan-out
+- :mod:`.sessions`    — session lifecycle registry
+- :mod:`.livekit`     — token-mint wrapper
 
-- :mod:`.app`         — FastAPI application
-- :mod:`.auth`        — Keeper auth (HTTP Basic v1)
-- :mod:`.approvals`   — pending-reply queue state
-- :mod:`.sessions`    — session lifecycle
-- :mod:`.livekit`     — JWT minting + room admin
+Pending for Sprint 7: NATS subscription wiring so the queue
+receives real ``*.say`` traffic from the AIs, stat-override
+endpoint, scene trigger publish, dice broadcast.
 """
 
-__all__: list[str] = []
+from __future__ import annotations
+
+from .app import build_app
+from .approvals import AiKind, ApprovalQueue, ApprovalState
+from .auth import KeeperAuthConfig
+from .livekit import LiveKitConfig, mint_keeper_token, mint_player_token
+from .sessions import (
+    InvalidTransition,
+    SessionAlreadyExists,
+    SessionNotFound,
+    SessionRegistry,
+    SessionState,
+)
+
+__all__ = [
+    "build_app",
+    "AiKind",
+    "ApprovalQueue",
+    "ApprovalState",
+    "KeeperAuthConfig",
+    "LiveKitConfig",
+    "mint_keeper_token",
+    "mint_player_token",
+    "InvalidTransition",
+    "SessionAlreadyExists",
+    "SessionNotFound",
+    "SessionRegistry",
+    "SessionState",
+]

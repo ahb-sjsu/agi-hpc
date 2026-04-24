@@ -400,7 +400,22 @@ affordances.
 
 ## Sprint 6 — halyard-keeper-backend + Keeper console v0
 
-**Status:** NOT STARTED.
+**Status:** BACKEND CODE COMPLETE; CONSOLE UI + NATS WIRING
+PENDING SPRINT 7.
+
+*Backend lands with 41 new unit tests (263 total in halyard suite).
+aiohttp app factory with public `/healthz` + `/api/livekit/token`
+and Keeper-only session lifecycle + approval queue routes
+(HTTP Basic + IP allow-list). HTTP Basic uses `hmac.compare_digest`
+for constant-time compare. Token-mint wraps the existing
+`livekit_agent/token.py`. Session registry with 3-state transition
+(open/paused/closed) + append-only JSONL log. Approval queue with
+deterministic ids, per-session fan-out to WS listeners. The Keeper
+console UI (app/keeper/[id]/page.tsx, ApprovalQueue / KillSwitchPanel
+/ SessionControl components) is scoped into Sprint 7 since the
+backend is usable from curl/manual test until then, and NATS
+wiring (subscribing ARTEMIS/SIGMA `.say` with the approval flag)
+is the same refactor mentioned in Sprint 2's deferrals.*
 
 **Goal.** Keeper can log in, see pending AI replies, approve /
 reject / edit them, and operate kill-switches.

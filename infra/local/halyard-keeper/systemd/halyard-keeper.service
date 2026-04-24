@@ -1,0 +1,51 @@
+# ────────────────────────────────────────────────────────────────
+# halyard-keeper.service — user-level systemd unit for the
+# Halyard Table Keeper backend.
+#
+# Install: symlink into ~/.config/systemd/user/, daemon-reload,
+# enable --now. See infra/local/halyard-keeper/README.md.
+# ────────────────────────────────────────────────────────────────
+
+[Unit]
+Description=Halyard Table Keeper backend (halyard-keeper)
+Documentation=file:///home/%u/src/agi-hpc/docs/HALYARD_TABLE.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+# Bind loopback only — atlas-caddy fronts the service.
+# Tailscale is the operator's OOB admin path, never a service channel.
+Environment=HALYARD_KEEPER_HOST=127.0.0.1
+Environment=HALYARD_KEEPER_PORT=8091
+Environment=LOG_LEVEL=info
+# LiveKit: the existing livekit-smoke container runs with --dev
+# keys. Override for production.
+Environment=LIVEKIT_URL=ws://127.0.0.1:7880
+Environment=LIVEKIT_API_KEY=devkey
+Environment=LIVEKIT_API_SECRET=secret
+# Keeper auth: unset in dev (warnings emitted), set in prod.
+# Environment=KEEPER_USERNAME=
+# Environment=KEEPER_PASSWORD=
+# Environment=KEEPER_IP_ALLOWLIST=127.0.0.0/8,100.64.0.0/10
+Environment=HALYARD_ARCHIVE_ROOT=/archive/halyard
+
+WorkingDirectory=%h/src/agi-hpc
+ExecStart=%h/env/bin/python -m agi.halyard.keeper
+
+Restart=on-failure
+RestartSec=5s
+
+# Hardening.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/archive/halyard
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+
+[Install]
+WantedBy=default.target
