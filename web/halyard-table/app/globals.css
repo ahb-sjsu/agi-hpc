@@ -1,0 +1,34 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html,
+  body {
+    background: #0a0e17;
+    color: #e0e6f0;
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0a0e17;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #2a3555;
+    border-radius: 3px;
+  }
+}
+
+@layer utilities {
+  .shadow-accent {
+    box-shadow: 0 0 12px rgba(74, 158, 255, 0.25);
+  }
+}

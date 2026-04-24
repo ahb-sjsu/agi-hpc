@@ -1,92 +1,95 @@
-# halyard-table — Next.js web client
+# halyard-table — web client
 
-Next.js 14 (App Router) source for the Halyard Table player
-and Keeper interface.
+Next.js 14 (App Router) client for the **Halyard Table** live-play
+runtime. Serves the player view (video grid + AI chat panels +
+character sheet drawer + safety bar) and — starting in Sprint 6 —
+the Keeper console.
 
-**Status: placeholder (Sprint 0).** The Next.js scaffold and all
-client components land progressively across **Sprints 4–7**:
+See [`../../docs/HALYARD_TABLE.md`](../../docs/HALYARD_TABLE.md) §4.5
+for the component's place in the architecture,
+[`../../docs/HALYARD_SPRINT_PLAN.md`](../../docs/HALYARD_SPRINT_PLAN.md)
+§Sprints 4–7 for the phased delivery plan.
 
-- **Sprint 4** — scaffold, session landing, video grid, ARTEMIS
-  chat panel, safety bar.
-- **Sprint 5** — SIGMA-4 chat, character sheet drawer, dice
-  roller, scene indicator.
-- **Sprint 6** — Keeper view: approval queue, kill-switches,
-  session control.
-- **Sprint 7** — Keeper view: stat overrides, scene triggers,
-  dice broadcast, recording control.
+## Current status (Sprint 4)
 
-See [`../../docs/HALYARD_SPRINT_PLAN.md`](../../docs/HALYARD_SPRINT_PLAN.md)
-for sprint-by-sprint deliverables.
+Scaffolded + first player-view components. What ships:
 
-## Planned shape (at end of Sprint 7)
+- App-router structure (`app/`), global dark theme matching
+  `atlas-chat/schematic.html`.
+- Landing page (`/`) collects session id, display name, optional PC id.
+- Session page (`/session/<id>`) — LiveKit room with:
+  - **VideoGrid** (LiveKit React tiles).
+  - **AiChatPanel** × 2 — ARTEMIS and SIGMA-4, listening on the
+    DataChannel for `{artemis,sigma4}.say` envelopes.
+  - **CharacterSheetDrawer** — live-updating sheet via halyard-state
+    WebSocket. Toggle with the `c` key.
+  - **SafetyBar** — X-card / Pause / Open Door buttons. Publishes a
+    `scene.trigger` envelope on click.
+- Types (`lib/types.ts`) mirror the halyard-state JSON Schema and
+  the DataChannel / NATS envelope contracts.
+- LiveKit + state hooks (`lib/livekit.ts`, `lib/state.ts`) —
+  testable in isolation from the UI.
 
-```
-web/halyard-table/
-├── package.json
-├── next.config.mjs
-├── tailwind.config.ts
-├── tsconfig.json
-├── app/
-│   ├── layout.tsx
-│   ├── page.tsx                    # landing
-│   ├── session/[id]/page.tsx       # player view
-│   └── keeper/[id]/page.tsx        # Keeper view
-├── components/
-│   ├── VideoGrid.tsx
-│   ├── ArtemisChat.tsx
-│   ├── Sigma4Chat.tsx
-│   ├── EnvelopeRouter.tsx
-│   ├── CharacterSheet.tsx
-│   ├── DiceRoller.tsx
-│   ├── SceneIndicator.tsx
-│   ├── SafetyBar.tsx
-│   ├── ApprovalQueue.tsx           # Keeper-only
-│   ├── KillSwitchPanel.tsx         # Keeper-only
-│   ├── SessionControl.tsx          # Keeper-only
-│   ├── StatOverride.tsx            # Keeper-only
-│   ├── SceneTrigger.tsx            # Keeper-only
-│   ├── DiceBroadcast.tsx           # Keeper-only
-│   ├── RecordingToggle.tsx         # Keeper-only
-│   └── OverrideLog.tsx             # Keeper-only
-├── lib/
-│   ├── livekit.ts                  # connection helpers
-│   ├── ws.ts                       # halyard-state WS client
-│   └── types.ts                    # generated from JSON Schema
-└── data/
-    └── scenes.json                 # pre-configured scene library
-```
-
-## Dependencies
-
-Pinned in `package.json` when the scaffold lands:
-
-- `next@^14`
-- `react@^18`
-- `livekit-client@^2`
-- `@livekit/components-react@^2`
-- `@livekit/components-styles@^1`
-- `tailwindcss@^3`
-- `react-use-websocket@^4`
+Pending for Sprint 5: Dice roller, scene-indicator top-bar tile,
+envelope router separation, per-PC mute controls.
 
 ## Dev loop
 
 ```bash
-pnpm install
-pnpm dev            # localhost:3000
-pnpm typecheck
-pnpm lint
-pnpm build          # production build
-pnpm start          # serve built app
+cd web/halyard-table
+cp .env.example .env.local     # edit if needed
+npm install
+npm run dev                    # http://localhost:3000
 ```
 
-## Deployment
+For full end-to-end local dev you need three tunnels open to
+Atlas (OOB path — Tailscale is admin-only):
 
-Containerized via `deploy/docker/halyard-web/Dockerfile`.
-Served behind `atlas-caddy` at `halyard.atlas-sjsu.duckdns.org`.
+```bash
+# LiveKit signaling
+ssh -L 7880:127.0.0.1:7880 claude@100.68.134.21 &
 
-## See also
+# halyard-state REST + WS
+ssh -L 8090:127.0.0.1:8090 claude@100.68.134.21 &
 
-- [`../../docs/HALYARD_TABLE.md`](../../docs/HALYARD_TABLE.md)
-  §4.5 — player client component.
-- [`../../docs/HALYARD_TABLE.md`](../../docs/HALYARD_TABLE.md)
-  §5.4 — DataChannel envelope contract.
+# halyard-keeper-backend token mint (Sprint 6+; stub until then)
+ssh -L 8091:127.0.0.1:8091 claude@100.68.134.21 &
+```
+
+## Build
+
+```bash
+npm run lint        # ESLint (Next defaults)
+npm run typecheck   # tsc --noEmit
+npm run build       # Next.js standalone build → .next/standalone
+npm run start       # serve built app
+```
+
+The production build is `output: "standalone"` so the Dockerfile
+copies just `.next/standalone/` + `.next/static/` + `public/` — no
+`node_modules` at runtime.
+
+## Deployment target
+
+Lands as a container behind `atlas-caddy` at
+`halyard.atlas-sjsu.duckdns.org`. Dockerfile + Caddy site block
+are in [`../../deploy/docker/halyard-web/`](../../deploy/docker/halyard-web/).
+
+## Keyboard
+
+- `c` — toggle character sheet drawer.
+- `Escape` — close the sheet drawer.
+
+## Accessibility
+
+The components aim for WCAG 2.1 AA on the main flows:
+
+- Every interactive element has an accessible name (`aria-label`
+  or visible label).
+- Focus rings are visible (`focus:ring-2 focus:ring-accent`).
+- Live regions (`aria-live="polite"`) on message logs and
+  connection indicators.
+- Colors are not the only signal for safety-bar state (ring,
+  emoji glyph, and text label all flip together).
+
+Lighthouse a11y target ≥ 90 per Sprint-4 acceptance criteria.

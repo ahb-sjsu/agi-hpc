@@ -270,7 +270,22 @@ soak test in dry-run mode passes.
 
 ## Sprint 4 — halyard-web player client v0
 
-**Status:** NOT STARTED.
+**Status:** CODE COMPLETE; LIVE DRY-RUN PENDING KEEPER BACKEND.
+
+*Next.js 14 App Router scaffold committed at `web/halyard-table/`.
+412 npm deps, `npm run typecheck` clean, `npm run build` produces
+the standalone bundle (session route: 244 kB first-load,
+LiveKit-dominated). Components: VideoGrid (LiveKit React tiles,
+AI-identity highlight), AiChatPanel × 2 (DataChannel-filtered
+chat for ARTEMIS and SIGMA-4), CharacterSheetDrawer (live via
+halyard-state WS, keyboard-toggled with `c`), SafetyBar (X-card /
+Pause / Open Door publishing scene.trigger envelopes).
+`lib/types.ts` mirrors the halyard-state JSON Schema; `lib/state.ts`
+exposes `useSessionSheets()` backed by react-use-websocket.
+Dockerfile + .dockerignore in `deploy/docker/halyard-web/`. End-to-
+end live-play requires halyard-keeper-backend's token-mint
+endpoint (Sprint 6) — until then the landing page shows a
+structured error instead of an empty token.*
 
 **Goal.** Players can visit `halyard.atlas-sjsu.duckdns.org`,
 join a named session, see each other on video, and see ARTEMIS
