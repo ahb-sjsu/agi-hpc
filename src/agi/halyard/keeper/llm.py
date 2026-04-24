@@ -12,19 +12,17 @@ For each incoming HTTP turn the keeper backend:
 2. Looks up (or creates) a per-``(session_id, which)``
    :class:`SessionState` — the same one
    :func:`handle_turn` uses for its episodic memory.
-3. Constructs a small :class:`Bible` with persona-appropriate
-   ``known`` chunks and a hard list of ``forbidden_phrases`` so
-   the validator's forbidden-n-gram check enforces the spoiler
-   boundary at the last mile.
+3. Loads a persona-scoped :class:`Bible` from the wiki-derived
+   JSON (``wiki/halyard/`` → ``scripts/halyard/build_bible.py`` →
+   ``/archive/halyard/bible/halyard_bible.json``). Filters
+   chunks by ``<ai>_known`` / ``<ai>_unknown`` tags; falls back
+   to the condensed :mod:`.campaign_facts` content if the JSON
+   isn't present.
 4. Hands the request to the same ``handle_turn`` used by the
    ARTEMIS NATS handler (for SIGMA-4 it's the parallel
    :mod:`agi.halyard.sigma4.mode`).
 5. Gets back a ``TurnResponse`` including the
-   :class:`DecisionProof` hash emitted for that turn. The proof
-   chain is appended on disk under
-   ``/archive/artemis/proofs/`` or
-   ``/archive/sigma4/proofs/`` — the same locations the NATS
-   consumer would write to when that service lands.
+   :class:`DecisionProof` hash emitted for that turn.
 
 Fallback: if the NRP token is unset or the upstream model call
 fails, ``handle_turn`` returns ``None`` (validator-silence or
@@ -33,21 +31,28 @@ the web client always gets an in-persona line.
 
 **This is the full architecture.** The only thing missing
 vs. the ARTEMIS.md plan-of-record is the NATS pub/sub
-transport — which can be layered on (publish the same
-``TurnRequest`` we already build onto ``agi.rh.artemis.heard``,
-swap the in-process call for a subject-round-trip) without
-touching this module's contract.
+transport — which can be layered on without touching this
+module's contract.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import time
 from dataclasses import dataclass
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 import aiohttp
+
+# SIGMA-4 is a parallel implementation in the Halyard package.
+from agi.halyard.sigma4.mode import (
+    TurnRequest as Sigma4TurnRequest,
+)
+from agi.halyard.sigma4.mode import handle_turn as sigma4_handle_turn
 
 # Shared handle_turn + types from the Primer's ARTEMIS package.
 from agi.primer.artemis.context import Bible, BibleChunk, SessionState
@@ -58,12 +63,6 @@ from agi.primer.artemis.mode import (
     TurnResponse as ArtemisTurnResponse,
 )
 from agi.primer.artemis.mode import handle_turn as artemis_handle_turn
-
-# SIGMA-4 is a parallel implementation in the Halyard package.
-from agi.halyard.sigma4.mode import (
-    TurnRequest as Sigma4TurnRequest,
-)
-from agi.halyard.sigma4.mode import handle_turn as sigma4_handle_turn
 
 from .ai_stub import stub_reply
 from .campaign_facts import (
@@ -206,21 +205,34 @@ _FORBIDDEN_PHRASES: tuple[str, ...] = (
 )
 
 
-def _bible_for(which: str) -> Bible:
-    """Build a persona-scoped Bible with shared + persona-only chunks
-    as ``known`` content, plus the campaign-wide forbidden-phrase
-    list. ``unknown`` stays empty here — anything in the forbidden
-    list already trips the validator's ``forbidden_check``.
+_BIBLE_JSON_DEFAULT = "/archive/halyard/bible/halyard_bible.json"
 
-    A future refactor can chunk the full campaign guide and tag
-    each chunk with per-AI visibility; for now the condensed
-    setting facts in :mod:`.campaign_facts` are enough grounding
-    to answer routine questions in-persona.
+
+@lru_cache(maxsize=1)
+def _load_json_bible() -> dict[str, Any] | None:
+    """Load the wiki-derived JSON bible, or return None if missing.
+
+    Cached — the bible is regenerated at deploy time by
+    ``scripts/halyard/build_bible.py``. A service restart picks up
+    the new content; mid-session hot-reload is not a priority yet.
+    """
+    path = Path(os.environ.get("HALYARD_BIBLE_PATH", _BIBLE_JSON_DEFAULT))
+    if not path.is_file():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception as e:  # noqa: BLE001
+        log.warning("failed to load bible at %s: %s", path, e)
+        return None
+
+
+def _synthesize_bible(which: str) -> Bible:
+    """Fallback bible built from the condensed :mod:`.campaign_facts`
+    constants. Used when the JSON bible hasn't been built yet
+    (e.g. fresh deploy before build_bible.py runs).
     """
     tag = "artemis_known" if which == "artemis" else "sigma4_known"
-    persona_chunk_title = "ARTEMIS scope" if which == "artemis" else "SIGMA-4 scope"
     persona_text = ARTEMIS_ONLY if which == "artemis" else SIGMA_ONLY
-
     return Bible(
         known=(
             BibleChunk(
@@ -232,12 +244,60 @@ def _bible_for(which: str) -> Bible:
             BibleChunk(
                 id=f"{which}-scope",
                 tag=tag,
-                title=persona_chunk_title,
+                title=(
+                    "ARTEMIS scope" if which == "artemis" else "SIGMA-4 scope"
+                ),
                 text=persona_text.strip(),
             ),
         ),
         unknown=(),
         forbidden_phrases=_FORBIDDEN_PHRASES,
+    )
+
+
+def _bible_for(which: str) -> Bible:
+    """Return the persona-scoped Bible for one AI.
+
+    Loads the wiki-derived JSON if present and filters chunks
+    whose ``tag`` matches ``<which>_known`` / ``<which>_unknown``.
+    Falls back to the condensed synthesized bible if the JSON
+    file is missing.
+    """
+    doc = _load_json_bible()
+    if doc is None:
+        return _synthesize_bible(which)
+
+    known_tag = f"{which}_known"
+    unknown_tag = f"{which}_unknown"
+
+    known: list[BibleChunk] = []
+    unknown: list[BibleChunk] = []
+    for raw in doc.get("chunks", []):
+        tag = raw.get("tag")
+        if tag not in {known_tag, unknown_tag}:
+            continue
+        chunk = BibleChunk(
+            id=str(raw.get("id", "")),
+            tag=str(tag),
+            title=str(raw.get("title", "")),
+            text=str(raw.get("text", "")),
+        )
+        if tag == known_tag:
+            known.append(chunk)
+        else:
+            unknown.append(chunk)
+
+    forbidden = list(doc.get("forbidden_phrases", []))
+    # Union with the hardcoded in-code list — defense in depth
+    # against an incomplete wiki.
+    for phrase in _FORBIDDEN_PHRASES:
+        if phrase not in forbidden:
+            forbidden.append(phrase)
+
+    return Bible(
+        known=tuple(known),
+        unknown=tuple(unknown),
+        forbidden_phrases=tuple(forbidden),
     )
 
 

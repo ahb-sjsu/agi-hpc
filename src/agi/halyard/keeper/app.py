@@ -45,6 +45,7 @@ from .ai_stub import stub_reply
 from .approvals import AiKind, ApprovalQueue, ApprovalState
 from .auth import KeeperAuthConfig, build_keeper_middleware
 from .livekit import LiveKitConfig, mint_keeper_token, mint_player_token
+from .llm import run_turn as llm_run_turn
 from .sessions import (
     InvalidTransition,
     SessionAlreadyExists,
@@ -143,9 +144,8 @@ async def _mint_player(request: web.Request) -> web.Response:
 async def _ai_stub_turn(request: web.Request) -> web.Response:
     """POST /api/ai/{which}/stub-turn — in-persona canned reply.
 
-    Body: ``{session_id, speaker, text}``. Returns
-    ``{text, matched, ts}``. Public (no keeper auth); the request
-    is harmless (no mutation, no LLM call).
+    Kept as the legacy fallback path. New clients should hit
+    ``/api/ai/{which}/turn`` instead.
     """
     which = request.match_info["which"]
     if which not in {"artemis", "sigma4"}:
@@ -165,6 +165,56 @@ async def _ai_stub_turn(request: web.Request) -> web.Response:
             "matched": reply.matched,
             "ts": reply.ts,
             "kind": f"{which}.say",
+            "source": "stub",
+        }
+    )
+
+
+async def _ai_turn(request: web.Request) -> web.Response:
+    """POST /api/ai/{which}/turn — full agi-hpc pipeline.
+
+    Runs through ``agi.primer.artemis.mode.handle_turn`` (or
+    SIGMA-4's parallel implementation) with a wiki-derived Bible,
+    the real ErisML-based validator, persona-scoped forbidden
+    phrase list, and DecisionProof hash chain.
+
+    Falls back to the keyword stub if NRP is unavailable or
+    ``handle_turn`` returns ``None`` (validator reject /
+    model-silence sentinel) so the client always sees an
+    in-persona line.
+    """
+    which = request.match_info["which"]
+    if which not in {"artemis", "sigma4"}:
+        return _json_error(404, "not_found", f"unknown ai {which!r}")
+
+    body = await _parse_body(request)
+    text = body.get("text")
+    session_id = body.get("session_id", "halyard-adhoc")
+    speaker = body.get("speaker", "player")
+    if not isinstance(text, str) or not text.strip():
+        return _json_error(400, "bad_envelope", "text required")
+    if len(text) > 2048:
+        return _json_error(400, "too_long", "max 2048 chars")
+    if not isinstance(session_id, str):
+        session_id = "halyard-adhoc"
+    if not isinstance(speaker, str):
+        speaker = "player"
+
+    result = await llm_run_turn(
+        session_id=session_id,
+        which=which,
+        user_text=text,
+        speaker=speaker,
+    )
+    return web.json_response(
+        {
+            "text": result.text,
+            "kind": f"{which}.say",
+            "source": result.source,
+            "proof_hash": result.proof_hash,
+            "latency_s": round(result.latency_s, 3),
+            "expert": result.expert,
+            "ts": result.ts,
         }
     )
 
@@ -349,6 +399,9 @@ def build_app(
     )
     app.router.add_post(
         "/api/ai/{which}/stub-turn", _ai_stub_turn, name="public.ai_stub_turn"
+    )
+    app.router.add_post(
+        "/api/ai/{which}/turn", _ai_turn, name="public.ai_turn"
     )
 
     # Keeper — all names prefixed so the middleware picks them up.

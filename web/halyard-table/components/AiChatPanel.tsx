@@ -60,9 +60,18 @@ export default function AiChatPanel({
   const targetKind = ai === "artemis" ? "artemis.say" : "sigma4.say";
   const label = ai === "artemis" ? "ARTEMIS" : "SIGMA-4";
 
-  // Derive the stub-turn endpoint from the token-mint URL so both
-  // stay same-origin behind Caddy (swap ``/livekit/token`` →
-  // ``/ai/<which>/stub-turn``).
+  // Both AI-turn endpoints are derived from the token-mint URL so
+  // they stay same-origin behind Caddy.
+  //
+  // ``/turn`` is the real agi-hpc pipeline (RAG + validator +
+  // DecisionProof); ``/stub-turn`` is the keyword-matched
+  // fallback used if the real path isn't responding. The
+  // backend also falls through to the stub internally, so
+  // hitting ``/turn`` is usually enough.
+  const turnUrl = useMemo(
+    () => TOKEN_MINT_URL.replace(/\/livekit\/token$/, `/ai/${ai}/turn`),
+    [ai],
+  );
   const stubUrl = useMemo(
     () => TOKEN_MINT_URL.replace(/\/livekit\/token$/, `/ai/${ai}/stub-turn`),
     [ai],
@@ -130,11 +139,33 @@ export default function AiChatPanel({
     }
 
     try {
-      const resp = await fetch(stubUrl, {
+      // Session id lives in the URL path of the page (/session/{id}).
+      const sessionId = (() => {
+        if (typeof window === "undefined") return "halyard-adhoc";
+        const m = window.location.pathname.match(/^\/session\/([^/?#]+)/);
+        return m ? decodeURIComponent(m[1]) : "halyard-adhoc";
+      })();
+
+      let resp = await fetch(turnUrl, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ text, speaker: "player" }),
+        body: JSON.stringify({
+          text,
+          speaker: "player",
+          session_id: sessionId,
+        }),
+      }).catch((e) => {
+        throw e;
       });
+      if (!resp.ok) {
+        // Real path refused — try the stub so the user sees
+        // something rather than nothing.
+        resp = await fetch(stubUrl, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ text, speaker: "player" }),
+        });
+      }
       if (!resp.ok) {
         throw new Error(`${resp.status} ${resp.statusText}`);
       }

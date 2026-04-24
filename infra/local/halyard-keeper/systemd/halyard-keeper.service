@@ -14,11 +14,17 @@ Wants=network-online.target
 
 [Service]
 Type=exec
+# Pick up NRP_LLM_TOKEN and friends so handle_turn's LLM caller
+# has credentials. The "-" prefix means "don't fail if missing"
+# — the service gracefully falls back to the keyword stub.
+EnvironmentFile=-/home/claude/.primer.env
 # Bind loopback only — atlas-caddy fronts the service.
 # Tailscale is the operator's OOB admin path, never a service channel.
 Environment=HALYARD_KEEPER_HOST=127.0.0.1
 Environment=HALYARD_KEEPER_PORT=8091
 Environment=LOG_LEVEL=info
+# RAG bible path — built from wiki/halyard by build_bible.py.
+Environment=HALYARD_BIBLE_PATH=/archive/halyard/bible/halyard_bible.json
 # LiveKit: the existing livekit-smoke container runs with --dev
 # keys. Override for production.
 #
