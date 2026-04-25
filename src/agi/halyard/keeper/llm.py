@@ -4,35 +4,26 @@
 #
 # Licensed under the AGI-HPC Responsible AI License v1.0.
 
-"""Real AI-turn path — runs through the full AGI-HPC pipeline.
+"""Halyard Keeper AI-turn paths.
 
-For each incoming HTTP turn the keeper backend:
+Two code paths, matching the campaign's design split:
 
-1. Builds a :class:`agi.primer.artemis.mode.TurnRequest`.
-2. Looks up (or creates) a per-``(session_id, which)``
-   :class:`SessionState` — the same one
-   :func:`handle_turn` uses for its episodic memory.
-3. Loads a persona-scoped :class:`Bible` from the wiki-derived
-   JSON (``wiki/halyard/`` → ``scripts/halyard/build_bible.py`` →
-   ``/archive/halyard/bible/halyard_bible.json``). Filters
-   chunks by ``<ai>_known`` / ``<ai>_unknown`` tags; falls back
-   to the condensed :mod:`.campaign_facts` content if the JSON
-   isn't present.
-4. Hands the request to the same ``handle_turn`` used by the
-   ARTEMIS NATS handler (for SIGMA-4 it's the parallel
-   :mod:`agi.halyard.sigma4.mode`).
-5. Gets back a ``TurnResponse`` including the
-   :class:`DecisionProof` hash emitted for that turn.
+- **SIGMA-4** — routes through ``agi.primer.vmoe.vMOE.cascade``.
+  Fast, resilient, no validator/DecisionProof overhead. SIGMA is
+  a ship-mind; the stakes are low, the priority is responsive
+  dialogue. The cascade prefers non-thinking models (gpt-oss →
+  glm-4.7 → kimi → qwen3) and returns the first non-empty reply.
+- **ARTEMIS** — routes through the full agi-hpc pipeline:
+  ``agi.primer.artemis.mode.handle_turn`` with a vMOE-backed
+  :class:`VMOELLMCaller`. Bible retrieval, ErisML validator (6
+  checks including secret-leak and forbidden-phrase), SHA-chained
+  DecisionProof, session log. This is the "contaminated handheld"
+  of the in-fiction setting — exactly the thing that deserves
+  the full validation pipeline.
 
-Fallback: if the NRP token is unset or the upstream model call
-fails, ``handle_turn`` returns ``None`` (validator-silence or
-LLM-error), and the route falls through to the keyword stub so
-the web client always gets an in-persona line.
-
-**This is the full architecture.** The only thing missing
-vs. the ARTEMIS.md plan-of-record is the NATS pub/sub
-transport — which can be layered on without touching this
-module's contract.
+Both paths fall back to :func:`.ai_stub.stub_reply` if NRP creds
+are unavailable or every expert fails; the web client always
+gets an in-persona line, never a 500.
 """
 
 from __future__ import annotations
@@ -40,21 +31,14 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import time
+from collections import deque
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-import aiohttp
-
-# SIGMA-4 is a parallel implementation in the Halyard package.
-from agi.halyard.sigma4.mode import (
-    TurnRequest as Sigma4TurnRequest,
-)
-from agi.halyard.sigma4.mode import handle_turn as sigma4_handle_turn
-
-# Shared handle_turn + types from the Primer's ARTEMIS package.
 from agi.primer.artemis.context import Bible, BibleChunk, SessionState
 from agi.primer.artemis.mode import (
     TurnRequest as ArtemisTurnRequest,
@@ -63,6 +47,7 @@ from agi.primer.artemis.mode import (
     TurnResponse as ArtemisTurnResponse,
 )
 from agi.primer.artemis.mode import handle_turn as artemis_handle_turn
+from agi.primer.vmoe import Expert, Response, vMOE
 
 from .ai_stub import stub_reply
 from .campaign_facts import (
@@ -76,165 +61,225 @@ log = logging.getLogger("halyard.keeper.llm")
 
 
 # ─────────────────────────────────────────────────────────────────
-# NRP config + LLMCaller
+# Halyard-specific vMOE pool.
+#
+# Priority ordering favors NON-THINKING models at the front so
+# cascade doesn't burn the turn on qwen3's internal reasoning
+# trace when a direct reply is available. Thinking models stay in
+# the pool as fallbacks for harder questions.
 # ─────────────────────────────────────────────────────────────────
 
 
-@dataclass(frozen=True)
-class LLMConfig:
-    """Minimal NRP client config. No creds → caller is unavailable."""
+_NRP_BASE = "https://ellm.nrp-nautilus.io/v1"
+_NRP_KEY_ENV = "NRP_LLM_TOKEN"
 
-    base_url: str
-    api_key: str
-    model: str
-    temperature: float = 0.7
-    # qwen3 is a thinking model — it uses max_tokens on an internal
-    # reasoning trace before emitting the user-visible content. 220
-    # ran out mid-thought and left content empty. 800 leaves enough
-    # headroom for the thought plus a 1–3 sentence reply.
-    max_tokens: int = 800
-    timeout_s: float = 20.0
 
-    @classmethod
-    def from_env(cls) -> "LLMConfig | None":
-        key = os.environ.get("NRP_LLM_TOKEN", "").strip()
-        if not key:
-            return None
-        return cls(
-            base_url=os.environ.get(
-                "NRP_LLM_URL", "https://ellm.nrp-nautilus.io/v1"
-            ).rstrip("/"),
-            api_key=key,
-            # NRP model id. Confirmed via ``GET /v1/models``:
-            # gpt-oss, gemma, kimi, minimax-m2, olmo, gemma-small,
-            # gemma-4-e4b, glm-4.7, qwen3, qwen3-small, qwen3-27b.
-            # qwen3 is the general-purpose default; override via
-            # HALYARD_LLM_MODEL for longer-context work (kimi) or
-            # quality-focused (glm-4.7).
-            model=os.environ.get("HALYARD_LLM_MODEL", "qwen3"),
+def _halyard_experts() -> list[Expert]:
+    return [
+        Expert(
+            name="gpt-oss",
+            model="gpt-oss",
+            base_url=_NRP_BASE,
+            api_key_env=_NRP_KEY_ENV,
+            role_hints=frozenset({"chat", "fast", "default"}),
+            timeout_s=60.0,
+            priority=10,
+        ),
+        Expert(
+            name="glm-4.7",
+            model="glm-4.7",
+            base_url=_NRP_BASE,
+            api_key_env=_NRP_KEY_ENV,
+            role_hints=frozenset({"chat", "reason"}),
+            timeout_s=60.0,
+            priority=20,
+        ),
+        Expert(
+            name="kimi",
+            model="kimi",
+            base_url=_NRP_BASE,
+            api_key_env=_NRP_KEY_ENV,
+            role_hints=frozenset({"chat", "long_context"}),
+            timeout_s=90.0,
+            priority=30,
+        ),
+        Expert(
+            name="qwen3",
+            model="qwen3",
+            base_url=_NRP_BASE,
+            api_key_env=_NRP_KEY_ENV,
+            role_hints=frozenset({"chat", "thinking"}),
+            timeout_s=90.0,
+            priority=40,
+        ),
+        Expert(
+            name="minimax-m2",
+            model="minimax-m2",
+            base_url=_NRP_BASE,
+            api_key_env=_NRP_KEY_ENV,
+            role_hints=frozenset({"chat", "tool_use"}),
+            timeout_s=90.0,
+            priority=50,
+        ),
+    ]
+
+
+@lru_cache(maxsize=1)
+def _moe() -> vMOE | None:
+    """Lazy, cached vMOE instance. None if NRP creds are unset."""
+    if not os.environ.get(_NRP_KEY_ENV, "").strip():
+        return None
+    try:
+        return vMOE(experts=_halyard_experts())
+    except Exception as e:  # noqa: BLE001
+        log.warning("vMOE construction failed: %s", e)
+        return None
+
+
+def _nonempty(r: Response) -> bool:
+    """cascade accept — reject thinking-model empty-content responses
+    so the cascade falls through to the next expert."""
+    return bool(r.ok and r.content and r.content.strip())
+
+
+# ─────────────────────────────────────────────────────────────────
+# Per-session history — bounded deque per (session_id, which).
+# ─────────────────────────────────────────────────────────────────
+
+
+_HISTORY_CAP_PAIRS = 10
+_histories: dict[tuple[str, str], deque[dict[str, str]]] = {}
+
+
+def _hist(session_id: str, which: str) -> deque[dict[str, str]]:
+    key = (session_id, which)
+    buf = _histories.get(key)
+    if buf is None:
+        buf = deque(maxlen=_HISTORY_CAP_PAIRS * 2)
+        _histories[key] = buf
+    return buf
+
+
+def _address(which: str, text: str) -> str:
+    """Prefix the AI's name so the trigger / invocation match fires.
+
+    The chat panel is an explicit address; the trigger policy
+    doesn't know that without seeing the name in the text.
+    """
+    if which == "artemis" and not re.search(r"\bartemis\b", text, re.I):
+        return f"ARTEMIS, {text}"
+    if which == "sigma4" and not re.search(
+        r"\b(sigma(-4)?|sig)\b", text, re.I
+    ):
+        return f"SIGMA, {text}"
+    return text
+
+
+# ─────────────────────────────────────────────────────────────────
+# SIGMA-4 — vMOE cascade only
+# ─────────────────────────────────────────────────────────────────
+
+
+async def sigma4_turn(
+    *, session_id: str, user_text: str
+) -> TurnResult:
+    moe = _moe()
+    if moe is None:
+        return _stub_result("sigma4", user_text, time.time())
+
+    addressed = _address("sigma4", user_text)
+    buf = _hist(session_id, "sigma4")
+    buf.append({"role": "user", "content": addressed})
+
+    messages: list[dict[str, Any]] = [
+        {"role": "system", "content": system_prompt_for("sigma4")}
+    ]
+    messages.extend(buf)
+
+    started = time.time()
+    try:
+        resp = await moe.cascade(
+            messages,
+            accept=_nonempty,
+            max_tokens=int(os.environ.get("HALYARD_LLM_MAX_TOKENS", "900")),
             temperature=float(os.environ.get("HALYARD_LLM_TEMPERATURE", "0.7")),
-            max_tokens=int(os.environ.get("HALYARD_LLM_MAX_TOKENS", "220")),
-            timeout_s=float(os.environ.get("HALYARD_LLM_TIMEOUT_S", "12.0")),
         )
+    except Exception as e:  # noqa: BLE001
+        log.warning("sigma4 cascade raised: %s", e)
+        return _stub_result("sigma4", user_text, started)
+
+    if not resp.content.strip():
+        log.info("sigma4 cascade produced no content; using stub")
+        return _stub_result("sigma4", user_text, started)
+
+    reply = resp.content.strip()
+    buf.append({"role": "assistant", "content": reply})
+    return TurnResult(
+        text=reply,
+        source="vmoe-cascade",
+        proof_hash=None,
+        latency_s=time.time() - started,
+        expert=resp.expert,
+        ts=time.time(),
+    )
 
 
-class NRPLLMCaller:
-    """Implements the ``LLMCaller`` protocol used by handle_turn.
+# ─────────────────────────────────────────────────────────────────
+# ARTEMIS — full AGI-HPC pipeline via handle_turn
+# ─────────────────────────────────────────────────────────────────
 
-    Receives ``(system, messages)`` — the exact shape the
-    persona-specific prompt module already assembled — and posts
-    to NRP's OpenAI-compatible endpoint. Returns
-    ``(text, expert_name, latency_s)``.
 
-    The expert name is the effective model id (NRP routes via
-    vMOE internally when asked; if we grow into vMOE on our side,
-    we swap the caller for one that routes across experts and
-    reports the winning one).
+class VMOELLMCaller:
+    """LLMCaller protocol adapter backed by vMOE.cascade.
+
+    :func:`agi.primer.artemis.mode.handle_turn` expects a callable
+    matching the ``LLMCaller`` protocol: ``async (system, messages)
+    -> (text, expert_name, latency_s)``. This class bridges to the
+    MOE so ARTEMIS's handle_turn routes through the cascade.
     """
 
-    def __init__(self, config: LLMConfig) -> None:
-        self._cfg = config
+    def __init__(
+        self,
+        moe: vMOE,
+        *,
+        max_tokens: int = 900,
+        temperature: float = 0.7,
+    ) -> None:
+        self._moe = moe
+        self._max_tokens = max_tokens
+        self._temperature = temperature
 
     async def __call__(
-        self,
-        system: str,
-        messages: list[dict[str, Any]],
+        self, system: str, messages: list[dict[str, Any]]
     ) -> tuple[str, str, float]:
+        full: list[dict[str, Any]] = [{"role": "system", "content": system}]
+        full.extend(messages)
         started = time.time()
-
-        body_messages: list[dict[str, Any]] = [
-            {"role": "system", "content": system}
-        ]
-        body_messages.extend(messages)
-
-        payload = {
-            "model": self._cfg.model,
-            "messages": body_messages,
-            "temperature": self._cfg.temperature,
-            "max_tokens": self._cfg.max_tokens,
-            "stream": False,
-        }
-        headers = {
-            "authorization": f"Bearer {self._cfg.api_key}",
-            "content-type": "application/json",
-        }
-        url = f"{self._cfg.base_url}/chat/completions"
-
-        timeout = aiohttp.ClientTimeout(total=self._cfg.timeout_s)
         try:
-            async with aiohttp.ClientSession(timeout=timeout) as http:
-                async with http.post(url, json=payload, headers=headers) as r:
-                    if r.status != 200:
-                        body = await r.text()
-                        raise RuntimeError(
-                            f"NRP {r.status}: {body[:200]}"
-                        )
-                    data = await r.json()
-        except Exception as e:  # noqa: BLE001
-            log.warning("NRP call failed: %s", e)
-            return "", "timeout", time.time() - started
-
-        choices = data.get("choices") or []
-        if not choices:
-            return "", "empty", time.time() - started
-        msg = choices[0].get("message") or {}
-        content = msg.get("content") or ""
-        if isinstance(content, list):
-            content = "".join(
-                seg.get("text", "") for seg in content if isinstance(seg, dict)
+            resp = await self._moe.cascade(
+                full,
+                accept=_nonempty,
+                max_tokens=self._max_tokens,
+                temperature=self._temperature,
             )
-        finish_reason = choices[0].get("finish_reason")
-        if not content.strip():
-            # Some NRP-hosted models (qwen3 in particular) emit
-            # internal reasoning in ``message.reasoning`` and only
-            # populate ``content`` once the thought is complete.
-            # If we were cut off mid-thought (``finish_reason ==
-            # "length"``), log and fall back; if there's a trailing
-            # chunk of reasoning that looks like a finished answer,
-            # fish it out.
-            reasoning = msg.get("reasoning") or ""
-            if finish_reason == "length":
-                log.warning(
-                    "NRP %s returned no content (finish=length, "
-                    "reasoning=%d chars)",
-                    self._cfg.model, len(reasoning),
-                )
-                return "", "length", time.time() - started
-            # Occasional models surface the whole answer in reasoning.
-            # Return the last non-empty paragraph as the best guess.
-            paras = [p.strip() for p in reasoning.splitlines() if p.strip()]
-            if paras:
-                return paras[-1], self._cfg.model, time.time() - started
-            return "", "empty", time.time() - started
-        return content.strip(), self._cfg.model, time.time() - started
+        except Exception as e:  # noqa: BLE001
+            log.warning("artemis vMOE cascade raised: %s", e)
+            return "", "timeout", time.time() - started
+        if not resp.content.strip():
+            return "", resp.expert, time.time() - started
+        return resp.content.strip(), resp.expert, time.time() - started
 
 
-# ─────────────────────────────────────────────────────────────────
-# Persona-scoped Bible.
-# Keeps the LAST-MILE forbidden-term check inside the validator
-# rather than trusting the LLM to honor the system prompt.
-# ─────────────────────────────────────────────────────────────────
-
-
+# Forbidden phrases — validator's forbidden_check rejects replies
+# containing any of these. Defense-in-depth belt to the system
+# prompt's withholding rules.
 _FORBIDDEN_PHRASES: tuple[str, ...] = (
-    "the Chamber",
-    "The Chamber",
-    "Chamber operative",
-    "Ostland",
-    "Meridian",
-    "Specimen A-7",
-    "A-7 case",
-    "Persephone plaque",
-    "Mi-go",
-    "Mi go",
-    "Winter Correspondents",
-    "the gate",
-    "the sleeper",
-    "Elder Thing",
-    "Yithian",
-    "Starry Wisdom",
-    "Hollow Hand",
-    "Keepers of the Hollow Throne",
+    "the Chamber", "The Chamber", "Chamber operative",
+    "Ostland", "Meridian", "Specimen A-7", "A-7 case",
+    "Persephone plaque", "Mi-go", "Mi go",
+    "Winter Correspondents", "the gate", "the sleeper",
+    "Elder Thing", "Yithian",
+    "Starry Wisdom", "Hollow Hand", "Keepers of the Hollow Throne",
 )
 
 
@@ -243,12 +288,6 @@ _BIBLE_JSON_DEFAULT = "/archive/halyard/bible/halyard_bible.json"
 
 @lru_cache(maxsize=1)
 def _load_json_bible() -> dict[str, Any] | None:
-    """Load the wiki-derived JSON bible, or return None if missing.
-
-    Cached — the bible is regenerated at deploy time by
-    ``scripts/halyard/build_bible.py``. A service restart picks up
-    the new content; mid-session hot-reload is not a priority yet.
-    """
     path = Path(os.environ.get("HALYARD_BIBLE_PATH", _BIBLE_JSON_DEFAULT))
     if not path.is_file():
         return None
@@ -260,10 +299,6 @@ def _load_json_bible() -> dict[str, Any] | None:
 
 
 def _synthesize_bible(which: str) -> Bible:
-    """Fallback bible built from the condensed :mod:`.campaign_facts`
-    constants. Used when the JSON bible hasn't been built yet
-    (e.g. fresh deploy before build_bible.py runs).
-    """
     tag = "artemis_known" if which == "artemis" else "sigma4_known"
     persona_text = ARTEMIS_ONLY if which == "artemis" else SIGMA_ONLY
     return Bible(
@@ -289,20 +324,11 @@ def _synthesize_bible(which: str) -> Bible:
 
 
 def _bible_for(which: str) -> Bible:
-    """Return the persona-scoped Bible for one AI.
-
-    Loads the wiki-derived JSON if present and filters chunks
-    whose ``tag`` matches ``<which>_known`` / ``<which>_unknown``.
-    Falls back to the condensed synthesized bible if the JSON
-    file is missing.
-    """
     doc = _load_json_bible()
     if doc is None:
         return _synthesize_bible(which)
-
     known_tag = f"{which}_known"
     unknown_tag = f"{which}_unknown"
-
     known: list[BibleChunk] = []
     unknown: list[BibleChunk] = []
     for raw in doc.get("chunks", []):
@@ -319,14 +345,10 @@ def _bible_for(which: str) -> Bible:
             known.append(chunk)
         else:
             unknown.append(chunk)
-
     forbidden = list(doc.get("forbidden_phrases", []))
-    # Union with the hardcoded in-code list — defense in depth
-    # against an incomplete wiki.
     for phrase in _FORBIDDEN_PHRASES:
         if phrase not in forbidden:
             forbidden.append(phrase)
-
     return Bible(
         known=tuple(known),
         unknown=tuple(unknown),
@@ -334,127 +356,49 @@ def _bible_for(which: str) -> Bible:
     )
 
 
-# ─────────────────────────────────────────────────────────────────
-# Per-session state cache
-# ─────────────────────────────────────────────────────────────────
+_artemis_states: dict[str, SessionState] = {}
 
 
-_states: dict[tuple[str, str], SessionState] = {}
-
-
-def _session_state(session_id: str, which: str) -> SessionState:
-    key = (session_id, which)
-    s = _states.get(key)
+def _artemis_state(session_id: str) -> SessionState:
+    s = _artemis_states.get(session_id)
     if s is None:
-        s = SessionState(session_id=f"{session_id}:{which}")
-        _states[key] = s
+        s = SessionState(session_id=session_id)
+        _artemis_states[session_id] = s
     return s
 
 
-# ─────────────────────────────────────────────────────────────────
-# Entry
-# ─────────────────────────────────────────────────────────────────
-
-
-@dataclass(frozen=True)
-class TurnResult:
-    text: str
-    source: str          # "handle_turn" | "stub-fallback"
-    proof_hash: str | None
-    latency_s: float
-    expert: str | None
-    ts: float
-
-
-async def run_turn(
-    *,
-    session_id: str,
-    which: str,
-    user_text: str,
-    speaker: str = "player",
+async def artemis_turn(
+    *, session_id: str, user_text: str, speaker: str = "player"
 ) -> TurnResult:
-    """Run one AI turn through the full agi-hpc pipeline.
+    moe = _moe()
+    if moe is None:
+        return _stub_result("artemis", user_text, time.time())
 
-    Returns a :class:`TurnResult` regardless of upstream state:
-
-    - **``source="handle_turn"``**: the real pipeline ran. Includes
-      the ``proof_hash`` of the validator's DecisionProof.
-    - **``source="stub-fallback"``**: the NRP token was unset, or
-      the LLM or validator refused. A keyword-based in-persona
-      line is returned so the client always sees something.
-    """
-    if which not in {"artemis", "sigma4"}:
-        raise ValueError(f"unknown AI: {which!r}")
-
-    cfg = LLMConfig.from_env()
+    addressed = _address("artemis", user_text)
     started = time.time()
+    state = _artemis_state(session_id)
+    bible = _bible_for("artemis")
+    caller = VMOELLMCaller(moe)
 
-    if cfg is None:
-        log.info("NRP_LLM_TOKEN unset; using stub fallback for %s", which)
-        return _stub_result(which, user_text, started)
-
-    caller = NRPLLMCaller(cfg)
-    state = _session_state(session_id, which)
-    bible = _bible_for(which)
-
-    # The chat panel is by construction an explicit address: the
-    # player picked SIGMA's or ARTEMIS's box and typed into it.
-    # The trigger policy, however, only fires on name-mention or
-    # explicit keeper_cue. Prepend the AI's name so the invocation
-    # check matches — otherwise a question like "what is your
-    # current location" silently falls through to silence.
-    import re as _re
-
-    trigger_text = user_text
-    if which == "artemis" and not _re.search(r"\bartemis\b", user_text, _re.I):
-        trigger_text = f"ARTEMIS, {user_text}"
-    elif which == "sigma4" and not _re.search(
-        r"\b(sigma(-4)?|sig)\b", user_text, _re.I
-    ):
-        trigger_text = f"SIGMA, {user_text}"
-
-    # Build the right TurnRequest. The shape is identical across
-    # the two packages; we dispatch the right type so each AI's
-    # sentinel conventions (INTERFACE_FLICKER vs INTERFACE_SILENT)
-    # apply correctly inside handle_turn.
-    turn_id = f"t-{int(time.time() * 1000)}"
-    meta = {"via": "halyard-keeper.llm"}
-
+    req = ArtemisTurnRequest(
+        session_id=session_id,
+        turn_id=f"t-{int(time.time() * 1000)}",
+        speaker=speaker,
+        text=addressed,
+        ts=time.time(),
+        meta={"via": "halyard-keeper.llm"},
+    )
     try:
-        if which == "artemis":
-            req = ArtemisTurnRequest(
-                session_id=session_id,
-                turn_id=turn_id,
-                speaker=speaker,
-                text=trigger_text,
-                ts=time.time(),
-                meta=meta,
-            )
-            resp: ArtemisTurnResponse | None = await artemis_handle_turn(
-                req, state=state, bible=bible, llm=caller,
-            )
-        else:
-            req_s = Sigma4TurnRequest(
-                session_id=session_id,
-                turn_id=turn_id,
-                speaker=speaker,
-                text=trigger_text,
-                ts=time.time(),
-                meta=meta,
-            )
-            resp = await sigma4_handle_turn(
-                req_s, state=state, bible=bible, llm=caller,
-            )
+        resp: ArtemisTurnResponse | None = await artemis_handle_turn(
+            req, state=state, bible=bible, llm=caller,
+        )
     except Exception as e:  # noqa: BLE001
-        log.warning("handle_turn raised for %s: %s", which, e)
-        return _stub_result(which, user_text, started)
+        log.warning("artemis handle_turn raised: %s", e)
+        return _stub_result("artemis", user_text, started)
 
-    if resp is None:
-        # Trigger policy declined, validator rejected, or the
-        # model emitted the silence sentinel. Give the client a
-        # flavor line so the stream doesn't feel broken.
-        log.info("handle_turn returned None for %s; using stub fallback", which)
-        return _stub_result(which, user_text, started)
+    if resp is None or not resp.text.strip():
+        log.info("artemis handle_turn returned empty; using stub")
+        return _stub_result("artemis", user_text, started)
 
     return TurnResult(
         text=resp.text,
@@ -464,6 +408,34 @@ async def run_turn(
         expert=resp.expert,
         ts=time.time(),
     )
+
+
+# ─────────────────────────────────────────────────────────────────
+# Public entry
+# ─────────────────────────────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class TurnResult:
+    text: str
+    source: str          # "handle_turn" | "vmoe-cascade" | "stub-fallback"
+    proof_hash: str | None
+    latency_s: float
+    expert: str | None
+    ts: float
+
+
+async def run_turn(
+    *, session_id: str, which: str, user_text: str, speaker: str = "player",
+) -> TurnResult:
+    """Dispatcher. ARTEMIS → full pipeline. SIGMA-4 → cascade only."""
+    if which == "artemis":
+        return await artemis_turn(
+            session_id=session_id, user_text=user_text, speaker=speaker,
+        )
+    if which == "sigma4":
+        return await sigma4_turn(session_id=session_id, user_text=user_text)
+    raise ValueError(f"unknown AI: {which!r}")
 
 
 def _stub_result(which: str, user_text: str, started: float) -> TurnResult:
@@ -478,13 +450,5 @@ def _stub_result(which: str, user_text: str, started: float) -> TurnResult:
     )
 
 
-# ─────────────────────────────────────────────────────────────────
-# Compatibility helpers
-# ─────────────────────────────────────────────────────────────────
-
-
-# Re-exported for tests or admin tooling that wants to see the
-# effective prompt for one of the AIs.
 def effective_system_prompt(which: str) -> str:
-    """Return the system prompt that would be sent to the LLM."""
     return system_prompt_for(which)
