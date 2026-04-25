@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 600" width="1100" height="600" font-family="Consolas, monospace">
+<rect width="1100" height="600" fill="#0a0e17"/>
+<rect x="0" y="0" width="1100" height="38" fill="#131a2b"/>
+<rect x="0" y="38" width="1100" height="2" fill="#4a9eff"/>
+<text x="16" y="24" fill="#4a9eff" font-size="15" font-weight="bold" letter-spacing="1">United Nations Navy — structure</text>
+<text x="1084" y="24" fill="#7a8ba8" font-size="10" text-anchor="end">UNN, 2348 — public-record</text>
+<path d="M 550 104 L 550 132 L 550 132 L 550 160" fill="none" stroke="#7a8ba8" stroke-width="1.2"/>
+<path d="M 550 196 L 550 224 L 174 224 L 174 252" fill="none" stroke="#7a8ba8" stroke-width="1.2"/>
+<path d="M 550 196 L 550 224 L 624 224 L 624 252" fill="none" stroke="#7a8ba8" stroke-width="1.2"/>
+<path d="M 550 196 L 550 224 L 1000 224 L 1000 252" fill="none" stroke="#7a8ba8" stroke-width="1.2"/>
+<path d="M 174 288 L 174 316 L 99 316 L 99 344" fill="none" stroke="#7a8ba8" stroke-width="1.2"/>
+<path d="M 174 288 L 174 316 L 249 316 L 249 344" fill="none" stroke="#7a8ba8" stroke-width="1.2"/>
+<path d="M 624 288 L 624 316 L 399 316 L 399 344" fill="none" stroke="#7a8ba8" stroke-width="1.2"/>
+<path d="M 624 288 L 624 316 L 549 316 L 549 344" fill="none" stroke="#7a8ba8" stroke-width="1.2"/>
+<path d="M 624 288 L 624 316 L 699 316 L 699 344" fill="none" stroke="#7a8ba8" stroke-width="1.2"/>
+<path d="M 624 288 L 624 316 L 849 316 L 849 344" fill="none" stroke="#7a8ba8" stroke-width="1.2"/>
+<path d="M 1000 288 L 1000 316 L 1000 316 L 1000 344" fill="none" stroke="#7a8ba8" stroke-width="1.2"/>
+<rect x="475" y="68" width="150" height="36" fill="#4a9eff" stroke="#4a9eff" stroke-width="1.5" rx="3"/><text x="550" y="90" fill="#0a0e17" font-size="11" text-anchor="middle">Secretary-General</text>
+<rect x="475" y="160" width="150" height="36" fill="#4a9eff" stroke="#4a9eff" stroke-width="1.5" rx="3"/><text x="550" y="176" fill="#0a0e17" font-size="10" text-anchor="middle">Chief of Naval</text><text x="550" y="190" fill="#0a0e17" font-size="10" text-anchor="middle">Operations</text>
+<rect x="99" y="252" width="150" height="36" fill="#1a2240" stroke="#7a8ba8" stroke-width="1.5" rx="3"/><text x="174" y="274" fill="#e0e6f0" font-size="11" text-anchor="middle">Inner System Command</text>
+<rect x="549" y="252" width="150" height="36" fill="#1a2240" stroke="#7a8ba8" stroke-width="1.5" rx="3"/><text x="624" y="274" fill="#e0e6f0" font-size="11" text-anchor="middle">Outer System Auxiliary</text>
+<rect x="925" y="252" width="150" height="36" fill="#1a2240" stroke="#7a8ba8" stroke-width="1.5" rx="3"/><text x="1000" y="268" fill="#e0e6f0" font-size="10" text-anchor="middle">Special</text><text x="1000" y="282" fill="#e0e6f0" font-size="10" text-anchor="middle">Operations Wing</text>
+<rect x="24" y="344" width="150" height="36" fill="#131a2b" stroke="#7a8ba8" stroke-width="1.5" rx="3"/><text x="99" y="366" fill="#e0e6f0" font-size="11" text-anchor="middle">Carrier Strike Groups</text>
+<rect x="174" y="344" width="150" height="36" fill="#131a2b" stroke="#7a8ba8" stroke-width="1.5" rx="3"/><text x="249" y="366" fill="#e0e6f0" font-size="11" text-anchor="middle">Lunar Patrol</text>
+<rect x="324" y="344" width="150" height="36" fill="#131a2b" stroke="#7a8ba8" stroke-width="1.5" rx="3"/><text x="399" y="366" fill="#e0e6f0" font-size="11" text-anchor="middle">Beacon Network</text>
+<rect x="474" y="344" width="150" height="36" fill="#131a2b" stroke="#7a8ba8" stroke-width="1.5" rx="3"/><text x="549" y="366" fill="#e0e6f0" font-size="11" text-anchor="middle">Rescue Cruisers</text>
+<rect x="624" y="344" width="150" height="36" fill="#131a2b" stroke="#7a8ba8" stroke-width="1.5" rx="3"/><text x="699" y="366" fill="#e0e6f0" font-size="11" text-anchor="middle">Interdiction Squadrons</text>
+<rect x="774" y="344" width="150" height="36" fill="#131a2b" stroke="#7a8ba8" stroke-width="1.5" rx="3"/><text x="849" y="366" fill="#e0e6f0" font-size="11" text-anchor="middle">Signal Corps</text>
+<rect x="925" y="344" width="150" height="36" fill="#0f1422" stroke="#4a5568" stroke-width="1.5" rx="3"/><text x="1000" y="366" fill="#7a8ba8" font-size="11" text-anchor="middle">(classified)</text>
+</svg>

@@ -1,0 +1,23 @@
+# Spec list for the Halyard's small-arms inventory.
+# Used by svg_weapon_schematic.py with --specs.
+
+- name: "M-340"
+  kind: "rifle"
+  caliber: "5.56mm"
+  capacity: 30
+  role: "UNN service rifle (modified PDC ammunition aboard)"
+  features: ["smart-sight", "burst", "frangible-rated"]
+
+- name: "M-310"
+  kind: "pistol"
+  caliber: "9mm"
+  capacity: 17
+  role: "UNN service sidearm (security issue)"
+  features: ["smart-sight"]
+
+- name: "Concourse-12"
+  kind: "shotgun"
+  caliber: "12-gauge"
+  capacity: 6
+  role: "Civilian breaching shotgun (less-lethal capable)"
+  features: ["beanbag-capable", "breaching-rounds"]

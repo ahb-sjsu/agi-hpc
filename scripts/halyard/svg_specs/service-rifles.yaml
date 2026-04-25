@@ -1,0 +1,11 @@
+title:    "Standard service rifles compared"
+subtitle: "UNN, MCRN, LDS issue weapons"
+metrics:
+  - "Effective range (m)"
+  - "Rate of fire (rpm)"
+  - "Mass (kg, loaded)"
+subjects:
+  - { name: "M-340 (UNN)",   values: [600, 700, 3.4], color: accent }
+  - { name: "RR-12 (MCRN)",  values: [620, 720, 3.6], color: orange }
+  - { name: "L-2 light (UNN)", values: [550, 700, 2.8], color: dim }
+notes: "All are 5.56mm-equivalent; smart-sight integration standard"

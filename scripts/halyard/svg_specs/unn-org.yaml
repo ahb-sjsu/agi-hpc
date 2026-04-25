@@ -1,0 +1,55 @@
+title:    "United Nations Navy — structure"
+subtitle: "UNN, 2348 — public-record"
+nodes:
+  - id:    sg
+    label: "Secretary-General"
+    kind:  exec
+
+  - id:    cno
+    label: "Chief of Naval Operations"
+    kind:  exec
+    parent: sg
+
+  - id:    isc
+    label: "Inner System Command"
+    kind:  branch
+    parent: cno
+  - id:    osa
+    label: "Outer System Auxiliary"
+    kind:  branch
+    parent: cno
+  - id:    sow
+    label: "Special Operations Wing"
+    kind:  branch
+    parent: cno
+
+  - id:    isc-csg
+    label: "Carrier Strike Groups"
+    kind:  unit
+    parent: isc
+  - id:    isc-lp
+    label: "Lunar Patrol"
+    kind:  unit
+    parent: isc
+
+  - id:    osa-bn
+    label: "Beacon Network"
+    kind:  unit
+    parent: osa
+  - id:    osa-rc
+    label: "Rescue Cruisers"
+    kind:  unit
+    parent: osa
+  - id:    osa-is
+    label: "Interdiction Squadrons"
+    kind:  unit
+    parent: osa
+  - id:    osa-sc
+    label: "Signal Corps"
+    kind:  unit
+    parent: osa
+
+  - id:    sow-cl
+    label: "(classified)"
+    kind:  stub
+    parent: sow

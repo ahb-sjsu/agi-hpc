@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 300" width="900" height="300" font-family="Consolas, monospace">
+  <rect width="900" height="300" fill="#0a0e17"/>
+  <rect x="0" y="0" width="900" height="40" fill="#131a2b"/>
+  <rect x="0" y="40" width="900" height="2" fill="#4a9eff"/>
+  <text x="16" y="26" fill="#4a9eff" font-size="15" font-weight="bold" letter-spacing="1">Standard service rifles compared</text>
+  <text x="884" y="26" fill="#7a8ba8" font-size="11" text-anchor="end">UNN, MCRN, LDS issue weapons</text>
+  <text x="220" y="60" fill="#7a8ba8" font-size="9" letter-spacing="1">EFFECTIVE RANGE (M)</text>
+  <text x="220" y="72" fill="#7a8ba8" font-size="9" letter-spacing="1">RATE OF FIRE (RPM)</text>
+  <text x="220" y="84" fill="#7a8ba8" font-size="9" letter-spacing="1">MASS (KG, LOADED)</text>
+  <text x="30" y="112" fill="#e0e6f0" font-size="12">M-340 (UNN)</text>
+  <rect x="220" y="90" width="640" height="14" fill="#131a2b" stroke="#4a5568" stroke-width="0.6"/>
+  <rect x="220" y="90" width="619" height="14" fill="#4a9eff"/>
+  <text x="845" y="101" fill="#7a8ba8" font-size="9">600.0</text>
+  <rect x="220" y="106" width="640" height="14" fill="#131a2b" stroke="#4a5568" stroke-width="0.6"/>
+  <rect x="220" y="106" width="622" height="14" fill="#7aa6d8"/>
+  <text x="848" y="117" fill="#7a8ba8" font-size="9">700.0</text>
+  <rect x="220" y="122" width="640" height="14" fill="#131a2b" stroke="#4a5568" stroke-width="0.6"/>
+  <rect x="220" y="122" width="604" height="14" fill="#a8c4e3"/>
+  <text x="830" y="133" fill="#7a8ba8" font-size="9">3.4</text>
+  <text x="30" y="172" fill="#e0e6f0" font-size="12">RR-12 (MCRN)</text>
+  <rect x="220" y="150" width="640" height="14" fill="#131a2b" stroke="#4a5568" stroke-width="0.6"/>
+  <rect x="220" y="150" width="640" height="14" fill="#4a9eff"/>
+  <text x="866" y="161" fill="#7a8ba8" font-size="9">620.0</text>
+  <rect x="220" y="166" width="640" height="14" fill="#131a2b" stroke="#4a5568" stroke-width="0.6"/>
+  <rect x="220" y="166" width="640" height="14" fill="#7aa6d8"/>
+  <text x="866" y="177" fill="#7a8ba8" font-size="9">720.0</text>
+  <rect x="220" y="182" width="640" height="14" fill="#131a2b" stroke="#4a5568" stroke-width="0.6"/>
+  <rect x="220" y="182" width="640" height="14" fill="#a8c4e3"/>
+  <text x="866" y="193" fill="#7a8ba8" font-size="9">3.6</text>
+  <text x="30" y="232" fill="#e0e6f0" font-size="12">L-2 light (UNN)</text>
+  <rect x="220" y="210" width="640" height="14" fill="#131a2b" stroke="#4a5568" stroke-width="0.6"/>
+  <rect x="220" y="210" width="567" height="14" fill="#4a9eff"/>
+  <text x="793" y="221" fill="#7a8ba8" font-size="9">550.0</text>
+  <rect x="220" y="226" width="640" height="14" fill="#131a2b" stroke="#4a5568" stroke-width="0.6"/>
+  <rect x="220" y="226" width="622" height="14" fill="#7aa6d8"/>
+  <text x="848" y="237" fill="#7a8ba8" font-size="9">700.0</text>
+  <rect x="220" y="242" width="640" height="14" fill="#131a2b" stroke="#4a5568" stroke-width="0.6"/>
+  <rect x="220" y="242" width="497" height="14" fill="#a8c4e3"/>
+  <text x="723" y="253" fill="#7a8ba8" font-size="9">2.8</text>
+  <text x="16" y="286" fill="#4a5568" font-size="9" font-style="italic">All are 5.56mm-equivalent; smart-sight integration standard</text>
+</svg>

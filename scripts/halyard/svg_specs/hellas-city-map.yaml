@@ -1,0 +1,93 @@
+title:    "Hellas City — schematic"
+subtitle: "Mars · capital of the Republic"
+width:    1000
+height:   700
+background:
+  kind: lake
+regions:
+  # Founders' Crescent — closest to lake
+  - kind: rect
+    x: 60
+    y: 480
+    w: 880
+    h: 110
+    label: "Founders' Crescent"
+    accent: false
+
+  # The Capitol — central peak of Founders'
+  - kind: circle
+    cx: 500
+    cy: 535
+    r: 36
+    label: "Capitol"
+    accent: true
+
+  # Mars Naval Academy
+  - kind: rect
+    x: 100
+    y: 500
+    w: 130
+    h: 70
+    label: "Naval Academy"
+
+  # President's Residence
+  - kind: rect
+    x: 760
+    y: 500
+    w: 140
+    h: 70
+    label: "President's Residence"
+
+  # Mid-Crescent — middle band
+  - kind: rect
+    x: 60
+    y: 350
+    w: 880
+    h: 120
+    label: "Mid-Crescent"
+
+  # University of Hellas
+  - kind: rect
+    x: 110
+    y: 370
+    w: 130
+    h: 80
+    label: "Univ. of Hellas"
+    accent: true
+
+  # Hellas Symphony Hall
+  - kind: rect
+    x: 760
+    y: 370
+    w: 130
+    h: 80
+    label: "Symphony Hall"
+    accent: true
+
+  # Outer Crescents — residential band
+  - kind: rect
+    x: 60
+    y: 230
+    w: 880
+    h: 110
+    label: "Outer Crescents (residential)"
+
+  # Vapor District — east industrial
+  - kind: rect
+    x: 760
+    y: 105
+    w: 180
+    h: 110
+    label: "Vapor District (atmospheric eng.)"
+
+  # Hellas Lake — represented as decorative lake-shore at the bottom
+  - kind: rect
+    x: 60
+    y: 600
+    w: 880
+    h: 70
+    label: "Hellas Lake (lake-shore)"
+    fill: "#1a3a6a"
+legend:
+  - { color: accent, label: "Government / institution" }
+  - { color: panel,  label: "Districts" }

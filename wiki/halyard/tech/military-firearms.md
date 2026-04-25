@@ -9,6 +9,10 @@ tags:     [tech, weapons, military, firearms, naval, pdc]
 
 # Military firearms in 2348
 
+![Standard service rifles compared — M-340, RR-12, L-2 light](https://halyard.atlas-sjsu.duckdns.org/art/service-rifles.svg)
+
+![M-340 service rifle schematic](https://halyard.atlas-sjsu.duckdns.org/art/weapons/m-340.svg)
+
 Military firearms in 2348 fall into three broad
 categories: *small arms* (carried by individual
 combatants), *crew-served weapons* (heavy weapons

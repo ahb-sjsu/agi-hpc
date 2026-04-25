@@ -1,0 +1,9 @@
+title:    "Disclosed naval tonnage, 2347"
+subtitle: "Capital + cruiser + frigate + corvette + auxiliary"
+metric:   "Tonnage (millions)"
+subjects:
+  - { name: "UNN",  value: 14.2, color: accent }
+  - { name: "MCRN", value: 9.8,  color: orange }
+  - { name: "OPA-affiliated", value: 4.4, color: dim }
+  - { name: "Lunar Defense Service", value: 0.6, color: muted }
+notes: "Sources: 2347 UN Defense Disclosure; MCR White Paper; OPA Plenum estimate"

@@ -9,6 +9,8 @@ tags:     [mars, mcrn, navy, military, defense]
 
 # Martian Congressional Republic Navy — overview
 
+![Disclosed naval tonnage, 2347 — UNN, MCRN, OPA, Lunar comparison](https://halyard.atlas-sjsu.duckdns.org/art/fleet-tonnage.svg)
+
 The MCRN is the smallest of the major navies by tonnage and,
 since approximately 2335, the most operationally effective in
 the human inner system. The institutional self-image is

@@ -9,6 +9,8 @@ tags:     [earth, un, navy, military, unn]
 
 # The United Nations Navy — overview
 
+![UNN organizational structure, 2348](https://halyard.atlas-sjsu.duckdns.org/art/unn-org.svg)
+
 The United Nations Navy is the largest military force in human
 history by tonnage and the second-largest by personnel (the
 MCRN, smaller in tonnage, has a slightly larger officer corps

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 700" width="1000" height="700" font-family="Consolas, monospace">
+  <rect width="1000" height="700" fill="#0a0e17"/>
+  <rect x="20" y="60" width="960" height="620" fill="#15294a" rx="6"/>
+  <rect x="0" y="0" width="1000" height="40" fill="#131a2b"/>
+  <rect x="0" y="40" width="1000" height="2" fill="#4a9eff"/>
+  <text x="16" y="26" fill="#4a9eff" font-size="16" font-weight="bold" letter-spacing="1">Hellas City — schematic</text>
+  <text x="984" y="26" fill="#7a8ba8" font-size="11" text-anchor="end">Mars · capital of the Republic</text>
+  <rect x="60" y="480" width="880" height="110" fill="#1a2240" stroke="#7a8ba8" stroke-width="1.2" rx="2"/>
+  <text x="500" y="539" fill="#7a8ba8" font-size="11" text-anchor="middle">Founders' Crescent</text>
+  <circle cx="500" cy="535" r="36" fill="rgba(74,158,255,0.25)" stroke="#4a9eff" stroke-width="2"/>
+  <text x="500" y="539" fill="#4a9eff" font-size="11" text-anchor="middle">Capitol</text>
+  <rect x="100" y="500" width="130" height="70" fill="#1a2240" stroke="#7a8ba8" stroke-width="1.2" rx="2"/>
+  <text x="165" y="539" fill="#7a8ba8" font-size="11" text-anchor="middle">Naval Academy</text>
+  <rect x="760" y="500" width="140" height="70" fill="#1a2240" stroke="#7a8ba8" stroke-width="1.2" rx="2"/>
+  <text x="830" y="539" fill="#7a8ba8" font-size="11" text-anchor="middle">President's Residence</text>
+  <rect x="60" y="350" width="880" height="120" fill="#1a2240" stroke="#7a8ba8" stroke-width="1.2" rx="2"/>
+  <text x="500" y="414" fill="#7a8ba8" font-size="11" text-anchor="middle">Mid-Crescent</text>
+  <rect x="110" y="370" width="130" height="80" fill="rgba(74,158,255,0.25)" stroke="#4a9eff" stroke-width="2" rx="2"/>
+  <text x="175" y="414" fill="#4a9eff" font-size="11" text-anchor="middle">Univ. of Hellas</text>
+  <rect x="760" y="370" width="130" height="80" fill="rgba(74,158,255,0.25)" stroke="#4a9eff" stroke-width="2" rx="2"/>
+  <text x="825" y="414" fill="#4a9eff" font-size="11" text-anchor="middle">Symphony Hall</text>
+  <rect x="60" y="230" width="880" height="110" fill="#1a2240" stroke="#7a8ba8" stroke-width="1.2" rx="2"/>
+  <text x="500" y="289" fill="#7a8ba8" font-size="11" text-anchor="middle">Outer Crescents (residential)</text>
+  <rect x="760" y="105" width="180" height="110" fill="#1a2240" stroke="#7a8ba8" stroke-width="1.2" rx="2"/>
+  <text x="850" y="164" fill="#7a8ba8" font-size="11" text-anchor="middle">Vapor District (atmospheric eng.)</text>
+  <rect x="60" y="600" width="880" height="70" fill="#1a3a6a" stroke="#7a8ba8" stroke-width="1.2" rx="2"/>
+  <text x="500" y="639" fill="#7a8ba8" font-size="11" text-anchor="middle">Hellas Lake (lake-shore)</text>
+  <rect x="20" y="668" width="960" height="32" fill="#131a2b" stroke="none" rx="3"/>
+  <rect x="40" y="677" width="14" height="14" fill="#4a9eff" stroke="#7a8ba8" stroke-width="0.8"/>
+  <text x="62" y="688" fill="#7a8ba8" font-size="10">Government / institution</text>
+  <rect x="286" y="677" width="14" height="14" fill="#1a2240" stroke="#7a8ba8" stroke-width="0.8"/>
+  <text x="308" y="688" fill="#7a8ba8" font-size="10">Districts</text>
+</svg>

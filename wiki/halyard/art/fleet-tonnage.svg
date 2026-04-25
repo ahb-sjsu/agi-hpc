@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 284" width="900" height="284" font-family="Consolas, monospace">
+  <rect width="900" height="284" fill="#0a0e17"/>
+  <rect x="0" y="0" width="900" height="40" fill="#131a2b"/>
+  <rect x="0" y="40" width="900" height="2" fill="#4a9eff"/>
+  <text x="16" y="26" fill="#4a9eff" font-size="15" font-weight="bold" letter-spacing="1">Disclosed naval tonnage, 2347</text>
+  <text x="884" y="26" fill="#7a8ba8" font-size="11" text-anchor="end">Capital + cruiser + frigate + corvette + auxiliary</text>
+  <text x="200" y="62" fill="#7a8ba8" font-size="10" letter-spacing="1">TONNAGE (MILLIONS)</text>
+  <text x="30" y="98" fill="#e0e6f0" font-size="12">UNN</text>
+  <rect x="200" y="86" width="620" height="20" fill="#131a2b" stroke="#4a5568" stroke-width="0.6"/>
+  <rect x="200" y="86" width="620" height="20" fill="#4a9eff"/>
+  <text x="828" y="101" fill="#7a8ba8" font-size="11">14.2</text>
+  <text x="30" y="134" fill="#e0e6f0" font-size="12">MCRN</text>
+  <rect x="200" y="122" width="620" height="20" fill="#131a2b" stroke="#4a5568" stroke-width="0.6"/>
+  <rect x="200" y="122" width="427" height="20" fill="#fb923c"/>
+  <text x="635" y="137" fill="#7a8ba8" font-size="11">9.8</text>
+  <text x="30" y="170" fill="#e0e6f0" font-size="12">OPA-affiliated</text>
+  <rect x="200" y="158" width="620" height="20" fill="#131a2b" stroke="#4a5568" stroke-width="0.6"/>
+  <rect x="200" y="158" width="192" height="20" fill="#7a8ba8"/>
+  <text x="400" y="173" fill="#7a8ba8" font-size="11">4.4</text>
+  <text x="30" y="206" fill="#e0e6f0" font-size="12">Lunar Defense Service</text>
+  <rect x="200" y="194" width="620" height="20" fill="#131a2b" stroke="#4a5568" stroke-width="0.6"/>
+  <rect x="200" y="194" width="26" height="20" fill="#4a5568"/>
+  <text x="234" y="209" fill="#7a8ba8" font-size="11">0.6</text>
+  <text x="16" y="270" fill="#4a5568" font-size="9" font-style="italic">Sources: 2347 UN Defense Disclosure; MCR White Paper; OPA Plenum estimate</text>
+</svg>
