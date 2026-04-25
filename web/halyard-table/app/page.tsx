@@ -16,6 +16,7 @@ export default function Landing() {
   const [sessionId, setSessionId] = useState("halyard-s01");
   const [displayName, setDisplayName] = useState("");
   const [pcId, setPcId] = useState("");
+  const [password, setPassword] = useState("");
   const [err, setErr] = useState<string | null>(null);
 
   function submit(e: React.FormEvent) {
@@ -31,6 +32,7 @@ export default function Landing() {
     const q = new URLSearchParams({
       name: displayName.trim(),
       ...(pcId ? { pc: pcId.trim() } : {}),
+      ...(password ? { pw: password } : {}),
     });
     router.push(`/session/${encodeURIComponent(sessionId)}?${q.toString()}`);
   }
@@ -71,6 +73,14 @@ export default function Landing() {
           onChange={setPcId}
           help="Your character's id. If set, your sheet drawer auto-opens to it."
         />
+        <Field
+          label="Meeting password"
+          name="pw"
+          value={password}
+          onChange={setPassword}
+          help="From the Keeper's invite. Leave blank only if running in dev mode."
+          type="password"
+        />
 
         {err && (
           <p
@@ -104,8 +114,17 @@ interface FieldProps {
   onChange: (v: string) => void;
   help?: string;
   required?: boolean;
+  type?: string;
 }
-function Field({ label, name, value, onChange, help, required }: FieldProps) {
+function Field({
+  label,
+  name,
+  value,
+  onChange,
+  help,
+  required,
+  type = "text",
+}: FieldProps) {
   return (
     <label htmlFor={name} className="block mb-4">
       <span className="font-mono text-xs text-text-dim uppercase tracking-wider">
@@ -114,11 +133,12 @@ function Field({ label, name, value, onChange, help, required }: FieldProps) {
       <input
         id={name}
         name={name}
+        type={type}
         value={value}
         required={required}
         onChange={(e) => onChange(e.target.value)}
         className="mt-1 w-full bg-surface-2 border border-border rounded px-3 py-1.5 font-mono text-sm focus:outline-none focus:border-accent"
-        autoComplete="off"
+        autoComplete={type === "password" ? "current-password" : "off"}
       />
       {help && (
         <span className="block mt-1 text-[10px] text-text-muted font-mono">

@@ -1,11 +1,17 @@
 "use client";
 
-import { useParticipants } from "@livekit/components-react";
+import {
+  useLocalParticipant,
+  useParticipants,
+} from "@livekit/components-react";
 import { useMemo } from "react";
+
+import { AI_IDENTITIES, isGmIdentity } from "@/lib/identity";
 
 import AiChatPanel from "./AiChatPanel";
 import MapPanel from "./MapPanel";
 import PlayerSlot from "./PlayerSlot";
+import ScreenShareControl from "./ScreenShareControl";
 import StatusPanel from "./StatusPanel";
 
 /**
@@ -28,21 +34,16 @@ import StatusPanel from "./StatusPanel";
  *     the named cells, never spilled into P-slots.
  *   - Remaining participants are sorted by identity (deterministic)
  *     and slotted into P1..P7 in that order.
+ *
+ * Screen-share is GM-only. The ``ScreenShareControl`` is mounted
+ * inside the GM slot and only visible when the local participant
+ * IS the GM — players see the GM's video tile without the toggle.
  */
-
-const AI_IDENTITIES = new Set(["artemis", "sigma-4", "sigma4"]);
-
-function isGmIdentity(identity: string): boolean {
-  return (
-    identity === "gm" ||
-    identity === "keeper" ||
-    identity.startsWith("gm-") ||
-    identity.startsWith("keeper-")
-  );
-}
 
 export default function TableGrid({ sessionId }: { sessionId: string }) {
   const participants = useParticipants();
+  const { localParticipant } = useLocalParticipant();
+  const localIsGm = isGmIdentity(localParticipant?.identity);
 
   const { gm, players } = useMemo(() => {
     let gm = null as ReturnType<typeof useParticipants>[number] | null;
@@ -99,6 +100,7 @@ export default function TableGrid({ sessionId }: { sessionId: string }) {
         label="GM"
         highlight
         fallbackText="(no Keeper joined)"
+        extraControl={localIsGm ? <ScreenShareControl /> : null}
       />
       <PlayerSlot
         participant={playerAt(3)}

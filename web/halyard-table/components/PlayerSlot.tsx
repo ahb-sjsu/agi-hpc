@@ -27,11 +27,18 @@ export default function PlayerSlot({
   label,
   highlight = false,
   fallbackText,
+  extraControl,
 }: {
   participant: Participant | null;
   label: string;
   highlight?: boolean;
   fallbackText?: string;
+  /**
+   * Optional small UI rendered in a corner of the slot. Used for the
+   * GM-only screen-share toggle; could be reused for other per-slot
+   * keeper controls in the future.
+   */
+  extraControl?: React.ReactNode;
 }) {
   if (!participant) {
     return (
@@ -39,6 +46,7 @@ export default function PlayerSlot({
         label={label}
         text={fallbackText ?? "(open)"}
         highlight={highlight}
+        extraControl={extraControl}
       />
     );
   }
@@ -47,6 +55,7 @@ export default function PlayerSlot({
       participant={participant}
       label={label}
       highlight={highlight}
+      extraControl={extraControl}
     />
   );
 }
@@ -55,10 +64,12 @@ function EmptySlot({
   label,
   text,
   highlight,
+  extraControl,
 }: {
   label: string;
   text: string;
   highlight: boolean;
+  extraControl?: React.ReactNode;
 }) {
   return (
     <div
@@ -72,6 +83,7 @@ function EmptySlot({
     >
       <span className="text-text-muted font-mono text-xs">{text}</span>
       <SlotLabel label={label} highlight={highlight} />
+      {extraControl ? <ControlCorner>{extraControl}</ControlCorner> : null}
     </div>
   );
 }
@@ -80,10 +92,12 @@ function PopulatedSlot({
   participant,
   label,
   highlight,
+  extraControl,
 }: {
   participant: Participant;
   label: string;
   highlight: boolean;
+  extraControl?: React.ReactNode;
 }) {
   // Find the camera trackRef for this specific participant. If
   // none exists yet, we still render a tile (LiveKit handles the
@@ -101,6 +115,7 @@ function PopulatedSlot({
         label={label}
         text={participant.name ?? participant.identity}
         highlight={highlight}
+        extraControl={extraControl}
       />
     );
   }
@@ -116,6 +131,15 @@ function PopulatedSlot({
       <ParticipantTile trackRef={ownCamera} />
       <MicMeter participant={participant} />
       <SlotLabel label={label} highlight={highlight} />
+      {extraControl ? <ControlCorner>{extraControl}</ControlCorner> : null}
+    </div>
+  );
+}
+
+function ControlCorner({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="absolute bottom-2 right-2 z-10 flex items-center gap-1">
+      {children}
     </div>
   );
 }

@@ -39,6 +39,11 @@ Environment=LIVEKIT_API_SECRET=secret
 # Environment=KEEPER_USERNAME=
 # Environment=KEEPER_PASSWORD=
 # Environment=KEEPER_IP_ALLOWLIST=127.0.0.0/8,100.64.0.0/10
+# Meeting password: when set, /api/livekit/token requires the
+# client to provide a matching `password` field. Unset → dev mode,
+# any value (including empty) accepted. Set this in the env file
+# (/home/claude/.primer.env) rather than here so it isn't tracked.
+# Environment=HALYARD_SESSION_PASSWORD=set-me-in-env-file
 Environment=HALYARD_ARCHIVE_ROOT=/archive/halyard
 # handle_turn writes DecisionProof chains to these dirs — redirect
 # both AIs' proof chains into /archive/halyard/ so the sandbox's

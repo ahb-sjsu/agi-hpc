@@ -50,6 +50,25 @@ class LiveKitConfig:
         )
 
 
+def is_gm_identity(identity: str) -> bool:
+    """True if the identity is the GM/Keeper slot.
+
+    Mirrors the policy the web client uses to route the GM into the
+    centre cell of the table grid; kept in sync deliberately so
+    server-side grants match client-side UI expectations.
+    """
+    if not identity:
+        return False
+    i = identity.lower()
+    return (
+        i == "gm"
+        or i == "keeper"
+        or i.startswith("gm-")
+        or i.startswith("keeper-")
+        or i.startswith("keeper:")
+    )
+
+
 def mint_player_token(
     *,
     config: LiveKitConfig,
@@ -60,10 +79,14 @@ def mint_player_token(
     """Mint a player-facing LiveKit JWT.
 
     Grants: publish A/V, publish data (DataChannel envelopes),
-    subscribe. No room-admin grants. Identity and name go into
-    the token claims so the LiveKit server and other participants
-    can display them.
+    subscribe. Screen-share is GM-only — non-GM identities get
+    ``canPublishSources=["camera", "microphone"]``, which the
+    LiveKit server enforces. The GM gets all sources.
     """
+    if is_gm_identity(identity):
+        sources: tuple[str, ...] | None = None  # all sources allowed
+    else:
+        sources = ("camera", "microphone")
     return mint_participant_token(
         identity=identity,
         room_name=session_id,
@@ -73,6 +96,7 @@ def mint_player_token(
             can_publish=True,
             can_subscribe=True,
             can_publish_data=True,
+            can_publish_sources=sources,
         ),
         name=name or identity,
         ttl_seconds=config.ttl_seconds,

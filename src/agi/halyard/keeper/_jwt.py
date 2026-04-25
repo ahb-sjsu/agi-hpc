@@ -33,11 +33,20 @@ _DEFAULT_TTL_S = 6 * 60 * 60  # 6 hours
 
 @dataclass(frozen=True)
 class GrantOptions:
-    """Per-participant LiveKit grant flags."""
+    """Per-participant LiveKit grant flags.
+
+    ``can_publish_sources`` restricts publication to a specific
+    subset of sources. When None, any source is allowed (subject to
+    ``can_publish``). When set to a list (e.g.
+    ``["camera", "microphone"]``), the LiveKit server rejects
+    publishes from any source not in the list — used here to gate
+    screen-share to the GM identity at the server level.
+    """
 
     can_publish: bool = True
     can_subscribe: bool = True
     can_publish_data: bool = True
+    can_publish_sources: tuple[str, ...] | None = None
     room_admin: bool = False
     room_record: bool = False
 
@@ -72,6 +81,8 @@ def mint_participant_token(
         "canSubscribe": g.can_subscribe,
         "canPublishData": g.can_publish_data,
     }
+    if g.can_publish_sources is not None:
+        video_grant["canPublishSources"] = list(g.can_publish_sources)
     if g.room_admin:
         video_grant["roomAdmin"] = True
     if g.room_record:

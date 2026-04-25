@@ -6,6 +6,7 @@ import { Suspense, useEffect, useState } from "react";
 
 import CharacterSheetDrawer from "@/components/CharacterSheetDrawer";
 import MediaControls from "@/components/MediaControls";
+import ScreenShareOverlay from "@/components/ScreenShareOverlay";
 import TableGrid from "@/components/TableGrid";
 import { mintToken } from "@/lib/livekit";
 
@@ -56,6 +57,7 @@ function SessionBody({ sessionId }: { sessionId: string }) {
   const search = useSearchParams();
   const displayName = search.get("name") ?? "guest";
   const pcId = search.get("pc");
+  const password = search.get("pw") ?? "";
 
   const [token, setToken] = useState<string | null>(null);
   const [url, setUrl] = useState<string | null>(null);
@@ -70,6 +72,7 @@ function SessionBody({ sessionId }: { sessionId: string }) {
           sessionId,
           identity: pcId ?? displayName.toLowerCase().replace(/\s+/g, "-"),
           displayName,
+          password,
         });
         if (cancelled) return;
         setToken(token);
@@ -81,7 +84,7 @@ function SessionBody({ sessionId }: { sessionId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [sessionId, displayName, pcId]);
+  }, [sessionId, displayName, pcId, password]);
 
   // Global 'c' hotkey to toggle the sheet drawer.
   useEffect(() => {
@@ -148,6 +151,7 @@ function SessionBody({ sessionId }: { sessionId: string }) {
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
       />
+      <ScreenShareOverlay />
     </LiveKitRoom>
   );
 }

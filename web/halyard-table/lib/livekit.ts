@@ -20,6 +20,13 @@ export interface MintTokenArgs {
   sessionId: string;
   identity: string;
   displayName?: string;
+  /**
+   * Meeting password. Sent to the keeper as ``password`` in the
+   * mint body. The keeper enforces if ``HALYARD_SESSION_PASSWORD``
+   * is set in its environment; if unset the server ignores the
+   * field and any value (including empty) is accepted.
+   */
+  password?: string;
 }
 
 export interface MintedToken {
@@ -45,10 +52,14 @@ export async function mintToken(
       session_id: args.sessionId,
       identity: args.identity,
       name: args.displayName ?? args.identity,
+      password: args.password ?? "",
     }),
   });
   if (!resp.ok) {
     const txt = await resp.text().catch(() => resp.statusText);
+    if (resp.status === 401) {
+      throw new Error(`Invalid meeting password.`);
+    }
     throw new Error(`token mint failed (${resp.status}): ${txt}`);
   }
   const body = (await resp.json()) as { token: string; url?: string };

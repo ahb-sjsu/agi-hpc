@@ -36,6 +36,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 from dataclasses import asdict
 from typing import Any
 
@@ -103,7 +104,11 @@ async def _healthz(_request: web.Request) -> web.Response:
 async def _mint_player(request: web.Request) -> web.Response:
     """POST /api/livekit/token — mint a participant JWT.
 
-    Body: ``{session_id, identity, name?}``.
+    Body: ``{session_id, identity, name?, password?}``.
+
+    If the env var ``HALYARD_SESSION_PASSWORD`` is set, the
+    ``password`` field in the body must match exactly (constant-
+    time compare). Unset → no password check (dev mode).
 
     Public in Sprint-6 v0. The session registry's ensure() creates
     the session if missing but refuses if it's CLOSED — so a
@@ -113,10 +118,20 @@ async def _mint_player(request: web.Request) -> web.Response:
     session_id = body.get("session_id")
     identity = body.get("identity")
     name = body.get("name")
+    password = body.get("password")
     if not isinstance(session_id, str) or not session_id:
         return _json_error(400, "bad_envelope", "session_id required")
     if not isinstance(identity, str) or not identity:
         return _json_error(400, "bad_envelope", "identity required")
+
+    expected = os.environ.get("HALYARD_SESSION_PASSWORD", "").strip()
+    if expected:
+        provided = password if isinstance(password, str) else ""
+        # constant-time compare to avoid timing oracles
+        import hmac as _hmac
+
+        if not _hmac.compare_digest(provided, expected):
+            return _json_error(401, "bad_password", "invalid meeting password")
 
     sessions: SessionRegistry = request.app[KEY_SESSIONS]
     if not sessions.is_accepting_joins(session_id):
