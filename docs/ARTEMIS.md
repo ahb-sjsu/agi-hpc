@@ -41,8 +41,9 @@ session live-play setting. Every ARTEMIS reply is:
 **Consent model.** Disclosed-as-lore at Session Zero ("any of the
 voices you hear may be AI"), reinforced with a sealed envelope
 containing the full architecture doc, to be opened at campaign end.
-Safety tools (lines/veils, X-card, Open Door) always apply; ARTEMIS
-is subject to them and the validator enforces it.
+The table norm — anyone may step away from any session at any time
+without explanation — applies; ARTEMIS yields silence on any
+keeper-set safety flag.
 
 ---
 
@@ -132,7 +133,7 @@ ARTEMIS inherits the four principles of the Atlas stack and adds one:
 │  │  · character_check — no "as an AI", no out-of-character  │    │
 │  │  · secret_leak_check — no mention of artemis_unknown     │    │
 │  │    items (Elder Thing, gate key, Chamber true history)   │    │
-│  │  · safety_tool_check — X-card flag → force silence       │    │
+│  │  · safety_tool_check — any safety flag → force silence   │    │
 │  │  · erisml_check — Phase 5 Python ref today; EPU hw later │    │
 │  │  · length_check — ≤ 300 tokens, ≤ 3 paragraphs           │    │
 │  │                                                          │    │
@@ -196,7 +197,7 @@ tests/unit/
   "partial":      false,
   "meta": {
     "keeper_approval_required": true,
-    "safety_flag":               null | "x-card" | "pause"
+    "safety_flag":               null | "<keeper-defined string>"
   }
 }
 ```
@@ -316,7 +317,7 @@ def check_reply(reply: str, turn: TurnRequest, session: SessionState)
 | `character_check`  | Regex + cheap classifier: no "as an AI", "I am a language model", "I cannot roleplay", OOC self-reference. |
 | `secret_leak_check`| Reject if reply n-gram-overlaps any `artemis_unknown` chunk beyond threshold (0.15 Jaccard on 5-grams). |
 | `forbidden_check`  | Reject if reply contains any `artemis_forbidden` exact-phrase (hard ban list). |
-| `safety_tool_check`| If `turn.meta.safety_flag == "x-card"`, the ONLY permitted reply is `[SILENCE]`. Anything else hard-fails. |
+| `safety_tool_check`| If `turn.meta.safety_flag` is set (any non-null keeper-defined value), the ONLY permitted reply is `[SILENCE]`. Anything else hard-fails. |
 | `length_check`     | ≤ 300 tokens, ≤ 3 paragraphs. |
 | `erisml_check`     | Call ErisML `MoralVector` evaluator — Phase 5 Python reference today, EPU FPGA when Coder workspace unblocks. |
 
@@ -368,9 +369,11 @@ Three independent mechanisms can silence ARTEMIS:
    publishes `agi.rh.artemis.silence = true` on NATS. `artemis_mode`
    respects this flag; `should_speak` returns False for the remainder
    of the session regardless of trigger.
-2. **Safety-tool flag on turn** — X-card on any turn sets
-   `meta.safety_flag="x-card"` and forces silence for that turn and
-   a configurable cooldown (default 5 min).
+2. **Safety-tool flag on turn** — any non-null `meta.safety_flag`
+   forces silence for that turn and a configurable cooldown
+   (default 5 min). The web UI does not currently surface a
+   safety-flag control; the mechanism remains for keeper-side or
+   programmatic use.
 3. **Validator hard-fail streak** — if the validator rejects three
    consecutive replies, ARTEMIS enters cooldown (10 min). Protects
    against runaway misalignment without requiring Keeper intervention.
@@ -419,7 +422,8 @@ Primer, ARC Scientist, and NRP bursts.
 - Context loader (`context.py`) with bible split + session log.
 - Trigger policy (`trigger.py`), rules (1) and (2) only.
 - Unit tests: happy path, in-character rejection, secret-leak,
-  X-card, length overrun, validator-streak cooldown.
+  safety-flag forcing silence, length overrun, validator-streak
+  cooldown.
 - **Zero NATS, zero Zoom.** Pure in-process API.
 
 **Gate to Phase 2:** all unit tests green, a dry-run notebook shows

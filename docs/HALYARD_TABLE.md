@@ -293,10 +293,6 @@ interface to the Halyard Table.
 - **DiceRoller** — a local dice roller with "broadcast" option
   that publishes to `agi.rh.halyard.keeper.dice` (Keeper can
   moderate).
-- **SafetyBar** — always-visible row with the X-card, pause, and
-  open-door buttons. Tapping the X-card sets
-  `meta.safety_flag = x-card` on the next turn and silences the
-  AIs for a cooldown.
 - **SceneIndicator** — shows the current scene/chapter, cued by
   the Keeper.
 
@@ -582,10 +578,12 @@ and torn down when the session closes. They are not always-on.
 ### 8.3 Safety
 
 - **Validator** gates every AI reply. See `ARTEMIS.md` §7.
-- **Lines/Veils/X-card** propagate as `meta.safety_flag` on
-  turn payloads and force silence.
+- **Safety flag** — any non-null `meta.safety_flag` on a turn
+  payload forces the AIs to silence. The web UI does not
+  surface a control for this; the mechanism is reserved for
+  keeper-side or programmatic use.
 - **Kill-switches**: three independent layers (Keeper hotkey,
-  X-card safety flag, validator-streak cooldown).
+  programmatic safety flag, validator-streak cooldown).
 - **Never-surprise invariant**: every AI reply is held for
   Keeper approval in v1. v2 may relax to a calibrated
   trust-after-sessions-N policy.

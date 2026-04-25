@@ -1,14 +1,13 @@
 "use client";
 
-import { LiveKitRoom, useRoomContext } from "@livekit/components-react";
+import { LiveKitRoom } from "@livekit/components-react";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 import CharacterSheetDrawer from "@/components/CharacterSheetDrawer";
 import MediaControls from "@/components/MediaControls";
-import SafetyBar, { type SafetyAction } from "@/components/SafetyBar";
 import TableGrid from "@/components/TableGrid";
-import { mintToken, publishEnvelope } from "@/lib/livekit";
+import { mintToken } from "@/lib/livekit";
 
 interface Params {
   id: string;
@@ -143,7 +142,6 @@ function SessionBody({ sessionId }: { sessionId: string }) {
     >
       <TopBar sessionId={sessionId} displayName={displayName} />
       <TableGrid sessionId={sessionId} />
-      <SessionSafetyBar />
       <CharacterSheetDrawer
         sessionId={sessionId}
         pcId={pcId}
@@ -180,27 +178,3 @@ function TopBar({
   );
 }
 
-function SessionSafetyBar() {
-  const room = useRoomContext();
-
-  const onAction = useCallback(
-    async (action: SafetyAction) => {
-      // For Sprint 4, safety signals fan out over DataChannel as a
-      // scene.trigger envelope so both AIs' handlers can pick them
-      // up. A richer signal path (NATS-backed) lands in Sprint 7.
-      try {
-        await publishEnvelope(room, {
-          kind: "scene.trigger",
-          scene_id: `safety:${action}`,
-          note: `Safety tool invoked: ${action}`,
-          ts: Date.now() / 1000,
-        });
-      } catch {
-        // Non-fatal — the action still sets local UI state.
-      }
-    },
-    [room],
-  );
-
-  return <SafetyBar onAction={onAction} />;
-}

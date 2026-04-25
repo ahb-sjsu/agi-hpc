@@ -23,8 +23,6 @@ Scaffolded + first player-view components. What ships:
     DataChannel for `{artemis,sigma4}.say` envelopes.
   - **CharacterSheetDrawer** — live-updating sheet via halyard-state
     WebSocket. Toggle with the `c` key.
-  - **SafetyBar** — X-card / Pause / Open Door buttons. Publishes a
-    `scene.trigger` envelope on click.
 - Types (`lib/types.ts`) mirror the halyard-state JSON Schema and
   the DataChannel / NATS envelope contracts.
 - LiveKit + state hooks (`lib/livekit.ts`, `lib/state.ts`) —

@@ -278,8 +278,7 @@ the standalone bundle (session route: 244 kB first-load,
 LiveKit-dominated). Components: VideoGrid (LiveKit React tiles,
 AI-identity highlight), AiChatPanel × 2 (DataChannel-filtered
 chat for ARTEMIS and SIGMA-4), CharacterSheetDrawer (live via
-halyard-state WS, keyboard-toggled with `c`), SafetyBar (X-card /
-Pause / Open Door publishing scene.trigger envelopes).
+halyard-state WS, keyboard-toggled with `c`).
 `lib/types.ts` mirrors the halyard-state JSON Schema; `lib/state.ts`
 exposes `useSessionSheets()` backed by react-use-websocket.
 Dockerfile + .dockerignore in `deploy/docker/halyard-web/`. End-to-
@@ -313,8 +312,6 @@ replies arrive as chat.
   SIGMA-4).
 - `web/halyard-table/components/ArtemisChat.tsx` — DataChannel-
   backed chat panel, filtered by `envelope.kind === "artemis.say"`.
-- `web/halyard-table/components/SafetyBar.tsx` — X-card, pause,
-  open-door.
 - `web/halyard-table/lib/livekit.ts` — connection helper, token
   fetch from `/api/livekit/token`.
 - `web/halyard-table/lib/types.ts` — TS types generated from the
@@ -332,8 +329,6 @@ replies arrive as chat.
   from two separate browsers produces two video tiles with live
   A/V and ARTEMIS chat-panel message arrival within 5 seconds
   of a test publish.
-- X-card button in the Safety Bar publishes
-  `meta.safety_flag=x-card` on the next turn.
 - Page passes Lighthouse accessibility ≥ 90.
 
 **Risks.**
