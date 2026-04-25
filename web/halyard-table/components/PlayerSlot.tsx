@@ -2,7 +2,6 @@
 
 import {
   ParticipantTile,
-  useEnsureTrackRef,
   useMultibandTrackVolume,
   useTracks,
   type TrackReferenceOrPlaceholder,
