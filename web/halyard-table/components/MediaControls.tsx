@@ -1,7 +1,6 @@
 "use client";
 
 import { useLocalParticipant } from "@livekit/components-react";
-import { Track } from "livekit-client";
 import { useEffect, useState } from "react";
 
 /**
