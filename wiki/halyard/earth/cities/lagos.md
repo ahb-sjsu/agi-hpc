@@ -9,6 +9,8 @@ tags:     [earth, city, africa, lagos, arcology]
 
 # Lagos
 
+![Marina Stack arcology cluster, Lagos waterfront at dusk](https://halyard.atlas-sjsu.duckdns.org/art/earth-lagos-marina-stack.png)
+
 Lagos in 2348 is the largest city on Earth and, by most
 cultural and political measures, its capital. The Greater Lagos
 Metropolitan Authority covers 4,800 square kilometers along the

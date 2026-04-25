@@ -9,6 +9,8 @@ tags:     [earth, americas, confederation, city, new-york, arcology, finance]
 
 # New York Arcology Cluster
 
+![The Cordon sea-wall at sunset; Lower Manhattan and the arcology platforms above](https://halyard.atlas-sjsu.duckdns.org/art/earth-nyc-cordon.png)
+
 The New York Arcology Cluster — what most Earthers still
 call simply *New York* — is the largest city in the US-
 Canadian Confederation and the financial capital of the

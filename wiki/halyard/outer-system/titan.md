@@ -9,6 +9,8 @@ tags:     [outer-system, saturn, titan, methane, atmosphere]
 
 # Titan
 
+![Saturn dominating the sky over Huygens City, methane lakes in distance](https://halyard.atlas-sjsu.duckdns.org/art/outer-titan-vapor.png)
+
 Titan is Saturn's largest moon, the only moon in the solar
 system with a substantial atmosphere, and the principal
 human population center of the Saturnian system. The 2.4

@@ -9,6 +9,8 @@ tags:     [belt, ceres, station, port, spin-grav]
 
 # Ceres Station
 
+![Cunha Drum spin habitat interior, Ceres](https://halyard.atlas-sjsu.duckdns.org/art/belt-ceres-cunha-drum.png)
+
 Ceres is the largest single human settlement in the asteroid
 Belt, the operational and cultural capital of the Belt's
 inner-system reach, and — relevantly for this campaign —

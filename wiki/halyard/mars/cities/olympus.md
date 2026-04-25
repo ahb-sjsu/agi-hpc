@@ -9,6 +9,8 @@ tags:     [mars, tharsis, olympus, mons, mcrn, naval-academy]
 
 # Olympus
 
+![Olympus Mons towering over the city of Olympus](https://halyard.atlas-sjsu.duckdns.org/art/mars-olympus-mons.png)
+
 Olympus is the largest city on the Tharsis Plateau, one of
 the four largest cities on Mars (with Hellas, Pavonis, and
 Coprates), and the cultural capital of the Tharsis

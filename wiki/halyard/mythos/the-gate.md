@@ -9,6 +9,8 @@ tags:     [the-gate, nithon, elder-things, resonator, transit]
 
 # The Gate at Nithon
 
+![Elder Thing resonator-gate complex on Nithon's surface](https://halyard.atlas-sjsu.duckdns.org/art/mythos-nithon-gate.png)
+
 (Keeper-only. Forbidden in AI replies.)
 
 The structure on the surface of 2301-DR-44 — *Nithon* in the

@@ -9,6 +9,8 @@ tags:     [mars, city, hellas, capital]
 
 # Hellas City
 
+![Hellas Lake at summer, Capitol building visible on the western shore](https://halyard.atlas-sjsu.duckdns.org/art/mars-hellas-lake.png)
+
 Hellas City is the capital of the Martian Congressional
 Republic and, by most reasonable measures, the capital of
 human Mars. The metropolitan area covers roughly 1,400
