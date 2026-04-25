@@ -4,11 +4,10 @@ import { LiveKitRoom, useRoomContext } from "@livekit/components-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 
-import AiChatPanel from "@/components/AiChatPanel";
 import CharacterSheetDrawer from "@/components/CharacterSheetDrawer";
 import MediaControls from "@/components/MediaControls";
 import SafetyBar, { type SafetyAction } from "@/components/SafetyBar";
-import VideoGrid from "@/components/VideoGrid";
+import TableGrid from "@/components/TableGrid";
 import { mintToken, publishEnvelope } from "@/lib/livekit";
 
 interface Params {
@@ -143,7 +142,7 @@ function SessionBody({ sessionId }: { sessionId: string }) {
       className="min-h-screen flex flex-col"
     >
       <TopBar sessionId={sessionId} displayName={displayName} />
-      <SessionMain sessionId={sessionId} pcId={pcId} />
+      <TableGrid sessionId={sessionId} />
       <SessionSafetyBar />
       <CharacterSheetDrawer
         sessionId={sessionId}
@@ -178,38 +177,6 @@ function TopBar({
         </kbd>
       </div>
     </header>
-  );
-}
-
-function SessionMain({
-  sessionId,
-  pcId,
-}: {
-  sessionId: string;
-  pcId: string | null;
-}) {
-  return (
-    <main className="flex-1 flex flex-col lg:flex-row gap-2 p-2 min-h-0">
-      <section
-        aria-label="Video grid"
-        className="flex-1 min-h-[50vh] lg:min-h-0 rounded-md overflow-hidden"
-      >
-        <VideoGrid />
-      </section>
-      <section
-        aria-label="AI chat"
-        className="w-full lg:w-[360px] flex flex-col gap-2 min-h-[50vh] lg:min-h-0"
-      >
-        <AiChatPanel ai="artemis" />
-        <AiChatPanel ai="sigma4" />
-      </section>
-      {/* Session/pcId stay in props for future components — suppress
-          the "unused" complaint without introducing lint rule
-          overrides. */}
-      <span className="hidden" aria-hidden="true">
-        {sessionId} {pcId ?? ""}
-      </span>
-    </main>
   );
 }
 

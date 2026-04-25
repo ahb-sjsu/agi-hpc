@@ -1,53 +1,39 @@
 "use client";
 
 import { useLocalParticipant } from "@livekit/components-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 /**
  * MediaControls — mic mute and camera on/off toggles for the
- * local participant. Shown in the session top bar.
+ * local participant.
  *
- * Reads live state from the local participant via LiveKit's
- * ``useLocalParticipant`` hook so the buttons reflect the actual
- * track state even when something else (Keeper, OS prompt) flips
- * it. Button click calls ``setMicrophoneEnabled`` /
- * ``setCameraEnabled`` directly — these are the canonical
- * participant-level toggles in livekit-client and they manage
- * track publication, permission prompts, and reuse.
+ * In ``@livekit/components-react`` v2, ``useLocalParticipant``
+ * exposes ``isMicrophoneEnabled`` / ``isCameraEnabled`` as
+ * reactive values that update on track publish/mute. We rely on
+ * those directly instead of subscribing to participant events
+ * ourselves — that earlier pattern was the source of the buttons
+ * looking active but not toggling visually.
+ *
+ * Click handler calls ``setMicrophoneEnabled`` /
+ * ``setCameraEnabled`` on the local participant, which is the
+ * canonical livekit-client method that handles publication,
+ * permission prompts, and track reuse.
  */
 export default function MediaControls() {
-  const { localParticipant } = useLocalParticipant();
-  const [micOn, setMicOn] = useState(true);
-  const [camOn, setCamOn] = useState(true);
+  const {
+    localParticipant,
+    isMicrophoneEnabled,
+    isCameraEnabled,
+  } = useLocalParticipant();
   const [busy, setBusy] = useState(false);
-
-  // Mirror the participant's actual track state so the buttons
-  // never lie. ``isMicrophoneEnabled`` / ``isCameraEnabled`` are
-  // booleans that flip when tracks are muted/unpublished.
-  useEffect(() => {
-    if (!localParticipant) return;
-    const sync = () => {
-      setMicOn(localParticipant.isMicrophoneEnabled);
-      setCamOn(localParticipant.isCameraEnabled);
-    };
-    sync();
-    localParticipant.on("trackMuted", sync);
-    localParticipant.on("trackUnmuted", sync);
-    localParticipant.on("trackPublished", sync);
-    localParticipant.on("trackUnpublished", sync);
-    return () => {
-      localParticipant.off("trackMuted", sync);
-      localParticipant.off("trackUnmuted", sync);
-      localParticipant.off("trackPublished", sync);
-      localParticipant.off("trackUnpublished", sync);
-    };
-  }, [localParticipant]);
 
   const toggleMic = async () => {
     if (!localParticipant || busy) return;
     setBusy(true);
     try {
-      await localParticipant.setMicrophoneEnabled(!micOn);
+      await localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled);
+    } catch (err) {
+      console.error("setMicrophoneEnabled failed:", err);
     } finally {
       setBusy(false);
     }
@@ -57,7 +43,9 @@ export default function MediaControls() {
     if (!localParticipant || busy) return;
     setBusy(true);
     try {
-      await localParticipant.setCameraEnabled(!camOn);
+      await localParticipant.setCameraEnabled(!isCameraEnabled);
+    } catch (err) {
+      console.error("setCameraEnabled failed:", err);
     } finally {
       setBusy(false);
     }
@@ -70,22 +58,26 @@ export default function MediaControls() {
       className="flex items-center gap-1.5"
     >
       <ControlButton
-        label={micOn ? "Mute microphone" : "Unmute microphone"}
-        active={micOn}
+        label={isMicrophoneEnabled ? "Mute microphone" : "Unmute microphone"}
+        active={isMicrophoneEnabled}
         onClick={toggleMic}
-        disabled={busy}
+        disabled={busy || !localParticipant}
       >
-        {micOn ? <MicIcon /> : <MicOffIcon />}
-        <span className="hidden sm:inline">{micOn ? "mic" : "muted"}</span>
+        {isMicrophoneEnabled ? <MicIcon /> : <MicOffIcon />}
+        <span className="hidden sm:inline">
+          {isMicrophoneEnabled ? "mic" : "muted"}
+        </span>
       </ControlButton>
       <ControlButton
-        label={camOn ? "Stop camera" : "Start camera"}
-        active={camOn}
+        label={isCameraEnabled ? "Stop camera" : "Start camera"}
+        active={isCameraEnabled}
         onClick={toggleCam}
-        disabled={busy}
+        disabled={busy || !localParticipant}
       >
-        {camOn ? <CamIcon /> : <CamOffIcon />}
-        <span className="hidden sm:inline">{camOn ? "video" : "off"}</span>
+        {isCameraEnabled ? <CamIcon /> : <CamOffIcon />}
+        <span className="hidden sm:inline">
+          {isCameraEnabled ? "video" : "off"}
+        </span>
       </ControlButton>
     </div>
   );
@@ -128,7 +120,6 @@ function ControlButton({
   );
 }
 
-// Inline SVGs avoid a runtime icon dependency; sized for the bar.
 function MicIcon() {
   return (
     <svg
