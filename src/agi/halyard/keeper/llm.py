@@ -61,6 +61,58 @@ log = logging.getLogger("halyard.keeper.llm")
 
 
 # ─────────────────────────────────────────────────────────────────
+# Voice bridge — publish AI replies to NATS so the avatar/TTS stack
+# on Atlas (atlas-artemis-avatar.service) speaks them aloud in the
+# LiveKit room. Best-effort, fire-and-forget; never blocks the reply
+# path.
+#
+# Subjects (per agi.primer.artemis.livekit_agent.avatar_hud):
+#   agi.rh.artemis.say.direct  — direct-say bridge, payload {"text": ...}
+#   agi.rh.sigma4.say.direct   — same shape, parallel SIGMA-4 avatar
+#                                (when deployed)
+#
+# Disabled if HALYARD_VOICE_BRIDGE != "1" or if nats-py is missing.
+# ─────────────────────────────────────────────────────────────────
+
+
+_VOICE_SUBJECTS = {
+    "artemis": "agi.rh.artemis.say.direct",
+    "sigma4": "agi.rh.sigma4.say.direct",
+}
+
+
+async def _voice_publish(which: str, text: str) -> None:
+    """Best-effort publish of an AI reply to the voice/avatar NATS
+    subject. Never raises; failures are logged at warning level."""
+    if os.environ.get("HALYARD_VOICE_BRIDGE", "1") not in ("1", "true", "yes"):
+        return
+    subject = _VOICE_SUBJECTS.get(which)
+    if not subject or not text or not text.strip():
+        return
+    try:
+        import nats  # type: ignore
+    except ImportError:
+        log.debug("nats-py not installed; voice bridge disabled")
+        return
+    nats_url = os.environ.get("NATS_URL", "nats://localhost:4222")
+    try:
+        nc = await nats.connect(servers=[nats_url], connect_timeout=2)
+    except Exception as e:  # noqa: BLE001
+        log.warning("voice bridge: NATS connect failed (%s)", e)
+        return
+    try:
+        await nc.publish(subject, json.dumps({"text": text}).encode())
+        await nc.drain()
+        log.debug("voice bridge: published %d chars to %s", len(text), subject)
+    except Exception as e:  # noqa: BLE001
+        log.warning("voice bridge: publish failed (%s)", e)
+        try:
+            await nc.close()
+        except Exception:  # noqa: BLE001
+            pass
+
+
+# ─────────────────────────────────────────────────────────────────
 # Halyard-specific vMOE pool.
 #
 # Priority ordering favors NON-THINKING models at the front so
@@ -214,6 +266,7 @@ async def sigma4_turn(
 
     reply = resp.content.strip()
     buf.append({"role": "assistant", "content": reply})
+    await _voice_publish("sigma4", reply)
     return TurnResult(
         text=reply,
         source="vmoe-cascade",
@@ -400,6 +453,7 @@ async def artemis_turn(
         log.info("artemis handle_turn returned empty; using stub")
         return _stub_result("artemis", user_text, started)
 
+    await _voice_publish("artemis", resp.text)
     return TurnResult(
         text=resp.text,
         source="handle_turn",
