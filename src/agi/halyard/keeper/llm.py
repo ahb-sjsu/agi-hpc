@@ -84,15 +84,18 @@ _VOICE_SUBJECTS = {
 async def _voice_publish(which: str, text: str) -> None:
     """Best-effort publish of an AI reply to the voice/avatar NATS
     subject. Never raises; failures are logged at warning level."""
+    log.info("voice bridge: publishing %s reply (%d chars)", which, len(text or ""))
     if os.environ.get("HALYARD_VOICE_BRIDGE", "1") not in ("1", "true", "yes"):
+        log.info("voice bridge: disabled by HALYARD_VOICE_BRIDGE")
         return
     subject = _VOICE_SUBJECTS.get(which)
     if not subject or not text or not text.strip():
+        log.info("voice bridge: skip (subject=%s, text_len=%d)", subject, len(text or ""))
         return
     try:
         import nats  # type: ignore
     except ImportError:
-        log.debug("nats-py not installed; voice bridge disabled")
+        log.warning("nats-py not installed; voice bridge disabled")
         return
     nats_url = os.environ.get("NATS_URL", "nats://localhost:4222")
     try:
@@ -103,7 +106,7 @@ async def _voice_publish(which: str, text: str) -> None:
     try:
         await nc.publish(subject, json.dumps({"text": text}).encode())
         await nc.drain()
-        log.debug("voice bridge: published %d chars to %s", len(text), subject)
+        log.info("voice bridge: published %d chars to %s", len(text), subject)
     except Exception as e:  # noqa: BLE001
         log.warning("voice bridge: publish failed (%s)", e)
         try:
