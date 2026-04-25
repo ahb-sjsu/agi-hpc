@@ -1,0 +1,182 @@
+# Halyard wiki — initial art manifest for SDXL batch.
+#
+# Each entry produces one PNG. The style anchor in art_render.py
+# (Stalenhag-adjacent, painterly, muted palette, photorealistic
+# lighting, hard sci-fi) is appended automatically.
+#
+# Outputs go to /archive/halyard/art/ on Atlas. After batch
+# render, files are rsync'd into wiki/halyard/art/ in the repo
+# and referenced from markdown entries.
+
+# ── Hero shots ─────────────────────────────────────────────────
+
+- id: ship/halyard-exterior
+  prompt: >
+    The MKS Halyard, a 140-meter Lambert-class deep-range science
+    vessel, in deep space at 50 AU from the Sun. Cylindrical core
+    with a slowly rotating habitat ring, two Kestrel-class lander
+    pods docked aft, decommissioned point-defense gun mount near
+    the rear. Distant Sun visible as a bright star. Cold metal,
+    weathered hull, navigation lights.
+  out: /archive/halyard/art/ship-halyard-exterior.png
+  seed: 1001
+
+- id: mythos/nithon-gate
+  prompt: >
+    A vast geometric stone structure embedded in the surface of
+    a 1100-km icy trans-Neptunian object. Concentric ring of
+    crystalline markers around a central dais. Faint refractive
+    distortion above the focal point. Surface dusted with thin
+    regolith. Sky almost black with distant Sun barely brighter
+    than other stars. Sense of immense age.
+  out: /archive/halyard/art/mythos-nithon-gate.png
+  seed: 1002
+
+- id: mythos/the-piping
+  prompt: >
+    Antarctic deep-tunnel installation, ancient cyclopean stone
+    architecture, dim emergency lighting, a pale protoplasmic
+    shape filling the far end of the corridor, reflective wet
+    surface, sense of dread and motion. No clear figure - just
+    impression. Dark academia meets cosmic horror.
+  out: /archive/halyard/art/mythos-the-piping.png
+  seed: 1003
+
+# ── Locations: Earth ──────────────────────────────────────────
+
+- id: earth/lagos-marina-stack
+  prompt: >
+    Marina Stack arcology cluster on the Lagos waterfront at
+    dusk, six towers from 1.2 to 2.1 kilometers tall, sky-bridges
+    connecting them at three levels. Lights on inside the
+    occupied floors. Atmospheric haze. Bight of Benin water in
+    foreground. African coastal megacity, 64 million people.
+  out: /archive/halyard/art/earth-lagos-marina-stack.png
+  seed: 1010
+
+- id: earth/nyc-cordon
+  prompt: >
+    The Cordon, a massive sea-wall complex around Lower
+    Manhattan at sunset. Lower Manhattan visible behind it,
+    arcology platforms rising above. Cordon Walk park atop the
+    wall, joggers and pedestrians. The Atlantic visible to the
+    east, slightly above the protected city level on the inside.
+    Late golden light.
+  out: /archive/halyard/art/earth-nyc-cordon.png
+  seed: 1011
+
+- id: earth/antarctic-mining
+  prompt: >
+    Antarctic Industrial Zone, a large fusion reactor complex
+    surrounded by rare-earth mining infrastructure on the
+    Antarctic Plateau. Snow-blown industrial buildings,
+    transit rails, glow of reactor cooling stacks. Cold
+    twilight, low sun. Workers in hardened cold-suits visible
+    in the foreground.
+  out: /archive/halyard/art/earth-antarctic-mining.png
+  seed: 1012
+
+# ── Locations: Mars ────────────────────────────────────────────
+
+- id: mars/hellas-lake
+  prompt: >
+    Hellas Lake on Mars in summer, the largest body of water
+    on the planet, brackish, surface calm. The Hellas Capitol
+    building visible on the western shore - neoclassical
+    sandstone with a long glass wall facing the water. Reddish
+    Martian sky with thin clouds. Sailing boats on the lake. A
+    forest of cold-adapted trees at the lake edge.
+  out: /archive/halyard/art/mars-hellas-lake.png
+  seed: 1020
+
+- id: mars/olympus-mons
+  prompt: >
+    Olympus Mons, the largest volcano in the solar system,
+    seen from the city of Olympus on its lower slopes. The
+    volcano fills three-quarters of the sky. City buildings
+    in the foreground, an arcology cluster, the Mars Naval
+    Academy quad visible at mid-elevation. Reddish atmosphere,
+    long shadows.
+  out: /archive/halyard/art/mars-olympus-mons.png
+  seed: 1021
+
+- id: mars/valles-river
+  prompt: >
+    The Marineris River flowing through Valles Marineris on
+    Mars, in the deepest section of the canyon. River barges
+    moored along the banks, riparian vegetation - cottonwood
+    and willow varieties adapted to Mars. Canyon walls rising
+    7 km on either side. Cold autumn light. The thickest
+    Martian atmosphere is here; people can walk outside with
+    just a filter mask.
+  out: /archive/halyard/art/mars-valles-river.png
+  seed: 1022
+
+- id: mars/pavonis-lift
+  prompt: >
+    The Mars Lift seen from the equatorial city of Pavonis.
+    A vast carbon-nanotube cable rising from the Pavonis
+    ground anchor into orbit, disappearing into the upper
+    atmosphere. City built into the lower slopes of Pavonis
+    Mons. Climber vehicles ascending the cable. Mars dust
+    lifting from the foothills.
+  out: /archive/halyard/art/mars-pavonis-lift.png
+  seed: 1023
+
+# ── Locations: Belt and Outer ──────────────────────────────────
+
+- id: belt/ceres-cunha-drum
+  prompt: >
+    The interior of the Cunha Drum spin habitat on Ceres, a
+    22-km-diameter rotating cylindrical city. Park space at the
+    inner surface, with mid-rise residential buildings, the
+    Cunha Public Library visible in distance. Soft artificial
+    sunlight from the central axis. People walking. A slight
+    horizon curvature shows in the architecture.
+  out: /archive/halyard/art/belt-ceres-cunha-drum.png
+  seed: 1030
+
+- id: belt/spinner-ship
+  prompt: >
+    A multi-generational Belter spinner ship in the inner
+    asteroid Belt. A working merchant vessel with a permanent
+    rotating hab ring, generations of family aboard. Colorful
+    painted murals on the hab ring's exterior, port-call decals
+    accumulated over a century. Distant asteroid in the
+    background. Long-range thrust burn just barely visible.
+  out: /archive/halyard/art/belt-spinner-ship.png
+  seed: 1031
+
+- id: outer/titan-vapor
+  prompt: >
+    Titan, Saturn's moon, surface view from the outskirts of
+    Huygens City. Methane lakes in the distance reflecting the
+    perpetual orange upper-atmosphere haze. Saturn enormous in
+    the sky, ring system tilted, taking up a third of the sky.
+    Cold industrial habitat structures in foreground. Light
+    snow of organic compound precipitation.
+  out: /archive/halyard/art/outer-titan-vapor.png
+  seed: 1040
+
+# ── Interior / character reference ─────────────────────────────
+
+- id: ship/halyard-bridge
+  prompt: >
+    Bridge of the MKS Halyard. Three stations - command, nav,
+    pilot. Worn but well-maintained instrument panels.
+    Holographic displays showing trajectory plots. A wide front
+    viewport showing distant stars. Captain's chair slightly
+    elevated. Realistic, lived-in, the bridge of a working
+    science vessel that has spent twenty years in deep range.
+  out: /archive/halyard/art/ship-halyard-bridge.png
+  seed: 1050
+
+- id: crew/captain-marsh
+  prompt: >
+    A woman in her late fifties, weathered, ex-naval, wearing
+    a worn captain's uniform of a civilian Belt-flagged merchant
+    marine. Short gray hair, lined face, intelligent eyes,
+    quiet authority. Standing on a ship's bridge in three-quarter
+    profile. Half lit by the warm console glow.
+  out: /archive/halyard/art/crew-captain-marsh.png
+  seed: 1051
