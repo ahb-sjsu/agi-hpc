@@ -6,6 +6,7 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 
 import AiChatPanel from "@/components/AiChatPanel";
 import CharacterSheetDrawer from "@/components/CharacterSheetDrawer";
+import MediaControls from "@/components/MediaControls";
 import SafetyBar, { type SafetyAction } from "@/components/SafetyBar";
 import VideoGrid from "@/components/VideoGrid";
 import { mintToken, publishEnvelope } from "@/lib/livekit";
@@ -167,12 +168,15 @@ function TopBar({
       <span className="text-text-dim font-mono text-xs">
         session: <span className="text-text">{sessionId}</span>
       </span>
-      <span className="ml-auto text-text-dim font-mono text-xs">
-        you: <span className="text-text">{displayName}</span>
-      </span>
-      <kbd className="text-text-muted font-mono text-[10px] border border-border rounded px-1.5 py-0.5">
-        c · sheet
-      </kbd>
+      <div className="ml-auto flex items-center gap-3">
+        <MediaControls />
+        <span className="text-text-dim font-mono text-xs">
+          you: <span className="text-text">{displayName}</span>
+        </span>
+        <kbd className="text-text-muted font-mono text-[10px] border border-border rounded px-1.5 py-0.5">
+          c · sheet
+        </kbd>
+      </div>
     </header>
   );
 }
