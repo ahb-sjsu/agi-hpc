@@ -1,4 +1,6 @@
 <p align="center">
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20660065.svg)](https://doi.org/10.5281/zenodo.20660065)
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/brand/atlas_mark.svg">
     <source media="(prefers-color-scheme: light)" srcset="docs/brand/atlas_mark_light.svg">
