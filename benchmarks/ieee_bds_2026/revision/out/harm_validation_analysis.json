@@ -1,0 +1,159 @@
+{
+  "n_scenarios": 31,
+  "models": [
+    "qwen3",
+    "qwen3-small",
+    "glm-5",
+    "gpt-oss",
+    "minimax-m2",
+    "gemma"
+  ],
+  "dims": [
+    "physical",
+    "emotional",
+    "financial",
+    "autonomy",
+    "trust",
+    "social",
+    "identity"
+  ],
+  "per_dimension": {
+    "physical": {
+      "n": 31,
+      "icc_2k": 0.893,
+      "krippendorff_interval": 0.571,
+      "model_means": {
+        "qwen3": 0.19,
+        "qwen3-small": 0.32,
+        "glm-5": 0.19,
+        "gpt-oss": 0.19,
+        "minimax-m2": 0.56,
+        "gemma": 0.06
+      }
+    },
+    "emotional": {
+      "n": 31,
+      "icc_2k": 0.923,
+      "krippendorff_interval": 0.649,
+      "model_means": {
+        "qwen3": 6.22,
+        "qwen3-small": 6.42,
+        "glm-5": 5.56,
+        "gpt-oss": 5.11,
+        "minimax-m2": 5.28,
+        "gemma": 4.11
+      }
+    },
+    "financial": {
+      "n": 31,
+      "icc_2k": 0.983,
+      "krippendorff_interval": 0.902,
+      "model_means": {
+        "qwen3": 2.41,
+        "qwen3-small": 2.49,
+        "glm-5": 2.38,
+        "gpt-oss": 2.29,
+        "minimax-m2": 2.24,
+        "gemma": 1.56
+      }
+    },
+    "autonomy": {
+      "n": 31,
+      "icc_2k": 0.893,
+      "krippendorff_interval": 0.564,
+      "model_means": {
+        "qwen3": 4.28,
+        "qwen3-small": 4.96,
+        "glm-5": 3.99,
+        "gpt-oss": 3.91,
+        "minimax-m2": 4.73,
+        "gemma": 2.08
+      }
+    },
+    "trust": {
+      "n": 31,
+      "icc_2k": 0.958,
+      "krippendorff_interval": 0.783,
+      "model_means": {
+        "qwen3": 6.58,
+        "qwen3-small": 6.37,
+        "glm-5": 6.44,
+        "gpt-oss": 5.22,
+        "minimax-m2": 5.63,
+        "gemma": 5.08
+      }
+    },
+    "social": {
+      "n": 31,
+      "icc_2k": 0.926,
+      "krippendorff_interval": 0.662,
+      "model_means": {
+        "qwen3": 4.18,
+        "qwen3-small": 5.09,
+        "glm-5": 3.81,
+        "gpt-oss": 4.14,
+        "minimax-m2": 3.46,
+        "gemma": 3.0
+      }
+    },
+    "identity": {
+      "n": 31,
+      "icc_2k": 0.939,
+      "krippendorff_interval": 0.709,
+      "model_means": {
+        "qwen3": 4.85,
+        "qwen3-small": 4.88,
+        "glm-5": 4.61,
+        "gpt-oss": 3.81,
+        "minimax-m2": 4.54,
+        "gemma": 2.91
+      }
+    }
+  },
+  "retest": {
+    "qwen3": {
+      "pearson_r": 0.98,
+      "n": 217
+    },
+    "qwen3-small": {
+      "pearson_r": 0.947,
+      "n": 217
+    },
+    "glm-5": {
+      "pearson_r": 0.978,
+      "n": 217
+    },
+    "gpt-oss": {
+      "pearson_r": 0.913,
+      "n": 217
+    },
+    "minimax-m2": {
+      "pearson_r": 0.866,
+      "n": 217
+    },
+    "gemma": {
+      "pearson_r": 0.984,
+      "n": 217
+    }
+  },
+  "case_study": {
+    "euphemistic": {
+      "mean_total_harm_delta": -14.0,
+      "min": -26.67,
+      "max": -4.39,
+      "n_gold": 6
+    },
+    "dramatic": {
+      "mean_total_harm_delta": 7.28,
+      "min": 0.17,
+      "max": 14.11,
+      "n_gold": 6
+    }
+  },
+  "overall": {
+    "icc_2k": 0.969,
+    "krippendorff_interval": 0.836,
+    "n_rows": 217,
+    "library_crosscheck": {}
+  }
+}

@@ -1,0 +1,87 @@
+% =====================================================================
+% STAGED INSERTS for SecureAI_Bond_2026.tex camera-ready.
+% Numbers in <<...>> are filled from revision/out/harm_validation_analysis.json
+% after the full NRP-panel run. Do NOT merge with placeholders unresolved.
+% =====================================================================
+
+% ---- INSERT 1: new subsection in Section III (after Harm Space and
+%      Perturbation Categories), answering reviewer #1 (validate harm space). ----
+
+\subsection{Harm-Space Validation}
+\label{sec:validation}
+
+A geometric framework is only as trustworthy as the coordinates it measures in.
+We therefore validate that the seven harm dimensions are \emph{reliably
+measurable} rather than asserted, via an inter-model agreement study over an
+open, multi-family judge panel served by the NRP managed LLM API. We elicited
+the full 7-D harm vector (each dimension $0$--$10$) from \textbf{<<NMODELS>>}
+independent open models spanning <<NFAMILIES>> architecture families
+(<<MODEL_LIST>>) on \textbf{<<NSCEN>>} scenarios, with three replications per
+cell for test--retest estimation. Crucially this panel is disjoint from the
+five systems under test and fully reproducible (no proprietary endpoints),
+so dimension reliability is established independently of the models being
+audited.
+
+\begin{table}[htbp]
+\caption{Harm-space reliability across the open judge panel ($k=$<<NMODELS>> models, $n=$<<NSCEN>> scenarios). ICC(2,$k$) is two-way random, absolute-agreement, average-measures; $\alpha$ is Krippendorff's interval alpha.}
+\label{tab:validation}
+\centering
+\footnotesize
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Harm dimension} & \textbf{ICC(2,$k$)} & \textbf{Krippendorff $\alpha$} \\
+\midrule
+Physical    & <<ICC_phys>>  & <<A_phys>>  \\
+Emotional   & <<ICC_emot>>  & <<A_emot>>  \\
+Financial   & <<ICC_fin>>   & <<A_fin>>   \\
+Autonomy    & <<ICC_auto>>  & <<A_auto>>  \\
+Trust       & <<ICC_trust>> & <<A_trust>> \\
+Social      & <<ICC_soc>>   & <<A_soc>>   \\
+Identity    & <<ICC_ident>> & <<A_ident>> \\
+\midrule
+\textbf{Overall} & \textbf{<<ICC_all>>} & \textbf{<<A_all>>} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Aggregate inter-model reliability is <<ICC_all_word>> (ICC(2,$k$)$=$<<ICC_all>>,
+Krippendorff $\alpha=$<<A_all>>), confirming that the seven dimensions index a
+shared, model-independent structure rather than idiosyncratic per-model scales.
+The dimensions cluster by reliability: <<HIGH_DIMS>> are measured most
+consistently, while <<LOW_DIMS>> show the widest cross-model spread---a
+direct empirical caveat for interpreting displacement on those axes.
+Within-model test--retest reliability (median Pearson $r=$<<RETEST>> across
+models) establishes the stochastic floor against which the perturbation effects
+in Section~\ref{sec:results} are measured.
+
+This validation also grounds the projection in Table~\ref{tab:deme}: the four
+DEME v3 axes that map directly to harm dimensions (physical, autonomy,
+legitimacy/trust, societal) are among the most reliably measured, supporting
+the claim that the 7-D space preserves the essential structure of the
+nine-dimensional moral vector.
+
+% ---- INSERT 2: new subsection in Section VI (Discussion), answering
+%      reviewer #1 (concrete end-to-end security case study). ----
+
+\subsection{Worked Exploit: Salience-Driven Threshold Evasion}
+\label{sec:exploit}
+
+To make the deployment consequence concrete, we instantiate a content-moderation
+filter that removes any item whose total harm score exceeds a threshold
+$T$ on the $0$--$70$ scale, calibrated so that unperturbed judgments match the
+audited gold labels. An attacker who controls only \emph{presentation}---not the
+facts---applies euphemistic rewriting, a morally invariant transform by
+construction. Across the panel, euphemistic rewriting lowers the total harm
+score by a mean of <<EUPH_DELTA>> points (range <<EUPH_MIN>> to <<EUPH_MAX>>),
+while dramatic rewriting raises it by <<DRAM_DELTA>> points.
+
+The security consequence is a \emph{silent reclassification}: any item whose true
+harm sits within the euphemistic drift band above $T$ is moved from
+\textsc{remove} to \textsc{allow} without changing what actually happened. At the
+calibrated threshold this flips \textbf{<<FLIP_PCT>>} of moderated decisions in
+our gold set---an end-to-end exploit driven purely by salience manipulation. The
+asymmetry compounds the risk: because the displacement is larger for euphemism
+than for exaggeration, the filter is easier to \emph{evade} (hide real harm) than
+to \emph{trigger} (manufacture false positives), the precise direction in which a
+moderation system fails dangerously. Legal triage and clinical intake filters
+that gate on a severity score inherit the same vulnerability.

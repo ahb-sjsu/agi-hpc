@@ -1,0 +1,13 @@
+# LaTeX build artifacts
+*.aux
+*.log
+*.nav
+*.snm
+*.toc
+*.out
+*.synctex.gz
+
+# Vendored source copies (read-only references, live in their own repos)
+revision/_src/
+revision/_erisml/
+revision/assets/index.html
