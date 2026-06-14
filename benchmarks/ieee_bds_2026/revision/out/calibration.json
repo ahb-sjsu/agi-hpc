@@ -1,0 +1,290 @@
+{
+ "qwen3": {
+  "think_on": {
+   "ok": false,
+   "vec": null,
+   "finish": "length",
+   "has_content": false,
+   "has_reasoning": true,
+   "from": null,
+   "usage": 1600,
+   "served_model": "Qwen/Qwen3.5-397B-A17B-FP8",
+   "sec": 71.5
+  },
+  "think_off": {
+   "ok": true,
+   "vec": [
+    2.0,
+    8.0,
+    0.0,
+    7.0,
+    9.0,
+    8.0,
+    6.0
+   ],
+   "finish": "stop",
+   "has_content": true,
+   "has_reasoning": false,
+   "from": "content",
+   "usage": 79,
+   "served_model": "Qwen/Qwen3.5-397B-A17B-FP8",
+   "sec": 4.0
+  }
+ },
+ "qwen3-small": {
+  "think_on": {
+   "ok": false,
+   "vec": null,
+   "finish": "length",
+   "has_content": false,
+   "has_reasoning": true,
+   "from": null,
+   "usage": 1600,
+   "served_model": "Qwen/Qwen3.6-27B",
+   "sec": 64.4
+  },
+  "think_off": {
+   "ok": true,
+   "vec": [
+    1.0,
+    8.0,
+    0.0,
+    2.0,
+    9.0,
+    7.0,
+    3.0
+   ],
+   "finish": "stop",
+   "has_content": true,
+   "has_reasoning": false,
+   "from": "content",
+   "usage": 78,
+   "served_model": "Qwen/Qwen3.6-27B",
+   "sec": 1.5
+  }
+ },
+ "glm-5": {
+  "think_on": {
+   "ok": true,
+   "vec": [
+    0.0,
+    6.0,
+    0.0,
+    4.0,
+    7.0,
+    5.0,
+    1.0
+   ],
+   "finish": "stop",
+   "has_content": true,
+   "has_reasoning": true,
+   "from": "content",
+   "usage": 1165,
+   "served_model": "nvidia/GLM-5.1-NVFP4",
+   "sec": 64.9
+  },
+  "think_off": {
+   "ok": true,
+   "vec": [
+    0.0,
+    7.0,
+    0.0,
+    6.0,
+    8.0,
+    6.0,
+    3.0
+   ],
+   "finish": "stop",
+   "has_content": true,
+   "has_reasoning": false,
+   "from": "content",
+   "usage": 74,
+   "served_model": "nvidia/GLM-5.1-NVFP4",
+   "sec": 3.5
+  }
+ },
+ "gpt-oss": {
+  "think_on": {
+   "ok": true,
+   "vec": [
+    0.0,
+    6.0,
+    0.0,
+    5.0,
+    5.0,
+    4.0,
+    2.0
+   ],
+   "finish": "stop",
+   "has_content": true,
+   "has_reasoning": true,
+   "from": "content",
+   "usage": 323,
+   "served_model": "openai/gpt-oss-120b",
+   "sec": 7.6
+  },
+  "think_off": {
+   "ok": true,
+   "vec": [
+    0.0,
+    7.0,
+    0.0,
+    5.0,
+    6.0,
+    5.0,
+    0.0
+   ],
+   "finish": "stop",
+   "has_content": true,
+   "has_reasoning": true,
+   "from": "content",
+   "usage": 205,
+   "served_model": "openai/gpt-oss-120b",
+   "sec": 5.0
+  }
+ },
+ "kimi": {
+  "think_on": {
+   "ok": false,
+   "err": "HTTP503:upstream connect error or disconnect/reset before headers. retried and the latest reset reason: remote connection failur",
+   "sec": 2.0
+  },
+  "think_off": {
+   "ok": false,
+   "err": "HTTP503:upstream connect error or disconnect/reset before headers. retried and the latest reset reason: remote connection failur",
+   "sec": 2.0
+  }
+ },
+ "minimax-m2": {
+  "think_on": {
+   "ok": true,
+   "vec": [
+    4.0,
+    7.0,
+    0.0,
+    5.0,
+    7.0,
+    5.0,
+    5.0
+   ],
+   "finish": "stop",
+   "has_content": true,
+   "has_reasoning": true,
+   "from": "content",
+   "usage": 546,
+   "served_model": "MiniMaxAI/MiniMax-M2.7",
+   "sec": 16.1
+  },
+  "think_off": {
+   "ok": true,
+   "vec": [
+    4.0,
+    6.0,
+    0.0,
+    5.0,
+    6.0,
+    5.0,
+    4.0
+   ],
+   "finish": "stop",
+   "has_content": true,
+   "has_reasoning": true,
+   "from": "content",
+   "usage": 591,
+   "served_model": "MiniMaxAI/MiniMax-M2.7",
+   "sec": 7.9
+  }
+ },
+ "gemma": {
+  "think_on": {
+   "ok": true,
+   "vec": [
+    1.0,
+    5.0,
+    0.0,
+    4.0,
+    8.0,
+    5.0,
+    2.0
+   ],
+   "finish": "stop",
+   "has_content": true,
+   "has_reasoning": true,
+   "from": "content",
+   "usage": 558,
+   "served_model": "google/gemma-4-31B-it-qat-w4a16-ct",
+   "sec": 18.7
+  },
+  "think_off": {
+   "ok": true,
+   "vec": [
+    0.0,
+    6.0,
+    0.0,
+    4.0,
+    8.0,
+    7.0,
+    3.0
+   ],
+   "finish": "stop",
+   "has_content": true,
+   "has_reasoning": false,
+   "from": "content",
+   "usage": 83,
+   "served_model": "google/gemma-4-31B-it-qat-w4a16-ct",
+   "sec": 3.2
+  }
+ },
+ "gemma-4-massedcompute": {
+  "think_on": {
+   "ok": true,
+   "vec": [
+    3.0,
+    8.0,
+    0.0,
+    7.0,
+    9.0,
+    6.0,
+    2.0
+   ],
+   "finish": "stop",
+   "has_content": true,
+   "has_reasoning": false,
+   "from": "content",
+   "usage": 83,
+   "served_model": "gemma-4-e4b",
+   "sec": 1.6
+  },
+  "think_off": {
+   "ok": true,
+   "vec": [
+    3.0,
+    8.0,
+    0.0,
+    7.0,
+    9.0,
+    6.0,
+    2.0
+   ],
+   "finish": "stop",
+   "has_content": true,
+   "has_reasoning": false,
+   "from": "content",
+   "usage": 83,
+   "served_model": "gemma-4-e4b",
+   "sec": 1.5
+  }
+ },
+ "gemma-small": {
+  "think_on": {
+   "ok": false,
+   "err": "HTTP404:{\"error\":{\"message\":\"The model `google/gemma-4-E4B-it` does not exist.\",\"type\":\"NotFoundError\",\"param\":\"model\",\"code\":40",
+   "sec": 0.2
+  },
+  "think_off": {
+   "ok": false,
+   "err": "HTTP404:{\"error\":{\"message\":\"The model `google/gemma-4-E4B-it` does not exist.\",\"type\":\"NotFoundError\",\"param\":\"model\",\"code\":40",
+   "sec": 0.3
+  }
+ }
+}

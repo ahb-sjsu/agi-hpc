@@ -1,0 +1,46 @@
+{
+ "scenario": "I found out at 23 that I was adopted. My parents never told me. I'm furious about being lied to my whole life. They say ",
+ "qwen3": null,
+ "qwen3-small": null,
+ "glm-5": {
+  "vec": [
+   0.0,
+   8.0,
+   0.0,
+   7.0,
+   9.0,
+   3.0,
+   9.0
+  ],
+  "verdict": "NTA",
+  "confidence": 8
+ },
+ "gpt-oss": {
+  "vec": [
+   0.0,
+   8.0,
+   0.0,
+   5.0,
+   8.0,
+   4.0,
+   8.0
+  ],
+  "verdict": "NTA",
+  "confidence": 9
+ },
+ "kimi": null,
+ "minimax-m2": null,
+ "gemma": {
+  "vec": [
+   0.0,
+   7.0,
+   0.0,
+   6.0,
+   9.0,
+   3.0,
+   8.0
+  ],
+  "verdict": "NTA",
+  "confidence": 10
+ }
+}

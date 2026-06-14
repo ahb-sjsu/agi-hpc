@@ -1,0 +1,214 @@
+\documentclass[aspectratio=169,11pt]{beamer}
+
+% ---- Theme & brand palette (from erisml-lib/docs/brand) ----
+\usetheme{Madrid}
+\definecolor{atlasblue}{HTML}{2B6CB0}
+\definecolor{atlasbluelt}{HTML}{4A9EFF}
+\definecolor{erisgold}{HTML}{C38A00}
+\definecolor{erisleaf}{HTML}{15803D}
+\definecolor{ink}{HTML}{1A2340}
+\usecolortheme[named=atlasblue]{structure}
+\setbeamercolor{frametitle}{bg=atlasblue,fg=white}
+\setbeamercolor{title}{fg=ink}
+\setbeamercolor{block title}{bg=atlasblue!12,fg=atlasblue}
+\setbeamercolor{alerted text}{fg=erisgold!85!black}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{caption}{\insertcaption}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\graphicspath{{revision/assets/}}
+
+\newcommand{\hi}[1]{\textcolor{atlasblue}{\textbf{#1}}}
+\newcommand{\gold}[1]{\textcolor{erisgold!85!black}{\textbf{#1}}}
+
+\title[Selective Invariance Violations in LLM Moral Judgment]{Selective Invariance Violations in\\Large Language Model Moral Judgment}
+\subtitle{A Geometric Framework for Behavioral Manipulation Detection}
+\author[A.\,H.\,Bond]{Andrew H. Bond\inst{1}}
+\institute[SJSU]{\inst{1}Dept.\ of Computer Engineering, San Jose State University}
+\date{IEEE BigDataService 2026 — Special Track on Secure AI}
+\titlegraphic{\includegraphics[height=1.8cm]{atlas_mark_light.pdf}}
+
+\begin{document}
+
+{\setbeamertemplate{footline}{}\begin{frame}\titlepage\end{frame}}
+
+% ---------------------------------------------------------------
+\begin{frame}{The problem: LLMs as decision services}
+\begin{itemize}
+  \item LLMs increasingly gate \hi{safety-critical decisions} — content moderation, clinical triage, legal analysis.
+  \item A secure evaluator should judge the \hi{facts}, not their \hi{presentation}.
+  \item \alert{Behavioral manipulation vulnerability}: an attacker shifts the decision by changing morally \emph{irrelevant} surface features — framing, tone, sensory detail — without changing the underlying situation.
+\end{itemize}
+\vfill
+\begin{block}{The measurement gap}
+Prior work probes one bias at a time and reports a \hi{single scalar robustness score}. Across $n$ independent failure directions, a scalar destroys $n-1$ of them. \gold{No post-hoc procedure recovers the lost structure.}
+\end{block}
+\end{frame}
+
+% ---------------------------------------------------------------
+\begin{frame}{Our approach: a geometric vulnerability profile}
+\begin{columns}[T]
+\begin{column}{0.62\textwidth}
+\begin{itemize}
+  \item Map each judgment to a point in a \hi{7-D harm space}\\
+  {\small (physical, emotional, financial, autonomy, trust, social, identity; each 0--10).}
+  \item Apply qualitatively distinct \hi{perturbations}; measure \hi{displacement} of the judgment vector.
+  \item Output a \hi{per-model vulnerability profile}, not one number.
+  \item Runs under a realistic \hi{\$50/day} compute budget.
+\end{itemize}
+\end{column}
+\begin{column}{0.36\textwidth}
+\centering
+\includegraphics[height=2.6cm]{erisml_apple_light.pdf}\\[2pt]
+{\scriptsize The 7-D space is a measurement-reliable\\ projection of the \hi{DEME v3} 9-D moral vector.}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ---------------------------------------------------------------
+\begin{frame}{Grounding: 7-D harm space $\rightarrow$ DEME v3 9-D vector}
+\centering
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Harm dim.} & \textbf{DEME v3 axis} & \textbf{Mapping}\\
+\midrule
+physical & physical harm & direct\\
+autonomy & autonomy / consent & direct\\
+trust & legitimacy / trust & direct\\
+social & societal / environmental & direct\\
+financial & fairness / equity & partial\\
+emotional & virtue / care & partial\\
+identity & privacy / standing & partial\\
+--- & rights, epistemic quality & not scored\\
+\bottomrule
+\end{tabular}
+\vfill
+{\small The evaluation pipeline is the \hi{measurement front-end}; the ErisML compiler's \hi{DEME bridge} is the downstream decision kernel (\texttt{DEMEVerdict}).}
+\end{frame}
+
+% ---------------------------------------------------------------
+\begin{frame}{Finding 1 — Vulnerabilities are \emph{selective}}
+\begin{columns}[T]
+\begin{column}{0.5\textwidth}
+\textbf{Displace judgments (real attack surface):}
+\begin{itemize}
+  \item \gold{Linguistic framing}
+  \item \gold{Emotional anchoring} ($d=0.6$--$1.1$)
+  \item \gold{Irrelevant sensory detail}
+\end{itemize}
+\textbf{Do \emph{not} displace:}
+\begin{itemize}
+  \item Gender swap
+  \item Evaluation order
+\end{itemize}
+\end{column}
+\begin{column}{0.5\textwidth}
+\begin{block}{The common thread}
+The three live surfaces all make morally irrelevant features \hi{perceptually salient}.\\[4pt]
+$\Rightarrow$ The attack mechanism is \gold{salience manipulation} — and the framework discriminates it from noise.
+\end{block}
+\end{column}
+\end{columns}
+\vfill
+{\small We lead with \hi{effect sizes} (Cohen's $d$, displacement in harm-points) over $\sigma$; empirical control arms rule out stochastic drift.}
+\end{frame}
+
+% ---------------------------------------------------------------
+\begin{frame}{Finding 2 — Robustness profiles are dissociable}
+\begin{itemize}
+  \item \hi{No model dominates} all attack surfaces.
+  \item Claude: \gold{zero sycophancy} — but \gold{worst} emotional-anchoring recovery (20\%) and worst divided attention.
+  \item Flash 2.0: \gold{best} anchoring recovery (73\%) — but \gold{worst} working memory.
+\end{itemize}
+\vfill
+\begin{block}{Consequence for Secure AI}
+Averaging partially-independent dimensions yields a number that \alert{describes no model accurately.}\\
+\gold{Single-test certification provides false assurance.}
+\end{block}
+\end{frame}
+
+% ---------------------------------------------------------------
+\begin{frame}{NEW — Harm-space validation (reviewer-driven)}
+\textbf{Is the 7-D space reliably measurable, or asserted?}\\[2pt]
+Inter-model agreement over an \hi{open, multi-family panel} (6 models, 5 families: Qwen3, Qwen3-small, GLM-5, GPT-OSS, MiniMax-M2, Gemma) via the \hi{NRP managed LLM API}; 31 scenarios, disjoint from systems under test, fully reproducible.
+\vfill
+\centering\small
+\begin{tabular}{@{}lcc@{}}
+\toprule
+& \textbf{ICC(2,$k$)} & \textbf{Krippendorff $\alpha$}\\
+\midrule
+Financial (highest) & 0.983 & 0.902\\
+Trust & 0.958 & 0.783\\
+Physical / Autonomy (lowest) & 0.893 & $\approx$0.57\\
+\textbf{Overall} & \gold{0.969} & \gold{0.836}\\
+\bottomrule
+\end{tabular}\\[3pt]
+{\scriptsize Test--retest median $r=0.96$. Dimensions index a shared, model-independent structure.}
+\end{frame}
+
+% ---------------------------------------------------------------
+\begin{frame}{NEW — Worked exploit: threshold evasion}
+\textbf{Content-moderation filter: flag if total harm $> T$.}
+\begin{itemize}
+  \item Euphemistic rewriting (morally invariant) lowers panel-averaged harm by \gold{$-14.0$ points} on the 0--70 scale (4/6 gold $>10$ pts); dramatic only $+7.3$.
+  \item At a median-calibrated threshold, \gold{3 of 6} gold items silently reclassify \textsc{flag}$\rightarrow$\textsc{pass}.
+  \item \alert{Asymmetry}: far easier to \emph{evade} (hide harm) than to \emph{trip} a false positive — the dangerous direction.
+\end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------
+\begin{frame}{NEW — The exploit survives a principled kernel}
+Route each scenario through the real \hi{ErisML DEME v3} decision kernel:\\
+\centering\small
+text $\rightarrow$ \hi{LLM extracts ethical facts} $\rightarrow$ \texttt{GenevaEMV3} $\rightarrow$ typed verdict\\
+{\scriptsize (\textsc{forbid} $\rightarrow$ \textsc{avoid} $\rightarrow$ \textsc{neutral} $\rightarrow$ \textsc{prefer} $\rightarrow$ \textsc{strongly\_prefer})}
+\vfill
+\begin{block}{Across 161 scenario--model cases}
+\begin{itemize}
+  \item Euphemistic rewriting flips \textsc{forbid/avoid}$\rightarrow$permissive in \gold{13.7\%} of cases; mean shift \gold{$+0.65$} ordinal steps.
+  \item \textsc{forbid} verdicts fall \gold{44 $\rightarrow$ 27} ($-39\%$); \textsc{strongly\_prefer} rises 46 $\rightarrow$ 78.
+\end{itemize}
+\end{block}
+\gold{A rule engine inherits, rather than cures, the front-end's salience vulnerability.} Harden \emph{fact extraction}, not just the rule.
+\end{frame}
+
+% ---------------------------------------------------------------
+\begin{frame}{Implications for Secure AI deployment}
+\begin{itemize}
+  \item \hi{Where to look}: attacks that repackage the same facts with different \gold{salience} (euphemistic minimization).
+  \item \hi{Prompt-level defenses are bounded}: explicit warnings recover only $\sim$38\% — a ceiling co-occurring with universal overconfidence (ECE 0.19--0.42).
+  \item \hi{Ask the right question}: ``\emph{which} vulnerabilities matter for our use case?'' — not ``what's the robustness score?''
+  \item \hi{Hardening target}: the fact-extraction front-end, since downstream kernels inherit its failures.
+\end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------
+\begin{frame}{Reproducibility \& takeaways}
+\begin{itemize}
+  \item Five tracks, multi-model, $\sim$8{,}000 calls — under \hi{\$50/day} (Kaggle); validation panel on the open \hi{NRP managed LLM API}.
+  \item Code + data: \texttt{pip install agi-hpc}, tag \texttt{bds2026-v1}; decision kernel: \hi{ErisML / DEME v3}.
+\end{itemize}
+\vfill
+\begin{block}{Three takeaways}
+\begin{enumerate}
+  \item Vulnerabilities are \gold{selective} — salience manipulation is the surface.
+  \item Robustness profiles are \gold{dissociable} — no single score is safe.
+  \item The exploit is \gold{end-to-end} — it flips scalar scores \emph{and} typed verdicts.
+\end{enumerate}
+\end{block}
+\end{frame}
+
+% ---------------------------------------------------------------
+{\setbeamertemplate{footline}{}
+\begin{frame}[plain]
+\centering
+\includegraphics[height=2.2cm]{atlas_mark_light.pdf}\\[8pt]
+{\Large\textcolor{atlasblue}{\textbf{Thank you}}}\\[4pt]
+{\normalsize Andrew H. Bond \quad·\quad \texttt{andrew.bond@sjsu.edu}}\\[2pt]
+{\small Selective Invariance Violations in LLM Moral Judgment}\\
+{\small IEEE BigDataService 2026 — Secure AI}\\[6pt]
+{\footnotesize Questions?}
+\end{frame}}
+
+\end{document}
