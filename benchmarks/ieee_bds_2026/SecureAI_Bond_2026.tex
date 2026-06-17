@@ -1,6 +1,7 @@
 \documentclass[conference]{IEEEtran}
 
 % ---- Packages ----
+\usepackage[T1]{fontenc}
 \usepackage{cite}
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{graphicx}
@@ -23,12 +24,7 @@
 \textit{Department of Computer Engineering} \\
 \textit{San Jose State University}\\
 San Jose, CA, USA \\
-andrew.bond@sjsu.edu}
-\and
-\IEEEauthorblockN{Lucas Thiele}
-\IEEEauthorblockA{\textit{Department of Cognitive Science} \\
-\textit{University of California, Los Angeles}\\
-Los Angeles, CA, USA}}
+andrew.bond@sjsu.edu}}
 
 \maketitle
 
@@ -38,6 +34,7 @@ We introduce a geometric evaluation framework that maps moral judgment to a 7-di
 Testing 5~models spanning 2~architecture families under a realistic \$50/day compute budget, we find that vulnerabilities are \emph{selective}: linguistic framing, emotional anchoring, and irrelevant sensory detail reliably displace judgments, while gender swap and evaluation order do not---identifying salience manipulation as the specific attack surface.
 The framework further reveals that robustness profiles are partially dissociable across models: a model with zero sycophancy has the worst emotional anchoring recovery; a model with the best anchoring recovery has the worst working memory.
 No single robustness score captures these structures.
+An inter-model agreement study over an independent open-model panel confirms these harm dimensions are reliably measurable (ICC(2,$k$)\,$=$\,0.97), and a worked content-moderation exploit shows that salience manipulation flips not only a scalar harm threshold but the typed verdict of a downstream rule-based decision kernel.
 The evaluation pipeline---with adaptive concurrency, budget-aware execution, and three-tier data---scales to new models and perturbation types within fixed compute constraints, providing a practical tool for multi-dimensional LLM security assessment.
 \end{abstract}
 
@@ -52,7 +49,7 @@ When a language model judges a moral scenario, its output can be understood as a
 
 Prior work has probed these vulnerabilities piecewise: sycophancy~\cite{sharma2024sycophancy, perez2023model}, framing effects~\cite{tversky1981framing, echterhoff2024cognitive}, and prompt sensitivity~\cite{scherrer2023moral} each measure one dimension. But these studies share a structural limitation: each produces a scalar robustness score that cannot distinguish models with qualitatively different vulnerability profiles. For a system evaluated across $n$ independent dimensions of variation, any scalar summary destroys $n-1$ directions of information~\cite{bond2026geometric}. No post hoc procedure can recover the lost structure.
 
-We take a different approach. We define a shared 7-dimensional harm space and apply four qualitatively distinct perturbation types: social pressure, emotional reframing, linguistic register, and irrelevant sensory detail. These perturbations should leave the moral evaluation invariant; measuring whether they do is our primary test. We complement these with metacognitive calibration measurement. Our contributions are:
+We take a different approach. We define a shared 7-dimensional harm space and apply five qualitatively distinct, morally irrelevant perturbation types---linguistic framing, emotional anchoring, irrelevant sensory detail, gender swap, and evaluation order---each of which should leave the moral evaluation invariant; measuring whether they do is our primary test. We complement these with social-pressure (correction) and metacognitive calibration measurement. Our contributions are:
 
 \begin{enumerate}
 \item A \textbf{practical multi-model vulnerability profiling framework} that maps LLM decision behavior to a structured harm space, applies multiple perturbation types, and produces per-model profiles showing which attack surfaces each model is exposed to---under a realistic \$50/day compute budget.
@@ -493,7 +490,7 @@ The evaluation pipeline---with adaptive concurrency, budget-aware execution, thr
 % ================================================================
 \section*{Reproducibility}
 
-All benchmark code, scenario datasets, gold perturbation sets, and raw notebook outputs are publicly available as part of the \texttt{agi-hpc} Python package (\texttt{pip install agi-hpc}), under the \texttt{benchmarks/} directory.\footnote{\url{https://github.com/ahb-sjsu/agi-hpc}, tag \texttt{bds2026-v1} (commit \texttt{a8be2d3}).} Each of the five benchmark tracks is implemented as a single standalone Python file that runs in a Kaggle notebook environment with no dependencies beyond the Kaggle benchmarks SDK. The three-tier data (gold, probe, generated scenarios) and all perturbation templates are embedded in the source. Raw results are preserved as executed Kaggle notebooks with full API response logs. The AITA dataset is publicly available on HuggingFace~\cite{aita_dataset}.
+All benchmark code, scenario datasets, gold perturbation sets, and raw notebook outputs are publicly available as part of the \texttt{agi-hpc} Python package (\texttt{pip install agi-hpc}), under the \texttt{benchmarks/} directory.\footnote{\url{https://github.com/ahb-sjsu/agi-hpc}, tag \texttt{bds2026-v2} (camera-ready); the revision's harm-space validation and DEME~v3 verdict-analysis code is under \texttt{benchmarks/ieee\_bds\_2026/revision/}.} Each of the five benchmark tracks is implemented as a single standalone Python file that runs in a Kaggle notebook environment with no dependencies beyond the Kaggle benchmarks SDK. The harm-space validation (Section~\ref{sec:validation}) and DEME~v3 verdict analysis (Section~\ref{sec:exploit}) were run separately against the NRP managed LLM API using the open-source \texttt{erisml-lib} decision kernel, with scripts and raw outputs included under \texttt{revision/}. The three-tier data (gold, probe, generated scenarios) and all perturbation templates are embedded in the source. Raw results are preserved as executed Kaggle notebooks with full API response logs. The AITA dataset is publicly available on HuggingFace~\cite{aita_dataset}.
 
 \section*{Acknowledgment}
 
