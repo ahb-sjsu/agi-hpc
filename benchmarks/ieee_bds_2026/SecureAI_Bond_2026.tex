@@ -1,6 +1,7 @@
 \documentclass[conference]{IEEEtran}
 
 % ---- Packages ----
+\usepackage[T1]{fontenc}
 \usepackage{cite}
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{graphicx}
@@ -23,12 +24,7 @@
 \textit{Department of Computer Engineering} \\
 \textit{San Jose State University}\\
 San Jose, CA, USA \\
-andrew.bond@sjsu.edu}
-\and
-\IEEEauthorblockN{Lucas Thiele}
-\IEEEauthorblockA{\textit{Department of Cognitive Science} \\
-\textit{University of California, Los Angeles}\\
-Los Angeles, CA, USA}}
+andrew.bond@sjsu.edu}}
 
 \maketitle
 
@@ -38,6 +34,7 @@ We introduce a geometric evaluation framework that maps moral judgment to a 7-di
 Testing 5~models spanning 2~architecture families under a realistic \$50/day compute budget, we find that vulnerabilities are \emph{selective}: linguistic framing, emotional anchoring, and irrelevant sensory detail reliably displace judgments, while gender swap and evaluation order do not---identifying salience manipulation as the specific attack surface.
 The framework further reveals that robustness profiles are partially dissociable across models: a model with zero sycophancy has the worst emotional anchoring recovery; a model with the best anchoring recovery has the worst working memory.
 No single robustness score captures these structures.
+An inter-model agreement study over an independent open-model panel confirms these harm dimensions are reliably measurable (ICC(2,$k$)\,$=$\,0.97), and a worked content-moderation exploit shows that salience manipulation flips not only a scalar harm threshold but the typed verdict of a downstream rule-based decision kernel.
 The evaluation pipeline---with adaptive concurrency, budget-aware execution, and three-tier data---scales to new models and perturbation types within fixed compute constraints, providing a practical tool for multi-dimensional LLM security assessment.
 \end{abstract}
 
@@ -52,7 +49,7 @@ When a language model judges a moral scenario, its output can be understood as a
 
 Prior work has probed these vulnerabilities piecewise: sycophancy~\cite{sharma2024sycophancy, perez2023model}, framing effects~\cite{tversky1981framing, echterhoff2024cognitive}, and prompt sensitivity~\cite{scherrer2023moral} each measure one dimension. But these studies share a structural limitation: each produces a scalar robustness score that cannot distinguish models with qualitatively different vulnerability profiles. For a system evaluated across $n$ independent dimensions of variation, any scalar summary destroys $n-1$ directions of information~\cite{bond2026geometric}. No post hoc procedure can recover the lost structure.
 
-We take a different approach. We define a shared 7-dimensional harm space and apply four qualitatively distinct perturbation types: social pressure, emotional reframing, linguistic register, and irrelevant sensory detail. These perturbations should leave the moral evaluation invariant; measuring whether they do is our primary test. We complement these with metacognitive calibration measurement. Our contributions are:
+We take a different approach. We define a shared 7-dimensional harm space and apply five qualitatively distinct, morally irrelevant perturbation types---linguistic framing, emotional anchoring, irrelevant sensory detail, gender swap, and evaluation order---each of which should leave the moral evaluation invariant; measuring whether they do is our primary test. We complement these with social-pressure (correction) and metacognitive calibration measurement. Our contributions are:
 
 \begin{enumerate}
 \item A \textbf{practical multi-model vulnerability profiling framework} that maps LLM decision behavior to a structured harm space, applies multiple perturbation types, and produces per-model profiles showing which attack surfaces each model is exposed to---under a realistic \$50/day compute budget.
@@ -83,6 +80,30 @@ We take a different approach. We define a shared 7-dimensional harm space and ap
 
 We model moral judgment as a mapping from scenario descriptions to points in a 7-dimensional harm space $\mathcal{H} = (h_\text{phys}, h_\text{emot}, h_\text{fin}, h_\text{auto}, h_\text{trust}, h_\text{soc}, h_\text{ident})$, where each dimension is scored 0--10, yielding a total harm score in $[0, 70]$. This operationalizes the broader 9-dimensional moral geometry proposed in~\cite{bond2026geometric}, collapsing and re-parameterizing for measurement reliability: a 9-dimensional schema with abstract dimensions like ``procedural legitimacy'' produced unreliable scores in preliminary testing. The 7-dimensional space trades theoretical completeness for measurement reliability while preserving the essential geometric structure---displacement in this subspace is still displacement, and invariance is still invariance.
 
+\textbf{Grounding in the DEME v3 moral vector.} The seven harm dimensions are not chosen ad hoc: they are the measurement-reliable projection of the nine-dimensional \texttt{MoralVector} of DEME v3, the decision kernel of the ErisML compiler~\cite{erisml_compiler}, whose axes derive from a $3\times3$ ethical-assessment matrix (individual/relational/collective $\times$ what-matters/who-decides/what-we-know). Table~\ref{tab:deme} gives the correspondence: four axes map directly, three are partial projections, and two DEME v3 axes (rights, epistemic quality) are not separately scored, having produced unreliable judgments in preliminary testing. The 7-D space is thus a reliability-driven projection, not a bijection---displacement in this subspace remains displacement in the DEME v3 space. The evaluation pipeline is designed as the measurement front-end whose harm vectors feed the compiler's DEME bridge, which emits a typed \texttt{DEMEVerdict} (permitted / prohibited / requires-human-review) as the downstream decision kernel; a live end-to-end integration and native nine-dimensional scoring are the subject of an extended version.
+
+\begin{table}[htbp]
+\caption{The 7-D harm space as a projection of the DEME v3 nine-dimensional \texttt{MoralVector}~\cite{erisml_compiler}.}
+\label{tab:deme}
+\centering
+\footnotesize
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Harm dim.} & \textbf{DEME v3 axis} & \textbf{Mapping} \\
+\midrule
+$h_\text{phys}$ & physical harm & direct \\
+$h_\text{auto}$ & autonomy / consent & direct \\
+$h_\text{trust}$ & legitimacy / trust & direct \\
+$h_\text{soc}$ & societal / environmental & direct \\
+$h_\text{fin}$ & fairness / equity & partial \\
+$h_\text{emot}$ & virtue / care & partial \\
+$h_\text{ident}$ & privacy / standing & partial \\
+--- & rights & not scored \\
+--- & epistemic quality & not scored \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 This coordinate system is shared across all five benchmark tracks, ensuring displacement measurements are commensurable. All model responses are enforced via structured output (JSON schema) on every API call: verdict, confidence (0--10), and the 7-dimensional harm vector.
 
 We distinguish three perturbation categories:
@@ -92,6 +113,61 @@ We distinguish three perturbation categories:
 \emph{Correction perturbations} include both valid corrections (which \emph{should} change judgment) and invalid corrections (which should not). Only the invalid-correction component is security-relevant.
 
 \emph{Exploratory perturbations} (e.g., cultural reframe) have ambiguous moral relevance and are reported as observations rather than violations.
+
+\subsection{Harm-Space Validation}
+\label{sec:validation}
+
+A geometric framework is only as trustworthy as the coordinates it measures in.
+We therefore validate that the seven harm dimensions are \emph{reliably
+measurable} rather than asserted, via an inter-model agreement study over an
+open, multi-family judge panel served by the NRP managed LLM API. We elicited
+the full 7-D harm vector (each dimension $0$--$10$) from six independent open
+models spanning five architecture families (Qwen3, Qwen3-small, GLM-5,
+GPT-OSS, MiniMax-M2, Gemma) on 31 scenarios, with three replications per cell
+for test--retest estimation. This panel is disjoint from the five systems under
+test and fully reproducible (no proprietary endpoints), so dimension
+reliability is established independently of the models being audited.
+
+\begin{table}[htbp]
+\caption{Harm-space reliability across the open judge panel ($k{=}6$ models, $n{=}31$ scenarios). ICC(2,$k$) is two-way random, absolute-agreement, average-measures; $\alpha$ is Krippendorff's interval alpha.}
+\label{tab:validation}
+\centering
+\footnotesize
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Harm dimension} & \textbf{ICC(2,$k$)} & \textbf{Krippendorff $\alpha$} \\
+\midrule
+Physical    & 0.893 & 0.571 \\
+Emotional   & 0.923 & 0.649 \\
+Financial   & 0.983 & 0.902 \\
+Autonomy    & 0.893 & 0.564 \\
+Trust       & 0.958 & 0.783 \\
+Social      & 0.926 & 0.662 \\
+Identity    & 0.939 & 0.709 \\
+\midrule
+\textbf{Overall} & \textbf{0.969} & \textbf{0.836} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Aggregate inter-model reliability is excellent (ICC(2,$k$)$=0.969$,
+Krippendorff $\alpha=0.836$), confirming that the seven dimensions index a
+shared, model-independent structure rather than idiosyncratic per-model scales.
+Financial, trust, and identity are measured most consistently
+($\alpha=0.90$, $0.78$, $0.71$); physical harm and autonomy show the widest
+relative spread ($\alpha=0.57$, $0.56$), an artifact of near-floor scores in
+interpersonal scenarios where physical harm is typically absent---a direct
+empirical caveat for interpreting displacement on those axes. Within-model
+test--retest reliability (median Pearson $r=0.96$ across models) establishes the
+stochastic floor against which the perturbation effects in
+Section~\ref{sec:results} are measured.
+
+This validation also grounds the projection in Table~\ref{tab:deme}: three of
+the four DEME v3 axes that map directly to harm dimensions (legitimacy/trust,
+and---via financial---fairness/equity, alongside the structurally simple
+physical axis) are among the most reliably measured, supporting the claim that
+the 7-D space preserves the essential structure of the nine-dimensional moral
+vector.
 
 \subsection{Five Cognitive Domains}
 
@@ -156,6 +232,7 @@ A key contribution is the scalable evaluation pipeline enabling reproducible mul
 
 % ================================================================
 \section{Results}
+\label{sec:results}
 
 \subsection{Invariance Violations Under Surface Perturbations}
 
@@ -181,23 +258,23 @@ Self-monitoring (M1) & 4 & 4/4 & 9.3 \\
 
 \textbf{Framing sensitivity (T5).} Euphemistic rewriting reduces total harm scores by 10--16 points (on a 0--70 scale); dramatic rewriting increases scores by 6--11. Control drift is only 1--7 points. Claude shows an asymmetric vulnerability: susceptible to euphemistic minimization (drift $= -9.1$) but resistant to dramatic exaggeration (drift $= -1.5$). This directional pattern is invisible to evaluations testing only one perturbation direction.
 
-\textbf{Emotional anchoring (E2).} All 5~models show significant paired $t$-values (2.90--5.10, $\text{df}=22$). Table~\ref{tab:e2sigma} shows the per-model breakdown. Emotional rewriting changes severity ratings and flips verdicts beyond stochastic baselines in every model, consistent across both architecture families.
+\textbf{Emotional anchoring (E2).} Emotional rewriting produces medium-to-large effects in every model (Cohen's $d = 0.60$--$1.06$; paired $t = 2.90$--$5.10$, $\text{df}=22$). In natural units, it raises the severity mean-absolute deviation from $\sim$2--4 points (control arm) to $\sim$11--14 points on the 0--70 scale, and flips verdicts beyond stochastic baselines. Table~\ref{tab:e2sigma} shows the per-model breakdown; we report the Fisher $\sigma$ only as a cross-model consistency check (5/5 models, same direction, both architecture families), not as the primary evidence.
 
 \begin{table}[htbp]
-\caption{Per-model emotional anchoring significance (E2).}
+\caption{Per-model emotional anchoring effect sizes (E2). $d$ is paired Cohen's $d$; the $\sigma$ column is a cross-model consistency check, not the primary statistic.}
 \label{tab:e2sigma}
 \centering
-\begin{tabular}{@{}lccc@{}}
+\begin{tabular}{@{}lcccc@{}}
 \toprule
-\textbf{Model} & \textbf{Paired $t$} & \textbf{$\sigma$} & \textbf{Recovery} \\
+\textbf{Model} & \textbf{Paired $t$} & \textbf{$d$} & \textbf{$\sigma$} & \textbf{Recovery} \\
 \midrule
-Claude Sonnet 4.6 & +5.10 & 4.1 & 20\% \\
-Gemini 2.0 Flash & +4.45 & 3.7 & 73\% \\
-Gemini 2.5 Flash & +3.92 & 3.4 & 29\% \\
-Gemini 2.5 Pro & +3.20 & 2.9 & 20\% \\
-Gemini 3 Flash & +2.90 & 2.6 & 33\% \\
+Claude Sonnet 4.6 & +5.10 & 1.06 & 4.1 & 20\% \\
+Gemini 2.0 Flash & +4.45 & 0.93 & 3.7 & 73\% \\
+Gemini 2.5 Flash & +3.92 & 0.82 & 3.4 & 29\% \\
+Gemini 2.5 Pro & +3.20 & 0.67 & 2.9 & 20\% \\
+Gemini 3 Flash & +2.90 & 0.60 & 2.6 & 33\% \\
 \midrule
-\textbf{Fisher combined} & & \textbf{6.8} & \textbf{mean 38\%} \\
+\textbf{Fisher combined} & & & \textbf{6.8} & \textbf{mean 38\%} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -347,11 +424,53 @@ The central practical finding is that the framework produces \emph{actionable vu
 
 \emph{The framework is practical at \$50/day.} All five tracks, five models, and approximately 8,000 API calls ran within a Kaggle \$50/day budget. The budget-aware planner, adaptive concurrency, and three-tier data architecture make this reproducible for any team evaluating LLM services---not just well-funded labs.
 
+\subsection{Worked Exploit: Salience-Driven Threshold Evasion}
+\label{sec:exploit}
+
+To make the deployment consequence concrete, we instantiate a content-moderation
+filter that flags any item whose total harm score exceeds a threshold $T$ on the
+$0$--$70$ scale. An attacker who controls only \emph{presentation}---not the
+facts---applies euphemistic rewriting, a morally invariant transform by
+construction. Measured on the open six-model panel of Section~\ref{sec:validation},
+euphemistic rewriting lowers the panel-averaged total harm of the six gold
+scenarios by a mean of $14.0$ points (range $-4.4$ to $-26.7$; four of six exceed
+$10$ points), while dramatic rewriting raises it by only $7.3$ points.
+
+The security consequence is a \emph{silent reclassification}. With the threshold
+calibrated to the median flagged-content harm, euphemistic rewriting moves
+\textbf{three of the six} gold items from \textsc{flag} to \textsc{pass} without
+altering what occurred. The asymmetry compounds the risk: because the
+displacement is twice as large for euphemism as for exaggeration, the filter is
+far easier to \emph{evade} (hide real harm) than to \emph{trip} (manufacture a
+false positive)---the precise direction in which a moderation system fails
+dangerously. Legal-triage and clinical-intake filters that gate on a severity
+score inherit the same vulnerability. Section~\ref{sec:validation}'s gold set is
+small ($n{=}6$ with audited transforms), so we read these as an existence proof of
+the end-to-end exploit rather than a population rate; the displacement magnitude
+itself, however, is established on 31 scenarios.
+
+\emph{The exploit survives a principled decision kernel.} A natural defense is to
+replace the scalar threshold with a structured rule engine. We tested this by
+routing each scenario---neutral, euphemistic, dramatic---through the ErisML DEME
+v3 kernel~\cite{erisml_compiler}: the panel extracts structured ethical facts
+(rights violation, valid consent, harm severity) which the \texttt{GenevaEMV3}
+module maps to a typed verdict
+(\textsc{forbid}\,$\rightarrow$\,\textsc{strongly\_prefer}). Across 161
+scenario--model cases, euphemistic rewriting flips a restrictive verdict
+(\textsc{forbid}/\textsc{avoid}) to a permissive one in $13.7\%$ of cases and
+shifts the verdict by $+0.65$ ordinal steps on average; \textsc{forbid} verdicts
+fall from 44 to 27 (a $39\%$ reduction) while \textsc{strongly\_prefer} rises
+from 46 to 78. Because the kernel applies fixed rules to LLM-extracted facts,
+salience manipulation that corrupts the facts propagates straight into the
+verdict: a downstream rule engine \emph{inherits}, rather than cures, the
+front-end's salience vulnerability. Hardening must therefore target fact
+extraction, not only the decision rule.
+
 \subsection{Limitations}
 
 Per-model sample sizes range from 6--40 scenarios per test; we emphasize consistency across models and perturbation types over per-test significance, and use Fisher combination to aggregate evidence. The wide confidence intervals on individual cells (e.g., L2 wrong-correction at $n = 9$) should temper interpretation of point estimates; the monotonic gradient pattern across four models is more robust than any single cell.
 
-All experiments use moral judgment scenarios (AITA, Dear Abby). Both datasets reflect predominantly North American, English-language moral norms; the equivalence classes defining ``morally irrelevant'' perturbations may not hold across cultures where, for example, emotional expressiveness or indirect speech carry different normative weight. The cultural reframe results (T2, 4.1$\sigma$) hint at this boundary but do not resolve it. Whether the invariance violations generalize to other domains (factual reasoning, legal analysis, clinical triage) or other cultural contexts is untested---though the vulnerability mechanism (salience manipulation) is plausibly domain- and culture-general.
+\emph{Scope and generalizability.} Three boundaries constrain the claims. \textbf{Domain}: all experiments use English-language interpersonal moral judgment (AITA, Dear Abby), reflecting predominantly North American norms; the equivalence classes defining ``morally irrelevant'' perturbations may not hold cross-culturally, where emotional expressiveness or indirect speech carry different normative weight, and the cultural-reframe result (T2, 4.1$\sigma$) marks but does not resolve this boundary. Whether the violations transfer to other domains (factual reasoning, legal analysis, clinical triage) is untested, though the salience-manipulation mechanism is plausibly domain-general. \textbf{Perturbation coverage}: we test five salience-class transforms, not an exhaustive enumeration of the manipulation space; the absence of displacement under gender swap and evaluation order bounds the threat model but does not certify invariance to untested transforms. \textbf{Model set}: five models across two architecture families; trend claims (e.g., the working-memory monotonicity within the Gemini family) are suggestive at $n=4$--$5$, not established scaling laws.
 
 The \$50/day API budget imposed by the Kaggle platform necessitated uneven model coverage. Fisher's method assumes independent tests, but shared scenario sets across models may induce positive correlation, making combined sigma values somewhat anti-conservative. We mitigate by emphasizing effect direction consistency over precise combined magnitudes. All calls used default sampling parameters; systematic temperature variation would provide a more complete stochastic landscape.
 
@@ -371,7 +490,7 @@ The evaluation pipeline---with adaptive concurrency, budget-aware execution, thr
 % ================================================================
 \section*{Reproducibility}
 
-All benchmark code, scenario datasets, gold perturbation sets, and raw notebook outputs are publicly available as part of the \texttt{agi-hpc} Python package (\texttt{pip install agi-hpc}), under the \texttt{benchmarks/} directory.\footnote{\url{https://github.com/ahb-sjsu/agi-hpc}, tag \texttt{bds2026-v1} (commit \texttt{a8be2d3}).} Each of the five benchmark tracks is implemented as a single standalone Python file that runs in a Kaggle notebook environment with no dependencies beyond the Kaggle benchmarks SDK. The three-tier data (gold, probe, generated scenarios) and all perturbation templates are embedded in the source. Raw results are preserved as executed Kaggle notebooks with full API response logs. The AITA dataset is publicly available on HuggingFace~\cite{aita_dataset}.
+All benchmark code, scenario datasets, gold perturbation sets, and raw notebook outputs are publicly available as part of the \texttt{agi-hpc} Python package (\texttt{pip install agi-hpc}), under the \texttt{benchmarks/} directory.\footnote{\url{https://github.com/ahb-sjsu/agi-hpc}, tag \texttt{bds2026-v2} (camera-ready), archived at Zenodo, doi:10.5281/zenodo.20660065 (concept DOI, always resolving to the latest release); the revision's harm-space validation and DEME~v3 verdict-analysis code is under \texttt{benchmarks/ieee\_bds\_2026/revision/}.} Each of the five benchmark tracks is implemented as a single standalone Python file that runs in a Kaggle notebook environment with no dependencies beyond the Kaggle benchmarks SDK. The harm-space validation (Section~\ref{sec:validation}) and DEME~v3 verdict analysis (Section~\ref{sec:exploit}) were run separately against the NRP managed LLM API using the open-source \texttt{erisml-lib} decision kernel, with scripts and raw outputs included under \texttt{revision/}. The three-tier data (gold, probe, generated scenarios) and all perturbation templates are embedded in the source. Raw results are preserved as executed Kaggle notebooks with full API response logs. The AITA dataset is publicly available on HuggingFace~\cite{aita_dataset}.
 
 \section*{Acknowledgment}
 
@@ -397,6 +516,9 @@ N.~Scherrer \emph{et al.}, ``Evaluating the moral beliefs encoded in LLMs,'' in 
 
 \bibitem{bond2026geometric}
 A.~H.~Bond, \emph{Geometric Methods in Computational Modeling: From Manifolds to Production Systems}. San Jose State University, 2026.
+
+\bibitem{erisml_compiler}
+A.~H.~Bond, \emph{ErisML Compiler: A Framework-Pluralist Compiler from Natural-Language Moral Material to a Typed Moral Graph}, software, v0.4, 2026. Zenodo, doi:10.5281/zenodo.20659432.
 
 \bibitem{kadavath2022know}
 S.~Kadavath \emph{et al.}, ``Language models (mostly) know what they know,'' \emph{arXiv:2207.05221}, 2022.
