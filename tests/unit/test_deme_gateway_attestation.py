@@ -230,3 +230,50 @@ def test_attestation_with_real_trace_fixture():
     r2 = gw.check_hardware_attestation(trace_samples=idle)
     assert r2.passed is False
     assert "attestation_failed" in r2.flags
+
+
+# ── #90: forward-pass attestation context manager + check_output Layer 0 ──
+
+
+class _SnapStubAttestor(_StubAttestor):
+    """Stub that also serves DCGM snapshots for forward_pass_attestation."""
+
+    def __init__(self, *args, snapshots=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._snapshots = list(snapshots or [])
+        self.snapshot_calls = 0
+
+    def snapshot(self):
+        self.snapshot_calls += 1
+        return self._snapshots.pop(0) if self._snapshots else MagicMock()
+
+
+def test_forward_pass_attestation_captures_before_and_after():
+    """The context manager snapshots before entry and after exit."""
+    s_before, s_after = MagicMock(name="before"), MagicMock(name="after")
+    stub = _SnapStubAttestor(available=True, snapshots=[s_before, s_after])
+    gw = SafetyGateway(dcgm_attestor=stub)
+
+    with gw.forward_pass_attestation(gpu_index=0) as snaps:
+        assert snaps["before"] is s_before
+        assert snaps["after"] is None  # not captured until the block exits
+
+    assert snaps["after"] is s_after
+    assert stub.snapshot_calls == 2
+
+
+def test_check_output_layer0_attestation_failure_vetoes():
+    """A failed hardware attestation short-circuits check_output with
+    passed=False before the rest of the pipeline runs (cache-replay defense)."""
+    stub = _StubAttestor(available=True, attest_result=_fail_result("no power delta"))
+    gw = SafetyGateway(dcgm_attestor=stub)
+
+    r = gw.check_output(
+        response="hello world",
+        gpu_before_snapshot=MagicMock(),
+        gpu_after_snapshot=MagicMock(),
+    )
+    assert r.passed is False
+    assert r.gate == "output"
+    assert "attestation_failed" in r.flags
+    assert len(stub.attest_calls) == 1  # Layer 0 actually consulted attestation
