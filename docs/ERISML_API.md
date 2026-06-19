@@ -342,6 +342,35 @@ The Bond Index measures deviation from perfect correlative symmetry in Hohfeldia
 - `avoid` - Potentially problematic
 - `forbid` - Action vetoed (hard block)
 
+### Deontic Maxim Gate
+
+ErisML carries a **maxim** extracted by [erisml-compiler](https://github.com/ahb-sjsu/erisml-compiler):
+a coarse Kantian `action_kind` plus a **polarity**. Two `EthicalFactsProto`
+fields transport it:
+
+| field | type | meaning |
+|---|---|---|
+| `maxim_action_kind` | string | e.g. `deceive`, `inflict_harm`, `help`, `protect`; empty = no maxim |
+| `maxim_polarity` | string | `affirmed` or `negated` ("did not promise") |
+
+`facts_builder.PlanStepToEthicalFacts` derives these from a plan step
+(`_derive_maxim`). The service runs them through erisml-lib's
+`erisml.ethics.deontic_gate.evaluate_maxim`, a Kantian universalizability test:
+
+- affirmed **prohibition** (deceive, harm, coerce, …) → **veto** (`DEONTIC_UNIVERSALIZABILITY`)
+- negated prohibition ("did not deceive") → pass
+- affirmed **imperfect duty** (help, protect) → pass
+- negated imperfect duty ("did not help") → **veto** (contradiction in will)
+- merely-permissible / unknown → pass
+
+A veto sets `rights_respect = 0` and contributes a `veto_flags` entry, forcing a
+`forbid` verdict. The gate degrades to a no-op when no maxim is present or
+erisml-lib is not installed.
+
+> **Note:** the `maxim_*` proto fields require regenerating the gRPC stubs from
+> `proto/erisml.proto` (see deployment). Until then `_derive_maxim` is computed
+> but not transported, and the gate stays dormant.
+
 ### Decision Proofs
 
 Hash-chained audit trail for governance compliance:

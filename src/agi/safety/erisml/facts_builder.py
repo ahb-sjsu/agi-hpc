@@ -172,7 +172,43 @@ class PlanStepToEthicalFacts:
             novel_situation=self._is_novel_situation(step),
         )
 
+        # Maxim (action_kind + polarity) for the deontic universalizability gate.
+        # Guarded: only set when the stubs have been regenerated for the new
+        # proto fields (see proto/erisml.proto maxim_action_kind/maxim_polarity).
+        action_kind, polarity = self._derive_maxim(step)
+        if action_kind and hasattr(facts, "maxim_action_kind"):
+            facts.maxim_action_kind = action_kind
+            facts.maxim_polarity = polarity
+
         return facts
+
+    def _derive_maxim(self, step: plan_pb2.PlanStep) -> tuple[str, str]:
+        """Derive a coarse Kantian maxim (action_kind, polarity) from a step.
+
+        Conservative: emits an empty action_kind unless the step clearly maps to
+        a known kind. Polarity is "negated" when the step refrains from / negates
+        the action (safety tag or a ``negated`` param). Mirrors the action-kind
+        vocabulary in erisml-compiler / erisml-lib's deontic gate.
+        """
+        tool = (step.tool_id or "").lower()
+        tags = set(step.safety_tags)
+        action_kind = ""
+        if step.tool_id in self.harmful_tools or "harm" in tool or "attack" in tool:
+            action_kind = "inflict_harm"
+        elif "deception" in tags or "deceive" in tool or "lie" in tool or "mislead" in tool:
+            action_kind = "deceive"
+        elif "coercion" in tags or "coerce" in tool or "threaten" in tool:
+            action_kind = "coerce"
+        elif "protect" in tool or "protect" in tags or "safeguard" in tags:
+            action_kind = "protect"
+        elif "assist" in tool or "help" in tool:
+            action_kind = "help"
+        negated = (
+            "negated" in tags
+            or "refrain" in tags
+            or str(step.params.get("negated", "")).lower() == "true"
+        )
+        return action_kind, ("negated" if negated else "affirmed")
 
     def _estimate_risks(
         self,

@@ -43,6 +43,13 @@ message EthicalFactsProto {
   // --- Domain-specific extensions ---
   map<string, float> extensions = 100;
 
+  // --- Maxim (Kantian action-under-description, from erisml-compiler) ---
+  // Coarse action label + polarity so the deontic universalizability gate can
+  // run. polarity is "affirmed" or "negated" ("did not promise"). An empty
+  // maxim_action_kind means no maxim was extracted.
+  string maxim_action_kind = 101;
+  string maxim_polarity = 102;
+
   reserved 2 to 9, 14 to 19, 23 to 29, 32 to 39, 42 to 49, 53 to 99;
 }
 
