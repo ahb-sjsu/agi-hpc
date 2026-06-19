@@ -195,7 +195,12 @@ class PlanStepToEthicalFacts:
         action_kind = ""
         if step.tool_id in self.harmful_tools or "harm" in tool or "attack" in tool:
             action_kind = "inflict_harm"
-        elif "deception" in tags or "deceive" in tool or "lie" in tool or "mislead" in tool:
+        elif (
+            "deception" in tags
+            or "deceive" in tool
+            or "lie" in tool
+            or "mislead" in tool
+        ):
             action_kind = "deceive"
         elif "coercion" in tags or "coerce" in tool or "threaten" in tool:
             action_kind = "coerce"
