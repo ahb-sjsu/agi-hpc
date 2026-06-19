@@ -284,7 +284,7 @@ Three-layer architecture:
 | **Tactical** | 10–100 ms | ErisML ethical evaluation, Bond Index |
 | **Strategic** | > 100 ms | Policy enforcement, human oversight |
 
-ErisML provides mathematically grounded ethical reasoning with Hohfeldian analysis and SHA-256 hash-chained decision proofs.
+ErisML provides mathematically grounded ethical reasoning with Hohfeldian analysis and SHA-256 hash-chained decision proofs. It consumes a **maxim** (action + polarity) from [erisml-compiler](https://github.com/ahb-sjsu/erisml-compiler) and applies erisml-lib's Kantian **deontic universalizability** gate — so a negated action ("did not deceive") is judged differently from its affirmed form. See `docs/ERISML_API.md`.
 
 ## Regression guards (CI/CD)
 

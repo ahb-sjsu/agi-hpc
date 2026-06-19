@@ -211,9 +211,16 @@ Location: `src/agi/safety/`. Three-layer architecture:
 
 | Layer | Latency | Function |
 |---|---|---|
-| Reflex | < 100 µs | Emergency stops, thermal limits, PII / prompt-injection gates |
+| Reflex | < 100 µs | Emergency stops, thermal limits, PII / prompt-injection gates, deontic universalizability veto |
 | Tactical | 10–100 ms | ErisML `MoralVector`, Bond Index, Hohfeldian rights analysis |
 | Strategic | > 100 ms | Policy enforcement, SHA-256 hash-chained decision proofs, human oversight |
+
+ErisML now carries a **maxim** (from erisml-compiler): a coarse `action_kind`
+plus a **polarity** (`affirmed` / `negated`, e.g. "did not promise"). The
+`EthicalFactsProto.maxim_action_kind` / `maxim_polarity` fields feed erisml-lib's
+deontic gate (`erisml.ethics.deontic_gate`), which applies a Kantian
+universalizability veto — negating a prohibition (deceive, harm) is permitted,
+while omitting an imperfect duty (help, protect) is vetoed. See `docs/ERISML_API.md`.
 
 ### Memory subsystem
 
