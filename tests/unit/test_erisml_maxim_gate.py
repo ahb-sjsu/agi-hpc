@@ -12,6 +12,7 @@ Maxim derivation (PlanStep -> action_kind/polarity) and the universalizability
 veto (via erisml-lib's deontic gate). Skips cleanly where the generated proto
 stubs or erisml-lib are unavailable (e.g. a dev box without grpcio>=1.80).
 """
+
 from __future__ import annotations
 
 import types
@@ -46,7 +47,9 @@ def test_derive_maxim_harmful_tool_is_inflict_harm():
 
 def test_derive_maxim_negation_tag():
     b = facts_builder.PlanStepToEthicalFacts()
-    _, polarity = b._derive_maxim(_step(tool_id="deceive_user", safety_tags=["negated"]))
+    _, polarity = b._derive_maxim(
+        _step(tool_id="deceive_user", safety_tags=["negated"])
+    )
     assert polarity == "negated"
 
 
@@ -62,6 +65,7 @@ def test_derive_maxim_unknown_is_empty():
 def _has_erisml_lib() -> bool:
     try:
         import erisml.ethics.deontic_gate  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -69,7 +73,9 @@ def _has_erisml_lib() -> bool:
 
 @pytest.mark.skipif(not _has_erisml_lib(), reason="erisml-lib not installed")
 def test_deontic_veto_fires_for_prohibition():
-    facts = types.SimpleNamespace(maxim_action_kind="deceive", maxim_polarity="affirmed")
+    facts = types.SimpleNamespace(
+        maxim_action_kind="deceive", maxim_polarity="affirmed"
+    )
     reason = service.ErisMLServicer._deontic_maxim_veto(facts)
     assert reason is not None
     assert "deontic_universalizability_fail" in reason
