@@ -17,6 +17,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+
+pytest.importorskip("erisml")  # I-EIP monitor depends on erisml-lib (optional)
 from erisml.ieip.adapters import APIPassthroughAdapter, detect_adapter
 
 from agi.safety.ieip_monitor import (
