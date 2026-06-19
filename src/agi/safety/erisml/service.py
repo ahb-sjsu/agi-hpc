@@ -28,7 +28,7 @@ import time
 from concurrent import futures
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import grpc
 
@@ -428,6 +428,29 @@ class ErisMLServicer(erisml_pb2_grpc.ErisMLServiceServicer):
     # Private Methods
     # -----------------------------------------------------------------------
 
+    @staticmethod
+    def _deontic_maxim_veto(facts: "erisml_pb2.EthicalFactsProto") -> Optional[str]:
+        """Run erisml-lib's deontic universalizability gate on the maxim.
+
+        Reads ``maxim_action_kind`` / ``maxim_polarity`` from the facts proto
+        (present once the stubs are regenerated for the new proto fields). A
+        maxim that fails universalizability returns a reason string; otherwise
+        None. Degrades to None when erisml-lib or the fields are unavailable.
+        """
+        action_kind = getattr(facts, "maxim_action_kind", "") or ""
+        if not action_kind:
+            return None
+        polarity = getattr(facts, "maxim_polarity", "") or "affirmed"
+        try:
+            from erisml.ethics.deontic_gate import evaluate_maxim
+            from erisml.ethics.facts import Maxim
+        except Exception:
+            return None
+        result = evaluate_maxim(Maxim(action_kind=action_kind, polarity=polarity))
+        if result.vetoed:
+            return f"deontic_universalizability_fail:{result.action_kind}"
+        return None
+
     def _compute_moral_vector(self, facts: erisml_pb2.EthicalFactsProto) -> MoralVector:
         """Compute moral vector from ethical facts."""
         mv = MoralVector()
@@ -448,6 +471,14 @@ class ErisMLServicer(erisml_pb2_grpc.ErisMLServiceServicer):
             mv.reason_codes.append("rule_violation")
         else:
             mv.rights_respect = 1.0 if facts.has_valid_consent else 0.7
+
+        # Deontic maxim gate: Kantian universalizability (polarity-aware) via
+        # erisml-lib's real gate. No-op if no maxim or erisml-lib is absent.
+        deontic_reason = self._deontic_maxim_veto(facts)
+        if deontic_reason is not None:
+            mv.rights_respect = 0.0
+            mv.veto_flags.append("DEONTIC_UNIVERSALIZABILITY")
+            mv.reason_codes.append(deontic_reason)
 
         # Fairness dimension
         if facts.discriminates_on_protected_attr:

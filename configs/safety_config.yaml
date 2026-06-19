@@ -48,9 +48,15 @@ safety:
     enable_strategic: true
     # Governance profile name
     profile: "default"
+    # ErisML gRPC service address (previously hardcoded in service.py)
+    erisml_address: "localhost:50060"
+    # Kantian deontic universalizability gate on the maxim (erisml-lib).
+    # No-op unless the proto stubs carry maxim_action_kind/maxim_polarity.
+    enable_deontic_gate: true
 
   # Port assignments (reference)
   ports:
     service: 50055
+    erisml: 50060
     nats: 4222
     nats_monitor: 8222
