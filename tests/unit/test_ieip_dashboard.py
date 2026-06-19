@@ -12,6 +12,8 @@ import time
 
 import pytest
 
+pytest.importorskip("erisml")  # ieip_dashboard pulls in erisml-lib (optional)
+
 from agi.safety.ieip_dashboard import (
     build_status,
     load_status,
