@@ -1,81 +1,59 @@
-# Contributing to AGI-HPC
+# Contributing — New-Contributor Onboarding
 
-First off, thank you for your interest in contributing to AGI-HPC.  
-This project explores a high-performance, safety-conscious architecture for AGI-like systems, and we care deeply about **technical rigor, safety, and responsible use**.
+Welcome! Work through this top-to-bottom for your first task. If anything's
+unclear, ask **in your issue or PR** (not DMs) — questions are expected and
+encouraged.
 
-This document explains how to contribute code, ideas, and documentation in a way that’s aligned with the project’s goals and license.
+## 1 · Access
+- [ ] Send your **GitHub username** to the maintainer.
+- [ ] **Accept the repo invite** (email / github.com/notifications) — this lets
+      your issue be assigned to you.
+- [ ] These repos are public, so you can also just **fork** and work from your fork.
 
----
+## 2 · Local setup
+- [ ] Install **Python 3.12**.
+- [ ] Clone your fork (or the repo).
+- [ ] Create + activate a virtualenv: `python -m venv .venv`
+- [ ] Install dev deps: **`pip install -e ".[test,dev]"`**
+- [ ] **Sanity-check before changing anything** — the code lives under `src/`:
+      `PYTHONPATH=src pytest tests/ -q`
 
-## 1. Ground Rules
+## 3 · Your task
+- [ ] Find the **`good first issue`** assigned to you; read it fully, including
+      the **Pointers** section.
+- [ ] Open the referenced files and **reproduce the current behavior first** —
+      understand before you change.
+- [ ] Stay in scope: do what the issue asks; note other ideas in a comment.
 
-By contributing to this repository, you agree that:
+## 4 · Branch & build
+- [ ] Branch off `main`: **`feat/<short-name>`** or `fix/<short-name>`.
+- [ ] **Small, frequent commits** with clear messages.
+- [ ] Match the surrounding code's style (naming, structure, comment density).
+- [ ] **Never commit** secrets/tokens, virtualenvs, large binaries, or generated files.
 
-1. Your contributions will be licensed under the  
-   **AGI-HPC Responsible AI License v1.0** (see `LICENSE`).
-2. You will **not** contribute code or content intended to:
-   - enable harmful or malicious use,
-   - weaken or bypass safety, governance, or audit mechanisms,
-   - promote weapons, coercive surveillance, or rights violations.
-3. You will follow the spirit of **safety-first, transparency, and accountability** in all contributions.
+## 5 · Quality gates (green *before* you ask for review)
+Run locally — CI enforces the same on every push:
+- [ ] **Lint:** `ruff check src/ tests/ --select F --ignore F401`
+- [ ] **Format** *(only where the repo's CI runs black):* `black --check src/ tests/`
+      — run `black src/ tests/` to fix.
+- [ ] **Tests:** `PYTHONPATH=src pytest tests/ -q` all pass.
 
-If you’re unsure whether an idea or feature is appropriate, please open an issue and ask first.
+## 6 · Open a **draft** PR early
+- [ ] Open as a **Draft PR** as soon as something runs — don't wait for "done."
+- [ ] Put **`Closes #<issue>`** in the description.
+- [ ] Push often; **CI runs on every push** — keep it green.
+- [ ] Mark "Ready for review" + request the maintainer when it's ready.
 
----
+## 7 · Review → merge
+- [ ] Address feedback with **new commits** (don't force-push mid-review unless asked).
+- [ ] Keep the PR **scoped to the one issue**.
+- [ ] The maintainer **squash-merges** once CI is green and it's approved.
 
-## 2. Code of Conduct (Short Version)
-
-- Be respectful and constructive.
-- Assume good faith, but be honest about risks and limitations.
-- No harassment, hate speech, or discriminatory behavior.
-- No advocating for harmful uses of AGI or this project.
-
-If you see behavior that violates these principles, please contact the maintainer(s) at:
-
-> **andrew.bond@sjsu.edu** (or updated project contact)
-
-A more detailed code of conduct may be added later as the project grows.
-
----
-
-## 3. How to Propose Changes
-
-### 🐛 Reporting Bugs
-
-1. Check existing issues to see if it’s already reported.
-2. Open a new issue with:
-   - a clear title,
-   - steps to reproduce,
-   - expected vs actual behavior,
-   - environment details (OS, Python version, hardware, etc.).
-
-### 💡 Suggesting Features or Design Changes
-
-1. Open a **GitHub Issue** labeled `enhancement` or `design`.
-2. Describe:
-   - the problem or capability you care about,
-   - how it fits into the AGI-HPC architecture,
-   - any safety / governance implications you can think of.
-
-For major changes (e.g., new module type, new safety mechanism, new memory layer), please start with a design discussion before opening a PR.
+## 8 · Good habits
+- [ ] Stuck for more than ~30 min? Post what you tried in the PR/issue and ask.
+- [ ] Flag blockers early — a half-working draft PR beats silence.
+- [ ] Be kind in reviews; assume good intent.
 
 ---
-
-## 4. Development Workflow
-
-### 4.1 Fork and Branch
-
-1. **Fork** the repo to your own GitHub account.
-2. Create a new branch for your work:
-   ```bash
-   git checkout -b feature/my-new-feature
-
-## 5. Project Teams
-
- 1. Cognitive Architecture (LH/RH) Team
- 2. Memory Systems Team
- 3. EventBus & Messaging Team
- 4. HPC Deployment Team
- 5. Evaluation & Metrics Team
-
-
+*This is a per-task checklist — copy the relevant boxes into your PR description
+and tick them off as you go.*
