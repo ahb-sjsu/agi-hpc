@@ -1,0 +1,2 @@
+{"query": "What is Atlas?", "expected_answer": "Atlas is a memory RAG system."}
+{"query": "How do you evaluate retrieval quality?", "expected_answer": "By using an evaluation harness."}
