@@ -93,6 +93,100 @@ flowchart TB
 
 </details>
 
+## Container image publishing
+
+Container images for agi-hpc services are built and published by CI
+(see [`.github/workflows/build-images.yaml`](../.github/workflows/build-images.yaml)).
+The pilot today publishes the ARTEMIS LiveKit agent; other services
+will be added to the same workflow as their build contexts are
+cleaned up.
+
+All images live under `ghcr.io/ahb-sjsu/<service-name>`. For example:
+
+```
+ghcr.io/ahb-sjsu/artemis-livekit-agent:sha-7c3aa12
+ghcr.io/ahb-sjsu/artemis-livekit-agent:v0.1.0
+```
+
+### Tag scheme
+
+Every push produces multiple tags. Pick the one that matches your
+environment:
+
+| Tag form | Example | When it's published | Use for |
+|---|---|---|---|
+| `sha-<7char>` | `sha-7c3aa12` | Every push to `main` | **Production** - immutable, lets you pin and roll back to a specific build |
+| `vX.Y.Z` | `v0.1.0` | Push of a git tag `vX.Y.Z` | Production releases |
+| `vX.Y`, `vX` | `v0.1`, `v0` | Push of a git tag `vX.Y.Z` | Staging that wants to float within a minor/major |
+| `latest` | `latest` | Push of a semver git tag only | Convenience; **never pin production to this** |
+| `edge` | `edge` | Tip of `main` | Dev/staging that tracks `main` |
+| `main` | `main` | Tip of `main` | Same as `edge` |
+| `pr-<n>` | `pr-42` | Pull requests (build-only) | Not pushed - PR builds validate Dockerfile changes without polluting the registry |
+
+**Rule of thumb**: production manifests pin to `sha-<7char>` or
+`vX.Y.Z`. Anything else is for non-prod.
+
+### Pinning in Kubernetes manifests
+
+The existing pattern in [`deploy/k8s/artemis-livekit-agent/job.yaml`](../deploy/k8s/artemis-livekit-agent/job.yaml)
+uses `envsubst` to inject the tag at apply time:
+
+```bash
+export ARTEMIS_IMAGE_TAG=sha-7c3aa12   # or v0.1.0
+envsubst < deploy/k8s/artemis-livekit-agent/job.yaml | kubectl apply -f -
+```
+
+To find the SHA for a given commit:
+
+```bash
+git rev-parse --short=7 <commit-or-branch>
+```
+
+### Rollback
+
+Rolling back is a one-line change to the tag:
+
+```bash
+# Re-deploy with the previous SHA
+export ARTEMIS_IMAGE_TAG=sha-<previous>
+envsubst < deploy/k8s/artemis-livekit-agent/job.yaml | kubectl apply -f -
+```
+
+Because every SHA tag is immutable, the previously-running image is
+always available in the registry until it's pruned by retention policy.
+Record the active tag in your deployment runbook (or annotate the
+`Deployment` with it) so the previous SHA is easy to find under
+pressure.
+
+### SLURM / Apptainer
+
+SLURM consumers can pull the same OCI image directly:
+
+```bash
+apptainer pull --force artemis.sif \
+  docker://ghcr.io/ahb-sjsu/artemis-livekit-agent:sha-7c3aa12
+```
+
+Wiring this into the `sbatch` scripts in
+[`infra/hpc/slurm/`](../infra/hpc/slurm/) is tracked as a follow-up.
+
+### Admin setup (one-time)
+
+The CI workflow pushes to GHCR using the built-in `GITHUB_TOKEN`, but a
+repository admin needs to enable a few things before the first push
+succeeds:
+
+- **Workflow write permission**: Settings - Actions - General -
+  Workflow permissions - "Read and write permissions".
+- **Package visibility**: After the first push, the GHCR package is
+  private by default. Either make it public (preferred for an academic
+  project), or create an `imagePullSecret` in each consuming
+  Kubernetes namespace.
+- **Cluster egress**: Confirm NRP / SLURM nodes can reach `ghcr.io`.
+- **First semver tag**: Cut `v0.1.0` once the workflow has built at
+  least one successful `main` build, to validate the semver tag path
+  end-to-end.
+
 ## Prerequisites
 
 ### Hardware Requirements

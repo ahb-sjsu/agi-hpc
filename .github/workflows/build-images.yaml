@@ -1,0 +1,132 @@
+name: Build & Publish Images
+
+# Builds agi-hpc container images and publishes them to GHCR so that
+# Kubernetes/SLURM deployments can pin to a specific git SHA or semver
+# tag. Scoped today to the ARTEMIS LiveKit agent (pilot); the matrix
+# below is structured so additional services can be added by appending
+# new entries once their Dockerfile build contexts are cleaned up.
+#
+# Tagging strategy (see docs/HPC_DEPLOYMENT.md "Container image publishing"):
+#   - sha-<7char>   every push to main (immutable; what production pins to)
+#   - vX.Y.Z / .Y / .X   on semver git tags (immutable releases)
+#   - latest        only on semver tag pushes
+#   - edge          tip of main
+#   - pr-<n>        PRs (build only, never pushed)
+#
+# Admin prerequisites:
+#   - Settings > Actions > General > Workflow permissions: Read and write
+#   - GHCR package visibility (public, or attach an imagePullSecret in the
+#     consuming K8s namespace)
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  OWNER: ahb-sjsu
+  PYTHON_VERSION: "3.12"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  test:
+    name: Tests & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -e ".[dev]"
+
+      - name: Lint (ruff)
+        run: ruff check src/ tests/ --select F --ignore F401 --extend-exclude "*/__init__.py"
+
+      - name: Format check (black)
+        run: black --check src/ tests/ --exclude "proto_gen"
+
+      - name: Unit tests
+        run: |
+          pytest tests/unit/ -v --tb=short -q \
+            --ignore=tests/unit/test_safety_proto.py \
+            --ignore=tests/unit/test_erisml_proto.py \
+            --ignore=tests/unit/test_safety_gateway.py \
+            --ignore=tests/unit/test_hohfeld.py \
+            --ignore=tests/unit/test_moral_tensor.py \
+            --ignore=tests/unit/test_safety_adapter.py \
+            --ignore=tests/unit/test_safety_learning.py \
+            --ignore=tests/unit/test_safety_gateway_unit.py \
+            --ignore=tests/unit/test_llm_integration.py \
+            --ignore=tests/unit/test_llm_reflection.py \
+            --ignore=tests/unit/test_dht_security.py \
+            -k "not proto and not TestEmbeddingCodecTQ"
+
+  build:
+    name: Build ${{ matrix.name }}
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: artemis-livekit-agent
+            dockerfile: deploy/docker/artemis-livekit-agent/Dockerfile
+            context: .
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # PRs build but never push - this validates Dockerfile changes
+      # without polluting the registry. Login is skipped on PRs.
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ matrix.name }}
+          tags: |
+            type=sha,prefix=sha-,format=short
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=raw,value=edge,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=${{ matrix.name }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+
+      - name: Build (and push on main/tags)
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,scope=${{ matrix.name }},mode=max
