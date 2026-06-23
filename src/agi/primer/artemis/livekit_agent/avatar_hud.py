@@ -44,11 +44,23 @@ log = logging.getLogger("artemis.avatar")
 # makes motion smoother and lets the codec spend bits on the right
 # frames instead of duplicates.
 W, H = 960, 720
-FPS = 30
+# Dropped from 30 → 15 fps while diagnosing audio choppiness. Every
+# video encode steals time from the main asyncio loop; 15 fps is
+# still comfortably smooth for a HUD that doesn't have fast motion.
+FPS = 15
 
-AUDIO_SR = 22050
+# 24 kHz matches XTTS-v2's native output and is an Opus native rate —
+# avoids one resample step and keeps Opus in its sweet spot. Piper
+# (22050 Hz) is upsampled to 24 kHz in its adapter before reaching the
+# audio queue, so the publisher sees a single rate regardless of
+# backend.
+AUDIO_SR = 24000
 AUDIO_CHANNELS = 1
-AUDIO_FRAME_MS = 20
+# 40 ms frames (vs 20 ms): halves the per-frame overhead — one
+# run_coroutine_threadsafe hop per frame, one async scheduling
+# boundary. Opus handles 20, 40, and 60 ms frames natively; 40 is
+# the sweet spot for quality vs latency in voice contexts.
+AUDIO_FRAME_MS = 40
 AUDIO_SAMPLES_PER_FRAME = AUDIO_SR * AUDIO_FRAME_MS // 1000
 
 PIPER_VOICE = os.environ.get(
@@ -356,32 +368,37 @@ audio_queue: queue.Queue = queue.Queue()
 
 
 def _tts_worker() -> None:
-    log.info("loading piper voice: %s", PIPER_VOICE)
-    from piper import PiperVoice
+    """TTS worker thread — pulls text off the queue, pushes PCM.
 
-    voice = PiperVoice.load(PIPER_VOICE)
-    log.info("piper voice loaded (sr=%s)", voice.config.sample_rate)
+    Uses ``synthesize_stream`` so multi-sentence utterances start
+    producing audio after only the first sentence's synth latency.
+    Each chunk goes onto ``audio_queue`` as it arrives; the audio
+    publisher thread drains them in order.
+
+    Backend selection is driven by ``ARTEMIS_TTS_BACKEND``:
+      - ``xtts``       Coqui XTTS-v2 local (highest quality, CPU/GPU)
+      - ``nats_burst`` offload to NATS-subscribed worker pool
+      - ``piper``      Piper ONNX local (fast, CPU-only fallback)
+      - ``auto``       (default) — burst if a worker heartbeats, else
+                       local XTTS if prerequisites present, else Piper.
+    """
+    from .tts import build_backend_from_env
+
+    backend = build_backend_from_env()
+    log.info("TTS backend ready: %s", backend.name)
     while True:
         text = text_queue.get()
         if text is None:
+            backend.close()
             return
         try:
-            log.info("synthesizing: %s", text[:80])
-            all_pcm: list[np.ndarray] = []
-            for chunk in voice.synthesize(text):
-                pcm = np.frombuffer(chunk.audio_int16_bytes, dtype=np.int16)
-                all_pcm.append(pcm)
-            pcm = np.concatenate(all_pcm) if all_pcm else np.zeros(0, dtype=np.int16)
-            if voice.config.sample_rate != AUDIO_SR:
-                src_sr = voice.config.sample_rate
-                xs = np.arange(0, len(pcm), src_sr / AUDIO_SR)
-                pcm = np.interp(xs, np.arange(len(pcm)), pcm.astype(np.float32)).astype(
-                    np.int16
-                )
-            audio_queue.put(pcm)
+            log.info("synthesizing (%s): %s", backend.name, text[:80])
             STATE.log_event(f"SAY {text[:40]}")
+            for chunk in backend.synthesize_stream(text):
+                if chunk.duration_s > 0:
+                    audio_queue.put(chunk.pcm)
         except Exception as e:  # noqa: BLE001
-            log.exception("TTS error: %s", e)
+            log.exception("TTS error (%s): %s", backend.name, e)
 
 
 def _compute_spectrum(chunk: np.ndarray, n_bands: int = 16) -> list[float]:
@@ -402,7 +419,21 @@ def _compute_spectrum(chunk: np.ndarray, n_bands: int = 16) -> list[float]:
     return [min(1.0, b / (m + 1e-9)) for b in bands]
 
 
-async def _audio_publisher(source: rtc.AudioSource, running: asyncio.Event) -> None:
+def _audio_publisher_thread(
+    source: rtc.AudioSource,
+    loop: asyncio.AbstractEventLoop,
+    running: threading.Event,
+) -> None:
+    """Real-time audio publisher running in its own thread.
+
+    Audio quality with the asyncio-co-scheduled version was lossy and
+    jittery: every 33 ms video-encode blocks the event loop long enough
+    to miss the 20 ms audio deadline, which Opus renders as static. A
+    dedicated thread with a monotonic ``time.sleep`` loop fixes the
+    timing; ``capture_frame`` — an async method — is scheduled onto the
+    main event loop via ``run_coroutine_threadsafe`` without blocking
+    this thread.
+    """
     silence = np.zeros(AUDIO_SAMPLES_PER_FRAME, dtype=np.int16)
     frame_dt = AUDIO_FRAME_MS / 1000.0
     next_t = time.monotonic()
@@ -427,28 +458,44 @@ async def _audio_publisher(source: rtc.AudioSource, running: asyncio.Event) -> N
             rms = float(np.sqrt(np.mean(chunk.astype(np.float32) ** 2)))
             STATE.set_speaking(True, min(1.0, rms / 4000.0))
             STATE.set_spectrum(_compute_spectrum(chunk))
-            frame = rtc.AudioFrame(
-                chunk.tobytes(), AUDIO_SR, AUDIO_CHANNELS, AUDIO_SAMPLES_PER_FRAME
-            )
-            await source.capture_frame(frame)
-            if offset >= len(pending):
-                pending = None
-                STATE.set_speaking(False, 0.0)
+            frame_bytes = chunk.tobytes()
+            is_last = offset >= len(pending)
         else:
             STATE.set_speaking(False, 0.0)
-            # Ambient spectrum decay
             cur = STATE.snap()[4]
             STATE.set_spectrum([max(0.0, v * 0.9) for v in cur])
-            frame = rtc.AudioFrame(
-                silence.tobytes(), AUDIO_SR, AUDIO_CHANNELS, AUDIO_SAMPLES_PER_FRAME
-            )
-            await source.capture_frame(frame)
+            frame_bytes = silence.tobytes()
+            is_last = False
+
+        frame = rtc.AudioFrame(
+            frame_bytes, AUDIO_SR, AUDIO_CHANNELS, AUDIO_SAMPLES_PER_FRAME
+        )
+        # Submit + WAIT for the frame to be accepted. Without this,
+        # frames pile up on the asyncio loop whenever video encode
+        # holds it for >20 ms and get delivered in a bursty cluster,
+        # which Opus renders as choppy playback. Awaiting gives real
+        # backpressure: this thread only advances when the LiveKit
+        # FFI has actually taken the frame.
+        fut = asyncio.run_coroutine_threadsafe(
+            source.capture_frame(frame),
+            loop,
+        )
+        try:
+            fut.result(timeout=1.0)
+        except Exception as e:  # noqa: BLE001
+            log.warning("capture_frame timeout/error: %s", e)
+
+        if is_last:
+            pending = None
+            STATE.set_speaking(False, 0.0)
 
         next_t += frame_dt
         sleep_for = next_t - time.monotonic()
         if sleep_for > 0:
-            await asyncio.sleep(sleep_for)
+            time.sleep(sleep_for)
         else:
+            # Fell behind — reset the phase, don't try to "catch up"
+            # with a burst of frames (that's what produced the pops).
             next_t = time.monotonic()
 
 
@@ -603,16 +650,229 @@ async def main() -> int:
         except NotImplementedError:
             pass
 
+    # S1b — optional NATS → LiveKit bridge for sheet updates.
+    # S1e — optional DataChannel ↔ NATS bridge for chat messages.
+    # S1g — optional direct-say bridge (GM narration: publish text on
+    #       agi.rh.artemis.say.direct, ARTEMIS speaks it).
+    # All opt-in via env so the existing Atlas deployment keeps
+    # working unchanged until we flip them on.
+    bridge_tasks: list[asyncio.Task] = []
+    if os.environ.get("ARTEMIS_SHEETS_NATS", "") in ("1", "true", "yes", "on"):
+        bridge_tasks.append(asyncio.create_task(_sheets_bridge(room, running)))
+    if os.environ.get("ARTEMIS_CHAT_NATS", "") in ("1", "true", "yes", "on"):
+        bridge_tasks.append(asyncio.create_task(_chat_bridge(room, running)))
+    # Direct-say is always on when NATS is reachable — tiny, harmless,
+    # and the GM narration console needs it.
+    bridge_tasks.append(asyncio.create_task(_direct_say_bridge(running)))
+
+    # Audio publisher runs in its own thread for hard real-time timing.
+    # Mirror the asyncio shutdown event onto a threading.Event so the
+    # thread can exit cleanly when the avatar is stopping.
+    audio_stop = threading.Event()
+    audio_thread = threading.Thread(
+        target=_audio_publisher_thread,
+        args=(a_source, loop, audio_stop),
+        name="artemis-audio",
+        daemon=True,
+    )
+    audio_thread.start()
+
     try:
-        await asyncio.gather(
-            _video_publisher(v_source, running),
-            _audio_publisher(a_source, running),
-        )
+        tasks = [_video_publisher(v_source, running)]
+        for t in bridge_tasks:
+            tasks.append(_wait_task(t))
+        await asyncio.gather(*tasks)
     finally:
         text_queue.put(None)
+        audio_stop.set()
+        for t in bridge_tasks:
+            if not t.done():
+                t.cancel()
+        audio_thread.join(timeout=2.0)
         await room.disconnect()
         log.info("disconnected cleanly")
     return 0
+
+
+async def _wait_task(task: asyncio.Task) -> None:
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+
+async def _direct_say_bridge(running: asyncio.Event) -> None:
+    """Inject text onto ARTEMIS's TTS queue via NATS.
+
+    Publish ``{"text": "..."}`` to ``agi.rh.artemis.say.direct`` and
+    the avatar's TTS pipeline speaks it. Intended for the S1g GM
+    narration console and for ad-hoc testing.
+    """
+    try:
+        import nats  # type: ignore
+    except ImportError:
+        log.warning("nats-py not installed; direct-say bridge disabled")
+        return
+
+    url = os.environ.get("NATS_URL", "nats://localhost:4222")
+    try:
+        nc = await nats.connect(servers=[url])
+    except Exception as e:  # noqa: BLE001
+        log.warning("direct-say bridge: NATS connect failed (%s); disabled", e)
+        return
+    log.info("direct-say bridge online: agi.rh.artemis.say.direct")
+
+    async def _on_msg(msg: "nats.aio.msg.Msg") -> None:  # type: ignore[name-defined]
+        try:
+            payload = json.loads(msg.data)
+            text = str(payload.get("text") or "").strip()
+        except Exception as e:  # noqa: BLE001
+            log.warning("direct-say: bad payload: %s", e)
+            return
+        if not text:
+            return
+        log.info("direct-say: queuing %d chars", len(text))
+        text_queue.put(text)
+
+    try:
+        await nc.subscribe("agi.rh.artemis.say.direct", cb=_on_msg)
+        while not running.is_set():
+            await asyncio.sleep(1)
+    finally:
+        try:
+            await nc.drain()
+        except Exception:  # noqa: BLE001
+            pass
+        log.info("direct-say bridge stopped")
+
+
+async def _chat_bridge(room: rtc.Room, running: asyncio.Event) -> None:
+    """Bridge chat messages between LiveKit DataChannel and NATS.
+
+    Browser → NATS:
+      Browser publishes {"kind": "artemis.chat.in", "msg": ChatMessage}
+      on DataChannel. We re-publish the inner msg to
+      ``agi.rh.artemis.chat.in.<from_id>`` so the chat service picks
+      it up, persists, and routes through Primer.
+
+    NATS → Browser:
+      Subscribe to ``agi.rh.artemis.chat.out.*`` and
+      ``agi.rh.artemis.chat.broadcast``; forward each as
+      ``{"kind": "artemis.chat", "msg": ...}`` on DataChannel so the
+      table.js handler renders it. Identity-gating already happened
+      service-side when it chose the subject.
+    """
+    try:
+        import nats  # type: ignore
+    except ImportError:
+        log.warning("nats-py not installed; chat bridge disabled")
+        return
+
+    url = os.environ.get("NATS_URL", "nats://localhost:4222")
+    try:
+        nc = await nats.connect(servers=[url])
+    except Exception as e:  # noqa: BLE001
+        log.warning("chat bridge: NATS connect failed (%s); disabled", e)
+        return
+    log.info("chat bridge online: NATS=%s", url)
+
+    async def _on_out(msg: "nats.aio.msg.Msg") -> None:  # type: ignore[name-defined]
+        try:
+            inner = json.loads(msg.data)
+        except Exception as e:  # noqa: BLE001
+            log.warning("chat bridge: bad JSON on %s: %s", msg.subject, e)
+            return
+        out = json.dumps(
+            {"kind": "artemis.chat", "msg": inner}, separators=(",", ":")
+        ).encode()
+        try:
+            await room.local_participant.publish_data(out, reliable=True)
+        except Exception as e:  # noqa: BLE001
+            log.warning("chat bridge: DataChannel publish failed: %s", e)
+
+    @room.on("data_received")
+    def _on_data(data, participant, *_rest) -> None:
+        # LiveKit Python SDK signature has varied across versions; we
+        # accept extra positional args and pick the participant from
+        # whichever slot it landed in.
+        try:
+            raw = data.data if hasattr(data, "data") else data
+            inner = json.loads(raw)
+        except Exception:  # noqa: BLE001
+            return
+        if inner.get("kind") != "artemis.chat.in":
+            return
+        chat_msg = inner.get("msg") or {}
+        from_id = chat_msg.get("from_id") or "unknown"
+        subj = f"agi.rh.artemis.chat.in.{from_id}"
+        payload = json.dumps(chat_msg, separators=(",", ":")).encode()
+        asyncio.create_task(nc.publish(subj, payload))
+
+    try:
+        await nc.subscribe("agi.rh.artemis.chat.out.*", cb=_on_out)
+        await nc.subscribe("agi.rh.artemis.chat.broadcast", cb=_on_out)
+        while not running.is_set():
+            await asyncio.sleep(1)
+    finally:
+        try:
+            await nc.drain()
+        except Exception:  # noqa: BLE001
+            pass
+        log.info("chat bridge stopped")
+
+
+async def _sheets_bridge(room: rtc.Room, running: asyncio.Event) -> None:
+    """Subscribe to agi.rh.artemis.sheet.* and forward to DataChannel.
+
+    Messages on NATS are already shaped as ``{"name": ..., "rows": [...]}``
+    by :class:`SheetsPoller`; we wrap them as
+    ``{"kind": "artemis.sheet", "rows": [...]}`` so the existing
+    table.js handler (``case "artemis.sheet"``) picks them up.
+
+    Snapshot subjects are also forwarded — the HUD treats a snapshot
+    and a diff the same (apply rows by id).
+    """
+    try:
+        import nats  # type: ignore
+    except ImportError:
+        log.warning("nats-py not installed; sheet bridge disabled")
+        return
+
+    url = os.environ.get("NATS_URL", "nats://localhost:4222")
+    try:
+        nc = await nats.connect(servers=[url])
+    except Exception as e:  # noqa: BLE001
+        log.warning("sheet bridge: NATS connect failed (%s); disabled", e)
+        return
+    log.info("sheet bridge online: %s → DataChannel", url)
+
+    async def _on_msg(msg: "nats.aio.msg.Msg") -> None:  # type: ignore[name-defined]
+        try:
+            inner = json.loads(msg.data)
+        except Exception as e:  # noqa: BLE001
+            log.warning("sheet bridge: bad JSON on %s: %s", msg.subject, e)
+            return
+        rows = inner.get("rows") or []
+        out = json.dumps(
+            {"kind": "artemis.sheet", "name": inner.get("name"), "rows": rows},
+            separators=(",", ":"),
+        ).encode()
+        try:
+            await room.local_participant.publish_data(out, reliable=True)
+        except Exception as e:  # noqa: BLE001
+            log.warning("sheet bridge: publish_data failed: %s", e)
+
+    try:
+        await nc.subscribe("agi.rh.artemis.sheet.>", cb=_on_msg)
+        # Stay alive until the main loop signals shutdown.
+        while not running.is_set():
+            await asyncio.sleep(1)
+    finally:
+        try:
+            await nc.drain()
+        except Exception:  # noqa: BLE001
+            pass
+        log.info("sheet bridge stopped")
 
 
 if __name__ == "__main__":

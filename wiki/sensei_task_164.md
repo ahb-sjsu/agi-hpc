@@ -3,7 +3,7 @@ type: sensei_note
 task: 164
 tags: [expansion, horizontal-mirror, arc, primer]
 written_by: The Primer
-written_at: 2026-04-22
+written_at: 2026-04-23
 verified_by: run-against-train (all examples pass)
 ---
 

@@ -1,0 +1,52 @@
+[Unit]
+Description=Atlas ARTEMIS — XTTS-v2 TTS worker (NATS-burst)
+Documentation=file:///home/claude/agi-hpc/docs/ARTEMIS.md
+After=network-online.target atlas-nats.service
+Wants=network-online.target
+Requires=atlas-nats.service
+
+# IMPORTANT — NRP aggregate-quota posture.
+# This worker intentionally runs on Atlas (not as a dedicated NRP pod)
+# so it doesn't consume a pod slot from the shared 4-pod budget. Launch
+# the same module inside an existing NRP pod (co-tenant) when slack
+# exists. See the module docstring in tts/worker.py.
+
+[Service]
+Type=simple
+User=claude
+WorkingDirectory=/home/claude/agi-hpc
+Environment=PYTHONPATH=/home/claude/agi-hpc/src
+Environment=PYTHONUNBUFFERED=1
+Environment=NATS_URL=nats://localhost:4222
+Environment=ARTEMIS_VOICE_REF=/home/claude/artemis-voice-refs/artemis_ref.wav
+Environment=ARTEMIS_TTS_LANG=en
+# Idle > 4 hrs → auto-exit. Short timeouts (15 min) kept killing the
+# worker mid-development session on Atlas; co-tenant watchdog hygiene
+# only matters on NRP pods, not on Atlas-local. Raise to 4 hrs so a
+# dev session can leave the worker warm without constantly restarting.
+Environment=ARTEMIS_TTS_WORKER_IDLE_S=14400
+EnvironmentFile=-/home/claude/.artemis.env
+# Runs in its own venv (/home/claude/env-xtts) — coqui-tts drags in a
+# torch + transformers combo incompatible with the main env that hosts
+# Primer / unsloth / trl. Keep them isolated.
+ExecStart=/home/claude/env-xtts/bin/python3 -m agi.primer.artemis.livekit_agent.tts.worker
+
+Restart=on-failure
+RestartSec=30
+StartLimitIntervalSec=600
+StartLimitBurst=5
+RandomizedDelaySec=15
+
+KillSignal=SIGTERM
+TimeoutStopSec=60
+
+StandardOutput=journal
+StandardError=journal
+
+# XTTS-v2 loads ~2 GB into memory. Be generous, but capped so a
+# runaway can't starve the rest of Atlas.
+MemoryMax=4G
+CPUQuota=200%
+
+[Install]
+WantedBy=multi-user.target
