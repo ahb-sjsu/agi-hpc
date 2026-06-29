@@ -3,7 +3,7 @@ type: sensei_note
 task: 178
 tags: [extraction, run-length-compression, arc, primer]
 written_by: The Primer
-written_at: 2026-04-23
+written_at: 2026-06-29
 verified_by: run-against-train (all examples pass)
 ---
 
