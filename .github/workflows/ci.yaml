@@ -31,6 +31,12 @@ jobs:
       - name: Format check (black)
         run: black --check src/ tests/ --exclude "proto_gen"
 
+      - name: Type check (ty — advisory)
+        continue-on-error: true  # ty is preview (0.0.x); advisory until src is ty-clean
+        run: |
+          pip install ty==0.0.55
+          ty check src
+
       - name: Unit tests
         run: |
           pytest tests/unit/ -v --tb=short -q \
