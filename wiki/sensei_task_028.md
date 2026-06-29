@@ -3,7 +3,7 @@ type: sensei_note
 task: 28
 tags: [transformation, frame-construction, arc, primer]
 written_by: The Primer
-written_at: 2026-04-22
+written_at: 2026-06-29
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -36,7 +36,7 @@ def transform(grid):
     # Find the two colored pixels
     non_zero = np.argwhere(grid != 0)
     
-    # Sort by row to get top and bottom
+    # Sort by row to get top and bottom markers
     sorted_indices = np.argsort(non_zero[:, 0])
     top_pixel = non_zero[sorted_indices[0]]
     bottom_pixel = non_zero[sorted_indices[1]]
