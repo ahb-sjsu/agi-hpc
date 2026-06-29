@@ -24,7 +24,7 @@ This task contains two colored shapes on a black (0) background. One shape exhib
 **Reflection formulas** (for point (r, c) across center (cr, cc)):
 - Vertical reflection: (2×cr − r, c)
 - Horizontal reflection: (r, 2×cc − c)
-- Both reflections: (2×cr − r, 2×cc − c)
+- Both reflections (diagonal): (2×cr − r, 2×cc − c)
 
 ## Reference implementation
 
@@ -104,17 +104,19 @@ def transform(grid):
         if 0 <= hc < w:
             output[r, hc] = reflect_color  # Horizontal reflection
         if 0 <= vr < h and 0 <= hc < w:
-            output[vr, hc] = reflect_color  # Both reflections
+            output[vr, hc] = reflect_color  # Both reflections (diagonal)
     
     return output.tolist()
 ```
 
 ## Why this generalizes
 
-This solution belongs to the **symmetry-reflection** primitive family. The key insight is recognizing that one shape serves as a geometric anchor (identified by its 4-way symmetry), while the other shape is the content to be transformed. This pattern appears in many ARC tasks where:
+This solution belongs to the **symmetry-reflection** primitive family. The key insight is recognizing that one shape serves as a "mirror anchor" due to its inherent 4-way symmetry, while the other shape gets replicated through geometric reflection operations.
 
-1. **Symmetry detection** identifies the reference frame
-2. **Point reflection** across axes creates the transformation
-3. **Multi-copy generation** produces the final pattern
+The generalization works because:
+1. **Anchor detection is robust**: By checking for 4-way symmetry (every point has its three reflections present), we reliably identify which shape stays fixed
+2. **Reflection is mathematically precise**: Using the formula (2×center − point) ensures accurate mirroring regardless of grid dimensions
+3. **Bounds checking prevents errors**: Verifying reflected coordinates stay within the grid handles edge cases
+4. **Color-agnostic**: The algorithm works with any pair of non-zero colors, not specific values
 
-The approach generalizes to any grid size and any pair of colors, as long as one shape exhibits 4-way symmetry. The fallback (smaller bounding box) handles edge cases where symmetry detection is ambiguous.
+This pattern appears in multiple ARC tasks where symmetric objects act as transformation centers for asymmetric objects.
