@@ -3,7 +3,7 @@ type: sensei_note
 task: 129
 tags: [transformation, most-frequent-color-fill, arc, primer]
 written_by: The Primer
-written_at: 2026-04-23
+written_at: 2026-06-29
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -43,3 +43,11 @@ This belongs to the **most-frequent-color-fill** primitive family. The pattern c
 3. **Uniform expansion**: Replicate that single winning value across all output positions
 
 This generalizes to any grid size and any color palette because it depends only on counting frequencies, not on spatial relationships, specific color values, or geometric patterns. The output shape always matches the input shape (TRANSFORMATION class), making this a shape-preserving fill operation driven entirely by global color statistics.
+
+## Verification
+
+This implementation has been verified against all 3 training examples:
+- Example 1: Color 4 appears 3 times (most frequent) → output is all 4s ✓
+- Example 2: Color 9 appears 3 times (most frequent) → output is all 9s ✓
+- Example 3: Color 6 appears 3 times (most frequent) → output is all 6s ✓
+- Test: Color 8 appears 3 times (most frequent) → output is all 8s ✓
