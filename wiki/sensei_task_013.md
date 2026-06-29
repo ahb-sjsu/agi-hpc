@@ -3,7 +3,7 @@ type: sensei_note
 task: 13
 tags: [transformation, periodic-replication, arc, primer]
 written_by: The Primer
-written_at: 2026-04-22
+written_at: 2026-06-29
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -51,20 +51,20 @@ def transform(grid):
     
     result = np.zeros((h, w), dtype=int)
     
-    if row_spacing == 0:
-        # Same row - horizontal pattern
-        period = 2 * col_spacing
-        for col in range(c1, w, period):
-            result[:, col] = v1
-        for col in range(c2, w, period):
-            result[:, col] = v2
-    elif col_spacing == 0:
+    if col_spacing == 0:
         # Same column - vertical pattern
         period = 2 * row_spacing
         for row in range(r1, h, period):
             result[row, :] = v1
         for row in range(r2, h, period):
             result[row, :] = v2
+    elif row_spacing == 0:
+        # Same row - horizontal pattern
+        period = 2 * col_spacing
+        for col in range(c1, w, period):
+            result[:, col] = v1
+        for col in range(c2, w, period):
+            result[:, col] = v2
     else:
         # Different row and column - use smaller spacing
         if col_spacing <= row_spacing:
@@ -95,4 +95,4 @@ This belongs to the **periodic-replication** primitive family. The key insight i
 - **Example 4**: Sources at (7,0)=4 and (11,0)=1, same column → vertical, period=8 ✓
 - **Test**: Sources at (0,5)=3 and (10,10)=4, col_spacing=5 < row_spacing=10 → horizontal, period=10 ✓
 
-This pattern appears in tasks where sparse markers should propagate across the entire grid with regular alternation. The period being exactly 2× the source spacing ensures the two colors alternate without overlap, creating a clean repeating pattern that fills the output grid.
+This pattern appears in tasks where sparse markers should propagate across the entire grid with regular alternation. The period being exactly 2× the source spacing ensures the two colors interleave without overlap.
