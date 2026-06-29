@@ -55,11 +55,11 @@ def transform(grid):
 
 ## Why this generalizes
 
-This task belongs to the **object-count** primitive family. The key insight is recognizing the separator pattern (teal lines) that partitions the input into independent regions, then applying a threshold-based classification to each region based on object count.
+This task belongs to the **object-count** primitive family with a **classification** output pattern. The key insight is recognizing the separator pattern (teal lines) that partitions the input into independent regions, then applying a threshold-based classification to each region based on object count.
 
 This pattern generalizes to:
 1. Any grid with separator lines creating regular regions
 2. Any target color to count (not just magenta/6)
 3. Any threshold value (not just 2)
 
-The strategy is: **partition → count → threshold → classify**. This is a common ARC pattern where spatial structure defines independent subproblems.
+The strategy is: **partition → count → threshold → classify**. This is a common ARC pattern where spatial structure defines independent subproblems that are solved uniformly and aggregated into a smaller output grid representing the classification results.
