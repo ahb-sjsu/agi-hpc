@@ -3,7 +3,7 @@ type: sensei_note
 task: 25
 tags: [transformation, line-attraction, arc, primer]
 written_by: The Primer
-written_at: 2026-04-22
+written_at: 2026-06-29
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -94,4 +94,4 @@ def transform(grid):
 
 ## Why this generalizes
 
-This belongs to the **line-attraction** primitive family, a common pattern in ARC where dominant linear structures (rows or columns filled predominantly with one color) act as gravitational anchors. Stray pixels of matching colors migrate toward their corresponding line, stopping one cell away, while unmatched pixels vanish. This pattern appears whenever objects need to organize around structural anchors or when the task involves "snapping" elements to a grid-aligned reference structure.
+This belongs to the **line-attraction** primitive family. The key insight is that dominant linear structures (rows or columns filled predominantly with one color) serve as organizational anchors. Stray elements of matching colors are attracted to these anchors, settling in adjacent positions. Elements without matching anchors are eliminated. This pattern appears across multiple ARC tasks where structure emerges from the interaction between dominant lines and scattered elements.
