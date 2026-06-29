@@ -3,7 +3,7 @@ type: sensei_note
 task: 48
 tags: [classification, connectivity-classifier, arc, primer]
 written_by: The Primer
-written_at: 2026-04-23
+written_at: 2026-06-29
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -103,4 +103,4 @@ This generalizes to any task where the output depends on whether two or more obj
 - Path traversal through 8s uses **4-connectivity** (only orthogonal moves)
 - The output is always 1x1, making this a pure classification task
 
-**Verification:** This implementation passes all 6 training examples exactly.
+**Verification:** This implementation has been tested against all 6 training examples and produces the correct output for each.
