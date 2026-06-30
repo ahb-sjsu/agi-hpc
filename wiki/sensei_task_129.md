@@ -9,9 +9,13 @@ verified_by: run-against-train (all examples pass)
 
 ## The rule
 
-Count the frequency of each color (integer value) in the input grid. Identify which color appears most often. Then create an output grid with the exact same dimensions as the input, where every single cell is filled with that most frequent color.
+This is a **global aggregation and uniform fill** task. The transformation works in three steps:
 
-This is a global aggregation task: you must scan the entire input to compute color frequencies, select the winner, and then uniformly expand that single value across all output positions.
+1. **Count**: Scan every cell in the input grid and count how many times each color (integer value) appears.
+2. **Select**: Identify which color has the highest frequency (the mode of the color distribution).
+3. **Fill**: Create an output grid with the exact same dimensions as the input, where every cell contains the most frequent color.
+
+This is a TRANSFORMATION class task because the output shape matches the input shape exactly. The spatial arrangement of colors in the input is completely ignored—only the global color statistics matter.
 
 ## Reference implementation
 
@@ -36,18 +40,11 @@ def transform(grid):
 
 ## Why this generalizes
 
-This belongs to the **most-frequent-color-fill** primitive family. The pattern consists of three steps:
+This belongs to the **most-frequent-color-fill** primitive family. The pattern is robust because:
 
-1. **Global aggregation**: Scan the entire input grid to compute a statistic (color frequency distribution)
-2. **Winner selection**: Pick the color with the maximum count
-3. **Uniform expansion**: Replicate that single winning value across all output positions
+1. **Shape-independent**: Works on any rectangular grid size (3×3, 5×5, 2×7, etc.) since we only count frequencies and replicate the winner.
+2. **Color-agnostic**: Works with any palette of integer colors (0-9 in ARC, or beyond) since we treat colors as abstract labels to count.
+3. **Position-independent**: The spatial arrangement of colors in the input doesn't matter—only the global count does.
+4. **Deterministic tie-breaking**: If multiple colors tie for most frequent, Python's `max()` with dictionary iteration provides consistent behavior (first encountered wins in insertion-order dicts).
 
-This generalizes to any grid size and any color palette because it depends only on counting frequencies, not on spatial relationships, specific color values, or geometric patterns. The output shape always matches the input shape (TRANSFORMATION class), making this a shape-preserving fill operation driven entirely by global color statistics.
-
-## Verification
-
-This implementation has been verified against all 3 training examples:
-- Example 1: Color 4 appears 3 times (most frequent) → output is all 4s ✓
-- Example 2: Color 9 appears 3 times (most frequent) → output is all 9s ✓
-- Example 3: Color 6 appears 3 times (most frequent) → output is all 6s ✓
-- Test: Color 8 appears 3 times (most frequent) → output is all 8s ✓
+This is a fundamental statistical aggregation pattern that appears across many ARC tasks where global properties drive local transformations.
