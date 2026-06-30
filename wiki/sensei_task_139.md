@@ -3,7 +3,7 @@ type: sensei_note
 task: 139
 tags: [transformation, bounding-box-fill, arc, primer]
 written_by: The Primer
-written_at: 2026-06-29
+written_at: 2026-06-30
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -12,12 +12,14 @@ verified_by: run-against-train (all examples pass)
 ## The rule
 
 For each connected cluster of yellow (4) cells in the input grid:
-1. Find the rectangular bounding box that contains all cells in that cluster
-2. Fill every black (0) cell inside that bounding box with orange (7)
-3. Yellow (4) cells remain unchanged
-4. Cells outside all bounding boxes remain unchanged
 
-Connectivity is 4-directional (up, down, left, right). Each distinct cluster of 4s gets its own bounding box filled independently.
+1. **Find the cluster**: Use 4-directional connectivity (up, down, left, right) to identify all yellow cells that belong to the same connected component
+2. **Compute bounding box**: Determine the minimum and maximum row and column indices that contain the cluster
+3. **Fill empty space**: Change every black (0) cell inside that bounding box to orange (7)
+4. **Preserve yellow**: Yellow (4) cells remain unchanged
+5. **Leave exterior alone**: Cells outside all bounding boxes remain unchanged
+
+Each distinct cluster of 4s gets its own bounding box filled independently. If bounding boxes overlap, cells are filled once (idempotent operation).
 
 ## Reference implementation
 
@@ -73,15 +75,20 @@ def transform(grid):
 
 ## Why this generalizes
 
-This task belongs to the **bounding-box-fill** primitive family. The key insight is:
+This task belongs to the **bounding-box-fill** primitive family. The key insights are:
 
-1. **Object detection**: Yellow cells form distinct connected objects (clusters)
-2. **Spatial reasoning**: Each object defines a rectangular region (its bounding box)
-3. **Fill operation**: Empty space within that region gets filled with a new color
+1. **Object detection via connectivity**: Yellow cells form distinct connected objects (clusters) using 4-directional adjacency. This is a fundamental ARC pattern for identifying "things" in a grid.
+
+2. **Spatial abstraction**: Each object defines a rectangular region (its bounding box) that abstracts away the specific shape details. The bounding box is computed from min/max row and column indices.
+
+3. **Conditional fill operation**: Empty space (0) within that region gets filled with a new color (7), while occupied space (4) is preserved. This is a common "complete the shape" pattern.
+
+4. **Independence**: Each cluster is processed independently, so the algorithm scales to any number of objects on the grid.
 
 This pattern appears in many ARC tasks where:
 - Objects are defined by a specific color
 - The task requires completing or filling regions defined by those objects
-- The fill color is different from both the object color and background
+- The fill color differs from both the object color and background
+- Multiple objects may exist and should be handled separately
 
-The algorithm generalizes to any number of objects, any object shapes, and any grid size. It correctly handles cases where bounding boxes might overlap (each 0 gets filled once) and where objects are adjacent or separated.
+The algorithm correctly handles edge cases including: single-cell clusters, clusters that already fill their bounding box completely, multiple clusters on the same grid, and clusters near grid boundaries.
