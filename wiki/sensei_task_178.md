@@ -22,9 +22,14 @@ The key insight is that these two cases are mutually exclusive for non-trivial i
 ```python
 def transform(grid):
     rows = len(grid)
+    if rows == 0:
+        return []
     cols = len(grid[0]) if rows > 0 else 0
+    if cols == 0:
+        return []
     
     def compress(seq):
+        """Collapse consecutive duplicate values to single values."""
         if not seq:
             return []
         result = [seq[0]]
