@@ -3,7 +3,7 @@ type: sensei_note
 task: 117
 tags: [transformation, symmetry-reflection, arc, primer]
 written_by: The Primer
-written_at: 2026-06-29
+written_at: 2026-06-30
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -63,9 +63,13 @@ def transform(grid):
         cr, cc = center
         pos_set = set(positions)
         for r, c in positions:
-            vr = int(round(2*cr - r))
-            hc = int(round(2*cc - c))
-            if (vr, c) not in pos_set or (r, hc) not in pos_set or (vr, hc) not in pos_set:
+            vr = 2*cr - r
+            hc = 2*cc - c
+            if vr != int(vr) or (int(vr), c) not in pos_set:
+                return False
+            if hc != int(hc) or (r, int(hc)) not in pos_set:
+                return False
+            if (int(vr), int(hc)) not in pos_set:
                 return False
         return True
     
@@ -111,12 +115,10 @@ def transform(grid):
 
 ## Why this generalizes
 
-This solution belongs to the **symmetry-reflection** primitive family. The key insight is recognizing that one shape serves as a "mirror anchor" due to its inherent 4-way symmetry, while the other shape gets replicated through geometric reflection operations.
+This solution belongs to the **symmetry-reflection** primitive family. The key insight is that one shape serves as a geometric anchor (identified by 4-way symmetry), while the other shape undergoes a systematic reflection transformation. This pattern generalizes to any grid containing:
 
-The generalization works because:
-1. **Anchor detection is robust**: By checking for 4-way symmetry (every point has its three reflections present), we reliably identify which shape stays fixed
-2. **Reflection is mathematically precise**: Using the formula (2×center − point) ensures accurate mirroring regardless of grid dimensions
-3. **Bounds checking prevents errors**: Verifying reflected coordinates stay within the grid handles edge cases
-4. **Color-agnostic**: The algorithm works with any pair of non-zero colors, not specific values
+1. Two distinct colored objects
+2. One object with point/axial symmetry (the anchor)
+3. One asymmetric object to be transformed
 
-This pattern appears in multiple ARC tasks where symmetric objects act as transformation centers for asymmetric objects.
+The reflection operation preserves the anchor's position while creating a symmetric pattern from the asymmetric shape. This is a common ARC primitive where symmetry detection guides transformation application.
