@@ -11,14 +11,14 @@ verified_by: run-against-train (all examples pass)
 
 ## The rule
 
-The input is an 11x11 grid containing three colors:
+The input is an 11×11 grid containing three colors:
 - **0** (black/empty)
-- **6** (magenta) - the objects to count
-- **8** (teal) - separator lines
+- **6** (magenta) — the objects to count
+- **8** (teal) — separator lines
 
-The teal (8) pixels form a grid pattern: horizontal lines at rows 3 and 7, and vertical lines at columns 3 and 7. This divides the grid into **9 regions** arranged in a 3x3 layout, where each region is 3x3 cells.
+The teal (8) pixels form a grid pattern: horizontal lines at rows 3 and 7, and vertical lines at columns 3 and 7. This divides the grid into **9 regions** arranged in a 3×3 layout, where each region is 3×3 cells.
 
-For each of the 9 regions, count how many magenta (6) pixels it contains. The output is a 3x3 grid where:
+For each of the 9 regions, count how many magenta (6) pixels it contains. The output is a 3×3 grid where:
 - **1** = the corresponding input region contains **exactly 2** magenta pixels
 - **0** = the corresponding input region contains any other number of magenta pixels (0, 1, 3, etc.)
 
