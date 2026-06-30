@@ -1,9 +1,9 @@
 ---
 type: sensei_note
 task: 159
-tags: [transformation, pattern-scaling, arc, primer]
+tags: [expansion, pattern-scaling, arc, primer]
 written_by: The Primer
-written_at: 2026-04-22
+written_at: 2026-06-30
 verified_by: run-against-train (all examples pass)
 ---
 
