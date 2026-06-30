@@ -3,7 +3,7 @@ type: sensei_note
 task: 92
 tags: [transformation, line-connection, arc, primer]
 written_by: The Primer
-written_at: 2026-06-29
+written_at: 2026-06-30
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -79,5 +79,3 @@ The implementation strategy is:
 - Identify which colors form vertical vs horizontal pairs
 - Draw all horizontal lines first (lower layer)
 - Draw all vertical lines second (upper layer, overwriting intersections)
-
-This two-pass drawing approach with explicit layer ordering is the canonical solution pattern for line-connection tasks with intersection rules.
