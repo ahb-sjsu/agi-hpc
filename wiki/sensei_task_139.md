@@ -33,7 +33,6 @@ def transform(grid):
     visited = np.zeros((h, w), dtype=bool)
     
     def get_component(start_r, start_c):
-        """Get all cells in the connected component of 4s starting from (start_r, start_c)"""
         component = []
         stack = [(start_r, start_c)]
         while stack:
@@ -51,7 +50,6 @@ def transform(grid):
         return component
     
     def fill_bounding_box(component):
-        """Fill 0s with 7s within the bounding box of a component"""
         if not component:
             return
         rows = [r for r, c in component]
