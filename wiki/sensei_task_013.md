@@ -3,7 +3,7 @@ type: sensei_note
 task: 13
 tags: [transformation, periodic-replication, arc, primer]
 written_by: The Primer
-written_at: 2026-06-29
+written_at: 2026-06-30
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -41,10 +41,6 @@ def transform(grid):
     r2, c2 = int(nonzero[1, 0]), int(nonzero[1, 1])
     v1 = int(arr[r1, c1])
     v2 = int(arr[r2, c2])
-    
-    # Order by position (top-left first)
-    if r1 > r2 or (r1 == r2 and c1 > c2):
-        r1, c1, v1, r2, c2, v2 = r2, c2, v2, r1, c1, v1
     
     row_spacing = abs(r2 - r1)
     col_spacing = abs(c2 - c1)
@@ -95,4 +91,4 @@ This belongs to the **periodic-replication** primitive family. The key insight i
 - **Example 4**: Sources at (7,0)=4 and (11,0)=1, same column → vertical, period=8 ✓
 - **Test**: Sources at (0,5)=3 and (10,10)=4, col_spacing=5 < row_spacing=10 → horizontal, period=10 ✓
 
-This pattern appears in tasks where sparse markers should propagate across the entire grid with regular alternation. The period being exactly 2× the source spacing ensures the two colors interleave without overlap.
+This pattern appears in tasks where sparse markers should propagate across the entire grid with regular alternation. The period being exactly 2× the source spacing ensures the two colors alternate without overlap, creating a clean repeating pattern that fills the grid uniformly in the chosen direction.
