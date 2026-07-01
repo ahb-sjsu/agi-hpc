@@ -37,12 +37,15 @@ def transform(grid):
                 result.append(val)
         return result
     
+    # Check if all rows are identical
     all_rows_identical = all(grid[i] == grid[0] for i in range(1, rows))
     
     if all_rows_identical:
+        # Extract one row and compress it, output as single row
         compressed = compress(grid[0])
         return [compressed]
     
+    # Check if all columns are identical
     all_cols_identical = True
     for j in range(1, cols):
         for i in range(rows):
@@ -53,10 +56,12 @@ def transform(grid):
             break
     
     if all_cols_identical:
+        # Extract one column and compress it, output as single column
         col = [grid[i][0] for i in range(rows)]
         compressed = compress(col)
         return [[v] for v in compressed]
     
+    # Fallback (should not happen for valid inputs)
     return grid
 ```
 
