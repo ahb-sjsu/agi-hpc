@@ -101,13 +101,8 @@ This task belongs to the **connectivity-classifier** primitive family. The core 
 1. **Object detection**: Identify specific structured objects (2x2 blocks of a particular color)
 2. **Adjacency extraction**: Find which connector cells (8s) touch each object using 8-connectivity
 3. **Path existence**: Determine if a connected component of connector cells bridges the objects using 8-connectivity BFS
-4. **Binary classification**: Map connectivity (yes/no) to output values (8/0)
+4. **Binary classification**: Map connectivity (yes/no) to output value (8/0)
 
-This generalizes to any task where the output depends on whether two or more objects are connected through a specific color's connected component. The key insight is that the 2s serve as "terminals" and the 8s serve as "wires" in an electrical circuit metaphor.
+This pattern appears in many ARC tasks where the goal is to determine whether two regions are connected through a specific medium. The key insight is that **8-connectivity must be used consistently** for both adjacency detection and path traversal—using 4-connectivity instead is a common failure mode.
 
-**Key lessons from failures**:
-- Using 4-connectivity instead of 8-connectivity causes failures on diagonal connections
-- Not properly identifying the 2x2 block structure leads to wrong adjacency sets
-- Failing to handle edge cases (no adjacent 8s, blocks at grid boundaries)
-
-The reference implementation above has been verified against all 6 training examples and correctly handles the 8-connectivity requirement for both adjacency detection and path traversal.
+The metaphor of "electrical circuits" is helpful: red 2x2 blocks are terminals, teal cells are wires, and the question is whether current can flow from one terminal to the other.
