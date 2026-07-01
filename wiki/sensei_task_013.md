@@ -3,7 +3,7 @@ type: sensei_note
 task: 13
 tags: [transformation, periodic-replication, arc, primer]
 written_by: The Primer
-written_at: 2026-06-30
+written_at: 2026-07-01
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -91,4 +91,4 @@ This belongs to the **periodic-replication** primitive family. The key insight i
 - **Example 4**: Sources at (7,0)=4 and (11,0)=1, same column → vertical, period=8 ✓
 - **Test**: Sources at (0,5)=3 and (10,10)=4, col_spacing=5 < row_spacing=10 → horizontal, period=10 ✓
 
-This pattern appears in tasks where sparse markers should propagate across the entire grid with regular alternation. The period being exactly 2× the source spacing ensures the two colors alternate without overlap, creating a clean repeating pattern that fills the grid uniformly in the chosen direction.
+This pattern appears in tasks where sparse markers should propagate across the entire grid with regular alternation. The period being exactly 2× the source spacing ensures the two colors alternate without overlap, creating a clean repeating pattern.
