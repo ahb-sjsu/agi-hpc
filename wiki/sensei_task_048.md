@@ -14,14 +14,14 @@ verified_by: run-against-train (all examples pass)
 This is a **classification task** where the output is always a 1x1 grid containing either 0 or 8.
 
 The rule:
-1. Identify the two 2x2 blocks of red (2) cells in the input grid. Every example contains exactly two such blocks.
-2. Find all teal (8) cells that are adjacent to each 2x2 block using **8-connectivity** (including diagonals).
-3. Check if there exists a path of teal (8) cells connecting the two blocks. A path exists if you can travel from any 8 adjacent to the first block to any 8 adjacent to the second block by moving through adjacent 8s using **8-connectivity** (orthogonal and diagonal moves).
-4. Output [[8]] if such a path exists, otherwise output [[0]].
+1. **Identify terminals**: Find the two 2x2 blocks of red (2) cells in the input grid. Every valid example contains exactly two such blocks.
+2. **Extract adjacent wires**: Find all teal (8) cells that are adjacent to each 2x2 block using **8-connectivity** (including diagonals). These are the "entry points" to the circuit.
+3. **Check connectivity**: Determine if there exists a path of teal (8) cells connecting the two blocks. A path exists if you can travel from any 8 adjacent to the first block to any 8 adjacent to the second block by moving through adjacent 8s using **8-connectivity** (orthogonal and diagonal moves allowed).
+4. **Classify**: Output [[8]] if such a path exists (circuit complete), otherwise output [[0]] (circuit broken).
 
 Think of the 2x2 red blocks as "terminals" and the teal cells as "wires". The task asks: is the circuit complete?
 
-**Critical distinction:** Both adjacency detection AND path traversal use **8-connectivity** (not 4-connectivity). This was a common source of errors in previous attempts.
+**Critical distinction**: Both adjacency detection AND path traversal use **8-connectivity** (not 4-connectivity). This was a common source of errors in previous attempts.
 
 ## Reference implementation
 
@@ -45,6 +45,7 @@ def transform(grid):
     # Get cells adjacent to each block (8-connectivity for adjacency)
     def get_adjacent_eights(block_r, block_c):
         adjacent = set()
+        # Check the perimeter around the 2x2 block
         for dr in range(-1, 3):
             for dc in range(-1, 3):
                 # Skip the 2x2 block itself
@@ -102,12 +103,11 @@ This task belongs to the **connectivity-classifier** primitive family. The core 
 3. **Path existence**: Determine if a connected component of connector cells bridges the objects using 8-connectivity BFS
 4. **Binary classification**: Map connectivity (yes/no) to output values (8/0)
 
-This generalizes to any task where the output depends on whether two or more objects are connected through a specific color's connected component. The key insight is that the 2s serve as "terminals" and the 8s serve as "wires" — the classification depends on circuit completeness.
+This generalizes to any task where the output depends on whether two or more objects are connected through a specific color's connected component. The key insight is that the 2s serve as "terminals" and the 8s serve as "wires" in an electrical circuit metaphor.
 
-**Key distinctions to remember:**
-- Adjacency to blocks uses **8-connectivity** (includes diagonals)
-- Path traversal through 8s uses **8-connectivity** (includes diagonals) — this is critical!
-- The output is always 1x1, making this a pure classification task
-- Every valid input contains exactly two 2x2 blocks of 2s
+**Key lessons from failures**:
+- Using 4-connectivity instead of 8-connectivity causes failures on diagonal connections
+- Not properly identifying the 2x2 block structure leads to wrong adjacency sets
+- Failing to handle edge cases (no adjacent 8s, blocks at grid boundaries)
 
-**Verification:** This implementation passes all 6 training examples and both test examples.
+The reference implementation above has been verified against all 6 training examples and correctly handles the 8-connectivity requirement for both adjacency detection and path traversal.
