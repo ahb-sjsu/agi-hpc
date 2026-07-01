@@ -91,8 +91,4 @@ The key insights are:
 
 **Critical distinction**: Previous implementations using 4-directional connectivity will fail on this task. The test example has yellow cells that connect only diagonally (e.g., at positions that share a corner but not an edge). Using 8-directional connectivity ensures these are treated as a single cluster with one bounding box, producing the correct fill pattern.
 
-This pattern appears in ARC tasks where:
-- Objects are defined by a specific color with diagonal connections allowed
-- The task requires completing rectangular regions defined by those objects
-- The fill color (7/orange) differs from both the object color (4/yellow) and background (0/black)
-- Multiple objects may exist and should be handled separately
+This pattern appears in ARC tasks where objects need to be "completed" or "filled in" based on their spatial extent rather than their exact shape.
