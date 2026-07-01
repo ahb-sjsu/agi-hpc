@@ -103,6 +103,10 @@ This task belongs to the **connectivity-classifier** primitive family. The core 
 3. **Path existence**: Determine if a connected component of connector cells bridges the objects using 8-connectivity BFS
 4. **Binary classification**: Map connectivity (yes/no) to output value (8/0)
 
-This pattern appears in many ARC tasks where the goal is to determine whether two regions are connected through a specific medium. The key insight is that **8-connectivity must be used consistently** for both adjacency detection and path traversal—using 4-connectivity instead is a common failure mode.
+This pattern appears in many ARC tasks where the goal is to determine if two regions are connected through a specific color channel. The key insight is that both the adjacency check and the path traversal must use the same connectivity definition (8-connectivity in this case).
 
-The metaphor of "electrical circuits" is helpful: red 2x2 blocks are terminals, teal cells are wires, and the question is whether current can flow from one terminal to the other.
+**Common pitfalls to avoid:**
+- Using 4-connectivity instead of 8-connectivity for path traversal
+- Incorrectly computing the adjacency perimeter around 2x2 blocks
+- Not handling edge cases where blocks are at grid boundaries
+- Failing to verify exactly two 2x2 blocks exist before proceeding
