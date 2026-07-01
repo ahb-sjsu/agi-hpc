@@ -9,7 +9,7 @@ verified_by: run-against-train (all examples pass)
 
 ## The rule
 
-All colored objects shift vertically to align their top rows with the top row of the color-1 (blue) object. Color-1 serves as the anchor and doesn't move. Horizontal positions are preserved; only vertical positions change.
+All colored objects shift vertically so their **top rows** align with the **top row of the color-1 (blue) object**. Color-1 serves as the anchor and does not move. Horizontal positions and object shapes are preserved; only vertical positions change.
 
 The transformation works as follows:
 1. Identify all non-zero colored cells and group them by color
