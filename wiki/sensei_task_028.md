@@ -3,7 +3,7 @@ type: sensei_note
 task: 28
 tags: [transformation, frame-construction, arc, primer]
 written_by: The Primer
-written_at: 2026-06-30
+written_at: 2026-07-01
 verified_by: run-against-train (all examples pass)
 ---
 
