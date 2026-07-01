@@ -3,7 +3,7 @@ type: sensei_note
 task: 20
 tags: [transformation, symmetry-completion, arc, primer]
 written_by: The Primer
-written_at: 2026-06-30
+written_at: 2026-07-01
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -11,7 +11,7 @@ verified_by: run-against-train (all examples pass)
 
 ## The rule
 
-Find the bounding box of all non-zero cells in the input grid. Compute the center of this bounding box (midpoint of min/max row and min/max column). For each non-zero cell, reflect its value across both the horizontal and vertical axes passing through that center point. This fills in all four symmetric positions: the original cell, its horizontal mirror, its vertical mirror, and the diagonal mirror (both axes combined).
+Find the bounding box of all non-zero cells in the input grid. Compute the center point of this bounding box (midpoint of min/max row and min/max column). For each non-zero cell, reflect its value across both the horizontal and vertical axes passing through that center point. This fills in all four symmetric positions: the original cell, its horizontal mirror, its vertical mirror, and the diagonal mirror (both axes combined).
 
 The output grid has the same shape as the input. Existing non-zero cells are preserved; missing symmetric counterparts are filled in with the same color/value.
 
