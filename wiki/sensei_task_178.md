@@ -29,7 +29,6 @@ def transform(grid):
         return []
     
     def compress(seq):
-        """Collapse consecutive duplicate values to single values."""
         if not seq:
             return []
         result = [seq[0]]
@@ -38,14 +37,12 @@ def transform(grid):
                 result.append(val)
         return result
     
-    # Check if all rows are identical
     all_rows_identical = all(grid[i] == grid[0] for i in range(1, rows))
     
     if all_rows_identical:
         compressed = compress(grid[0])
         return [compressed]
     
-    # Check if all columns are identical
     all_cols_identical = True
     for j in range(1, cols):
         for i in range(rows):
@@ -60,7 +57,6 @@ def transform(grid):
         compressed = compress(col)
         return [[v] for v in compressed]
     
-    # Fallback (should not happen on valid inputs)
     return grid
 ```
 
