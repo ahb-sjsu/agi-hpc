@@ -33,6 +33,12 @@ This task exhibits **structured redundancy** along one dimension of the input gr
 - Compress: [2,3,8,1] (consecutive 3s collapse to one)
 - Output: [[2,3,8,1]] (1×4)
 
+**Example 5** (column redundancy):
+- Input: 6×4 grid where each column is [4,4,2,2,8,3]
+- Extract column: [4,4,2,2,8,3]
+- Compress: [4,2,8,3] (consecutive duplicates collapse)
+- Output: [[4],[2],[8],[3]] (4×1)
+
 **Test Example** (row redundancy):
 - Input: 4×9 grid where each row is [1,1,2,3,3,3,8,8,4]
 - Extract row: [1,1,2,3,3,3,8,8,4]
@@ -106,4 +112,4 @@ This belongs to the **run-length-compression** primitive family, combined with *
 - The row/column identity checks (`all(grid[i] == grid[0] ...)` and column comparison loop) are standard detection patterns
 - Output reshaping (`[compressed]` vs `[[v] for v in compressed]`) preserves the orthogonal orientation rule
 
-This pattern appears frequently in ARC tasks involving structured repetition, symmetry, or data compression along grid axes.
+This pattern appears frequently in ARC tasks involving structured repetition and dimensionality reduction.
