@@ -13,7 +13,7 @@ verified_by: run-against-train (all examples pass)
 
 For each connected cluster of yellow (4) cells in the input grid:
 
-1. **Find the cluster**: Use **8-directional connectivity** (up, down, left, right, AND all four diagonals) to identify all yellow cells that belong to the same connected component. This is the critical distinction from similar tasks.
+1. **Find the cluster**: Use **8-directional connectivity** (up, down, left, right, AND all four diagonals) to identify all yellow cells that belong to the same connected component. This is the critical distinction—cells that touch only at corners are considered part of the same cluster.
 2. **Compute bounding box**: Determine the minimum and maximum row and column indices that contain the cluster.
 3. **Fill empty space**: Change every black (0) cell inside that bounding box to orange (7).
 4. **Preserve yellow**: Yellow (4) cells remain unchanged.
@@ -33,6 +33,7 @@ def transform(grid):
     visited = np.zeros((h, w), dtype=bool)
     
     def get_component(start_r, start_c):
+        """Find all 4s connected via 8-directional connectivity."""
         component = []
         stack = [(start_r, start_c)]
         while stack:
@@ -45,7 +46,7 @@ def transform(grid):
                 continue
             visited[r, c] = True
             component.append((r, c))
-            # 8-directional connectivity (includes diagonals)
+            # 8-directional neighbors (including diagonals)
             for dr in [-1, 0, 1]:
                 for dc in [-1, 0, 1]:
                     if dr == 0 and dc == 0:
@@ -54,6 +55,7 @@ def transform(grid):
         return component
     
     def fill_bounding_box(component):
+        """Fill all 0s in the bounding box with 7s."""
         if not component:
             return
         rows = [r for r, c in component]
@@ -66,6 +68,7 @@ def transform(grid):
                 if result[r, c] == 0:
                     result[r, c] = 7
     
+    # Process each unvisited 4
     for r in range(h):
         for c in range(w):
             if grid[r, c] == 4 and not visited[r, c]:
@@ -91,4 +94,4 @@ The key insights are:
 
 **Critical distinction**: Previous implementations using 4-directional connectivity will fail on this task. The test example has yellow cells that connect only diagonally (e.g., at positions that share a corner but not an edge). Using 8-directional connectivity ensures these are treated as a single cluster with one bounding box, producing the correct fill pattern.
 
-This pattern appears in ARC tasks where the goal is to identify objects by connectivity and perform spatial operations (like filling bounding boxes) on each object independently.
+This pattern appears in ARC tasks where the goal is to identify objects by connectivity and then perform spatial operations (filling, counting, transforming) on their bounding regions.
