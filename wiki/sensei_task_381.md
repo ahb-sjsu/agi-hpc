@@ -28,6 +28,7 @@ import numpy as np
 from collections import deque
 
 def _components(mask):
+    """Find all connected components (4-connectivity) of True values, return bounding boxes."""
     m = np.asarray(mask)
     H, W = m.shape
     seen = np.zeros_like(m, dtype=bool)
@@ -70,66 +71,49 @@ def transform(grid):
             r0a, r1a, c0a, c1a = rects[i]
             r0b, r1b, c0b, c1b = rects[j]
             
-            # Calculate row overlap
             rs, re = max(r0a, r0b), min(r1a, r1b)
             if rs > re:
-                continue  # No row overlap
+                continue
             
-            # Calculate horizontal gap
             if c1a < c0b:
-                L, R = c1a, c0b  # A is left of B
+                L, R = c1a, c0b
             elif c1b < c0a:
-                L, R = c1b, c0a  # B is left of A
+                L, R = c1b, c0a
             else:
-                continue  # Rectangles overlap or touch horizontally
+                continue
             
-            # Check for blockers
             blocked = False
             for k in range(n):
                 if k in (i, j):
                     continue
                 r0c, r1c, c0c, c1c = rects[k]
-                # Check if C's row range intersects [rs, re]
                 if max(rs, r0c) > min(re, r1c):
                     continue
-                # Check if C's column range intersects the gap columns (L+1 to R-1)
                 if c1c < L + 1 or c0c > R - 1:
                     continue
                 blocked = True
                 break
             
-            if blocked:
-                continue
-            
-            # Fill the gap with 9
-            for r in range(rs, re + 1):
-                for c in range(L + 1, R):
-                    if out[r, c] == 0:
-                        out[r, c] = 9
+            if not blocked:
+                for r in range(rs, re + 1):
+                    for c in range(L + 1, R):
+                        if out[r, c] == 0:
+                            out[r, c] = 9
     
     return out.tolist()
 ```
 
 ## Why this generalizes
 
-This solution belongs to the **gap-fill** primitive family, which is common in ARC tasks involving spatial reasoning between objects. The key insight is:
+This task belongs to the **gap-fill** primitive family. The key insight is that gaps between objects are filled conditionally based on:
 
-1. **Object decomposition:** Breaking the input into connected components (rectangles) allows reasoning about relationships between discrete objects rather than individual pixels.
+1. **Spatial relationship:** Objects must share a dimension (rows) and be separated in the orthogonal dimension (columns).
+2. **Occlusion checking:** A third object can block the fill operation if it occupies the gap region.
 
-2. **Pairwise spatial reasoning:** The gap-fill operation is inherently pairwise—it considers the relationship between two objects (do they align? is there space between them?).
+This pattern generalizes to:
+- Vertical gap filling (swap row/column logic)
+- Different fill colors based on object properties
+- Multiple gap fills in complex scenes
+- Tasks where connectivity or visibility between objects determines transformations
 
-3. **Blocker detection:** The three-way check (pair + potential blocker) is a common pattern where a third object can invalidate an operation between two others. This generalizes to many tasks involving occlusion, path-blocking, or conditional operations.
-
-4. **Deterministic filling:** Once conditions are met (alignment + no blocker), the fill operation is straightforward and deterministic.
-
-This pattern appears in tasks involving:
-- Connecting aligned objects
-- Filling corridors between rooms
-- Drawing bridges between platforms
-- Completing symmetric patterns with obstacles
-
-The implementation is robust because it:
-- Uses BFS for reliable component extraction
-- Explicitly checks all three conditions (row overlap, horizontal gap, no blocker)
-- Only modifies cells that are currently 0 (preserving existing structure)
-- Handles edge cases like touching rectangles (no gap) and complete blockage
+The blocker-checking mechanism is particularly important—it prevents over-filling and ensures the transformation respects the scene's occlusion structure.
