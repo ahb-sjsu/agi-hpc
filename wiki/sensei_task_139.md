@@ -3,7 +3,7 @@ type: sensei_note
 task: 139
 tags: [transformation, bounding-box-fill, arc, primer]
 written_by: The Primer
-written_at: 2026-07-01
+written_at: 2026-07-02
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -91,4 +91,4 @@ The key insights are:
 
 **Critical distinction**: Previous implementations using 4-directional connectivity will fail on this task. The test example has yellow cells that connect only diagonally (e.g., at positions that share a corner but not an edge). Using 8-directional connectivity ensures these are treated as a single cluster with one bounding box, producing the correct fill pattern.
 
-This pattern appears in ARC tasks where objects need to be "completed" or "filled in" based on their spatial extent rather than their exact shape.
+This pattern appears in ARC tasks where the goal is to identify objects by connectivity and perform spatial operations (like filling bounding boxes) on each object independently.
