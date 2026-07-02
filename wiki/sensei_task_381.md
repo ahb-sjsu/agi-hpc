@@ -92,7 +92,7 @@ def transform(grid):
                 # Check if C's row range intersects [rs, re]
                 if max(rs, r0c) > min(re, r1c):
                     continue
-                # Check if C's column range intersects the gap
+                # Check if C's column range intersects the gap columns (L+1 to R-1)
                 if c1c < L + 1 or c0c > R - 1:
                     continue
                 blocked = True
@@ -112,4 +112,24 @@ def transform(grid):
 
 ## Why this generalizes
 
-This belongs to the **gap-fill** primitive family: identify discrete objects (connected components), find spatial relationships between pairs (here: horizontal separation with row overlap), and fill the intervening space with a new color. The **blocking check** is critical — it ensures fills only occur when the gap is truly empty, preventing incorrect fills when a third object interrupts the line of sight between the pair. This pattern appears in multiple ARC tasks where objects must "connect" or "bridge" across empty space, but only when unobstructed. The key insight is that the fill color (9) is distinct from the object color (2), signaling a "connection" or "bridge" rather than object growth.
+This solution belongs to the **gap-fill** primitive family, which is common in ARC tasks involving spatial reasoning between objects. The key insight is:
+
+1. **Object decomposition:** Breaking the input into connected components (rectangles) allows reasoning about relationships between discrete objects rather than individual pixels.
+
+2. **Pairwise spatial reasoning:** The gap-fill operation is inherently pairwise—it considers the relationship between two objects (do they align? is there space between them?).
+
+3. **Blocker detection:** The three-way check (pair + potential blocker) is a common pattern where a third object can invalidate an operation between two others. This generalizes to many tasks involving occlusion, path-blocking, or conditional operations.
+
+4. **Deterministic filling:** Once conditions are met (alignment + no blocker), the fill operation is straightforward and deterministic.
+
+This pattern appears in tasks involving:
+- Connecting aligned objects
+- Filling corridors between rooms
+- Drawing bridges between platforms
+- Completing symmetric patterns with obstacles
+
+The implementation is robust because it:
+- Uses BFS for reliable component extraction
+- Explicitly checks all three conditions (row overlap, horizontal gap, no blocker)
+- Only modifies cells that are currently 0 (preserving existing structure)
+- Handles edge cases like touching rectangles (no gap) and complete blockage
