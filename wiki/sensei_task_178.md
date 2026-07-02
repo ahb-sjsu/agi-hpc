@@ -9,13 +9,35 @@ verified_by: run-against-train (all examples pass)
 
 ## The rule
 
-This task exhibits structured redundancy in the input grid. The transformation detects which dimension contains the redundancy and compresses it:
+This task exhibits **structured redundancy** along one dimension of the input grid. The transformation must:
 
-1. **All rows identical**: Every row in the grid is the same. Extract one representative row, apply run-length compression (collapse consecutive duplicate values), and output as a single row (1×N).
+1. **Detect the redundancy axis**: Check whether all rows are identical to each other, OR whether all columns are identical to each other.
 
-2. **All columns identical**: Every column in the grid is the same. Extract one representative column, apply run-length compression, and output as a single column (N×1).
+2. **Extract and compress**: Take one representative (a row or column) and apply **run-length compression** — collapse each run of consecutive identical values into a single value.
 
-The key insight is that these two cases are mutually exclusive for non-trivial inputs and cover all training examples. When each row is internally uniform (all values in a row are identical), the columns automatically become identical to each other. Similarly, when each column is internally uniform, the rows automatically become identical. So we only need to check for global row/column identity, not per-row/per-column uniformity.
+3. **Output in orthogonal orientation**: 
+   - If rows were identical → output is a **single row** (1×N)
+   - If columns were identical → output is a **single column** (N×1)
+
+### Worked Examples
+
+**Example 1** (column redundancy):
+- Input: 3×3 grid where each column is [1,2,1]
+- Extract column: [1,2,1]
+- Compress: [1,2,1] (no consecutive duplicates)
+- Output: [[1],[2],[1]] (3×1)
+
+**Example 3** (row redundancy with compression):
+- Input: 3×5 grid where each row is [2,3,3,8,1]
+- Extract row: [2,3,3,8,1]
+- Compress: [2,3,8,1] (consecutive 3s collapse to one)
+- Output: [[2,3,8,1]] (1×4)
+
+**Test Example** (row redundancy):
+- Input: 4×9 grid where each row is [1,1,2,3,3,3,8,8,4]
+- Extract row: [1,1,2,3,3,3,8,8,4]
+- Compress: [1,2,3,8,4]
+- Output: [[1,2,3,8,4]] (1×5)
 
 ## Reference implementation
 
@@ -67,12 +89,21 @@ def transform(grid):
 
 ## Why this generalizes
 
-This belongs to the **run-length-compression** primitive family. The core operation is detecting runs of consecutive identical values and collapsing each run to a single representative value.
+This belongs to the **run-length-compression** primitive family, combined with **dimension-detection** logic.
 
-What makes this task interesting is the *dimension selection* step: the algorithm must first identify which axis exhibits global redundancy (all rows identical vs all columns identical) before applying compression. The output shape (1×N vs N×1) is determined by which dimension was compressed.
+**Key insights for future tasks:**
 
-This pattern appears frequently in ARC tasks where grids contain structured repetition. The two-case logic (rows vs columns) is complete because:
-- If each row is internally uniform → columns are automatically identical → caught by `all_cols_identical`
-- If each column is internally uniform → rows are automatically identical → caught by `all_rows_identical`
+1. **Redundancy detection is orthogonal to compression**: First identify *which* dimension has global repetition (all rows same vs all columns same), *then* apply compression to the extracted representative.
 
-Future tasks with similar symmetry patterns can reuse the `compress()` helper and the detection logic for identical rows/columns.
+2. **Output shape encodes the compression axis**: A 1×N output means rows were redundant (compressed horizontally). An N×1 output means columns were redundant (compressed vertically).
+
+3. **Run-length compression is value-agnostic**: The `compress()` helper works on any sequence of integers, collapsing consecutive duplicates regardless of the actual values.
+
+4. **Mutual exclusivity**: For non-trivial inputs in this task family, either all rows are identical OR all columns are identical — never both (except for uniform grids, which are edge cases).
+
+**Reusable patterns:**
+- The `compress(seq)` function is a general primitive for run-length encoding
+- The row/column identity checks (`all(grid[i] == grid[0] ...)` and column comparison loop) are standard detection patterns
+- Output reshaping (`[compressed]` vs `[[v] for v in compressed]`) preserves the orthogonal orientation rule
+
+This pattern appears frequently in ARC tasks involving structured repetition, symmetry, or data compression along grid axes.
