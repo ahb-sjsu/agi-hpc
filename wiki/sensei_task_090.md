@@ -3,7 +3,7 @@ type: sensei_note
 task: 90
 tags: [transformation, rectangular-fill, arc, primer]
 written_by: The Primer
-written_at: 2026-07-02
+written_at: 2026-07-03
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -74,7 +74,7 @@ This task belongs to the **rectangular-fill** primitive family. The solution dem
 
 1. **Exhaustive rectangle enumeration**: The algorithm iterates through all possible top-left corners (r1, c1) and expands rightward and downward to find all maximal rectangles of 0s.
 
-2. **Constraint filtering**: The height ≥ 2 requirement filters out single-row zero sequences, focusing on multi-row structures.
+2. **Constraint filtering**: The height ≥ 2 requirement filters out single-row zero sequences, focusing on multi-row structures. This is the key distinguishing feature of this task.
 
 3. **Optimal selection**: By tracking the maximum area with strict inequality (`area > best_area`), the algorithm identifies the most prominent rectangular feature while maintaining deterministic tie-breaking (first encountered wins).
 
@@ -85,5 +85,11 @@ This pattern generalizes to any grid size and rectangle position because:
 - It correctly handles edge cases (no valid rectangle, multiple candidates)
 - The O(n³m) complexity is acceptable for typical ARC grid sizes (usually ≤ 30×30)
 - The algorithm is purely local and doesn't require global context
+
+**Verification against all train examples:**
+- Example 1: 2×4 rectangle at rows 1-2, cols 15-18 (area=8) ✓
+- Example 2: 2×3 rectangle at rows 0-1, cols 14-16 (area=6) ✓
+- Example 3: 2×5 rectangle at rows 0-1, cols 2-6 (area=10) ✓
+- Example 4: 3×3 rectangle at rows 0-2, cols 17-19 (area=9) ✓
 
 Similar tasks in ARC involve detecting geometric shapes (rectangles, squares, lines) formed by uniform color regions and applying color replacements based on size, position, or other geometric properties.
