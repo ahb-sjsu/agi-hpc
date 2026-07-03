@@ -3,7 +3,7 @@ type: sensei_note
 task: 159
 tags: [expansion, pattern-scaling, arc, primer]
 written_by: The Primer
-written_at: 2026-06-30
+written_at: 2026-07-03
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -13,13 +13,13 @@ verified_by: run-against-train (all examples pass)
 
 1. **Identify the frame**: Find the rectangular border formed by color 2 (red). This frame defines the output dimensions.
 
-2. **Identify the pattern**: Find all non-zero pixels that are NOT color 2. These form the pattern to be scaled.
+2. **Identify the pattern**: Find all non-zero pixels that are NOT color 2. These form the pattern to be scaled. Extract the pattern's bounding box.
 
-3. **Calculate scaling**: The interior of the frame (excluding the border) has dimensions `(frame_height - 2) × (frame_width - 2)`. The pattern has its own bounding box dimensions. The scaling factor is:
+3. **Calculate scaling**: The interior of the frame (excluding the border) has dimensions `(frame_height - 2) × (frame_width - 2)`. The scaling factor is:
    - `scale_h = interior_height // pattern_height`
    - `scale_w = interior_width // pattern_width`
 
-4. **Scale the pattern**: Each pixel in the pattern becomes a `scale_h × scale_w` block of the same color in the output interior.
+4. **Scale the pattern**: Each pixel in the pattern becomes a `scale_h × scale_w` block of the same color in the output interior. The pattern is placed starting at position (1, 1) inside the frame.
 
 5. **Preserve the border**: The output has the same red (color 2) border as the frame.
 
@@ -44,6 +44,7 @@ def transform(grid):
     # Find the other colored object (not 0, not 2)
     other_colors = np.unique(grid[(grid != 0) & (grid != 2)])
     if len(other_colors) == 0:
+        # No pattern, just return red frame
         output = np.zeros((frame_h, frame_w), dtype=int)
         output[0, :] = 2
         output[-1, :] = 2
@@ -91,12 +92,14 @@ def transform(grid):
 
 ## Why this generalizes
 
-This task belongs to the **pattern-scaling** primitive family. The key insight is that ARC tasks often involve:
+This task belongs to the **pattern-scaling** primitive family within the EXPANSION output class. The key insights are:
 
-1. **Object separation**: Distinguishing between structural elements (the frame) and content elements (the pattern).
+1. **Object separation**: The task requires distinguishing between structural elements (the red frame, color 2) and content elements (the pattern, any other non-zero color). These objects can appear anywhere in the input grid independently.
 
-2. **Proportional scaling**: The output size is determined by one object (the frame), while another object (the pattern) is scaled proportionally to fit.
+2. **Proportional scaling**: The output size is determined by one object (the frame), while another object (the pattern) is scaled proportionally to fit within the frame's interior. The scaling factor is derived from the ratio: `interior_size / pattern_size`.
 
-3. **Integer block expansion**: Each input pixel expands to an integer-sized block, preserving the pattern's topology while changing its resolution.
+3. **Integer block expansion**: Each input pixel expands to an integer-sized block (`scale_h × scale_w`), preserving the pattern's topology while changing its resolution. This is a common ARC primitive where discrete pixels become larger uniform regions.
 
-This pattern appears in many ARC tasks where a "container" defines output dimensions and "content" is transformed to fit. The scaling factor is always derived from the ratio of available space to source pattern size.
+4. **Frame as container**: The red border acts as a container that defines both the output dimensions and the boundary within which the scaled pattern must fit. This container-content relationship appears in many ARC tasks.
+
+This pattern generalizes to any task where a "frame" or "container" object defines output dimensions and a separate "content" object is transformed (scaled, rotated, reflected) to fit within that container.
