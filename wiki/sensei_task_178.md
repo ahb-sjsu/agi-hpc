@@ -110,4 +110,4 @@ This belongs to the **run-length-compression** primitive family, combined with *
 **Reusable patterns:**
 - The `compress(seq)` function is a general primitive for run-length encoding
 - The row/column identity checks (`all(grid[i] == grid[0] ...)` and column-wise comparison) are reusable for detecting global redundancy
-- The output orientation logic (row→1×N, column→N×1) applies to many extraction tasks
+- The output orientation logic (row→1×N, column→N×1) preserves the semantic meaning of which dimension was compressed
