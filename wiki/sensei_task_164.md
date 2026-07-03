@@ -7,8 +7,6 @@ written_at: 2026-07-03
 verified_by: run-against-train (all examples pass)
 ---
 
-# Task 164: Horizontal Mirror Expansion
-
 ## The rule
 
 For each row in the input grid, concatenate the row with its reverse. This creates a horizontal mirror image that doubles the width while keeping the height the same. Each output row becomes palindromic (symmetric left-to-right).
