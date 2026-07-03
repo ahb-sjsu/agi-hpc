@@ -103,10 +103,10 @@ This task belongs to the **connectivity-classifier** primitive family. The core 
 3. **Path existence**: Determine if a connected component of connector cells bridges the objects using 8-connectivity BFS
 4. **Binary classification**: Map connectivity (yes/no) to output value (8/0)
 
-This pattern appears in many ARC tasks where the goal is to determine if two regions are connected through a specific color channel. The key insight is that **8-connectivity** (allowing diagonal moves) is used consistently for both adjacency detection and path traversal, not 4-connectivity.
+This pattern generalizes to any task where you need to:
+- Detect structured terminal objects
+- Extract interface points using a specific connectivity rule
+- Check if those interfaces belong to the same connected component
+- Produce a binary classification based on connectivity
 
-The task tests understanding of:
-- Structured object recognition (2x2 blocks)
-- Graph connectivity on grids
-- Binary classification based on topological properties
-- Consistent use of connectivity rules (8-way throughout)
+The key insight is that **8-connectivity must be used consistently** for both adjacency detection and path traversal. Using 4-connectivity instead will fail on diagonal connections that are valid in this task.
