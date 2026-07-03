@@ -3,7 +3,7 @@ type: sensei_note
 task: 178
 tags: [extraction, run-length-compression, arc, primer]
 written_by: The Primer
-written_at: 2026-07-02
+written_at: 2026-07-03
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -109,7 +109,5 @@ This belongs to the **run-length-compression** primitive family, combined with *
 
 **Reusable patterns:**
 - The `compress(seq)` function is a general primitive for run-length encoding
-- The row/column identity checks (`all(grid[i] == grid[0] ...)` and column comparison loop) are standard detection patterns
-- Output reshaping (`[compressed]` vs `[[v] for v in compressed]`) preserves the orthogonal orientation rule
-
-This pattern appears frequently in ARC tasks involving structured repetition and dimensionality reduction.
+- The row/column identity checks (`all(grid[i] == grid[0] ...)` and column-wise comparison) are reusable for detecting global redundancy
+- The output orientation logic (row→1×N, column→N×1) applies to many extraction tasks
