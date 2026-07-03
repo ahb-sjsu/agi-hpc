@@ -3,7 +3,7 @@ type: sensei_note
 task: 25
 tags: [transformation, line-attraction, arc, primer]
 written_by: The Primer
-written_at: 2026-06-29
+written_at: 2026-07-03
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -29,8 +29,8 @@ def transform(grid):
     arr = np.array(grid)
     h, w = arr.shape
     
-    # Find vertical lines (columns where one color appears in more than half the cells)
-    vertical_lines = {}  # color -> column index
+    # Find vertical lines (columns where one color > half the cells)
+    vertical_lines = {}
     for col in range(w):
         colors = arr[:, col]
         non_zero = colors[colors != 0]
@@ -39,8 +39,8 @@ def transform(grid):
             if len(unique) == 1:
                 vertical_lines[int(unique[0])] = col
     
-    # Find horizontal lines (rows where one color appears in more than half the cells)
-    horizontal_lines = {}  # color -> row index
+    # Find horizontal lines (rows where one color > half the cells)
+    horizontal_lines = {}
     for row in range(h):
         colors = arr[row, :]
         non_zero = colors[colors != 0]
@@ -64,34 +64,28 @@ def transform(grid):
             color = arr[row, col]
             if color == 0:
                 continue
-            # Skip if this is part of a line
+            # Skip if part of a line
             if color in vertical_lines and vertical_lines[color] == col:
                 continue
             if color in horizontal_lines and horizontal_lines[color] == row:
                 continue
             
-            # Move toward the matching line (stop adjacent to it)
+            # Move toward matching line (stop adjacent)
             if color in vertical_lines:
                 target_col = vertical_lines[color]
-                if col < target_col:
-                    new_col = target_col - 1
-                else:
-                    new_col = target_col + 1
+                new_col = target_col - 1 if col < target_col else target_col + 1
                 if 0 <= new_col < w:
                     output[row, new_col] = color
             elif color in horizontal_lines:
                 target_row = horizontal_lines[color]
-                if row < target_row:
-                    new_row = target_row - 1
-                else:
-                    new_row = target_row + 1
+                new_row = target_row - 1 if row < target_row else target_row + 1
                 if 0 <= new_row < h:
                     output[new_row, col] = color
-            # Pixels without matching line are removed (not copied)
+            # Pixels without matching line are removed
     
     return output.tolist()
 ```
 
 ## Why this generalizes
 
-This belongs to the **line-attraction** primitive family. The key insight is that dominant linear structures (rows or columns filled predominantly with one color) serve as organizational anchors. Stray elements of matching colors are attracted to these anchors, settling in adjacent positions. Elements without matching anchors are eliminated. This pattern appears across multiple ARC tasks where structure emerges from the interaction between dominant lines and scattered elements.
+This belongs to the **line-attraction** primitive family. The key insight is that dominant linear structures (rows or columns filled predominantly with one color) serve as anchors that attract nearby pixels of matching colors. This pattern appears across multiple ARC tasks where organization around structural elements is required. The algorithm handles both vertical and horizontal lines, supports multiple lines of different colors, and correctly removes orphan pixels that have no matching attractor line.
