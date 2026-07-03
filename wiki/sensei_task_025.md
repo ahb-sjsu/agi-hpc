@@ -9,7 +9,7 @@ verified_by: run-against-train (all examples pass)
 
 ## The rule
 
-This task implements **line attraction**. The grid contains one or more dominant lines—either vertical columns or horizontal rows—where a single non-zero color fills more than half the cells. These lines act as "attractors" for stray pixels of the same color.
+This task implements **line attraction**. The grid contains dominant lines—either vertical columns or horizontal rows—where a single non-zero color fills more than half the cells. These lines act as attractors for stray pixels of the same color.
 
 **Transformation steps:**
 
@@ -17,7 +17,8 @@ This task implements **line attraction**. The grid contains one or more dominant
 2. **Preserve lines**: Copy all detected lines unchanged to the output.
 3. **Move stray pixels**: For each non-zero pixel not part of a line:
    - If its color matches a vertical line, move it horizontally to the cell immediately adjacent to that line (column = line_column - 1 if pixel is left of line, or line_column + 1 if pixel is right of line).
-   - If its color matches a horizontal line, move it vertically to the cell immediately adjacent to that line (row = line_row - 1 if pixel is above line, or line_row + 1 if pixel is below line).
+   - If its color matches a horizontal line (and no vertical line exists for that color), move it vertically to the cell immediately adjacent to that line (row = line_row - 1 if pixel is above line, or line_row + 1 if pixel is below line).
+   - Vertical lines take priority over horizontal lines when both exist for the same color.
    - If no matching line exists for the pixel's color, the pixel is removed (becomes 0).
 4. **Output**: Return the transformed grid with lines preserved and stray pixels repositioned adjacent to their matching lines.
 
@@ -30,7 +31,7 @@ def transform(grid):
     h, w = arr.shape
     
     # Find vertical lines (columns where one color > half the cells)
-    vertical_lines = {}
+    vertical_lines = {}  # color -> column
     for col in range(w):
         colors = arr[:, col]
         non_zero = colors[colors != 0]
@@ -40,7 +41,7 @@ def transform(grid):
                 vertical_lines[int(unique[0])] = col
     
     # Find horizontal lines (rows where one color > half the cells)
-    horizontal_lines = {}
+    horizontal_lines = {}  # color -> row
     for row in range(h):
         colors = arr[row, :]
         non_zero = colors[colors != 0]
@@ -71,6 +72,7 @@ def transform(grid):
                 continue
             
             # Move toward matching line (stop adjacent)
+            # Vertical lines take priority
             if color in vertical_lines:
                 target_col = vertical_lines[color]
                 new_col = target_col - 1 if col < target_col else target_col + 1
@@ -88,4 +90,12 @@ def transform(grid):
 
 ## Why this generalizes
 
-This belongs to the **line-attraction** primitive family. The key insight is that dominant linear structures (rows or columns filled predominantly with one color) serve as anchors that attract nearby pixels of matching colors. This pattern appears across multiple ARC tasks where organization around structural elements is required. The algorithm handles both vertical and horizontal lines, supports multiple lines of different colors, and correctly removes orphan pixels that have no matching attractor line.
+This belongs to the **line-attraction** primitive family. The key insight is that dominant linear structures (rows or columns filled predominantly with one color) serve as anchors that attract nearby pixels of matching colors. This pattern appears across multiple ARC tasks where organization around structural elements is required.
+
+The generalization works because:
+1. **Line detection is robust**: Using the "more than half" threshold correctly identifies dominant lines regardless of grid size.
+2. **Movement is deterministic**: Pixels always move to the adjacent cell, never onto the line itself.
+3. **Priority is clear**: Vertical lines take precedence, resolving ambiguity when both orientations exist.
+4. **Cleanup is automatic**: Pixels without matching lines are removed, preventing noise accumulation.
+
+This primitive can be composed with other transformations (e.g., symmetry, object counting) to solve more complex ARC tasks.
