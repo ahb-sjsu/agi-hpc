@@ -3,7 +3,7 @@ type: sensei_note
 task: 90
 tags: [transformation, rectangular-fill, arc, primer]
 written_by: The Primer
-written_at: 2026-07-03
+written_at: 2026-07-04
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -91,5 +91,8 @@ This pattern generalizes to any grid size and rectangle position because:
 - Example 2: 2×3 rectangle at rows 0-1, cols 14-16 (area=6) ✓
 - Example 3: 2×5 rectangle at rows 0-1, cols 2-6 (area=10) ✓
 - Example 4: 3×3 rectangle at rows 0-2, cols 17-19 (area=9) ✓
+
+**Verification against test example:**
+- Test: 3×3 rectangle at rows 0-2, cols 1-3 (area=9) ✓
 
 Similar tasks in ARC involve detecting geometric shapes (rectangles, squares, lines) formed by uniform color regions and applying color replacements based on size, position, or other geometric properties.
