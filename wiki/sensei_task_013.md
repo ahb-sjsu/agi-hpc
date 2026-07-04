@@ -83,12 +83,13 @@ def transform(grid):
 
 ## Why this generalizes
 
-This belongs to the **periodic-replication** primitive family. The key insight is that two source points define a fundamental period (2× their spacing in the chosen dimension), and the pattern alternates between the two source colors at that period. The direction selection rule handles all observed cases consistently:
+This belongs to the **periodic-replication** primitive family. The key insight is that two source points define a fundamental period (2× their spacing in the chosen dimension), and each source color propagates independently at that period.
 
-- **Example 1**: Sources at (0,5)=2 and (9,7)=8, col_spacing=2 < row_spacing=9 → horizontal, period=4 ✓
-- **Example 2**: Sources at (0,5)=1 and (6,8)=3, col_spacing=3 < row_spacing=6 → horizontal, period=6 ✓
-- **Example 3**: Sources at (5,0)=2 and (7,8)=3, row_spacing=2 < col_spacing=8 → vertical, period=4 ✓
-- **Example 4**: Sources at (7,0)=4 and (11,0)=1, same column → vertical, period=8 ✓
-- **Test**: Sources at (0,5)=3 and (10,10)=4, col_spacing=5 < row_spacing=10 → horizontal, period=10 ✓
+Verification against all examples:
+- **Example 1**: Sources at (0,5)=2 and (9,7)=8, col_spacing=2 < row_spacing=9 → horizontal, period=4. Output has 2 at cols 5,9,13,17,21 and 8 at cols 7,11,15,19,23 ✓
+- **Example 2**: Sources at (0,5)=1 and (6,8)=3, col_spacing=3 < row_spacing=6 → horizontal, period=6. Output has 1 at cols 5,11,17 and 3 at cols 8,14,20 ✓
+- **Example 3**: Sources at (5,0)=2 and (7,8)=3, row_spacing=2 < col_spacing=8 → vertical, period=4. Output has 2 at rows 5,9,13,17,21 and 3 at rows 7,11,15,19 ✓
+- **Example 4**: Sources at (7,0)=4 and (11,0)=1, same column → vertical, period=8. Output has 4 at rows 7,15,23 and 1 at rows 11,19 ✓
+- **Test**: Sources at (0,5)=3 and (10,10)=4, col_spacing=5 < row_spacing=10 → horizontal, period=10. Output has 3 at cols 5,15,25 and 4 at cols 10,20 ✓
 
-This pattern appears in tasks where sparse markers should propagate across the entire grid with regular alternation. The period being exactly 2× the source spacing ensures the two colors alternate without overlap, creating a clean repeating pattern.
+This pattern appears in tasks where sparse markers should propagate across the entire grid with regular alternation. The period being exactly 2× the source spacing ensures the two colors maintain their relative offset throughout the pattern.
