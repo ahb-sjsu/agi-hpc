@@ -45,10 +45,8 @@ def transform(grid):
     # Get cells adjacent to each block (8-connectivity for adjacency)
     def get_adjacent_eights(block_r, block_c):
         adjacent = set()
-        # Check the perimeter around the 2x2 block
         for dr in range(-1, 3):
             for dc in range(-1, 3):
-                # Skip the 2x2 block itself
                 if 0 <= dr <= 1 and 0 <= dc <= 1:
                     continue
                 nr, nc = block_r + dr, block_c + dc
@@ -103,9 +101,6 @@ This task belongs to the **connectivity-classifier** primitive family. The core 
 3. **Path existence**: Determine if a connected component of connector cells bridges the objects using 8-connectivity BFS
 4. **Binary classification**: Map connectivity (yes/no) to output value (8/0)
 
-This pattern generalizes to any task where you need to determine if two or more objects are connected through a specific color channel. The key insight is that both the adjacency check and the path traversal must use the same connectivity definition (8-connectivity in this case).
+This pattern generalizes to any task where you need to determine if two or more objects are connected via a specific color channel. The key insight is that both the adjacency check and the path traversal must use the same connectivity definition (8-connectivity in this case). Using 4-connectivity instead would fail on diagonal connections that are valid in this task.
 
-**Common pitfalls to avoid**:
-- Using 4-connectivity instead of 8-connectivity for path traversal
-- Only checking orthogonal adjacency to blocks instead of 8-connectivity
-- Not properly identifying the 2x2 block structure (must be exactly 2x2, not larger clusters)
+The 2x2 block structure is a common ARC primitive that provides stable anchor points for connectivity analysis. Similar tasks may use different block sizes or shapes, but the connectivity-classification pattern remains the same.
