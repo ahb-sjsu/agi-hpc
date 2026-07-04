@@ -9,13 +9,13 @@ verified_by: run-against-train (all examples pass)
 
 ## The rule
 
-Count the number of distinct colors present anywhere in the input grid. The output pattern depends ONLY on this count:
+Count the number of distinct colors present anywhere in the input grid. The output pattern depends only on this count:
 
-- **1 distinct color** → fill the entire top row with 5s, all other cells 0
-- **2 distinct colors** → draw the main diagonal with 5s (`out[i][i] = 5`), all other cells 0
-- **3 distinct colors** → draw the anti-diagonal with 5s (`out[i][W-1-i] = 5`), all other cells 0
+- **1 distinct color** → fill the entire top row with 5s, all other cells 0.
+- **2 distinct colors** → draw the main diagonal with 5s (`out[i][i] = 5`), all other cells 0.
+- **3 distinct colors** → draw the anti-diagonal with 5s (`out[i][W - 1 - i] = 5`), all other cells 0.
 
-The output grid has the same dimensions as the input. The actual color values and their spatial arrangement in the input are irrelevant—only the cardinality of the color set matters.
+The output grid has the same dimensions as the input. The actual color values and their spatial arrangement are irrelevant—only the cardinality of the color set matters.
 
 ## Reference implementation
 
@@ -45,10 +45,10 @@ This task belongs to the **count-distinct-colors** primitive family. The key ins
 When you see multiple training examples with very different local patterns yielding the same output, suspect a classification rule based on a global property (color count, object count, symmetry type) rather than a transformation of local structure. The output pattern itself (top row vs. diagonal vs. anti-diagonal) encodes the classification result.
 
 **Verification against all train examples:**
-- Train 1: colors {2,3} → 2 distinct → main diagonal ✓
-- Train 2: colors {2,3,4} → 3 distinct → anti-diagonal ✓
+- Train 1: colors {2, 3} → 2 distinct → main diagonal ✓
+- Train 2: colors {2, 3, 4} → 3 distinct → anti-diagonal ✓
 - Train 3: colors {4} → 1 distinct → top row ✓
 - Train 4: colors {3} → 1 distinct → top row ✓
-- Train 5: colors {3,4} → 2 distinct → main diagonal ✓
+- Train 5: colors {3, 4} → 2 distinct → main diagonal ✓
 
-**Test prediction:** colors {2,3,4} → 3 distinct → anti-diagonal (matches expected output)
+**Test prediction:** colors {2, 3, 4} → 3 distinct → anti-diagonal (matches expected output).
