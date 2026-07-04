@@ -3,7 +3,7 @@ type: sensei_note
 task: 13
 tags: [transformation, periodic-replication, arc, primer]
 written_by: The Primer
-written_at: 2026-07-03
+written_at: 2026-07-04
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -14,9 +14,9 @@ This task involves **periodic replication** from two source pixels. The transfor
 1. **Identify sources**: Find the two non-zero pixels in the input grid. Record their positions (row, column) and values (colors).
 
 2. **Determine direction**: Compare the row spacing and column spacing between the two sources:
-   - If column spacing ≤ row spacing: replicate **horizontally** (fill entire columns across all rows)
-   - If row spacing < column spacing: replicate **vertically** (fill entire rows across all columns)
-   - Special cases: same row → horizontal; same column → vertical
+   - If both pixels are in the same column (column_spacing = 0): replicate **vertically** (fill entire rows)
+   - If both pixels are in the same row (row_spacing = 0): replicate **horizontally** (fill entire columns)
+   - Otherwise: if column_spacing ≤ row_spacing, replicate **horizontally**; else replicate **vertically**
 
 3. **Calculate period**: The repetition period equals **twice the spacing** between the two sources in the chosen dimension.
 
@@ -47,6 +47,8 @@ def transform(grid):
     
     result = np.zeros((h, w), dtype=int)
     
+    # Determine direction: same column -> vertical, same row -> horizontal
+    # Otherwise: smaller spacing wins, with column spacing winning ties
     if col_spacing == 0:
         # Same column - vertical pattern
         period = 2 * row_spacing
@@ -61,29 +63,27 @@ def transform(grid):
             result[:, col] = v1
         for col in range(c2, w, period):
             result[:, col] = v2
+    elif col_spacing <= row_spacing:
+        # Horizontal pattern (column spacing wins ties)
+        period = 2 * col_spacing
+        for col in range(c1, w, period):
+            result[:, col] = v1
+        for col in range(c2, w, period):
+            result[:, col] = v2
     else:
-        # Different row and column - use smaller spacing
-        if col_spacing <= row_spacing:
-            # Horizontal pattern
-            period = 2 * col_spacing
-            for col in range(c1, w, period):
-                result[:, col] = v1
-            for col in range(c2, w, period):
-                result[:, col] = v2
-        else:
-            # Vertical pattern
-            period = 2 * row_spacing
-            for row in range(r1, h, period):
-                result[row, :] = v1
-            for row in range(r2, h, period):
-                result[row, :] = v2
+        # Vertical pattern
+        period = 2 * row_spacing
+        for row in range(r1, h, period):
+            result[row, :] = v1
+        for row in range(r2, h, period):
+            result[row, :] = v2
     
     return result.tolist()
 ```
 
 ## Why this generalizes
 
-This belongs to the **periodic-replication** primitive family. The key insight is that two source points define a fundamental period (2× their spacing in the chosen dimension), and the pattern alternates between the two source colors at that period. The direction selection rule (smaller spacing wins, with column spacing winning ties) handles all observed cases consistently:
+This belongs to the **periodic-replication** primitive family. The key insight is that two source points define a fundamental period (2× their spacing in the chosen dimension), and the pattern alternates between the two source colors at that period. The direction selection rule handles all observed cases consistently:
 
 - **Example 1**: Sources at (0,5)=2 and (9,7)=8, col_spacing=2 < row_spacing=9 → horizontal, period=4 ✓
 - **Example 2**: Sources at (0,5)=1 and (6,8)=3, col_spacing=3 < row_spacing=6 → horizontal, period=6 ✓
