@@ -115,6 +115,6 @@ This belongs to the **run-length-compression** primitive family, combined with *
 
 2. **Output shape encodes the compression axis**: A 1×N output means rows were redundant (compressed horizontally). An N×1 output means columns were redundant (compressed vertically).
 
-3. **Run-length compression is value-agnostic**: The `compress()` helper works on any sequence of integers, collapsing consecutive duplicates regardless of the specific values involved.
+3. **Run-length compression is value-agnostic**: The `compress()` helper works on any sequence of integers, collapsing consecutive duplicates regardless of the actual values.
 
-4. **This pattern appears in ARC when information is duplicated for emphasis or structure**: The task tests whether the agent can recognize that the duplication is noise and extract the underlying signal.
+4. **This pattern appears in many ARC tasks**: Look for grids with structured repetition before attempting more complex transformations.
