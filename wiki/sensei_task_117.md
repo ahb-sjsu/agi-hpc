@@ -3,7 +3,7 @@ type: sensei_note
 task: 117
 tags: [transformation, symmetry-reflection, arc, primer]
 written_by: The Primer
-written_at: 2026-06-30
+written_at: 2026-07-04
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -115,10 +115,12 @@ def transform(grid):
 
 ## Why this generalizes
 
-This solution belongs to the **symmetry-reflection** primitive family. The key insight is that one shape serves as a geometric anchor (identified by 4-way symmetry), while the other shape undergoes a systematic reflection transformation. This pattern generalizes to any grid containing:
+This solution belongs to the **symmetry-reflection** primitive family. The key insight is recognizing that one shape serves as a stable anchor (identified by its 4-way rotational/reflectional symmetry) while the other shape is the "active" element that gets transformed.
 
-1. Two distinct colored objects
-2. One object with point/axial symmetry (the anchor)
-3. One asymmetric object to be transformed
+The generalization works because:
+1. **Symmetry detection is robust**: By checking all four symmetric positions for every pixel, we reliably identify the anchor regardless of the specific pattern
+2. **Reflection is deterministic**: Using the anchor's center as the reflection point ensures consistent behavior across all examples
+3. **Color-agnostic**: The algorithm works with any pair of colors, not just specific values
+4. **Size-invariant**: Works regardless of the grid dimensions or shape sizes
 
-The reflection operation preserves the anchor's position while creating a symmetric pattern from the asymmetric shape. This is a common ARC primitive where symmetry detection guides transformation application.
+This pattern appears in other ARC tasks where one object acts as a "mirror" or "axis" for transforming another object. The primitive can be extended to handle multiple reflection axes, different symmetry types (2-way, rotational), or cascaded reflections.
