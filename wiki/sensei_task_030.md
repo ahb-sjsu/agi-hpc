@@ -71,10 +71,11 @@ This generalizes to any task where objects need to align to a reference object a
 
 ## Verification
 
-This implementation has been verified against all 3 training examples:
+This implementation has been verified against all 3 training examples and the test example:
 
 - **Example 1**: Color-1 top at row 1 → colors 2 and 4 shift to align (color-2 down 1, color-4 up 1)
 - **Example 2**: Color-1 top at row 5 → colors 2 and 4 shift down to align (color-2 down 3, color-4 down 5)
 - **Example 3**: Color-1 top at row 2 → colors 2 and 4 shift to align (color-2 down 1, color-4 up 1)
+- **Test**: Color-1 top at row 2 → colors 2 and 4 shift to align (color-2 down 2, color-4 up 3)
 
-All training examples pass exactly.
+All examples pass exactly.
