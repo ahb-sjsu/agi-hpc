@@ -3,7 +3,7 @@ type: sensei_note
 task: 159
 tags: [expansion, pattern-scaling, arc, primer]
 written_by: The Primer
-written_at: 2026-07-03
+written_at: 2026-07-04
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -100,6 +100,6 @@ This task belongs to the **pattern-scaling** primitive family within the EXPANSI
 
 3. **Integer block expansion**: Each input pixel expands to an integer-sized block (`scale_h × scale_w`), preserving the pattern's topology while changing its resolution. This is a common ARC primitive where discrete pixels become larger uniform regions.
 
-4. **Frame as container**: The red border acts as a container that defines both the output dimensions and the boundary within which the scaled pattern must fit. This container-content relationship appears in many ARC tasks.
+4. **Frame as container**: The red border acts as both a size specification and a structural element that must be preserved in the output. The pattern fills only the interior, never overwriting the border.
 
-This pattern generalizes to any task where a "frame" or "container" object defines output dimensions and a separate "content" object is transformed (scaled, rotated, reflected) to fit within that container.
+This pattern appears in many ARC tasks where one object defines a "canvas" and another object defines "content" to be rendered at a different scale.
