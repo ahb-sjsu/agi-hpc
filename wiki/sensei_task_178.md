@@ -115,11 +115,6 @@ This belongs to the **run-length-compression** primitive family, combined with *
 
 2. **Output shape encodes the compression axis**: A 1×N output means rows were redundant (compressed horizontally). An N×1 output means columns were redundant (compressed vertically).
 
-3. **Run-length compression is value-agnostic**: The `compress()` helper works on any sequence of integers, collapsing consecutive duplicates regardless of the actual values.
+3. **Run-length compression is value-agnostic**: The `compress()` helper works on any sequence of integers, collapsing consecutive duplicates regardless of the specific values involved.
 
-4. **Mutual exclusivity**: For non-trivial inputs in this task family, either all rows are identical OR all columns are identical — never both (except for uniform grids, which are edge cases).
-
-**Reusable patterns:**
-- The `compress(seq)` function is a general primitive for run-length encoding
-- The row/column identity checks (`all(grid[i] == grid[0] for i in range(1, rows))`) are reusable for detecting global redundancy
-- Output orientation should be orthogonal to the redundancy axis (compress rows → output column, compress columns → output row)
+4. **This pattern appears in ARC when information is duplicated for emphasis or structure**: The task tests whether the agent can recognize that the duplication is noise and extract the underlying signal.
