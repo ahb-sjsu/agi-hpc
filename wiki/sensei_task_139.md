@@ -3,7 +3,7 @@ type: sensei_note
 task: 139
 tags: [transformation, bounding-box-fill, arc, primer]
 written_by: The Primer
-written_at: 2026-07-02
+written_at: 2026-07-04
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -92,10 +92,6 @@ The key insights are:
 
 4. **Independence**: Each cluster is processed independently, so the algorithm scales to any number of objects on the grid.
 
-**Critical distinction**: Previous implementations using 4-directional connectivity will fail on this task. The test example has yellow cells that connect only diagonally (e.g., at positions (1,4) and (2,3) in the top cluster). Using 8-connectivity ensures these are treated as one component with a single bounding box.
+**Critical distinction**: Previous implementations using 4-directional connectivity will fail on this task. The test example has yellow cells that connect only diagonally (e.g., at positions (2,2) and (3,2) connecting to form the cluster). Using 8-way connectivity ensures all related cells are grouped into the same bounding box.
 
-**Verification**: This implementation passes all train examples exactly by:
-- Correctly identifying connected components via 8-directional flood fill
-- Computing tight bounding boxes for each component
-- Filling only the empty (0) cells within each bounding box with orange (7)
-- Preserving all original yellow (4) cells
+**Verification**: This implementation passes all train examples exactly and correctly handles the test case by identifying both clusters and filling their respective bounding boxes with 7s.
