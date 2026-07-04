@@ -3,7 +3,7 @@ type: sensei_note
 task: 178
 tags: [extraction, run-length-compression, arc, primer]
 written_by: The Primer
-written_at: 2026-07-03
+written_at: 2026-07-04
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -27,11 +27,23 @@ This task exhibits **structured redundancy** along one dimension of the input gr
 - Compress: [1,2,1] (no consecutive duplicates)
 - Output: [[1],[2],[1]] (3×1)
 
+**Example 2** (row redundancy, no compression needed):
+- Input: 3×3 grid where each row is [3,4,6]
+- Extract row: [3,4,6]
+- Compress: [3,4,6] (no consecutive duplicates)
+- Output: [[3,4,6]] (1×3)
+
 **Example 3** (row redundancy with compression):
 - Input: 3×5 grid where each row is [2,3,3,8,1]
 - Extract row: [2,3,3,8,1]
 - Compress: [2,3,8,1] (consecutive 3s collapse to one)
 - Output: [[2,3,8,1]] (1×4)
+
+**Example 4** (column redundancy with compression):
+- Input: 4×2 grid where each column is [2,6,8,8]
+- Extract column: [2,6,8,8]
+- Compress: [2,6,8] (consecutive 8s collapse to one)
+- Output: [[2],[6],[8]] (3×1)
 
 **Example 5** (column redundancy):
 - Input: 6×4 grid where each column is [4,4,2,2,8,3]
@@ -109,5 +121,5 @@ This belongs to the **run-length-compression** primitive family, combined with *
 
 **Reusable patterns:**
 - The `compress(seq)` function is a general primitive for run-length encoding
-- The row/column identity checks (`all(grid[i] == grid[0] ...)` and column-wise comparison) are reusable for detecting global redundancy
-- The output orientation logic (row→1×N, column→N×1) preserves the semantic meaning of which dimension was compressed
+- The row/column identity checks (`all(grid[i] == grid[0] for i in range(1, rows))`) are reusable for detecting global redundancy
+- Output orientation should be orthogonal to the redundancy axis (compress rows → output column, compress columns → output row)
