@@ -3,7 +3,7 @@ type: sensei_note
 task: 25
 tags: [transformation, line-attraction, arc, primer]
 written_by: The Primer
-written_at: 2026-07-03
+written_at: 2026-07-04
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -30,7 +30,7 @@ def transform(grid):
     arr = np.array(grid)
     h, w = arr.shape
     
-    # Find vertical lines (columns where one color > half the cells)
+    # Detect vertical lines (columns where one color > half the cells)
     vertical_lines = {}  # color -> column
     for col in range(w):
         colors = arr[:, col]
@@ -40,7 +40,7 @@ def transform(grid):
             if len(unique) == 1:
                 vertical_lines[int(unique[0])] = col
     
-    # Find horizontal lines (rows where one color > half the cells)
+    # Detect horizontal lines (rows where one color > half the cells)
     horizontal_lines = {}  # color -> row
     for row in range(h):
         colors = arr[row, :]
@@ -90,12 +90,11 @@ def transform(grid):
 
 ## Why this generalizes
 
-This belongs to the **line-attraction** primitive family. The key insight is that dominant linear structures (rows or columns filled predominantly with one color) serve as anchors that attract nearby pixels of matching colors. This pattern appears across multiple ARC tasks where organization around structural elements is required.
+This belongs to the **line-attraction** primitive family. The key insight is that dominant linear structures (rows or columns with >50% single-color occupancy) serve as anchors that attract stray pixels of matching colors. The transformation preserves the structural lines while reorganizing scattered elements into a cleaner, line-adjacent configuration. This pattern appears across multiple ARC tasks where order emerges from chaos through attraction to dominant features.
 
-The generalization works because:
-1. **Line detection is robust**: Using the "more than half" threshold correctly identifies dominant lines regardless of grid size.
-2. **Movement is deterministic**: Pixels always move to the adjacent cell, never onto the line itself.
-3. **Priority is clear**: Vertical lines take precedence, resolving ambiguity when both orientations exist.
-4. **Cleanup is automatic**: Pixels without matching lines are removed, preventing noise accumulation.
-
-This primitive can be composed with other transformations (e.g., symmetry, object counting) to solve more complex ARC tasks.
+**Key properties:**
+- Line detection uses a majority threshold (>50% occupancy)
+- Movement is always toward the line, stopping at adjacency
+- Priority: vertical lines override horizontal lines for the same color
+- Unmatched colors are eliminated (become background)
+- The transformation is deterministic and shape-preserving
