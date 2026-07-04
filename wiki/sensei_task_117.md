@@ -63,12 +63,15 @@ def transform(grid):
         cr, cc = center
         pos_set = set(positions)
         for r, c in positions:
+            # Check vertical reflection
             vr = 2*cr - r
-            hc = 2*cc - c
             if vr != int(vr) or (int(vr), c) not in pos_set:
                 return False
+            # Check horizontal reflection
+            hc = 2*cc - c
             if hc != int(hc) or (r, int(hc)) not in pos_set:
                 return False
+            # Check diagonal reflection (both)
             if (int(vr), int(hc)) not in pos_set:
                 return False
         return True
@@ -100,27 +103,35 @@ def transform(grid):
     
     # Reflect the other shape across both axes through anchor center
     for r, c in pos[reflect_color]:
-        output[r, c] = reflect_color  # Original
+        # Original
+        output[r, c] = reflect_color
+        # Vertical reflection
         vr = int(round(2 * center_cr - r))
-        hc = int(round(2 * center_cc - c))
         if 0 <= vr < h:
-            output[vr, c] = reflect_color  # Vertical reflection
+            output[vr, c] = reflect_color
+        # Horizontal reflection
+        hc = int(round(2 * center_cc - c))
         if 0 <= hc < w:
-            output[r, hc] = reflect_color  # Horizontal reflection
+            output[r, hc] = reflect_color
+        # Both reflections (diagonal)
         if 0 <= vr < h and 0 <= hc < w:
-            output[vr, hc] = reflect_color  # Both reflections (diagonal)
+            output[vr, hc] = reflect_color
     
     return output.tolist()
 ```
 
 ## Why this generalizes
 
-This solution belongs to the **symmetry-reflection** primitive family. The key insight is recognizing that one shape serves as a stable anchor (identified by its 4-way rotational/reflectional symmetry) while the other shape is the "active" element that gets transformed.
+This solution belongs to the **symmetry-reflection** primitive family. The key insight is that ARC tasks often use one object as an "anchor" or "axis" for transforming another object. In this family:
 
-The generalization works because:
-1. **Symmetry detection is robust**: By checking all four symmetric positions for every pixel, we reliably identify the anchor regardless of the specific pattern
-2. **Reflection is deterministic**: Using the anchor's center as the reflection point ensures consistent behavior across all examples
-3. **Color-agnostic**: The algorithm works with any pair of colors, not just specific values
-4. **Size-invariant**: Works regardless of the grid dimensions or shape sizes
+1. **Anchor identification**: The anchor is identified by its intrinsic symmetry property (4-way symmetry), not by color or position. This generalizes to any symmetric shape serving as a transformation reference.
 
-This pattern appears in other ARC tasks where one object acts as a "mirror" or "axis" for transforming another object. The primitive can be extended to handle multiple reflection axes, different symmetry types (2-way, rotational), or cascaded reflections.
+2. **Reflection operation**: The asymmetric shape is reflected across the anchor's center point using standard geometric reflection formulas. This pattern appears in many ARC tasks involving symmetry operations.
+
+3. **Multi-copy generation**: Creating 4 copies (original + 3 reflections) is a common pattern when reflecting across both horizontal and vertical axes.
+
+This approach generalizes because it:
+- Works regardless of which color is the anchor (determined by symmetry, not color value)
+- Handles any grid size (uses relative coordinates from center)
+- Applies the same geometric transformation rules to any asymmetric shape
+- Can be extended to other symmetry types (2-way, rotational) by modifying the symmetry check
