@@ -3,7 +3,7 @@ type: sensei_note
 task: 381
 tags: [transformation, gap-fill, arc, primer]
 written_by: The Primer
-written_at: 2026-07-02
+written_at: 2026-07-04
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -71,24 +71,29 @@ def transform(grid):
             r0a, r1a, c0a, c1a = rects[i]
             r0b, r1b, c0b, c1b = rects[j]
             
+            # Compute row overlap
             rs, re = max(r0a, r0b), min(r1a, r1b)
             if rs > re:
                 continue
             
+            # Compute horizontal gap
             if c1a < c0b:
                 L, R = c1a, c0b
             elif c1b < c0a:
                 L, R = c1b, c0a
             else:
-                continue
+                continue  # Rectangles overlap or touch horizontally
             
+            # Check for blockers
             blocked = False
             for k in range(n):
                 if k in (i, j):
                     continue
                 r0c, r1c, c0c, c1c = rects[k]
+                # Check row intersection with shared rows
                 if max(rs, r0c) > min(re, r1c):
                     continue
+                # Check column intersection with gap (cols L+1 to R-1)
                 if c1c < L + 1 or c0c > R - 1:
                     continue
                 blocked = True
@@ -108,12 +113,12 @@ def transform(grid):
 This task belongs to the **gap-fill** primitive family. The key insight is that gaps between objects are filled conditionally based on:
 
 1. **Spatial relationship:** Objects must share a dimension (rows) and be separated in the orthogonal dimension (columns).
-2. **Occlusion checking:** A third object can block the fill operation if it occupies the gap region.
+2. **Occlusion check:** A third object can block the fill if it occupies any cell in the gap region within the shared dimension.
+3. **Selective filling:** Only empty (0) cells in the gap are filled with the target color (9).
 
-This pattern generalizes to:
-- Vertical gap filling (swap row/column logic)
-- Different fill colors based on object properties
-- Multiple gap fills in complex scenes
-- Tasks where connectivity or visibility between objects determines transformations
+This pattern generalizes to any task where:
+- Multiple distinct objects of the same color exist
+- The output requires filling space between certain object pairs
+- The fill is conditional on the absence of blocking objects
 
-The blocker-checking mechanism is particularly important—it prevents over-filling and ensures the transformation respects the scene's occlusion structure.
+The primitive can be adapted for vertical gaps (swap row/column logic), different colors, or different fill conditions by modifying the component detection and blocker criteria.
