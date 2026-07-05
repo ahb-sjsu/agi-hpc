@@ -29,12 +29,8 @@ def transform(grid):
     import numpy as np
     grid = np.array(grid)
     
-    # The grid is 11x11 with separator lines (value 8) at rows 3, 7 and cols 3, 7
-    # This creates 9 regions of 3x3 cells each
-    
-    # Region row indices (skip separator rows 3 and 7)
+    # Region boundaries (skip separator rows/cols at indices 3 and 7)
     region_rows = [(0, 1, 2), (4, 5, 6), (8, 9, 10)]
-    # Region column indices (skip separator cols 3 and 7)
     region_cols = [(0, 1, 2), (4, 5, 6), (8, 9, 10)]
     
     output = []
@@ -44,7 +40,7 @@ def transform(grid):
         for col_indices in region_cols:
             # Extract the 3x3 region
             region = grid[np.ix_(row_indices, col_indices)]
-            # Count the number of magenta (6) pixels
+            # Count magenta (6) pixels
             count_6 = np.sum(region == 6)
             # Output 1 if exactly 2 sixes, else 0
             output_row.append(1 if count_6 == 2 else 0)
