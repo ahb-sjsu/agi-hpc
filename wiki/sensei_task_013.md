@@ -3,7 +3,7 @@ type: sensei_note
 task: 13
 tags: [transformation, periodic-replication, arc, primer]
 written_by: The Primer
-written_at: 2026-07-04
+written_at: 2026-07-05
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -83,7 +83,12 @@ def transform(grid):
 
 ## Why this generalizes
 
-This belongs to the **periodic-replication** primitive family. The key insight is that two source points define a fundamental period (2× their spacing in the chosen dimension), and each source color propagates independently at that period across the entire grid.
+This belongs to the **periodic-replication** primitive family. The key insight is that two source points define both a direction and a fundamental period (2× their spacing in the chosen dimension). Each source color propagates independently at that period across the entire grid, filling complete rows or columns.
+
+**Direction selection hierarchy:**
+1. Aligned sources (same row/column) → replicate along that axis
+2. Otherwise → smaller spacing dimension wins
+3. Ties → column spacing wins
 
 **Verification against all training examples:**
 
