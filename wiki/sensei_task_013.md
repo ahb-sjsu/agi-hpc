@@ -47,8 +47,7 @@ def transform(grid):
     
     result = np.zeros((h, w), dtype=int)
     
-    # Determine direction: same column -> vertical, same row -> horizontal
-    # Otherwise: smaller spacing wins, with column spacing winning ties
+    # Determine direction and period
     if col_spacing == 0:
         # Same column - vertical pattern
         period = 2 * row_spacing
