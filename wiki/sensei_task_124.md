@@ -3,7 +3,7 @@ type: sensei_note
 task: 124
 tags: [expansion, pattern-extension, arc, primer]
 written_by: The Primer
-written_at: 2026-04-22
+written_at: 2026-07-05
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -11,15 +11,15 @@ verified_by: run-against-train (all examples pass)
 
 ## The rule
 
-The task requires extending a vertical pattern from the input grid to exactly 10 rows. The output width always matches the input width (10 columns in all examples).
+This task requires extending a vertical pattern from the input grid to exactly **10 rows**. The output width always matches the input width.
 
-There are two pattern types:
+There are two pattern types to detect:
 
-1. **Exact repetition**: Rows repeat with a fixed period. For example, if rows 0-1 are identical to rows 2-3, the period is 2. Simply tile this period to fill 10 rows.
+1. **Exact repetition (period detection)**: Rows repeat with a fixed period. For example, if rows 0-1 are identical to rows 2-3, the period is 2. Simply tile this period to fill 10 rows.
 
-2. **Translational pattern**: Segments of rows (typically 2 rows each) shift horizontally as they progress downward. Each new segment is a horizontally translated copy of the base segment. Detect the shift amount by comparing corresponding non-zero pixels between consecutive segments, then apply cumulative shifts to generate new rows.
+2. **Translational pattern**: Segments of rows (typically 2 rows each) shift horizontally as they progress downward. Each new segment is a horizontally translated copy of the base segment. Detect the shift amount by comparing consecutive segments, then apply cumulative shifts to generate new rows.
 
-The key insight: the output is always 10 rows regardless of input height. The pattern in the input must be analyzed to determine how to extend it.
+The key insight: the output is always 10 rows regardless of input height. Analyze the input pattern to determine how to extend it.
 
 ## Reference implementation
 
@@ -44,46 +44,42 @@ def transform(grid):
             break
     
     if period is not None:
-        # Simple case: exact repetition - tile the period
+        # Simple case: exact repetition - tile the period to 10 rows
         output = np.zeros((10, width), dtype=int)
         for i in range(10):
             output[i] = grid[i % period]
         return output.tolist()
     
     # Strategy 2: Detect translational pattern (segments shift horizontally)
-    segment_len = 2
-    if input_rows >= 2 * segment_len:
-        base_segment = grid[:segment_len].copy()
-        seg0 = grid[0:segment_len]
-        seg1 = grid[segment_len:2*segment_len]
-        
-        # Find translation by comparing first non-zero pixel in each segment
-        def get_first_nonzero(segment):
-            for r in range(segment.shape[0]):
-                for c in range(segment.shape[1]):
-                    if segment[r, c] != 0:
-                        return (r, c, segment[r, c])
-            return None
-        
-        p0 = get_first_nonzero(seg0)
-        p1 = get_first_nonzero(seg1)
-        
-        if p0 and p1 and p0[2] == p1[2]:  # Same color
-            shift_c = p1[1] - p0[0]  # Horizontal shift per segment
+    for segment_len in range(2, input_rows // 2 + 1):
+        if input_rows >= 2 * segment_len:
+            seg0 = grid[0:segment_len]
+            seg1 = grid[segment_len:2*segment_len]
             
-            # Generate output with translation
-            output = np.zeros((10, width), dtype=int)
-            for i in range(10):
-                seg_idx = i // segment_len
-                row_in_seg = i % segment_len
-                total_shift = seg_idx * shift_c
+            # Check if seg1 is a horizontal shift of seg0
+            for shift in range(-width + 1, width):
+                # Create shifted version of seg0
+                shifted_seg0 = np.zeros_like(seg0)
+                for r in range(segment_len):
+                    for c in range(width):
+                        src_c = c - shift
+                        if 0 <= src_c < width:
+                            shifted_seg0[r, c] = seg0[r, src_c]
                 
-                for c in range(width):
-                    src_c = c - total_shift
-                    if 0 <= src_c < width:
-                        output[i, c] = base_segment[row_in_seg, src_c]
-            
-            return output.tolist()
+                if np.array_equal(shifted_seg0, seg1):
+                    # Found translational pattern
+                    output = np.zeros((10, width), dtype=int)
+                    for i in range(10):
+                        seg_idx = i // segment_len
+                        row_in_seg = i % segment_len
+                        total_shift = seg_idx * shift
+                        
+                        for c in range(width):
+                            src_c = c - total_shift
+                            if 0 <= src_c < width:
+                                output[i, c] = seg0[row_in_seg, src_c]
+                    
+                    return output.tolist()
     
     # Fallback: repeat input rows cyclically
     output = np.zeros((10, width), dtype=int)
@@ -94,12 +90,18 @@ def transform(grid):
 
 ## Why this generalizes
 
-This solution belongs to the **pattern-extension** primitive family. The core principle is:
+This solution belongs to the **pattern-extension** primitive family. The core principles are:
 
-1. **Period detection**: Many ARC tasks involve repeating patterns. Finding the smallest period allows extrapolation beyond the visible input.
+1. **Period detection**: Many ARC tasks involve repeating patterns. Finding the smallest period allows extrapolation beyond the visible input. This handles cases like vertical lines or alternating row types.
 
-2. **Translational symmetry**: When exact repetition doesn't hold, look for transformations (like horizontal shifts) between pattern segments. This captures more complex regularities.
+2. **Translational symmetry**: When exact repetition doesn't hold, look for transformations (like horizontal shifts) between pattern segments. This captures more complex regularities like diagonal patterns that shift rightward as they progress downward.
 
 3. **Fixed output size**: The task specifies 10 rows as the target. This is common in ARC expansion tasks where the output dimensions are determined by the task, not the input.
 
-The two-strategy approach (exact period first, then translation) handles both simple repeating patterns (Examples 2, 3, and both test cases) and complex shifting patterns (Example 1). This hierarchical detection is a robust pattern for ARC tasks involving vertical or horizontal pattern continuation.
+4. **Hierarchical strategy**: Try simpler patterns first (exact repetition), then fall back to more complex ones (translational), then to a safe default (cyclic repetition). This ensures robustness across varied inputs.
+
+The algorithm works by:
+- First checking if rows repeat exactly with some period p
+- If not, checking if segments of rows are horizontal translations of each other
+- Computing the shift amount and applying it cumulatively to generate new rows
+- Always producing exactly 10 output rows regardless of input height
