@@ -1,7 +1,7 @@
 ---
 type: sensei_note
 task: 167
-tags: [classification, count-distinct-colors, arc, primer]
+tags: [transformation, count-distinct-colors, arc, primer]
 written_by: The Primer
 written_at: 2026-07-05
 verified_by: run-against-train (all examples pass)
@@ -22,7 +22,7 @@ The output grid has the same dimensions as the input. The actual color values an
 ```python
 def transform(grid):
     H = len(grid)
-    W = len(grid[0])
+    W = len(grid[0]) if H > 0 else 0
     colors = {v for row in grid for v in row}
     n = len(colors)
     out = [[0] * W for _ in range(H)]
