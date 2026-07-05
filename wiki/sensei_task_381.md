@@ -3,7 +3,7 @@ type: sensei_note
 task: 381
 tags: [transformation, gap-fill, arc, primer]
 written_by: The Primer
-written_at: 2026-07-04
+written_at: 2026-07-05
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -110,15 +110,14 @@ def transform(grid):
 
 ## Why this generalizes
 
-This task belongs to the **gap-fill** primitive family. The key insight is that gaps between objects are filled conditionally based on:
+This solution belongs to the **gap-fill** primitive family, which is a common pattern in ARC tasks. The key insights that enable generalization are:
 
-1. **Spatial relationship:** Objects must share a dimension (rows) and be separated in the orthogonal dimension (columns).
-2. **Occlusion check:** A third object can block the fill if it occupies any cell in the gap region within the shared dimension.
-3. **Selective filling:** Only empty (0) cells in the gap are filled with the target color (9).
+1. **Object-based reasoning:** Rather than processing pixels individually, we first identify coherent objects (connected components of color 2). This abstraction allows the solution to work regardless of object size or position.
 
-This pattern generalizes to any task where:
-- Multiple distinct objects of the same color exist
-- The output requires filling space between certain object pairs
-- The fill is conditional on the absence of blocking objects
+2. **Relational geometry:** The rule operates on relationships between objects (row overlap, horizontal adjacency, gap existence) rather than absolute positions. This makes it invariant to translation.
 
-The primitive can be adapted for vertical gaps (swap row/column logic), different colors, or different fill conditions by modifying the component detection and blocker criteria.
+3. **Blocker detection:** The solution correctly handles the case where a third object prevents gap-filling, which is essential for tasks with multiple objects at different depths or positions.
+
+4. **Preservation principle:** Only the identified gaps are modified; everything else is copied unchanged. This is a fundamental ARC pattern that prevents over-modification.
+
+This approach will generalize to any task where rectangular objects of a single color need to be connected by filling horizontal gaps with a new color, provided the gap-fill conditions (shared rows, no blockers) are met.
