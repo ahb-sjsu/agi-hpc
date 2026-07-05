@@ -117,4 +117,4 @@ This belongs to the **run-length-compression** primitive family, combined with *
 
 3. **Run-length compression is value-agnostic**: The `compress()` helper works on any sequence of integers, collapsing consecutive duplicates regardless of the specific values involved.
 
-4. **This pattern appears in ARC when grids contain structured repetition**: Look for tasks where the input has obvious redundancy along one axis — this often signals an extraction + compression task rather than a full transformation.
+4. **Mutual exclusivity**: In this task family, inputs will have redundancy in exactly one dimension (rows XOR columns), never both simultaneously and never neither.
