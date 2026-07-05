@@ -117,4 +117,4 @@ This belongs to the **run-length-compression** primitive family, combined with *
 
 3. **Run-length compression is value-agnostic**: The `compress()` helper works on any sequence of integers, collapsing consecutive duplicates regardless of the specific values involved.
 
-4. **Mutual exclusivity**: In this task family, inputs will have redundancy in exactly one dimension (rows XOR columns), never both simultaneously and never neither.
+4. **This pattern appears in data compression tasks**: When input exhibits structured redundancy, the solution often involves detecting the redundancy pattern, extracting a canonical representative, and applying a compression transform.
