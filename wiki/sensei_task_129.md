@@ -3,7 +3,7 @@ type: sensei_note
 task: 129
 tags: [transformation, most-frequent-color-fill, arc, primer]
 written_by: The Primer
-written_at: 2026-07-04
+written_at: 2026-07-05
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -48,3 +48,11 @@ This belongs to the **most-frequent-color-fill** primitive family. The pattern i
 4. **Deterministic tie-breaking**: If multiple colors tie for most frequent, Python's `max()` with dictionary iteration provides consistent behavior (first encountered wins in insertion-order dicts).
 
 This is a fundamental statistical aggregation pattern that appears across many ARC tasks where global properties drive local transformations.
+
+## Verification
+
+Verified against all 3 train examples:
+- Example 1: Color 4 appears 3 times (most frequent) → output all 4s ✓
+- Example 2: Color 9 appears 3 times (most frequent) → output all 9s ✓
+- Example 3: Color 6 appears 3 times (most frequent) → output all 6s ✓
+- Test: Color 8 appears 3 times (most frequent) → output all 8s ✓
