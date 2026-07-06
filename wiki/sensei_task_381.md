@@ -110,21 +110,14 @@ def transform(grid):
 
 ## Why this generalizes
 
-This solution belongs to the **gap-fill** primitive family. The key insight is that the task requires reasoning about spatial relationships between multiple objects:
+This solution implements the **gap-fill** primitive family, which appears frequently in ARC tasks involving spatial reasoning between objects. The key insights that generalize:
 
-1. **Object extraction:** Connected component labeling isolates each rectangle of color 2 as a distinct object with clear boundaries.
+1. **Object decomposition:** Breaking the input into connected components (rectangles of color 2) is a fundamental first step for many object-based transformations.
 
-2. **Pairwise spatial reasoning:** For each pair, we compute two geometric relationships:
-   - Row overlap (do they share any rows?)
-   - Horizontal separation (is there empty space between them?)
+2. **Pairwise spatial reasoning:** The algorithm considers all pairs of objects and computes their spatial relationship (row overlap, horizontal gap). This pattern applies to many tasks requiring object interaction analysis.
 
-3. **Occlusion detection:** A third object can block the gap-fill operation if it occupies the gap region within the shared row range. This requires checking all other objects, not just the pair.
+3. **Blocker detection:** Checking for intervening objects before applying a transformation is a critical pattern. The logic `max(rs, r0c) > min(re, r1c)` for row non-intersection and `c1c < L+1 or c0c > R-1` for column non-intersection are reusable geometric predicates.
 
-4. **Deterministic filling:** Once an unblocked gap is identified, all empty cells in that region become color 9.
+4. **Conditional filling:** Only filling empty cells (value 0) preserves existing structure while adding new information—a common ARC pattern.
 
-This pattern generalizes to any grid where:
-- Objects are solid rectangles of a single color
-- Gaps are horizontal empty regions between vertically-aligned objects
-- Blockers are other objects that intersect the gap region
-
-The algorithm is O(n³) in the number of rectangles, which is efficient for typical ARC grid sizes (n is usually < 20).
+This primitive can be adapted for vertical gap-filling, diagonal relationships, or different fill colors by modifying the geometric predicates while keeping the overall structure intact.
