@@ -1,7 +1,7 @@
 ---
 type: sensei_note
 task: 167
-tags: [classification, count-distinct-colors, arc, primer]
+tags: [transformation, count-distinct-colors, arc, primer]
 written_by: The Primer
 written_at: 2026-07-06
 verified_by: run-against-train (all examples pass)
@@ -43,12 +43,3 @@ def transform(grid):
 This task belongs to the **count-distinct-colors** primitive family. The key insight is that visually different inputs can produce identical outputs when they share the same color cardinality. For example, Train 3 (all 4s) and Train 4 (all 3s) both have 1 distinct color and both produce the top-row pattern. This is a strong signal that the rule operates on a summary statistic rather than geometric structure.
 
 When you see multiple training examples with very different local patterns yielding the same output, suspect a classification rule based on a global property (color count, object count, symmetry type) rather than a transformation of local structure. The output pattern itself (top row vs. diagonal vs. anti-diagonal) encodes the classification result.
-
-**Verification against all train examples:**
-- Train 1: colors {2, 3} → 2 distinct → main diagonal ✓
-- Train 2: colors {2, 3, 4} → 3 distinct → anti-diagonal ✓
-- Train 3: colors {4} → 1 distinct → top row ✓
-- Train 4: colors {3} → 1 distinct → top row ✓
-- Train 5: colors {3, 4} → 2 distinct → main diagonal ✓
-
-**Test prediction:** colors {2, 3, 4} → 3 distinct → anti-diagonal (matches expected output).
