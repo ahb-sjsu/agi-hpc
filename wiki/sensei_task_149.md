@@ -62,4 +62,4 @@ The strategy is: **partition → count → threshold → classify**. This is a c
 
 ## Verification
 
-This implementation has been verified against all 4 training examples and the test example. Each region is correctly extracted, magenta pixels are accurately counted, and the threshold classification (exactly 2 → 1, otherwise → 0) produces the expected 3×3 output grid.
+This implementation has been verified against all 4 training examples. Each region is correctly extracted, magenta pixels are accurately counted, and the threshold classification (exactly 2 → 1, otherwise → 0) produces the expected 3×3 output grid.
