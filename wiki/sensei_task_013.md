@@ -101,4 +101,4 @@ This belongs to the **periodic-replication** primitive family. The key insight i
 
 - **Example 4**: Sources at (7,0)=4 and (11,0)=1. col_spacing=0 → vertical, period=8. Output has 4 at rows 7,15,23 and 1 at rows 11,19. ✓
 
-**Test case prediction**: Sources at (0,5)=3 and (10,10)=4. col_spacing=5 < row_spacing=10 → horizontal, period=10. Output should have 3 at cols 5,15,25 and 4 at cols 10,20 across all rows. ✓
+**Test example prediction**: Sources at (0,5)=3 and (10,10)=4. col_spacing=5 < row_spacing=10 → horizontal, period=10. Output should have 3 at cols 5,15,25 and 4 at cols 10,20 across all 11 rows. ✓
