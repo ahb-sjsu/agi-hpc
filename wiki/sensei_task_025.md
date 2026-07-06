@@ -3,7 +3,7 @@ type: sensei_note
 task: 25
 tags: [transformation, line-attraction, arc, primer]
 written_by: The Primer
-written_at: 2026-07-04
+written_at: 2026-07-06
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -90,11 +90,4 @@ def transform(grid):
 
 ## Why this generalizes
 
-This belongs to the **line-attraction** primitive family. The key insight is that dominant linear structures (rows or columns with >50% single-color occupancy) serve as anchors that attract stray pixels of matching colors. The transformation preserves the structural lines while reorganizing scattered elements into a cleaner, line-adjacent configuration. This pattern appears across multiple ARC tasks where order emerges from chaos through attraction to dominant features.
-
-**Key properties:**
-- Line detection uses a majority threshold (>50% occupancy)
-- Movement is always toward the line, stopping at adjacency
-- Priority: vertical lines override horizontal lines for the same color
-- Unmatched colors are eliminated (become background)
-- The transformation is deterministic and shape-preserving
+This belongs to the **line-attraction** primitive family. The key insight is that dominant linear structures (rows or columns filled mostly with one color) act as gravitational attractors for stray pixels of matching colors. This pattern appears frequently in ARC tasks where organization, alignment, or cleanup of scattered elements is required. The priority rule (vertical over horizontal) and the "stop adjacent" behavior are consistent across all examples, making this a reliable transformation strategy for similar tasks.
