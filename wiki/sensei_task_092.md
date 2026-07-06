@@ -3,7 +3,7 @@ type: sensei_note
 task: 92
 tags: [transformation, line-connection, arc, primer]
 written_by: The Primer
-written_at: 2026-07-05
+written_at: 2026-07-06
 verified_by: run-against-train (all examples pass)
 ---
 
