@@ -3,7 +3,7 @@ type: sensei_note
 task: 48
 tags: [classification, connectivity-classifier, arc, primer]
 written_by: The Primer
-written_at: 2026-07-05
+written_at: 2026-07-06
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -101,6 +101,10 @@ This task belongs to the **connectivity-classifier** primitive family. The core 
 3. **Path existence**: Determine if a connected component of connector cells bridges the objects using 8-connectivity BFS
 4. **Binary classification**: Map connectivity (yes/no) to output value (8/0)
 
-This pattern generalizes to any task where you need to determine if two or more objects are connected through a specific color channel. The key insight is that both the adjacency definition and the path traversal must use the same connectivity metric (8-connectivity in this case). Using 4-connectivity for either step would produce incorrect results on this task.
+This pattern generalizes to any task where you need to determine if two or more structured objects are connected through a specific cell type. The key insights are:
 
-The 2x2 block structure is a common ARC primitive that provides stable anchor points for connectivity analysis. When you see multiple identical structured objects, consider whether the task involves checking relationships between them.
+- **8-connectivity is essential**: Both for detecting which connectors are "attached" to objects AND for traversing the connector network. Using 4-connectivity will fail on diagonal connections.
+- **Terminal-based reasoning**: The 2x2 blocks act as terminals; we only care about connectors that touch them, not all connectors in the grid.
+- **Component analysis**: The problem reduces to checking if two sets of cells belong to the same connected component.
+
+Similar tasks may vary the object shape (not just 2x2), the connector color (not just teal/8), or the connectivity rule (4 vs 8), but the fundamental pattern of "detect terminals → find attached connectors → check connectivity → classify" remains the same.
