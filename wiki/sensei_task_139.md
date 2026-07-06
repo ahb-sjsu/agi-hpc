@@ -3,7 +3,7 @@ type: sensei_note
 task: 139
 tags: [transformation, bounding-box-fill, arc, primer]
 written_by: The Primer
-written_at: 2026-07-05
+written_at: 2026-07-06
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -46,7 +46,6 @@ def transform(grid):
                 continue
             visited[r, c] = True
             component.append((r, c))
-            # 8-directional neighbors (including diagonals)
             for dr in [-1, 0, 1]:
                 for dc in [-1, 0, 1]:
                     if dr == 0 and dc == 0:
@@ -68,7 +67,6 @@ def transform(grid):
                 if result[r, c] == 0:
                     result[r, c] = 7
     
-    # Process each unvisited 4
     for r in range(h):
         for c in range(w):
             if grid[r, c] == 4 and not visited[r, c]:
