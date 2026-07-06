@@ -3,7 +3,7 @@ type: sensei_note
 task: 63
 tags: [transformation, count-based-fill, arc, primer]
 written_by: The Primer
-written_at: 2026-07-03
+written_at: 2026-07-06
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -16,7 +16,7 @@ This task involves filling specific empty cells (0s, black) with a new color (3,
 1. **Count zeros per row**: For each row, count how many 0s it contains.
 2. **Count zeros per column**: For each column, count how many 0s it contains.
 3. **Find maximums**: Identify the maximum count across all rows, and the maximum count across all columns.
-4. **Fill qualifying zeros**: Any 0 that lies in a row with the maximum row-count OR in a column with the maximum column-count gets changed to 3.
+4. **Fill qualifying zeros**: Any 0 that lies in a row with the maximum row-count **OR** in a column with the maximum column-count gets changed to 3.
 5. **Preserve everything else**: All non-zero cells remain unchanged. Zeros that are not in maximum-count rows or columns also remain 0.
 
 This creates a cross-hatch pattern where the "densest" rows and columns of empty space get filled in.
@@ -62,5 +62,6 @@ This belongs to the **count-based-fill** primitive family. The key insight is th
 - Multiple rows or columns can tie for maximum count (all get filled)
 - The fill color (3=green) is consistent across all examples
 - Non-zero cells are never modified, only 0s in qualifying positions
+- A cell is filled if it's in a maximum row **OR** a maximum column (union, not intersection)
 
-**For future attempts:** When you see a pattern where certain rows and columns get uniformly filled while others don't, consider counting-based rules. Check if the filled rows/columns share a statistical property (max count, min count, specific count value, etc.).
+**For future attempts:** When you see a pattern where certain rows and columns get uniformly filled while others don't, consider counting-based rules. Check if the filled rows/columns share a statistical property (max count, min count, specific count value, etc.). The union of max rows and max columns creates the characteristic cross-hatch pattern.
