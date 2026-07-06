@@ -90,4 +90,4 @@ def transform(grid):
 
 ## Why this generalizes
 
-This belongs to the **line-attraction** primitive family. The key insight is that dominant linear structures (rows or columns filled mostly with one color) act as gravitational attractors for stray pixels of matching colors. This pattern appears frequently in ARC tasks where organization, alignment, or cleanup of scattered elements is required. The priority rule (vertical over horizontal) and the "stop adjacent" behavior are consistent across all examples, making this a reliable transformation strategy for similar tasks.
+This belongs to the **line-attraction** primitive family. The key insight is that dominant linear structures (rows or columns filled with a single color) act as gravitational centers for stray pixels of matching colors. The transformation preserves the structural lines while reorganizing scattered elements into a cleaner, more ordered pattern adjacent to their attractors. This pattern appears in tasks where the goal is to consolidate dispersed elements toward organizing structures.
