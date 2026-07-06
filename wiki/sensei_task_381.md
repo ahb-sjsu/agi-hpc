@@ -3,7 +3,7 @@ type: sensei_note
 task: 381
 tags: [transformation, gap-fill, arc, primer]
 written_by: The Primer
-written_at: 2026-07-05
+written_at: 2026-07-06
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -110,14 +110,21 @@ def transform(grid):
 
 ## Why this generalizes
 
-This solution belongs to the **gap-fill** primitive family, which is a common pattern in ARC tasks. The key insights that enable generalization are:
+This solution belongs to the **gap-fill** primitive family. The key insight is that the task requires reasoning about spatial relationships between multiple objects:
 
-1. **Object-based reasoning:** Rather than processing pixels individually, we first identify coherent objects (connected components of color 2). This abstraction allows the solution to work regardless of object size or position.
+1. **Object extraction:** Connected component labeling isolates each rectangle of color 2 as a distinct object with clear boundaries.
 
-2. **Relational geometry:** The rule operates on relationships between objects (row overlap, horizontal adjacency, gap existence) rather than absolute positions. This makes it invariant to translation.
+2. **Pairwise spatial reasoning:** For each pair, we compute two geometric relationships:
+   - Row overlap (do they share any rows?)
+   - Horizontal separation (is there empty space between them?)
 
-3. **Blocker detection:** The solution correctly handles the case where a third object prevents gap-filling, which is essential for tasks with multiple objects at different depths or positions.
+3. **Occlusion detection:** A third object can block the gap-fill operation if it occupies the gap region within the shared row range. This requires checking all other objects, not just the pair.
 
-4. **Preservation principle:** Only the identified gaps are modified; everything else is copied unchanged. This is a fundamental ARC pattern that prevents over-modification.
+4. **Deterministic filling:** Once an unblocked gap is identified, all empty cells in that region become color 9.
 
-This approach will generalize to any task where rectangular objects of a single color need to be connected by filling horizontal gaps with a new color, provided the gap-fill conditions (shared rows, no blockers) are met.
+This pattern generalizes to any grid where:
+- Objects are solid rectangles of a single color
+- Gaps are horizontal empty regions between vertically-aligned objects
+- Blockers are other objects that intersect the gap region
+
+The algorithm is O(n³) in the number of rectangles, which is efficient for typical ARC grid sizes (n is usually < 20).
