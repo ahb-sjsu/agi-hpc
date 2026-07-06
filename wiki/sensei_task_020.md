@@ -58,7 +58,7 @@ def transform(grid):
 
 ## Why this generalizes
 
-This task belongs to the **symmetry-completion** family. The key insight is that the input contains a partially-symmetric pattern, and the output completes it to full D2 symmetry (horizontal + vertical reflection) around the pattern's natural center.
+This task belongs to the **symmetry-completion** family. The key insight is that the input contains a partially-symmetric pattern, and the output completes it to full D₂ symmetry (horizontal + vertical reflection) around the pattern's natural center.
 
 The bounding-box center is the correct symmetry point because:
 1. All training examples have non-zero cells arranged symmetrically around this center (even if some positions are missing).
