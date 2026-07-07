@@ -3,11 +3,11 @@ type: sensei_note
 task: 124
 tags: [expansion, pattern-extension, arc, primer]
 written_by: The Primer
-written_at: 2026-07-05
+written_at: 2026-07-07
 verified_by: run-against-train (all examples pass)
 ---
 
-# Task 124: Vertical Pattern Extension
+# Task 124: Vertical Pattern Extension to 10 Rows
 
 ## The rule
 
@@ -96,12 +96,4 @@ This solution belongs to the **pattern-extension** primitive family. The core pr
 
 2. **Translational symmetry**: When exact repetition doesn't hold, look for transformations (like horizontal shifts) between pattern segments. This captures more complex regularities like diagonal patterns that shift rightward as they progress downward.
 
-3. **Fixed output size**: The task specifies 10 rows as the target. This is common in ARC expansion tasks where the output dimensions are determined by the task, not the input.
-
-4. **Hierarchical strategy**: Try simpler patterns first (exact repetition), then fall back to more complex ones (translational), then to a safe default (cyclic repetition). This ensures robustness across varied inputs.
-
-The algorithm works by:
-- First checking if rows repeat exactly with some period p
-- If not, checking if segments of rows are horizontal translations of each other
-- Computing the shift amount and applying it cumulatively to generate new rows
-- Always producing exactly 10 output rows regardless of input height
+3. **Fixed output size**: The task always requires exactly 10 output rows, making this an EXPANSION task where we extend the input pattern to a predetermined size.
