@@ -7,8 +7,6 @@ written_at: 2026-07-07
 verified_by: run-against-train (all examples pass)
 ---
 
-# Task 090: Largest Multi-Row Zero Rectangle Fill
-
 ## The rule
 
 Find the **largest rectangular region of 0s** (black) that spans **at least 2 consecutive rows**, and fill all cells in that region with **6s** (magenta).
