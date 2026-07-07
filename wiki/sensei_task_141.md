@@ -11,7 +11,7 @@ verified_by: run-against-train (all examples pass)
 
 ## The rule
 
-Find the single non-zero pixel in the input grid. This pixel marks the center of an X pattern. In the output grid (same dimensions as input), draw both diagonals passing through this center point. A cell at position (r, c) belongs to the X pattern if and only if |r - center_row| == |c - center_col|. Color all such cells with the same value as the center pixel. All other cells remain 0 (background).
+Find the single non-zero pixel in the input grid. This pixel serves as the center of an X pattern. In the output grid (same dimensions as input), draw both diagonals passing through this center point. A cell at position (r, c) belongs to the X pattern if and only if |r - center_row| == |c - center_col|. Color all such cells with the same value as the center pixel. All other cells remain 0 (background).
 
 This creates an X shape where:
 - The main diagonal runs from top-left to bottom-right through the center
@@ -61,7 +61,7 @@ This task belongs to the **diagonal-expansion** primitive family. The core insig
 This generalizes because:
 1. **Grid-size invariant**: The formula works for any rectangular grid dimensions (verified on 7×7, 15×15, and 17×17 grids)
 2. **Color-agnostic**: The pattern color comes from the input pixel value (2, 6, 7, 8 all work correctly)
-3. **Position-independent**: The center can be anywhere in the grid (tested at positions like (3,3), (5,11), (7,12))
+3. **Position-independent**: The center can be anywhere in the grid (tested at positions like (3,2), (3,3), (5,11), (7,12))
 4. **Deterministic**: Given the same input, the output is always identical
 
 The primitive "expand a point into diagonals" appears in many ARC tasks involving symmetry, reflection, or geometric pattern completion. Recognizing the absolute-difference equality as the diagonal condition is a key geometric insight that transfers to related tasks.
