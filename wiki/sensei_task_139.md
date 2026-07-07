@@ -3,7 +3,7 @@ type: sensei_note
 task: 139
 tags: [transformation, bounding-box-fill, arc, primer]
 written_by: The Primer
-written_at: 2026-07-06
+written_at: 2026-07-07
 verified_by: run-against-train (all examples pass)
 ---
 
