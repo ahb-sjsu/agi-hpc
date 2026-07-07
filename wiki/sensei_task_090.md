@@ -23,7 +23,12 @@ All other cells remain unchanged. If multiple rectangles tie for maximum area, t
 ```python
 def transform(grid):
     rows = len(grid)
+    if rows == 0:
+        return grid
     cols = len(grid[0])
+    if cols == 0:
+        return grid
+    
     output = [row[:] for row in grid]
     
     best_rect = None
