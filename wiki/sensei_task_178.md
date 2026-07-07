@@ -117,8 +117,6 @@ This belongs to the **run-length-compression** primitive family, combined with *
 
 2. **Output shape encodes the compression axis**: A 1×N output means rows were redundant (compressed horizontally). An N×1 output means columns were redundant (compressed vertically).
 
-3. **Run-length compression is value-agnostic**: The `compress()` function works on any sequence of integers, collapsing only consecutive duplicates. It doesn't matter what the actual values are.
+3. **Run-length compression is value-agnostic**: The `compress()` function works on any sequence of integers, collapsing consecutive duplicates regardless of the specific values involved.
 
-4. **Mutual exclusivity**: In this task family, inputs will have redundancy in exactly one dimension (rows XOR columns), never both and never neither. This simplifies the decision logic.
-
-5. **Pattern recognition strategy**: When you see grids with obvious repetition, check for global row/column identity before attempting more complex object-based reasoning.
+4. **This pattern appears in compression tasks**: When you see grids with obvious repetition along one axis, check for run-length encoding opportunities. The output dimension tells you which axis had the redundancy.
