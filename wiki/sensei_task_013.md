@@ -3,7 +3,7 @@ type: sensei_note
 task: 13
 tags: [transformation, periodic-replication, arc, primer]
 written_by: The Primer
-written_at: 2026-07-06
+written_at: 2026-07-07
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -16,8 +16,8 @@ This task involves **periodic replication** from two source pixels. The transfor
 1. **Identify sources**: Find the two non-zero pixels in the input grid. Record their positions (row, column) and values (colors).
 
 2. **Determine direction**: Compare the row spacing and column spacing between the two sources:
-   - If both pixels are in the same column (column_spacing = 0): replicate **vertically** (fill entire rows)
    - If both pixels are in the same row (row_spacing = 0): replicate **horizontally** (fill entire columns)
+   - If both pixels are in the same column (col_spacing = 0): replicate **vertically** (fill entire rows)
    - Otherwise: if column_spacing ≤ row_spacing, replicate **horizontally**; else replicate **vertically**
 
 3. **Calculate period**: The repetition period equals **twice the spacing** between the two sources in the chosen dimension.
@@ -50,20 +50,20 @@ def transform(grid):
     result = np.zeros((h, w), dtype=int)
     
     # Determine direction and period
-    if col_spacing == 0:
-        # Same column - vertical pattern
-        period = 2 * row_spacing
-        for row in range(r1, h, period):
-            result[row, :] = v1
-        for row in range(r2, h, period):
-            result[row, :] = v2
-    elif row_spacing == 0:
+    if row_spacing == 0:
         # Same row - horizontal pattern
         period = 2 * col_spacing
         for col in range(c1, w, period):
             result[:, col] = v1
         for col in range(c2, w, period):
             result[:, col] = v2
+    elif col_spacing == 0:
+        # Same column - vertical pattern
+        period = 2 * row_spacing
+        for row in range(r1, h, period):
+            result[row, :] = v1
+        for row in range(r2, h, period):
+            result[row, :] = v2
     elif col_spacing <= row_spacing:
         # Horizontal pattern (column spacing wins ties)
         period = 2 * col_spacing
@@ -101,4 +101,4 @@ This belongs to the **periodic-replication** primitive family. The key insight i
 
 - **Example 4**: Sources at (7,0)=4 and (11,0)=1. col_spacing=0 → vertical, period=8. Output has 4 at rows 7,15,23 and 1 at rows 11,19. ✓
 
-**Test example prediction**: Sources at (0,5)=3 and (10,10)=4. col_spacing=5 < row_spacing=10 → horizontal, period=10. Output should have 3 at cols 5,15,25 and 4 at cols 10,20 across all 11 rows. ✓
+**Test example prediction**: Sources at (0,5)=3 and (10,10)=4. col_spacing=5 < row_spacing=10 → horizontal, period=10. Output should have 3 at cols 5,15,25 and 4 at cols 10,20. ✓
