@@ -3,7 +3,7 @@ type: sensei_note
 task: 117
 tags: [transformation, symmetry-reflection, arc, primer]
 written_by: The Primer
-written_at: 2026-07-04
+written_at: 2026-07-07
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -122,16 +122,12 @@ def transform(grid):
 
 ## Why this generalizes
 
-This solution belongs to the **symmetry-reflection** primitive family. The key insight is that ARC tasks often use one object as an "anchor" or "axis" for transforming another object. In this family:
+This solution belongs to the **symmetry-reflection** primitive family. The key insight is recognizing that one shape serves as a symmetry anchor (exhibiting 4-way rotational/reflectional symmetry) while the other shape is meant to be replicated through reflections across the anchor's center point.
 
-1. **Anchor identification**: The anchor is identified by its intrinsic symmetry property (4-way symmetry), not by color or position. This generalizes to any symmetric shape serving as a transformation reference.
+This pattern generalizes because:
+1. **Symmetry detection is robust**: The 4-way symmetry check works regardless of the specific colors or exact pixel patterns, as long as one shape has the symmetric property
+2. **Reflection is mathematically precise**: Using the center point formula (2×center − position) ensures accurate mirroring across any axis
+3. **Color-agnostic**: The solution identifies shapes by their geometric properties, not by specific color values
+4. **Size-invariant**: Works on grids of any size as long as the two-shape structure is present
 
-2. **Reflection operation**: The asymmetric shape is reflected across the anchor's center point using standard geometric reflection formulas. This pattern appears in many ARC tasks involving symmetry operations.
-
-3. **Multi-copy generation**: Creating 4 copies (original + 3 reflections) is a common pattern when reflecting across both horizontal and vertical axes.
-
-This approach generalizes because it:
-- Works regardless of which color is the anchor (determined by symmetry, not color value)
-- Handles any grid size (uses relative coordinates from center)
-- Applies the same geometric transformation rules to any asymmetric shape
-- Can be extended to other symmetry types (2-way, rotational) by modifying the symmetry check
+Future tasks in this family may vary the number of reflections (2-way, 4-way, 8-way), the type of symmetry (rotational vs. reflective), or add additional transformations, but the core principle of using a symmetric anchor to guide replication of asymmetric elements remains constant.
