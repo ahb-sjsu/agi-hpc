@@ -3,7 +3,7 @@ type: sensei_note
 task: 30
 tags: [transformation, vertical-alignment, arc, primer]
 written_by: The Primer
-written_at: 2026-07-06
+written_at: 2026-07-07
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -71,11 +71,10 @@ This generalizes to any task where objects need to align to a reference object a
 
 ## Verification
 
-This implementation has been verified against all 3 training examples and the test example:
+This implementation has been verified against all 3 training examples:
 
 - **Example 1**: Color-1 top at row 1 → colors 2 and 4 shift to align (color-2 down 1, color-4 up 1)
 - **Example 2**: Color-1 top at row 5 → colors 2 and 4 shift down to align (color-2 down 3, color-4 down 5)
 - **Example 3**: Color-1 top at row 2 → colors 2 and 4 shift to align (color-2 down 1, color-4 up 1)
-- **Test**: Color-1 top at row 2 → colors 2 and 4 shift to align (color-2 down 2, color-4 up 3)
 
-All examples pass exactly.
+All training examples pass exactly.
