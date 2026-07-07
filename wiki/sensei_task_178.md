@@ -3,9 +3,11 @@ type: sensei_note
 task: 178
 tags: [extraction, run-length-compression, arc, primer]
 written_by: The Primer
-written_at: 2026-07-06
+written_at: 2026-07-07
 verified_by: run-against-train (all examples pass)
 ---
+
+# Task 178: Run-Length Compression with Dimension Detection
 
 ## The rule
 
@@ -115,8 +117,11 @@ This belongs to the **run-length-compression** primitive family, combined with *
 
 2. **Output shape encodes the compression axis**: A 1×N output means rows were redundant (compressed horizontally). An N×1 output means columns were redundant (compressed vertically).
 
-3. **Run-length compression is value-agnostic**: The `compress()` helper works on any sequence of integers, collapsing consecutive duplicates regardless of the actual values. This pattern appears in many ARC tasks involving pattern simplification.
+3. **Run-length compression is value-agnostic**: The `compress()` helper works on any sequence of integers, collapsing consecutive duplicates regardless of the specific values. This pattern appears in many ARC tasks involving pattern simplification.
 
-4. **Mutual exclusivity**: In this task family, either all rows are identical OR all columns are identical — never both (except for uniform grids), and never neither. This makes the detection logic straightforward.
+4. **Mutual exclusivity**: In well-formed inputs for this task, either all rows are identical OR all columns are identical, but not both (except for uniform grids). The detection order matters only for edge cases.
 
-5. **Preservation of order**: Compression maintains the sequence order, only removing consecutive duplicates. The value 3,3,3 becomes 3, but 3,2,3 stays 3,2,3.
+**Related primitives to watch for:**
+- `symmetry-detection` (checking if grid equals its transpose)
+- `pattern-repetition` (finding periodic structures)
+- `sequence-compression` (general run-length encoding/decoding)
