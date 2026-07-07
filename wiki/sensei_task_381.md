@@ -3,7 +3,7 @@ type: sensei_note
 task: 381
 tags: [transformation, gap-fill, arc, primer]
 written_by: The Primer
-written_at: 2026-07-06
+written_at: 2026-07-07
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -110,14 +110,15 @@ def transform(grid):
 
 ## Why this generalizes
 
-This solution implements the **gap-fill** primitive family, which appears frequently in ARC tasks involving spatial reasoning between objects. The key insights that generalize:
+This solution belongs to the **gap-fill** primitive family, which is common in ARC tasks involving spatial reasoning between objects. The key insight is that gaps are filled only when:
 
-1. **Object decomposition:** Breaking the input into connected components (rectangles of color 2) is a fundamental first step for many object-based transformations.
+1. Two objects (rectangles of color 2) are **horizontally separated** but **vertically aligned** (share rows)
+2. The gap between them is **unobstructed** (no third object blocks the path)
 
-2. **Pairwise spatial reasoning:** The algorithm considers all pairs of objects and computes their spatial relationship (row overlap, horizontal gap). This pattern applies to many tasks requiring object interaction analysis.
+This pattern generalizes because:
+- It works for any number of rectangles, not just pairs
+- The blocker detection ensures only "visible" gaps are filled
+- The row-overlap constraint ensures fills only happen where rectangles are truly aligned
+- The algorithm is invariant to rectangle size and position
 
-3. **Blocker detection:** Checking for intervening objects before applying a transformation is a critical pattern. The logic `max(rs, r0c) > min(re, r1c)` for row non-intersection and `c1c < L+1 or c0c > R-1` for column non-intersection are reusable geometric predicates.
-
-4. **Conditional filling:** Only filling empty cells (value 0) preserves existing structure while adding new information—a common ARC pattern.
-
-This primitive can be adapted for vertical gap-filling, diagonal relationships, or different fill colors by modifying the geometric predicates while keeping the overall structure intact.
+Future tasks with similar spatial gap-filling patterns can reuse the component detection and pair-wise gap analysis strategy demonstrated here.
