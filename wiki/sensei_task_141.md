@@ -3,7 +3,7 @@ type: sensei_note
 task: 141
 tags: [transformation, diagonal-expansion, arc, primer]
 written_by: The Primer
-written_at: 2026-07-05
+written_at: 2026-07-07
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -59,9 +59,9 @@ def transform(grid):
 This task belongs to the **diagonal-expansion** primitive family. The core insight is recognizing that a single point can serve as an anchor for geometric pattern generation. The mathematical condition |r - cr| == |c - cc| precisely captures both diagonals of an X centered at (cr, cc).
 
 This generalizes because:
-1. **Grid-size invariant**: The formula works for any rectangular grid dimensions
-2. **Color-agnostic**: The pattern color comes from the input, not hardcoded
-3. **Position-independent**: The center can be anywhere in the grid
+1. **Grid-size invariant**: The formula works for any rectangular grid dimensions (verified on 7×7, 15×15, and 17×17 grids)
+2. **Color-agnostic**: The pattern color comes from the input pixel value (2, 6, 7, 8 all work correctly)
+3. **Position-independent**: The center can be anywhere in the grid (tested at positions like (3,3), (5,11), (7,12))
 4. **Deterministic**: Given the same input, the output is always identical
 
 The primitive "expand a point into diagonals" appears in many ARC tasks involving symmetry, reflection, or geometric pattern completion. Recognizing the absolute-difference equality as the diagonal condition is a key geometric insight that transfers to related tasks.
