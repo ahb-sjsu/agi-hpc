@@ -7,6 +7,8 @@ written_at: 2026-07-07
 verified_by: run-against-train (all examples pass)
 ---
 
+# Task 025: Line Attraction
+
 ## The rule
 
 This task implements **line attraction**. The grid contains dominant lines—either vertical columns or horizontal rows—where a single non-zero color fills more than half the cells. These lines act as attractors for stray pixels of the same color.
@@ -89,12 +91,10 @@ def transform(grid):
 
 ## Why this generalizes
 
-This belongs to the **line-attraction** primitive family. The key insight is that dominant linear structures (rows or columns filled predominantly with one color) serve as anchors that attract nearby pixels of matching color. This pattern appears in various ARC tasks where organization around structural elements is required. The algorithm generalizes by:
+This belongs to the **line-attraction** primitive family. The key insight is that dominant linear structures (rows or columns filled predominantly with one color) serve as anchors that attract nearby pixels of the same color. The transformation preserves the structural integrity of these lines while reorganizing scattered elements into a coherent pattern adjacent to their anchors. This pattern appears across multiple ARC tasks where organization around dominant features is required.
 
-1. Detecting lines based on color dominance (>50% threshold)
-2. Preserving structural integrity of lines
-3. Moving stray pixels minimally (one step) toward their anchor
-4. Handling priority (vertical over horizontal)
-5. Removing unanchored pixels
-
-This approach works regardless of grid size, number of lines, or specific colors involved.
+**Key generalization points:**
+- Line detection threshold (>50% of cells) is robust across different grid sizes
+- Priority system (vertical over horizontal) handles ambiguous cases consistently
+- Adjacent positioning (not on the line itself) preserves line visibility
+- Color-matching ensures semantic coherence in the transformation
