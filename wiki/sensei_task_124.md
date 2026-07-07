@@ -96,4 +96,6 @@ This solution belongs to the **pattern-extension** primitive family. The core pr
 
 2. **Translational symmetry**: When exact repetition doesn't hold, look for transformations (like horizontal shifts) between pattern segments. This captures more complex regularities like diagonal patterns that shift rightward as they progress downward.
 
-3. **Fixed output size**: The task always requires exactly 10 output rows, making this an EXPANSION task where we extend the input pattern to a predetermined size.
+3. **Fixed output size**: The task always produces 10 rows, making this an EXPANSION class problem. The pattern must be inferred from the input and continued to reach the target size.
+
+This approach generalizes to any task where a vertical pattern needs to be extended to a fixed height, whether through simple repetition or through systematic transformations between segments.
