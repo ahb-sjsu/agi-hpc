@@ -20,22 +20,22 @@ This is a TRANSFORMATION class task because the output shape matches the input s
 ## Reference implementation
 
 ```python
+import numpy as np
+
 def transform(grid):
-    # Count frequency of each color
-    color_counts = {}
-    for row in grid:
-        for cell in row:
-            color_counts[cell] = color_counts.get(cell, 0) + 1
+    # Convert to numpy array for efficient counting
+    arr = np.array(grid)
     
-    # Find the most frequent color
-    most_frequent_color = max(color_counts, key=color_counts.get)
+    # Count frequency of each color
+    unique, counts = np.unique(arr, return_counts=True)
+    
+    # Find the most frequent color (mode)
+    most_frequent_color = int(unique[np.argmax(counts)])
     
     # Create output grid with same dimensions, filled with most frequent color
-    height = len(grid)
-    width = len(grid[0])
-    output = [[most_frequent_color for _ in range(width)] for _ in range(height)]
+    output = np.full(arr.shape, most_frequent_color)
     
-    return output
+    return output.tolist()
 ```
 
 ## Why this generalizes
@@ -45,7 +45,7 @@ This belongs to the **most-frequent-color-fill** primitive family. The pattern i
 1. **Shape-independent**: Works on any rectangular grid size (3×3, 5×5, 2×7, etc.) since we only count frequencies and replicate the winner.
 2. **Color-agnostic**: Works with any palette of integer colors (0-9 in ARC, or beyond) since we treat colors as abstract labels to count.
 3. **Position-independent**: The spatial arrangement of colors in the input doesn't matter—only the global count does.
-4. **Deterministic tie-breaking**: If multiple colors tie for most frequent, Python's `max()` with dictionary iteration provides consistent behavior (first encountered wins in insertion-order dicts).
+4. **Deterministic**: `np.argmax()` returns the first index of the maximum value, providing consistent tie-breaking behavior.
 
 This is a fundamental statistical aggregation pattern that appears across many ARC tasks where global properties drive local transformations.
 
