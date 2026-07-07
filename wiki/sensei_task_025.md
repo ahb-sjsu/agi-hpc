@@ -3,7 +3,7 @@ type: sensei_note
 task: 25
 tags: [transformation, line-attraction, arc, primer]
 written_by: The Primer
-written_at: 2026-07-06
+written_at: 2026-07-07
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -31,7 +31,7 @@ def transform(grid):
     h, w = arr.shape
     
     # Detect vertical lines (columns where one color > half the cells)
-    vertical_lines = {}  # color -> column
+    vertical_lines = {}
     for col in range(w):
         colors = arr[:, col]
         non_zero = colors[colors != 0]
@@ -41,7 +41,7 @@ def transform(grid):
                 vertical_lines[int(unique[0])] = col
     
     # Detect horizontal lines (rows where one color > half the cells)
-    horizontal_lines = {}  # color -> row
+    horizontal_lines = {}
     for row in range(h):
         colors = arr[row, :]
         non_zero = colors[colors != 0]
@@ -83,11 +83,18 @@ def transform(grid):
                 new_row = target_row - 1 if row < target_row else target_row + 1
                 if 0 <= new_row < h:
                     output[new_row, col] = color
-            # Pixels without matching line are removed
     
     return output.tolist()
 ```
 
 ## Why this generalizes
 
-This belongs to the **line-attraction** primitive family. The key insight is that dominant linear structures (rows or columns filled with a single color) act as gravitational centers for stray pixels of matching colors. The transformation preserves the structural lines while reorganizing scattered elements into a cleaner, more ordered pattern adjacent to their attractors. This pattern appears in tasks where the goal is to consolidate dispersed elements toward organizing structures.
+This belongs to the **line-attraction** primitive family. The key insight is that dominant linear structures (rows or columns filled predominantly with one color) serve as anchors that attract nearby pixels of matching color. This pattern appears in various ARC tasks where organization around structural elements is required. The algorithm generalizes by:
+
+1. Detecting lines based on color dominance (>50% threshold)
+2. Preserving structural integrity of lines
+3. Moving stray pixels minimally (one step) toward their anchor
+4. Handling priority (vertical over horizontal)
+5. Removing unanchored pixels
+
+This approach works regardless of grid size, number of lines, or specific colors involved.
