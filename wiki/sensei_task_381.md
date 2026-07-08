@@ -110,16 +110,14 @@ def transform(grid):
 
 ## Why this generalizes
 
-This task belongs to the **gap-fill** primitive family. The core pattern is:
+This solution uses the **gap-fill** primitive family, which is a common pattern in ARC tasks. The key insight is:
 
-1. **Object detection:** Identify distinct rectangular objects of a source color (2).
-2. **Spatial relationship:** Find pairs of objects that are horizontally separated but vertically aligned (share rows).
-3. **Occlusion check:** Verify the gap is not blocked by a third object.
-4. **Fill operation:** Color the empty space between aligned objects with a target color (9).
+1. **Object detection via connectivity:** Rectangles of color 2 are identified as connected components, not by template matching. This handles varying sizes and positions.
 
-This generalizes to any grid where:
-- Objects are rectangular connected components
-- The task requires filling gaps between spatially related objects
-- Occlusion by intermediate objects must be respected
+2. **Pairwise spatial reasoning:** The algorithm considers all pairs of objects and computes their spatial relationship (row overlap, horizontal gap). This is more general than hardcoding specific configurations.
 
-The algorithm is O(n²) in the number of rectangles, which is efficient since ARC grids typically have few distinct objects. The key insight is that gaps are only filled when they represent a clear "corridor" between two objects with no obstruction.
+3. **Blocker detection:** By checking if a third object intersects the gap region, the algorithm correctly handles cases where gaps should NOT be filled. This prevents over-filling.
+
+4. **Deterministic filling:** Only empty cells (0) in unblocked gaps become 9, preserving any existing content.
+
+This approach generalizes to any number of rectangles, any arrangement, and correctly handles edge cases like touching rectangles (no gap) or blocked gaps (no fill).
