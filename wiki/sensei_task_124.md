@@ -27,6 +27,12 @@ The key insight: the output is always 10 rows regardless of input height. Analyz
 import numpy as np
 
 def transform(grid):
+    """
+    Task 124: Vertical Pattern Extension to 10 Rows
+    
+    Detects either exact row repetition (period) or translational patterns
+    (horizontal shifts between segments), then extends to exactly 10 rows.
+    """
     grid = np.array(grid)
     input_rows = grid.shape[0]
     width = grid.shape[1]
@@ -94,8 +100,8 @@ This solution belongs to the **pattern-extension** primitive family. The core pr
 
 1. **Period detection**: Many ARC tasks involve repeating patterns. Finding the smallest period allows extrapolation beyond the visible input. This handles cases like vertical lines or alternating row types.
 
-2. **Translational symmetry**: When exact repetition doesn't hold, look for transformations (like horizontal shifts) between pattern segments. This captures more complex regularities like diagonal patterns that shift rightward as they progress downward.
+2. **Translational symmetry**: When exact repetition doesn't hold, look for transformations (like horizontal shifts) between pattern segments. This captures more complex regularities like diagonal patterns or zigzag structures.
 
-3. **Fixed output dimension**: The output height is always 10 rows, independent of input height. This is a common ARC pattern where the task tests the ability to recognize and extend regularities beyond the given examples.
+3. **Fixed output size**: The task always requires exactly 10 rows, regardless of input height. This is a common ARC pattern where the output dimensions are predetermined.
 
-The strategy hierarchy (try period detection first, then translational patterns, then fallback) ensures robust handling of different pattern types while maintaining deterministic behavior.
+The algorithm tries period detection first (simpler, more common), then falls back to translational pattern detection, and finally uses cyclic repetition as a last resort. This hierarchy ensures robust pattern recognition across different input structures.
