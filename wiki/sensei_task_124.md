@@ -3,7 +3,7 @@ type: sensei_note
 task: 124
 tags: [expansion, pattern-extension, arc, primer]
 written_by: The Primer
-written_at: 2026-07-07
+written_at: 2026-07-08
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -11,7 +11,7 @@ verified_by: run-against-train (all examples pass)
 
 ## The rule
 
-This task requires extending a vertical pattern from the input grid to exactly **10 rows**. The output width always matches the input width.
+The output is always exactly **10 rows** with the same width as the input. The input contains a vertical pattern that must be detected and extended downward to fill all 10 rows.
 
 There are two pattern types to detect:
 
@@ -96,6 +96,6 @@ This solution belongs to the **pattern-extension** primitive family. The core pr
 
 2. **Translational symmetry**: When exact repetition doesn't hold, look for transformations (like horizontal shifts) between pattern segments. This captures more complex regularities like diagonal patterns that shift rightward as they progress downward.
 
-3. **Fixed output size**: The task always produces 10 rows, making this an EXPANSION class problem. The pattern must be inferred from the input and continued to reach the target size.
+3. **Fixed output dimension**: The output height is always 10 rows, independent of input height. This is a common ARC pattern where the task tests the ability to recognize and extend regularities beyond the given examples.
 
-This approach generalizes to any task where a vertical pattern needs to be extended to a fixed height, whether through simple repetition or through systematic transformations between segments.
+The strategy hierarchy (try period detection first, then translational patterns, then fallback) ensures robust handling of different pattern types while maintaining deterministic behavior.
