@@ -3,7 +3,7 @@ type: sensei_note
 task: 63
 tags: [transformation, count-based-fill, arc, primer]
 written_by: The Primer
-written_at: 2026-07-06
+written_at: 2026-07-08
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -66,4 +66,4 @@ This belongs to the **count-based-fill** primitive family. The key insight is th
 
 **For future attempts:** When you see a pattern where certain rows and columns get uniformly filled while others don't, consider counting-based rules. Check if the filled rows/columns share a statistical property (max count, min count, specific count value, etc.). The union of max rows and max columns creates the characteristic cross-hatch pattern.
 
-**Verification status:** This rule has been verified against all 3 training examples and the test example. The implementation is deterministic and uses only numpy-compatible operations.
+**Verification status:** This rule has been verified against all 3 training examples and the test example. The implementation is deterministic and uses only Python stdlib.
