@@ -3,7 +3,7 @@ type: sensei_note
 task: 117
 tags: [transformation, symmetry-reflection, arc, primer]
 written_by: The Primer
-written_at: 2026-07-07
+written_at: 2026-07-08
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -122,12 +122,12 @@ def transform(grid):
 
 ## Why this generalizes
 
-This solution belongs to the **symmetry-reflection** primitive family. The key insight is recognizing that one shape serves as a symmetry anchor (exhibiting 4-way rotational/reflectional symmetry) while the other shape is meant to be replicated through reflections across the anchor's center point.
+This solution belongs to the **symmetry-reflection** primitive family. The key insight is recognizing that one shape serves as a symmetry anchor (exhibiting 4-way rotational/reflectional symmetry) while the other shape gets transformed relative to that anchor's center point.
 
 This pattern generalizes because:
-1. **Symmetry detection is robust**: The 4-way symmetry check works regardless of the specific colors or exact pixel patterns, as long as one shape has the symmetric property
-2. **Reflection is mathematically precise**: Using the center point formula (2×center − position) ensures accurate mirroring across any axis
-3. **Color-agnostic**: The solution identifies shapes by their geometric properties, not by specific color values
-4. **Size-invariant**: Works on grids of any size as long as the two-shape structure is present
+1. **Anchor identification** works for any 4-way symmetric shape (diamonds, crosses, squares with symmetric patterns)
+2. **Reflection mathematics** is coordinate-independent and works regardless of grid size or shape position
+3. **Color-agnostic** - the logic depends on geometric properties, not specific color values
+4. **Deterministic** - given the same input, always produces the same output through pure geometric transformation
 
-Future tasks in this family may vary the number of reflections (2-way, 4-way, 8-way), the type of symmetry (rotational vs. reflective), or add additional transformations, but the core principle of using a symmetric anchor to guide replication of asymmetric elements remains constant.
+Future tasks in this family may vary the number of reflections (2-way, 4-way, 8-way), the type of symmetry (rotational vs. reflectional), or add additional constraints, but the core primitive of "identify anchor → reflect other shapes" remains applicable.
