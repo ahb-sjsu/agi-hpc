@@ -3,18 +3,25 @@ type: sensei_note
 task: 28
 tags: [transformation, frame-construction, arc, primer]
 written_by: The Primer
-written_at: 2026-07-07
+written_at: 2026-07-08
 verified_by: run-against-train (all examples pass)
 ---
 
 ## The rule
 
-The input is a 10×10 grid containing exactly two non-zero colored markers. Sort the markers by row index: the upper marker (in rows 0–4) defines the top frame, and the lower marker (in rows 5–9) defines the bottom frame.
+The input is a 10×10 grid containing exactly two non-zero colored markers. Sort the markers by row index: the upper marker (smaller row number) defines the top frame, and the lower marker (larger row number) defines the bottom frame.
 
 Each frame spans 5 rows and follows this pattern:
-- The **outer boundary row** of the frame (row 0 for the top frame, row 9 for the bottom frame) is filled **solid** with the marker's color.
-- The **marker's row** within that frame is also filled **solid** with the marker's color.
-- All **other rows** in the frame show the color **only in the first and last columns** (the vertical edges).
+
+**Top frame (rows 0–4):**
+- Row 0 (top boundary): filled **solid** with the top marker's color
+- The marker's row: filled **solid** with the top marker's color
+- All other rows (1, 3, 4 except marker row): color appears **only in the first and last columns** (vertical edges)
+
+**Bottom frame (rows 5–9):**
+- Row 9 (bottom boundary): filled **solid** with the bottom marker's color
+- The marker's row: filled **solid** with the bottom marker's color
+- All other rows (5, 6, 8 except marker row): color appears **only in the first and last columns** (vertical edges)
 
 The column positions of the input markers are completely ignored; only their row positions and colors determine the output structure.
 
@@ -60,4 +67,8 @@ def transform(grid):
 
 ## Why this generalizes
 
-This task belongs to the **frame-construction** primitive family. The output structure is a fixed template: two stacked 5-row rectangular frames that always span the full 10×10 grid. The input markers act as **parameters** that customize this fixed structure—supplying a color and a specific row for each frame. Because the rule depends only on the relative vertical ordering of the markers (upper vs. lower half) and not on their column positions, any 10×10 grid containing exactly two non-zero markers will produce the correct pair of frames. This is a classic example of parameterized template generation, where the input provides configuration values for a predetermined output schema.
+This task belongs to the **frame-construction** primitive family. The output structure is a fixed template: two stacked 5-row rectangular frames that always span the full 10×10 grid. The input markers act as **parameters** that customize this fixed structure—supplying a color and a specific row for each frame.
+
+Because the rule depends only on the relative vertical ordering of the markers (upper vs. lower by row index) and not on their column positions, any 10×10 grid containing exactly two non-zero markers will produce the correct pair of frames. This is a classic example of parameterized template generation, where the input provides configuration values for a predetermined output schema.
+
+The key insight is that each frame has exactly two solid rows: the frame's outer boundary (row 0 for top, row 9 for bottom) and the marker's row within that frame. All intermediate rows show only the vertical edges. This pattern holds regardless of where within the 5-row span the marker appears.
