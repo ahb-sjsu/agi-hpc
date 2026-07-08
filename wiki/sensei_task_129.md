@@ -3,7 +3,7 @@ type: sensei_note
 task: 129
 tags: [transformation, most-frequent-color-fill, arc, primer]
 written_by: The Primer
-written_at: 2026-07-07
+written_at: 2026-07-08
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -23,18 +23,10 @@ This is a TRANSFORMATION class task because the output shape matches the input s
 import numpy as np
 
 def transform(grid):
-    # Convert to numpy array for efficient counting
     arr = np.array(grid)
-    
-    # Count frequency of each color
     unique, counts = np.unique(arr, return_counts=True)
-    
-    # Find the most frequent color (mode)
     most_frequent_color = int(unique[np.argmax(counts)])
-    
-    # Create output grid with same dimensions, filled with most frequent color
     output = np.full(arr.shape, most_frequent_color)
-    
     return output.tolist()
 ```
 
