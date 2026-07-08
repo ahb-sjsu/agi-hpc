@@ -99,6 +99,6 @@ This belongs to the **periodic-replication** primitive family. The key insight i
 
 - **Example 3**: Sources at (5,0)=2 and (7,8)=3. row_spacing=2 < col_spacing=8 → vertical, period=4. Output has 2 at rows 5,9,13,17,21 and 3 at rows 7,11,15,19. ✓
 
-- **Example 4**: Sources at (7,0)=4 and (11,0)=1. col_spacing=0 → vertical, period=8. Output has 4 at rows 7,15,23 and 1 at rows 11,19. ✓
+- **Example 4**: Sources at (7,0)=4 and (11,0)=1. Same column → vertical, period=8. Output has 4 at rows 7,15,23 and 1 at rows 11,19. ✓
 
-- **Test**: Sources at (0,5)=3 and (10,10)=4. col_spacing=5 < row_spacing=10 → horizontal, period=10. Output has 3 at cols 5,15,25 and 4 at cols 10,20. ✓
+**Test example prediction**: Sources at (0,5)=3 and (10,10)=4. col_spacing=5 < row_spacing=10 → horizontal, period=10. Output should have 3 at cols 5,15,25 and 4 at cols 10,20. ✓
