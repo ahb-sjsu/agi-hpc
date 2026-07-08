@@ -3,7 +3,7 @@ type: sensei_note
 task: 381
 tags: [transformation, gap-fill, arc, primer]
 written_by: The Primer
-written_at: 2026-07-07
+written_at: 2026-07-08
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -112,19 +112,14 @@ def transform(grid):
 
 This task belongs to the **gap-fill** primitive family. The core pattern is:
 
-1. **Object detection via connectivity:** Rectangular objects are identified as 4-connected components of a source color (here, color 2). This generalizes to any task where objects are defined by connectivity rather than explicit boundaries.
+1. **Object detection:** Identify distinct rectangular objects of a source color (2).
+2. **Spatial relationship:** Find pairs of objects that are horizontally separated but vertically aligned (share rows).
+3. **Occlusion check:** Verify the gap is not blocked by a third object.
+4. **Fill operation:** Color the empty space between aligned objects with a target color (9).
 
-2. **Pairwise spatial reasoning:** The algorithm considers all pairs of objects and computes their spatial relationship (row overlap, horizontal separation). This pairwise comparison pattern appears in many ARC tasks involving alignment, connection, or relationship detection.
+This generalizes to any grid where:
+- Objects are rectangular connected components
+- The task requires filling gaps between spatially related objects
+- Occlusion by intermediate objects must be respected
 
-3. **Blocker detection:** Before filling a gap, the algorithm checks if a third object obstructs the path. This "occlusion check" is a common sub-routine in tasks involving visibility, path-finding, or connection-with-obstacles.
-
-4. **Conditional transformation:** Only cells meeting specific criteria (in the gap, currently empty, unblocked) are modified. This selective transformation pattern generalizes to many tasks where changes must respect existing structure.
-
-The gap-fill primitive can be adapted by:
-- Changing the source color (not just 2)
-- Changing the fill color (not just 9)
-- Working with vertical gaps instead of horizontal (swap row/column logic)
-- Using 8-connectivity instead of 4-connectivity for object detection
-- Filling only partial gaps based on additional constraints
-
-Erebus should recognize this pattern when seeing: (a) multiple rectangular objects of uniform color, (b) empty space between them, (c) output showing that space filled with a new color, and (d) some gaps filled while others remain empty (indicating blocker logic).
+The algorithm is O(n²) in the number of rectangles, which is efficient since ARC grids typically have few distinct objects. The key insight is that gaps are only filled when they represent a clear "corridor" between two objects with no obstruction.
