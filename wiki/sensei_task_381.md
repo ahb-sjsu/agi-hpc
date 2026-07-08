@@ -110,14 +110,16 @@ def transform(grid):
 
 ## Why this generalizes
 
-This solution uses the **gap-fill** primitive family, which is a common pattern in ARC tasks. The key insight is:
+This solution uses the **gap-fill** primitive family, which is a core pattern in ARC tasks involving object relationships. The key insight is that gaps between objects should only be filled when:
 
-1. **Object detection via connectivity:** Rectangles of color 2 are identified as connected components, not by template matching. This handles varying sizes and positions.
+1. **Alignment exists:** The objects share a common dimension (here, row overlap).
+2. **Space exists:** There is actual empty space between them (horizontal gap).
+3. **No obstruction:** No third object blocks the path between them.
 
-2. **Pairwise spatial reasoning:** The algorithm considers all pairs of objects and computes their spatial relationship (row overlap, horizontal gap). This is more general than hardcoding specific configurations.
+This generalizes because:
+- It works for any number of rectangles in any arrangement
+- The blocker detection ensures we don't fill gaps that are "interrupted" by other objects
+- The row-overlap requirement ensures we only connect objects that are truly "facing" each other horizontally
+- The algorithm is deterministic and depends only on the spatial relationships between objects, not their absolute positions
 
-3. **Blocker detection:** By checking if a third object intersects the gap region, the algorithm correctly handles cases where gaps should NOT be filled. This prevents over-filling.
-
-4. **Deterministic filling:** Only empty cells (0) in unblocked gaps become 9, preserving any existing content.
-
-This approach generalizes to any number of rectangles, any arrangement, and correctly handles edge cases like touching rectangles (no gap) or blocked gaps (no fill).
+Future tasks with similar "connect aligned objects" or "fill gaps between object pairs" patterns can reuse this primitive with appropriate modifications (e.g., vertical gaps instead of horizontal, different colors, different connectivity rules).
