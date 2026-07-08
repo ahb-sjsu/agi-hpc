@@ -7,6 +7,8 @@ written_at: 2026-07-08
 verified_by: run-against-train (all examples pass)
 ---
 
+# Task 030: Vertical Alignment to Color-1 Anchor
+
 ## The rule
 
 All colored objects shift vertically so their **top rows** align with the **top row of the color-1 (blue) object**. Color-1 serves as the anchor and does not move. Horizontal positions and object shapes are preserved; only vertical positions change.
