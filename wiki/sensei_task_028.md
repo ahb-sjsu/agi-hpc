@@ -11,7 +11,7 @@ verified_by: run-against-train (all examples pass)
 
 The input is a 10×10 grid containing exactly two non-zero colored markers. Sort the markers by row index: the upper marker (smaller row number) defines the top frame, and the lower marker (larger row number) defines the bottom frame.
 
-Each frame spans 5 rows and follows this pattern:
+Each frame spans 5 rows with a fixed pattern:
 
 **Top frame (rows 0–4):**
 - Row 0 (top boundary): filled **solid** with the top marker's color
