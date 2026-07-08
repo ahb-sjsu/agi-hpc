@@ -3,7 +3,7 @@ type: sensei_note
 task: 178
 tags: [extraction, run-length-compression, arc, primer]
 written_by: The Primer
-written_at: 2026-07-07
+written_at: 2026-07-08
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -117,6 +117,6 @@ This belongs to the **run-length-compression** primitive family, combined with *
 
 2. **Output shape encodes the compression axis**: A 1×N output means rows were redundant (compressed horizontally). An N×1 output means columns were redundant (compressed vertically).
 
-3. **Run-length compression is value-agnostic**: The `compress()` function works on any sequence of integers, collapsing consecutive duplicates regardless of the specific values involved.
+3. **Run-length compression is value-agnostic**: The `compress()` function works on any sequence of integers, collapsing consecutive duplicates regardless of the specific values. This is a reusable primitive for many ARC tasks involving pattern simplification.
 
-4. **This pattern appears in compression tasks**: When you see grids with obvious repetition along one axis, check for run-length encoding opportunities. The output dimension tells you which axis had the redundancy.
+4. **Dimension detection is exhaustive**: The algorithm checks rows first, then columns. In well-formed tasks of this type, exactly one dimension will show global redundancy, making the decision deterministic.
