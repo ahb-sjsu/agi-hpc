@@ -47,11 +47,11 @@ def transform(grid):
         adjacent = set()
         for dr in range(-1, 3):
             for dc in range(-1, 3):
-                if 0 <= dr <= 1 and 0 <= dc <= 1:
-                    continue
                 nr, nc = block_r + dr, block_c + dc
-                if 0 <= nr < h and 0 <= nc < w and grid[nr, nc] == 8:
-                    adjacent.add((nr, nc))
+                if 0 <= nr < h and 0 <= nc < w:
+                    in_block = (0 <= dr <= 1) and (0 <= dc <= 1)
+                    if not in_block and grid[nr, nc] == 8:
+                        adjacent.add((nr, nc))
         return adjacent
     
     adj1 = get_adjacent_eights(blocks[0][0], blocks[0][1])
@@ -101,6 +101,9 @@ This task belongs to the **connectivity-classifier** primitive family. The core 
 3. **Path existence**: Determine if a connected component of connector cells bridges the objects using 8-connectivity BFS
 4. **Binary classification**: Map connectivity (yes/no) to output value (8/0)
 
-This pattern generalizes to any task where you need to determine if two or more objects are connected through a specific medium. The key insight is that both the adjacency definition and the path traversal must use the same connectivity rule (8-connectivity in this case). Using 4-connectivity instead would fail on diagonal connections that are valid in this task.
+This pattern generalizes to any task where you need to determine if two or more objects are connected through a network of intermediary cells. The key insight is that both the adjacency check and the path traversal must use the same connectivity definition (8-connectivity in this case).
 
-The 2x2 block structure serves as a reliable anchor for object detection, while the teal cells act as a flexible wiring medium that can form arbitrary paths between terminals.
+**Common pitfalls to avoid**:
+- Using 4-connectivity instead of 8-connectivity for path traversal
+- Only checking cells adjacent to the top-left corner of the 2x2 block instead of all perimeter cells
+- Not handling edge cases where one or both blocks have no adjacent 8s
