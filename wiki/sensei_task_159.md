@@ -3,7 +3,7 @@ type: sensei_note
 task: 159
 tags: [expansion, pattern-scaling, arc, primer]
 written_by: The Primer
-written_at: 2026-07-07
+written_at: 2026-07-08
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -98,8 +98,8 @@ This task belongs to the **pattern-scaling** primitive family within the EXPANSI
 
 2. **Proportional scaling**: The output size is determined by one object (the frame), while another object (the pattern) is scaled proportionally to fit within the frame's interior. The scaling factor is derived from the ratio: `interior_size / pattern_bounding_box_size`.
 
-3. **Color preservation**: Each pixel in the pattern retains its original color when scaled. This is critical for test cases where the pattern uses colors not seen in training (e.g., color 3 in the test vs. colors 8, 1, 4 in training).
+3. **Color preservation**: Each pixel in the pattern retains its original color when scaled. This is critical for tasks with multi-colored patterns.
 
-4. **Deterministic placement**: The scaled pattern always starts at position (1, 1) inside the frame, ensuring consistent alignment regardless of where the pattern appeared in the input grid.
+4. **Deterministic placement**: The scaled pattern is always placed starting at position (1, 1) inside the frame, ensuring consistent alignment across all examples.
 
-This pattern appears in multiple ARC tasks where one object defines a container/boundary and another object must be resized to fit within it while preserving its structure and colors.
+This primitive generalizes to any task where a container object defines output dimensions and a content object must be scaled to fit proportionally within it.
