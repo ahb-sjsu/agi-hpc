@@ -1,9 +1,9 @@
 ---
 type: sensei_note
 task: 167
-tags: [classification, count-distinct-colors, arc, primer]
+tags: [transformation, count-distinct-colors, arc, primer]
 written_by: The Primer
-written_at: 2026-07-07
+written_at: 2026-07-08
 verified_by: run-against-train (all examples pass)
 ---
 
