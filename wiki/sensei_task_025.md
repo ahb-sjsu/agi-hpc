@@ -3,7 +3,7 @@ type: sensei_note
 task: 25
 tags: [transformation, line-attraction, arc, primer]
 written_by: The Primer
-written_at: 2026-07-07
+written_at: 2026-07-08
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -11,11 +11,11 @@ verified_by: run-against-train (all examples pass)
 
 ## The rule
 
-This task implements **line attraction**. The grid contains dominant lines—either vertical columns or horizontal rows—where a single non-zero color fills more than half the cells. These lines act as attractors for stray pixels of the same color.
+This task implements **line attraction**. The grid contains dominant lines—either vertical columns or horizontal rows—where a single non-zero color fills every cell in that row or column. These lines act as attractors for stray pixels of the same color.
 
 **Transformation steps:**
 
-1. **Detect lines**: Find all rows or columns where one non-zero color appears in more than half the cells. Record the color and position of each line.
+1. **Detect lines**: Find all rows or columns where one non-zero color appears in every cell. Record the color and position of each line.
 2. **Preserve lines**: Copy all detected lines unchanged to the output.
 3. **Move stray pixels**: For each non-zero pixel not part of a line:
    - If its color matches a vertical line, move it horizontally to the cell immediately adjacent to that line (column = line_column - 1 if pixel is left of line, or line_column + 1 if pixel is right of line).
@@ -32,23 +32,23 @@ def transform(grid):
     arr = np.array(grid)
     h, w = arr.shape
     
-    # Detect vertical lines (columns where one color > half the cells)
+    # Detect vertical lines (columns where one color fills ALL cells)
     vertical_lines = {}
     for col in range(w):
         colors = arr[:, col]
         non_zero = colors[colors != 0]
-        if len(non_zero) > h // 2:
-            unique, counts = np.unique(non_zero, return_counts=True)
+        if len(non_zero) == h:
+            unique = np.unique(non_zero)
             if len(unique) == 1:
                 vertical_lines[int(unique[0])] = col
     
-    # Detect horizontal lines (rows where one color > half the cells)
+    # Detect horizontal lines (rows where one color fills ALL cells)
     horizontal_lines = {}
     for row in range(h):
         colors = arr[row, :]
         non_zero = colors[colors != 0]
-        if len(non_zero) > w // 2:
-            unique, counts = np.unique(non_zero, return_counts=True)
+        if len(non_zero) == w:
+            unique = np.unique(non_zero)
             if len(unique) == 1:
                 horizontal_lines[int(unique[0])] = row
     
@@ -91,10 +91,4 @@ def transform(grid):
 
 ## Why this generalizes
 
-This belongs to the **line-attraction** primitive family. The key insight is that dominant linear structures (rows or columns filled predominantly with one color) serve as anchors that attract nearby pixels of the same color. The transformation preserves the structural integrity of these lines while reorganizing scattered elements into a coherent pattern adjacent to their anchors. This pattern appears across multiple ARC tasks where organization around dominant features is required.
-
-**Key generalization points:**
-- Line detection threshold (>50% of cells) is robust across different grid sizes
-- Priority system (vertical over horizontal) handles ambiguous cases consistently
-- Adjacent positioning (not on the line itself) preserves line visibility
-- Color-matching ensures semantic coherence in the transformation
+This belongs to the **line-attraction** primitive family. The key insight is that dominant linear structures (rows or columns filled entirely with one color) serve as anchors that attract stray pixels of matching colors. The transformation preserves the structural integrity of lines while reorganizing scattered elements into a coherent pattern adjacent to their corresponding anchors. This pattern appears frequently in ARC tasks involving organization, alignment, and structure-based grouping.
