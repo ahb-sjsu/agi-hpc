@@ -110,19 +110,16 @@ def transform(grid):
 
 ## Why this generalizes
 
-This solution uses the **gap-fill** primitive family, which generalizes across ARC tasks with the following pattern:
+This task belongs to the **gap-fill** primitive family. The core pattern is:
 
-1. **Object detection:** Identify distinct objects (here, rectangles of color 2) using connected components. This primitive works for any task where objects are defined by color and connectivity.
+1. **Object detection**: Identify discrete objects (rectangles of color 2) via connected component analysis.
+2. **Spatial relationship reasoning**: Determine which object pairs have the right geometric relationship (row overlap + horizontal separation).
+3. **Occlusion checking**: Verify no third object blocks the path between the pair.
+4. **Targeted filling**: Modify only the gap region, preserving all original objects.
 
-2. **Spatial relationship computation:** Calculate row overlap and horizontal separation between object pairs. This geometric reasoning applies to any task involving aligned objects.
+This generalizes to any grid where:
+- Objects are rectangular connected components of a single color
+- The transformation fills empty space between aligned object pairs
+- Blockers prevent filling when a third object occupies the gap region
 
-3. **Blocker detection:** Check if a third object obstructs the path between two objects. This occlusion-checking primitive is reusable for tasks involving visibility, connectivity, or path-finding.
-
-4. **Conditional filling:** Fill empty space (color 0) with a new color (9) only when conditions are met. This selective-modification pattern appears in many ARC tasks.
-
-The key insight is that gaps are filled **only** when:
-- Two rectangles share rows (vertical alignment)
-- They are horizontally separated (not touching)
-- No third rectangle blocks the gap within those shared rows
-
-This logic handles all variations: multiple rectangle pairs, different gap widths, partial row overlaps, and complex blocker configurations. The algorithm is deterministic and scales to any grid size with any number of rectangles.
+The algorithm is O(n² × m) where n is the number of rectangles and m is the number of potential blockers, making it efficient for typical ARC grid sizes.
