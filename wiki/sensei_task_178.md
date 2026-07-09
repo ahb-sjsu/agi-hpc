@@ -117,8 +117,6 @@ This belongs to the **run-length-compression** primitive family, combined with *
 
 2. **Output shape encodes the compression axis**: A 1×N output means rows were redundant (compressed horizontally). An N×1 output means columns were redundant (compressed vertically).
 
-3. **Run-length compression is value-agnostic**: The `compress()` function works on any sequence of integers, collapsing consecutive duplicates regardless of the specific values. This pattern appears in many ARC tasks involving pattern simplification.
+3. **Run-length compression is value-agnostic**: The `compress()` function works on any sequence of integers, collapsing consecutive duplicates regardless of what values appear. This is a reusable primitive for many ARC tasks involving pattern simplification.
 
-4. **Dimension detection strategy**: Check rows first (compare each row to the first row), then check columns (compare each element in column j to the corresponding element in column 0). This two-phase approach handles both orientations cleanly.
-
-5. **Edge case handling**: Empty grids return empty. Single-row or single-column inputs are handled naturally by the compression logic. The fallback returns the original grid if neither redundancy pattern is detected (though valid task inputs always exhibit one pattern).
+4. **Structured redundancy is a strong signal**: When an entire dimension shows perfect repetition, it's almost always indicating that dimension should be collapsed. Look for this pattern in other tasks.
