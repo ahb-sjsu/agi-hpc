@@ -3,7 +3,7 @@ type: sensei_note
 task: 20
 tags: [transformation, symmetry-completion, arc, primer]
 written_by: The Primer
-written_at: 2026-07-08
+written_at: 2026-07-09
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -37,7 +37,7 @@ def transform(grid):
     r_min, r_max = rows.min(), rows.max()
     c_min, c_max = cols.min(), cols.max()
     
-    # Center of bounding box (may be half-integer for even spans)
+    # Center of bounding box
     center_r = (r_min + r_max) / 2.0
     center_c = (c_min + c_max) / 2.0
     
@@ -70,7 +70,7 @@ The bounding-box center is the correct symmetry point because:
 
 1. **All training examples have non-zero cells arranged symmetrically around this center** (even if some positions are missing in the input).
 
-2. **The span (max - min) in both dimensions is always even**, guaranteeing the center falls on integer or half-integer coordinates that produce valid grid positions when reflecting. For example, if rows span from 1 to 5, the center is at 3.0; if rows span from 2 to 6, the center is at 4.0.
+2. **The span (max - min) in both dimensions is always even**, guaranteeing the center falls on integer coordinates that produce valid grid positions when reflecting. For example, if rows span from 1 to 5, the center is at 3.0; if rows span from 2 to 6, the center is at 4.0.
 
 3. **This is a geometric rule independent of specific colors** — any non-zero value gets reflected the same way. The value itself doesn't affect where it goes, only what gets written.
 
