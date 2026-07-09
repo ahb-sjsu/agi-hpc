@@ -90,7 +90,7 @@ Every action is evaluated across eight ethical dimensions, plus epistemic qualit
 8. **Legitimacy & Trust** — Procedural validity
 9. **Epistemic Quality** — Confidence in the assessment itself
 
-This multi-dimensional approach avoids the trap of reducing ethics to a single score while still enabling computational tractability.
+This multi-dimensional approach avoids the trap of reducing ethics to a single score while still enabling computational tractability. (Canonical MoralVector reference: `erisml-lib` repo, `docs/moralvector_reference.md` and `docs/moralvector_v2_architecture.md`.)
 
 ## Why This Matters
 

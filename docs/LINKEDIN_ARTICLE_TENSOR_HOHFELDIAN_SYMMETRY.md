@@ -91,7 +91,7 @@ The new `MoralTensor` class supports ranks 1 through 6:
 | 2 | (9, n) | Per-party assessment (n parties/stakeholders) |
 | 3 | (9, n, tau) | Temporal evolution of per-party assessments |
 | 4 | (9, n, a, c) | Coalition actions and consequences |
-| 5 | (9, n, tau, a, s) | Temporal with actions and uncertainty samples |
+| 5 | (9, n, tau, a, c) | Coalition decisions over time |
 | 6 | (9, n, tau, a, c, s) | Full multi-agent spatiotemporal context |
 
 The 9 ethical dimensions forming the first axis are:
@@ -106,7 +106,7 @@ The 9 ethical dimensions forming the first axis are:
 8. **Legitimacy & trust** (0 = illegitimate, 1 = legitimate)
 9. **Epistemic quality** (0 = uncertain, 1 = certain)
 
-These nine dimensions arise from a 3x3 matrix crossing three *domains of concern* (individual, relational, collective) with three *epistemic modes* (what matters, who decides, what we know).
+These nine dimensions arise from a 3x3 matrix crossing three *domains of concern* (individual, relational, collective) with three *epistemic modes* (what matters, who decides, what we know). The canonical MoralVector reference and standards architecture live in the `erisml-lib` repo: `docs/moralvector_reference.md` and `docs/moralvector_v2_architecture.md`.
 
 ### Why Higher-Rank Tensors Matter
 

@@ -334,6 +334,10 @@ The Bond Index measures deviation from perfect correlative symmetry in Hohfeldia
 8. `legitimacy_trust` - Procedural legitimacy
 9. `epistemic_quality` - Confidence in assessment (+1 dimension)
 
+These are the DEME-9 "Nine Dimensions of Ethical Assessment" (a 3x3 matrix).
+The canonical MoralVector reference lives in the `erisml-lib` repo:
+`docs/moralvector_reference.md` and `docs/moralvector_v2_architecture.md`.
+
 ### Verdicts
 
 - `strongly_prefer` - Highly ethical action
