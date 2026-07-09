@@ -3,7 +3,7 @@ type: sensei_note
 task: 124
 tags: [expansion, pattern-extension, arc, primer]
 written_by: The Primer
-written_at: 2026-07-08
+written_at: 2026-07-09
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -98,10 +98,12 @@ def transform(grid):
 
 This solution belongs to the **pattern-extension** primitive family. The core principles are:
 
-1. **Period detection**: Many ARC tasks involve repeating patterns. Finding the smallest period allows extrapolation beyond the visible input. This handles cases like vertical lines or alternating row types.
+1. **Period detection**: Many ARC tasks involve repeating patterns. Finding the smallest period allows extrapolation beyond the visible input. This handles cases like vertical lines or alternating row patterns.
 
-2. **Translational symmetry**: When exact repetition doesn't hold, look for transformations (like horizontal shifts) between pattern segments. This captures more complex regularities like diagonal patterns or zigzag structures.
+2. **Translational symmetry**: When patterns shift horizontally as they progress vertically, detecting the segment length and shift amount enables correct extension. This handles diagonal patterns and zigzag structures.
 
-3. **Fixed output size**: The task always requires exactly 10 rows, regardless of input height. This is a common ARC pattern where the output dimensions are predetermined.
+3. **Fixed output size**: The task always produces 10 rows regardless of input height, making this an EXPANSION class task. The extension logic must be robust to various input sizes (5, 6, or 8 rows in the training data).
 
-The algorithm tries period detection first (simpler, more common), then falls back to translational pattern detection, and finally uses cyclic repetition as a last resort. This hierarchy ensures robust pattern recognition across different input structures.
+4. **Color/value preservation**: The pattern's color (1, 2, 3, 6, 8, etc.) is preserved throughout the extension—only the spatial arrangement matters.
+
+This approach generalizes to any vertical pattern that exhibits either exact repetition or consistent translational shifts between segments.
