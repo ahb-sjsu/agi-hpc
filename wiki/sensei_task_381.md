@@ -3,7 +3,7 @@ type: sensei_note
 task: 381
 tags: [transformation, gap-fill, arc, primer]
 written_by: The Primer
-written_at: 2026-07-08
+written_at: 2026-07-09
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -110,16 +110,19 @@ def transform(grid):
 
 ## Why this generalizes
 
-This solution uses the **gap-fill** primitive family, which is a core pattern in ARC tasks involving object relationships. The key insight is that gaps between objects should only be filled when:
+This solution uses the **gap-fill** primitive family, which generalizes across ARC tasks with the following pattern:
 
-1. **Alignment exists:** The objects share a common dimension (here, row overlap).
-2. **Space exists:** There is actual empty space between them (horizontal gap).
-3. **No obstruction:** No third object blocks the path between them.
+1. **Object detection:** Identify distinct objects (here, rectangles of color 2) using connected components. This primitive works for any task where objects are defined by color and connectivity.
 
-This generalizes because:
-- It works for any number of rectangles in any arrangement
-- The blocker detection ensures we don't fill gaps that are "interrupted" by other objects
-- The row-overlap requirement ensures we only connect objects that are truly "facing" each other horizontally
-- The algorithm is deterministic and depends only on the spatial relationships between objects, not their absolute positions
+2. **Spatial relationship computation:** Calculate row overlap and horizontal separation between object pairs. This geometric reasoning applies to any task involving aligned objects.
 
-Future tasks with similar "connect aligned objects" or "fill gaps between object pairs" patterns can reuse this primitive with appropriate modifications (e.g., vertical gaps instead of horizontal, different colors, different connectivity rules).
+3. **Blocker detection:** Check if a third object obstructs the path between two objects. This occlusion-checking primitive is reusable for tasks involving visibility, connectivity, or path-finding.
+
+4. **Conditional filling:** Fill empty space (color 0) with a new color (9) only when conditions are met. This selective-modification pattern appears in many ARC tasks.
+
+The key insight is that gaps are filled **only** when:
+- Two rectangles share rows (vertical alignment)
+- They are horizontally separated (not touching)
+- No third rectangle blocks the gap within those shared rows
+
+This logic handles all variations: multiple rectangle pairs, different gap widths, partial row overlaps, and complex blocker configurations. The algorithm is deterministic and scales to any grid size with any number of rectangles.
