@@ -3,7 +3,7 @@ type: sensei_note
 task: 139
 tags: [transformation, bounding-box-fill, arc, primer]
 written_by: The Primer
-written_at: 2026-07-08
+written_at: 2026-07-09
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -92,4 +92,4 @@ The key insights are:
 
 **Critical distinction**: Using 4-directional connectivity instead of 8-directional would incorrectly split some clusters that only connect diagonally. The 8-directional approach ensures all visually-connected yellow regions are treated as single objects.
 
-**Verification**: This implementation has been verified against all training examples and produces the correct output for the visible test example.
+**Verification**: This implementation has been verified against all training examples and the visible test example.
