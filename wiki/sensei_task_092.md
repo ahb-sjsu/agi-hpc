@@ -11,10 +11,10 @@ verified_by: run-against-train (all examples pass)
 
 ## The rule
 
-For each color that appears exactly twice in the input grid, connect those two pixels with a straight line of that color:
+For each color that appears **exactly twice** in the input grid, connect those two pixels with a straight line of that color:
 
-- If the two pixels share the **same column**, draw a **vertical line** between them (filling all cells from the top pixel to the bottom pixel).
-- If the two pixels share the **same row**, draw a **horizontal line** between them (filling all cells from the left pixel to the right pixel).
+- If the two pixels share the **same column**, draw a **vertical line** between them (filling all cells from the top pixel to the bottom pixel, inclusive).
+- If the two pixels share the **same row**, draw a **horizontal line** between them (filling all cells from the left pixel to the right pixel, inclusive).
 
 When a vertical line and horizontal line intersect at a cell, the **vertical line takes precedence** — its color overwrites the horizontal line's color at that intersection point.
 
