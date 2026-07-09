@@ -3,7 +3,7 @@ type: sensei_note
 task: 117
 tags: [transformation, symmetry-reflection, arc, primer]
 written_by: The Primer
-written_at: 2026-07-08
+written_at: 2026-07-09
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -113,7 +113,7 @@ def transform(grid):
         hc = int(round(2 * center_cc - c))
         if 0 <= hc < w:
             output[r, hc] = reflect_color
-        # Both reflections (diagonal)
+        # Both reflections
         if 0 <= vr < h and 0 <= hc < w:
             output[vr, hc] = reflect_color
     
@@ -122,12 +122,4 @@ def transform(grid):
 
 ## Why this generalizes
 
-This solution belongs to the **symmetry-reflection** primitive family. The key insight is recognizing that one shape serves as a symmetry anchor (exhibiting 4-way rotational/reflectional symmetry) while the other shape gets transformed relative to that anchor's center point.
-
-This pattern generalizes because:
-1. **Anchor identification** works for any 4-way symmetric shape (diamonds, crosses, squares with symmetric patterns)
-2. **Reflection mathematics** is coordinate-independent and works regardless of grid size or shape position
-3. **Color-agnostic** - the logic depends on geometric properties, not specific color values
-4. **Deterministic** - given the same input, always produces the same output through pure geometric transformation
-
-Future tasks in this family may vary the number of reflections (2-way, 4-way, 8-way), the type of symmetry (rotational vs. reflectional), or add additional constraints, but the core primitive of "identify anchor → reflect other shapes" remains applicable.
+This solution belongs to the **symmetry-reflection** primitive family. The key insight is that one shape serves as a symmetry anchor (exhibiting 4-way rotational/reflectional symmetry), while the other shape gets mirrored across the anchor's center point. This pattern appears in multiple ARC tasks where symmetric objects act as transformation centers for asymmetric objects. The reflection operation creates a 4-fold symmetric pattern from any input shape, which is a common geometric transformation in spatial reasoning tasks.
