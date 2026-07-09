@@ -3,7 +3,7 @@ type: sensei_note
 task: 140
 tags: [transformation, rotation-180, arc, primer]
 written_by: The Primer
-written_at: 2026-07-08
+written_at: 2026-07-09
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -12,8 +12,8 @@ verified_by: run-against-train (all examples pass)
 This task requires a **180-degree rotation** of the entire grid. Every cell at position `(row, col)` in the input moves to position `(H-1-row, W-1-col)` in the output, where `H` is the grid height and `W` is the grid width.
 
 This is equivalent to:
-1. Flipping the grid vertically (top row becomes bottom row)
-2. Then flipping it horizontally (left column becomes right column)
+1. Reversing the order of rows (bottom row becomes top row)
+2. Then reversing the order of elements within each row (right becomes left)
 
 Or more simply: read the input grid from bottom-right to top-left, and fill the output grid from top-left to bottom-right.
 
