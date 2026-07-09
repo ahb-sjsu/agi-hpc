@@ -3,11 +3,9 @@ type: sensei_note
 task: 149
 tags: [classification, object-count, arc, primer]
 written_by: The Primer
-written_at: 2026-07-08
+written_at: 2026-07-09
 verified_by: run-against-train (all examples pass)
 ---
-
-# Task 149: Region-based Magenta Count Classification
 
 ## The rule
 
@@ -59,7 +57,3 @@ This pattern generalizes to:
 3. Any threshold value (not just 2)
 
 The strategy is: **partition → count → threshold → classify**. This is a common ARC pattern where spatial structure defines independent subproblems that are solved uniformly and aggregated into a smaller output grid representing the classification results.
-
-## Verification
-
-This implementation has been verified against all 4 training examples. Each region is correctly extracted, magenta pixels are accurately counted, and the threshold classification (exactly 2 → 1, otherwise → 0) produces the expected 3×3 output grid.
