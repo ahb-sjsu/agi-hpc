@@ -90,4 +90,6 @@ The key insights are:
 
 4. **Independence**: Each cluster is processed independently, so the algorithm scales to any number of objects on the grid.
 
-**Verification**: This implementation has been verified against all training examples and correctly handles the test case where diagonal connectivity is essential to identify the full cluster.
+5. **Deterministic transformation**: The output grid has the same dimensions as the input, making this a TRANSFORMATION class task. The operation is purely local to each connected component's bounding box.
+
+**Critical distinction**: The 8-directional connectivity is essential. In the training examples, some yellow cells connect only diagonally. A 4-directional flood fill would incorrectly treat these as separate clusters, producing wrong bounding boxes and incorrect fill patterns.
