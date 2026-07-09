@@ -3,7 +3,7 @@ type: sensei_note
 task: 159
 tags: [expansion, pattern-scaling, arc, primer]
 written_by: The Primer
-written_at: 2026-07-08
+written_at: 2026-07-09
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -96,10 +96,10 @@ This task belongs to the **pattern-scaling** primitive family within the EXPANSI
 
 1. **Object separation by role, not just color**: The task requires distinguishing between structural elements (the red frame, color 2) and content elements (the pattern, ANY other non-zero color). Previous implementations failed because they only extracted pixels of a single color. The correct approach extracts ALL non-frame pixels regardless of color, preserving each pixel's original color during scaling.
 
-2. **Proportional scaling**: The output size is determined by one object (the frame), while another object (the pattern) is scaled proportionally to fit within the frame's interior. The scaling factor is derived from the ratio: `interior_size / pattern_bounding_box_size`.
+2. **Proportional scaling**: The output size is determined by one object (the frame), while another object (the pattern) is scaled proportionally to fit within the frame's interior. The scaling factor is derived from the ratio: `interior_size / pattern_size`.
 
-3. **Color preservation**: Each pixel in the pattern retains its original color when scaled. This is critical for tasks with multi-colored patterns.
+3. **Color preservation**: Each pixel in the pattern retains its original color when scaled. This is critical for tasks where the pattern contains multiple colors (as seen in the test example with color 3).
 
-4. **Deterministic placement**: The scaled pattern is always placed starting at position (1, 1) inside the frame, ensuring consistent alignment across all examples.
+4. **Deterministic placement**: The scaled pattern always starts at position (1, 1) inside the frame, ensuring consistent alignment across all examples.
 
 This primitive generalizes to any task where a container object defines output dimensions and a content object must be scaled to fit proportionally within it.
