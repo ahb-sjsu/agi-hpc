@@ -34,7 +34,7 @@ def transform(grid):
 
 This belongs to the **most-frequent-color-fill** primitive family. The pattern is robust because:
 
-1. **Shape-independent**: Works on any rectangular grid size (3×3, 5×5, 2×:7, etc.) since we only count frequencies and replicate the winner.
+1. **Shape-independent**: Works on any rectangular grid size (3×3, 5×5, 2×7, etc.) since we only count frequencies and replicate the winner.
 2. **Color-agnostic**: Works with any palette of integer colors (0-9 in ARC, or beyond) since we treat colors as abstract labels to count.
 3. **Position-independent**: The spatial arrangement of colors in the input doesn't matter—only the global count does.
 4. **Deterministic**: `np.argmax()` returns the first index of the maximum value, providing consistent tie-breaking behavior.
