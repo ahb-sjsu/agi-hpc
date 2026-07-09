@@ -101,10 +101,4 @@ This task belongs to the **connectivity-classifier** primitive family. The core 
 3. **Path existence**: Determine if a connected component of connector cells bridges the objects using 8-connectivity BFS
 4. **Binary classification**: Map connectivity (yes/no) to output value (8/0)
 
-This pattern generalizes to any task where you need to determine if two structured regions are connected through a network of intermediary cells. The key insight is that both the adjacency definition and the path traversal must use the same connectivity metric (8-connectivity in this case).
-
-**Common pitfalls to avoid**:
-- Using 4-connectivity instead of 8-connectivity for path traversal
-- Incorrectly defining the adjacency region around 2x2 blocks
-- Not handling edge cases where blocks are near grid boundaries
-- Failing to verify that exactly two 2x2 blocks exist before proceeding
+This pattern generalizes to any task where you need to determine if two or more objects are connected through a specific type of intermediary cell, using the appropriate connectivity metric (4 or 8). The key insight is that the connectivity metric must be **consistent** between adjacency detection and path traversal—both must use 8-connectivity in this task.
