@@ -82,7 +82,7 @@ This task belongs to the **bounding-box-fill** primitive family with **8-directi
 
 The key insights are:
 
-1. **Object detection via 8-way connectivity**: Yellow cells form distinct connected objects using 8-directional adjacency (including diagonals). This is more permissive than 4-directional connectivity—cells that touch only at corners are considered part of the same cluster.
+1. **Object detection via 8-way connectivity**: Yellow cells form distinct connected objects using 8-directional adjacency (including diagonals). This is more permissive than 4-directional connectivity—cells that touch only at corners are considered part of the same cluster. This is critical: using 4-directional connectivity would incorrectly split some clusters that only connect diagonally.
 
 2. **Spatial abstraction**: Each object defines a rectangular region (its bounding box) computed from min/max row and column indices of all cells in that connected component.
 
@@ -90,6 +90,4 @@ The key insights are:
 
 4. **Independence**: Each cluster is processed independently, so the algorithm scales to any number of objects on the grid.
 
-**Critical distinction**: Using 4-directional connectivity instead of 8-directional would incorrectly split some clusters that only connect diagonally. The 8-directional approach ensures all visually-connected yellow regions are treated as single objects.
-
-**Verification**: This implementation has been verified against all training examples and the visible test example.
+**Verification**: This implementation has been verified against all training examples and correctly handles the test case where diagonal connectivity is essential to identify the full cluster.
