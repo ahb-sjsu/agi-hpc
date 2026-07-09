@@ -99,5 +99,3 @@ This pattern generalizes to any grid size and rectangle position because:
 
 **Verification against test example:**
 - Test: 3×3 rectangle at rows 0-2, cols 1-3 (area=9) ✓
-
-Similar tasks in ARC involve detecting geometric shapes (rectangles, squares, lines) formed by uniform color regions and applying color replacements based on size, position, or other geometric properties.
