@@ -79,4 +79,4 @@ This implementation has been verified against all 3 training examples:
 - **Example 2**: Color-1 top at row 5 → colors 2 and 4 shift down to align (color-2 down 3, color-4 down 5)
 - **Example 3**: Color-1 top at row 2 → colors 2 and 4 shift to align (color-2 down 1, color-4 up 1)
 
-All training examples pass exactly.
+**Test example prediction**: Color-1 top at row 2 → color-2 shifts down 2, color-4 shifts up 3, all align to rows 2-4.
