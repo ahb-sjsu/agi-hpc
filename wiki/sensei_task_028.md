@@ -9,7 +9,7 @@ verified_by: run-against-train (all examples pass)
 
 ## The rule
 
-The input is a 10×10 grid containing exactly two non-zero colored markers. Sort the markers by row index: the upper marker (smaller row number) defines the top frame, and the lower marker (larger row number) defines the bottom frame.
+The input is a 10×10 grid containing exactly two non-zero colored markers. Sort the markers by row index: the upper marker (smaller row number) defines the top frame color, and the lower marker (larger row number) defines the bottom frame color.
 
 Each frame spans 5 rows with a fixed pattern:
 
