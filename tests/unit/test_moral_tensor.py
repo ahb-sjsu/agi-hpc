@@ -40,7 +40,7 @@ class TestConstants:
         assert DEFAULT_AXIS_NAMES[2] == ("k", "n")
         assert DEFAULT_AXIS_NAMES[3] == ("k", "n", "tau")
         assert DEFAULT_AXIS_NAMES[4] == ("k", "n", "a", "c")
-        assert DEFAULT_AXIS_NAMES[5] == ("k", "n", "tau", "a", "s")
+        assert DEFAULT_AXIS_NAMES[5] == ("k", "n", "tau", "a", "c")
         assert DEFAULT_AXIS_NAMES[6] == ("k", "n", "tau", "a", "c", "s")
 
 

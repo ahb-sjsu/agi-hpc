@@ -14,7 +14,7 @@ multi-agent ethics. This provides:
 2. Rank-2 (9, n): Per-party distributional ethics
 3. Rank-3 (9, n, tau): Temporal evolution
 4. Rank-4 (9, n, a, c): Coalition actions
-5. Rank-5 (9, n, tau, s): Uncertainty samples
+5. Rank-5 (9, n, tau, a, c): Coalition decisions over time
 6. Rank-6 (9, n, tau, a, c, s): Full multi-agent context
 
 The 9 ethical dimensions are:
@@ -66,7 +66,7 @@ DEFAULT_AXIS_NAMES: Dict[int, Tuple[str, ...]] = {
     2: ("k", "n"),
     3: ("k", "n", "tau"),
     4: ("k", "n", "a", "c"),
-    5: ("k", "n", "tau", "a", "s"),
+    5: ("k", "n", "tau", "a", "c"),
     6: ("k", "n", "tau", "a", "c", "s"),
 }
 
