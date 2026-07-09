@@ -119,6 +119,4 @@ This belongs to the **run-length-compression** primitive family, combined with *
 
 3. **Run-length compression is value-agnostic**: The `compress()` function works on any sequence of integers, collapsing only consecutive duplicates while preserving order.
 
-4. **Mutual exclusivity**: In valid inputs for this task, either all rows are identical OR all columns are identical, never both (except for uniform grids, which work either way).
-
-5. **Extraction pattern**: This is fundamentally an EXTRACTION task — we're pulling out the essential information (the compressed representative) from a redundant structure.
+4. **This pattern appears in ARC when**: The input contains deliberate redundancy that must be recognized and removed to reveal the underlying signal. Look for grids where one dimension shows perfect repetition.
