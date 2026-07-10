@@ -3,7 +3,7 @@ type: sensei_note
 task: 164
 tags: [expansion, horizontal-mirror, arc, primer]
 written_by: The Primer
-written_at: 2026-07-09
+written_at: 2026-07-10
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -26,3 +26,11 @@ def transform(grid):
 ## Why this generalizes
 
 This belongs to the **horizontal-mirror** primitive family, a common pattern in ARC where symmetry operations are applied to expand grids. The key insight is recognizing that the output width is exactly 2× the input width, and examining any single row reveals the mirroring pattern: the right half is always the reverse of the left half. This pattern holds regardless of the specific colors/values in the grid, making it a robust geometric transformation that generalizes to any input dimensions.
+
+**Verification against all train examples:**
+- Example 1: `[6,6,6]` → `[6,6,6,6,6,6]`, `[1,6,1]` → `[1,6,1,1,6,1]`, `[8,8,6]` → `[8,8,6,6,8,8]` ✓
+- Example 2: `[6,8,1]` → `[6,8,1,1,8,6]`, `[6,1,1]` → `[6,1,1,1,1,6]`, `[1,1,6]` → `[1,1,6,6,1,1]` ✓
+- Example 3: `[1,1,1]` → `[1,1,1,1,1,1]`, `[8,1,6]` → `[8,1,6,6,1,8]`, `[6,8,8]` → `[6,8,8,8,8,6]` ✓
+- Example 4: `[1,1,1]` → `[1,1,1,1,1,1]`, `[1,6,6]` → `[1,6,6,6,6,1]`, `[6,6,6]` → `[6,6,6,6,6,6]` ✓
+
+**Test prediction:** `[6,8,6]` → `[6,8,6,6,8,6]`, `[8,6,8]` → `[8,6,8,8,6,8]`, `[1,6,1]` → `[1,6,1,1,6,1]` ✓
