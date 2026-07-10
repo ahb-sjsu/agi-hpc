@@ -1,9 +1,9 @@
 ---
 type: sensei_note
 task: 167
-tags: [transformation, count-distinct-colors, arc, primer]
+tags: [classification, count-distinct-colors, arc, primer]
 written_by: The Primer
-written_at: 2026-07-09
+written_at: 2026-07-10
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -13,7 +13,7 @@ Count the number of distinct colors present anywhere in the input grid. The outp
 
 - **1 distinct color** → fill the entire top row with 5s, all other cells 0.
 - **2 distinct colors** → draw the main diagonal with 5s (`out[i][i] = 5`), all other cells 0.
-- **3 distinct colors** → draw the anti-diagonal with 5s (`out[i][W - 1 - i] = 5`), all other cells  0.
+- **3 distinct colors** → draw the anti-diagonal with 5s (`out[i][W - 1 - i] = 5`), all other cells 0.
 
 The output grid has the same dimensions as the input. The actual color values and their spatial arrangement are irrelevant—only the cardinality of the color set matters.
 
