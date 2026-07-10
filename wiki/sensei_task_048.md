@@ -3,7 +3,7 @@ type: sensei_note
 task: 48
 tags: [classification, connectivity-classifier, arc, primer]
 written_by: The Primer
-written_at: 2026-07-09
+written_at: 2026-07-10
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -11,15 +11,15 @@ verified_by: run-against-train (all examples pass)
 
 ## The rule
 
-This is a **classification task** where the output is always a 1x1 grid containing either 0 or 8.
+This is a **classification task** where the output is always a 1×1 grid containing either 0 or 8.
 
 The rule:
-1. **Identify terminals**: Find the two 2x2 blocks of red (2) cells in the input grid. Every valid example contains exactly two such blocks.
-2. **Extract adjacent wires**: Find all teal (8) cells that are adjacent to each 2x2 block using **8-connectivity** (including diagonals). These are the "entry points" to the circuit.
+1. **Identify terminals**: Find the two 2×2 blocks of red (2) cells in the input grid. Every valid example contains exactly two such blocks.
+2. **Extract adjacent wires**: Find all teal (8) cells that are adjacent to each 2×2 block using **8-connectivity** (including diagonals). These are the "entry points" to the circuit.
 3. **Check connectivity**: Determine if there exists a path of teal (8) cells connecting the two blocks. A path exists if you can travel from any 8 adjacent to the first block to any 8 adjacent to the second block by moving through adjacent 8s using **8-connectivity** (orthogonal and diagonal moves allowed).
 4. **Classify**: Output [[8]] if such a path exists (circuit complete), otherwise output [[0]] (circuit broken).
 
-Think of the 2x2 red blocks as "terminals" and the teal cells as "wires". The task asks: is the circuit complete?
+Think of the 2×2 red blocks as "terminals" and the teal cells as "wires". The task asks: is the circuit complete?
 
 **Critical distinction**: Both adjacency detection AND path traversal use **8-connectivity** (not 4-connectivity). This was a common source of errors in previous attempts.
 
@@ -96,11 +96,14 @@ def transform(grid):
 
 This task belongs to the **connectivity-classifier** primitive family. The core pattern is:
 
-1. **Object detection**: Identify specific structured objects (2x2 blocks of a particular color)
+1. **Object detection**: Identify specific structured objects (2×2 blocks of a particular color)
 2. **Adjacency extraction**: Find which connector cells (8s) touch each object using 8-connectivity
 3. **Path existence**: Determine if a connected component of connector cells bridges the objects using 8-connectivity BFS
 4. **Binary classification**: Map connectivity (yes/no) to output value (8/0)
 
-This pattern generalizes to any task where you need to determine if two or more objects are connected through a specific color channel. The key insight is that **8-connectivity must be used consistently** for both adjacency detection and path traversal—using 4-connectivity instead will fail on diagonal connections that are valid in this task.
+This pattern generalizes to any task where you need to determine if two structured regions are connected through a specific color channel. The key insight is that both the adjacency check and the path traversal must use the same connectivity definition (8-connectivity in this case).
 
-The metaphor of "electrical circuits" is helpful: the 2x2 red blocks are terminals, the teal cells are wires, and the task asks whether the circuit is complete (output 8) or broken (output 0).
+**Common pitfalls to avoid**:
+- Using 4-connectivity instead of 8-connectivity for path traversal
+- Incorrectly computing the adjacency region around 2×2 blocks
+- Not handling edge cases where one terminal has no adjacent connector cells
