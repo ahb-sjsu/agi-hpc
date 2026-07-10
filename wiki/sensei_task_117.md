@@ -3,7 +3,7 @@ type: sensei_note
 task: 117
 tags: [transformation, symmetry-reflection, arc, primer]
 written_by: The Primer
-written_at: 2026-07-09
+written_at: 2026-07-10
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -113,7 +113,7 @@ def transform(grid):
         hc = int(round(2 * center_cc - c))
         if 0 <= hc < w:
             output[r, hc] = reflect_color
-        # Both reflections
+        # Both reflections (diagonal)
         if 0 <= vr < h and 0 <= hc < w:
             output[vr, hc] = reflect_color
     
@@ -122,4 +122,16 @@ def transform(grid):
 
 ## Why this generalizes
 
-This solution belongs to the **symmetry-reflection** primitive family. The key insight is that one shape serves as a symmetry anchor (exhibiting 4-way rotational/reflectional symmetry), while the other shape gets mirrored across the anchor's center point. This pattern appears in multiple ARC tasks where symmetric objects act as transformation centers for asymmetric objects. The reflection operation creates a 4-fold symmetric pattern from any input shape, which is a common geometric transformation in spatial reasoning tasks.
+This solution belongs to the **symmetry-reflection** primitive family. The key insight is recognizing that one shape serves as a "mirror point" (the symmetric anchor) while the other shape gets replicated through geometric transformations. This pattern appears in many ARC tasks where:
+
+1. **Symmetry detection** identifies which object is special (the anchor)
+2. **Point reflection** across the anchor's center creates the output pattern
+3. **Multiple copies** of the asymmetric shape appear in symmetric positions
+
+The algorithm generalizes because it:
+- Works with any two colors (not hardcoded values)
+- Handles any grid size
+- Automatically detects which shape is the anchor via symmetry testing
+- Applies consistent reflection mathematics regardless of shape complexity
+
+This is a fundamental geometric transformation pattern that Erebus should recognize in future tasks involving symmetric anchors and reflected objects.
