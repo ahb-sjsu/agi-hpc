@@ -88,7 +88,7 @@ This task belongs to the **rectangular-fill** primitive family. The solution dem
 This pattern generalizes to any grid size and rectangle position because:
 - It doesn't assume fixed dimensions or locations
 - It correctly handles edge cases (no valid rectangle, multiple candidates)
-- The O(n³m) complexity is acceptable for typical ARC grid sizes (usually ≤ 30×30)
+- The O(rows² × cols³) complexity is acceptable for typical ARC grid sizes (usually ≤ 30×30)
 - The algorithm is purely local and doesn't require global context
 
 **Verification against all train examples:**
