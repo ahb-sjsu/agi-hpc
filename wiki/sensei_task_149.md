@@ -17,10 +17,10 @@ The input is an 11×11 grid. Teal (8) pixels form separator lines at rows 3 and 
 def transform(grid):
     import numpy as np
     grid = np.array(grid)
-
+    
     region_rows = [(0, 1, 2), (4, 5, 6), (8, 9, 10)]
     region_cols = [(0, 1, 2), (4, 5, 6), (8, 9, 10)]
-
+    
     output = []
     for row_indices in region_rows:
         output_row = []
