@@ -117,8 +117,8 @@ This belongs to the **run-length-compression** primitive family, combined with *
 
 2. **Output shape encodes the compression axis**: A 1×N output means rows were redundant (compressed horizontally). An N×1 output means columns were redundant (compressed vertically).
 
-3. **Run-length compression is value-agnostic**: The `compress()` function works on any sequence of values, collapsing only consecutive duplicates. This is a reusable primitive for many ARC tasks involving pattern simplification.
+3. **Run-length compression is value-agnostic**: The `compress()` function works on any sequence of integers, collapsing only consecutive duplicates. This is a reusable primitive for many ARC tasks involving pattern simplification.
 
-4. **Mutual exclusivity**: In valid inputs for this task, either all rows are identical OR all columns are identical (not both, except for uniform grids). The detection order matters — check rows first, then columns.
+4. **Dimension detection is exhaustive**: The algorithm checks both possibilities (row redundancy and column redundancy) in sequence. Only one should be true for valid inputs in this task family.
 
-5. **Extraction class pattern**: This is an EXTRACTION task because the output is smaller than the input, pulling out the essential pattern while discarding redundant copies.
+5. **Edge cases handled**: Empty grids return empty lists. Single-element sequences compress to themselves. The fallback returns the original grid if neither redundancy pattern is detected (defensive programming).
