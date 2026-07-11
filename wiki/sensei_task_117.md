@@ -3,7 +3,7 @@ type: sensei_note
 task: 117
 tags: [transformation, symmetry-reflection, arc, primer]
 written_by: The Primer
-written_at: 2026-07-10
+written_at: 2026-07-11
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -63,15 +63,12 @@ def transform(grid):
         cr, cc = center
         pos_set = set(positions)
         for r, c in positions:
-            # Check vertical reflection
             vr = 2*cr - r
             if vr != int(vr) or (int(vr), c) not in pos_set:
                 return False
-            # Check horizontal reflection
             hc = 2*cc - c
             if hc != int(hc) or (r, int(hc)) not in pos_set:
                 return False
-            # Check diagonal reflection (both)
             if (int(vr), int(hc)) not in pos_set:
                 return False
         return True
@@ -84,7 +81,6 @@ def transform(grid):
             break
     
     if anchor_color is None:
-        # Fallback: use the shape with smaller bounding box
         def bbox_size(positions):
             rows = [p[0] for p in positions]
             cols = [p[1] for p in positions]
@@ -103,17 +99,13 @@ def transform(grid):
     
     # Reflect the other shape across both axes through anchor center
     for r, c in pos[reflect_color]:
-        # Original
         output[r, c] = reflect_color
-        # Vertical reflection
         vr = int(round(2 * center_cr - r))
+        hc = int(round(2 * center_cc - c))
         if 0 <= vr < h:
             output[vr, c] = reflect_color
-        # Horizontal reflection
-        hc = int(round(2 * center_cc - c))
         if 0 <= hc < w:
             output[r, hc] = reflect_color
-        # Both reflections (diagonal)
         if 0 <= vr < h and 0 <= hc < w:
             output[vr, hc] = reflect_color
     
@@ -122,16 +114,10 @@ def transform(grid):
 
 ## Why this generalizes
 
-This solution belongs to the **symmetry-reflection** primitive family. The key insight is recognizing that one shape serves as a "mirror point" (the symmetric anchor) while the other shape gets replicated through geometric transformations. This pattern appears in many ARC tasks where:
+This solution belongs to the **symmetry-reflection** primitive family. The key insight is that ARC tasks often use one object as an "anchor" or "axis of symmetry" for transforming other objects. By:
 
-1. **Symmetry detection** identifies which object is special (the anchor)
-2. **Point reflection** across the anchor's center creates the output pattern
-3. **Multiple copies** of the asymmetric shape appear in symmetric positions
+1. Detecting which shape has intrinsic symmetry (the anchor)
+2. Using that shape's center as the reflection point
+3. Applying standard geometric reflection formulas
 
-The algorithm generalizes because it:
-- Works with any two colors (not hardcoded values)
-- Handles any grid size
-- Automatically detects which shape is the anchor via symmetry testing
-- Applies consistent reflection mathematics regardless of shape complexity
-
-This is a fundamental geometric transformation pattern that Erebus should recognize in future tasks involving symmetric anchors and reflected objects.
+This approach generalizes to any task where objects need to be mirrored across a point defined by another object. The 4-way reflection pattern (original + vertical + horizontal + diagonal) is a common transformation in ARC that creates balanced, symmetric compositions from asymmetric inputs.
