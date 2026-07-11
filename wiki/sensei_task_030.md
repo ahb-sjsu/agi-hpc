@@ -3,7 +3,7 @@ type: sensei_note
 task: 30
 tags: [transformation, vertical-alignment, arc, primer]
 written_by: The Primer
-written_at: 2026-07-10
+written_at: 2026-07-11
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -41,7 +41,7 @@ def transform(grid):
     if 1 not in colors:
         return [[0] * w for _ in range(h)]
     
-    # Find the top row of the 1s object
+    # Find the top row of the 1s object (anchor)
     ones_top = min(r for r, c in colors[1])
     
     # Create output grid
