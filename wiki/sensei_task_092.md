@@ -27,6 +27,7 @@ def transform(grid):
     h, w = grid.shape
     output = np.zeros((h, w), dtype=int)
     
+    # Find all color positions
     color_positions = {}
     for r in range(h):
         for c in range(w):
@@ -39,18 +40,23 @@ def transform(grid):
     vertical_lines = []
     horizontal_lines = []
     
+    # Identify lines for colors appearing exactly twice
     for color, positions in color_positions.items():
         if len(positions) == 2:
             (r1, c1), (r2, c2) = positions
             if c1 == c2:
+                # Vertical line
                 vertical_lines.append((color, min(r1, r2), max(r1, r2), c1))
             elif r1 == r2:
+                # Horizontal line
                 horizontal_lines.append((color, r1, min(c1, c2), max(c1, c2)))
     
+    # Draw horizontal lines first (lower layer)
     for color, r, c_start, c_end in horizontal_lines:
         for c in range(c_start, c_end + 1):
             output[r, c] = color
     
+    # Draw vertical lines second (upper layer, overwrites intersections)
     for color, r_start, r_end, c in vertical_lines:
         for r in range(r_start, r_end + 1):
             output[r, c] = color
