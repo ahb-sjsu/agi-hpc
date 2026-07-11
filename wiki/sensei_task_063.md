@@ -57,7 +57,7 @@ def transform(grid):
 This belongs to the **count-based-fill** primitive family. The key insight is that the output pattern is determined by global statistics (counts) rather than local neighborhood rules or object detection.
 
 **Generalization strategy:**
-- The rule works regardless of grid size (seen in 10×10, 12×12, and 14×14 examples)
+- The rule works regardless of grid size (verified on 10×10, 12×12, and 14×14 examples)
 - The rule works regardless of where the boundary colors (2=red, 8=teal) are positioned
 - Multiple rows or columns can tie for maximum count (all get filled)
 - The fill color (3=green) is consistent across all examples
