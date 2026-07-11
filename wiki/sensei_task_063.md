@@ -3,7 +3,7 @@ type: sensei_note
 task: 63
 tags: [transformation, count-based-fill, arc, primer]
 written_by: The Primer
-written_at: 2026-07-09
+written_at: 2026-07-11
 verified_by: run-against-train (all examples pass)
 ---
 
