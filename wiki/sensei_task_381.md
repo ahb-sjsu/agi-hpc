@@ -3,7 +3,7 @@ type: sensei_note
 task: 381
 tags: [transformation, gap-fill, arc, primer]
 written_by: The Primer
-written_at: 2026-07-09
+written_at: 2026-07-11
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -110,16 +110,19 @@ def transform(grid):
 
 ## Why this generalizes
 
-This task belongs to the **gap-fill** primitive family. The core pattern is:
+This solution belongs to the **gap-fill** primitive family. The core insight is:
 
-1. **Object detection**: Identify discrete objects (rectangles of color 2) via connected component analysis.
-2. **Spatial relationship reasoning**: Determine which object pairs have the right geometric relationship (row overlap + horizontal separation).
-3. **Occlusion checking**: Verify no third object blocks the path between the pair.
-4. **Targeted filling**: Modify only the gap region, preserving all original objects.
+1. **Object detection via connectivity:** Color-2 regions form discrete rectangular objects that can be identified through 4-connected component labeling.
 
-This generalizes to any grid where:
-- Objects are rectangular connected components of a single color
-- The transformation fills empty space between aligned object pairs
-- Blockers prevent filling when a third object occupies the gap region
+2. **Relational reasoning:** The transformation depends not on individual objects, but on *relationships between pairs*—specifically, whether they align horizontally (share rows) with a gap between them.
 
-The algorithm is O(n² × m) where n is the number of rectangles and m is the number of potential blockers, making it efficient for typical ARC grid sizes.
+3. **Occlusion handling:** The blocker check ensures the rule respects spatial occlusion—a gap is only filled if it's truly "visible" between the two rectangles, not blocked by a third object.
+
+4. **Local-to-global:** Each gap fill is a local operation (filling 0s with 9s in a rectangular region), but the decision to fill depends on global object relationships.
+
+This pattern generalizes to any grid where:
+- Objects are solid rectangles of a single color
+- The task involves filling spaces *between* aligned objects
+- Occlusion by intermediate objects must be respected
+
+The algorithm scales to any number of objects and any grid size, making it robust for ARC-style generalization.
