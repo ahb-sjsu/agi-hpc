@@ -119,6 +119,6 @@ This belongs to the **run-length-compression** primitive family, combined with *
 
 3. **Run-length compression is value-agnostic**: The `compress()` function works on any sequence of integers, collapsing only consecutive duplicates. This is a reusable primitive for many ARC tasks involving pattern simplification.
 
-4. **Dimension detection is exhaustive**: The algorithm checks both possibilities (row redundancy and column redundancy) in sequence. Only one should be true for valid inputs in this task family.
+4. **Dimension detection strategy**: Check rows first (easier — compare list equality), then columns (requires element-wise comparison). This two-stage detection handles all valid inputs in this task family.
 
-5. **Edge cases handled**: Empty grids return empty lists. Single-element sequences compress to themselves. The fallback returns the original grid if neither redundancy pattern is detected (defensive programming).
+5. **Generalization pattern**: Look for tasks where the input has obvious repetition along one axis. The output will typically be a compressed representation along the orthogonal axis.
