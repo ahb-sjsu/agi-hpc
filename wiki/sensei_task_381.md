@@ -110,19 +110,20 @@ def transform(grid):
 
 ## Why this generalizes
 
-This solution belongs to the **gap-fill** primitive family. The core insight is:
+This solution belongs to the **gap-fill** primitive family. The key insight is that the task requires reasoning about spatial relationships between multiple objects:
 
-1. **Object detection via connectivity:** Color-2 regions form discrete rectangular objects that can be identified through 4-connected component labeling.
+1. **Object detection:** Identifying rectangles as coherent objects (connected components) rather than individual pixels.
 
-2. **Relational reasoning:** The transformation depends not on individual objects, but on *relationships between pairs*—specifically, whether they align horizontally (share rows) with a gap between them.
+2. **Pairwise spatial reasoning:** Determining which pairs of objects have the right geometric relationship (row overlap + horizontal gap) to potentially connect.
 
-3. **Occlusion handling:** The blocker check ensures the rule respects spatial occlusion—a gap is only filled if it's truly "visible" between the two rectangles, not blocked by a third object.
+3. **Occlusion checking:** Verifying that no third object blocks the connection path—this is crucial for handling complex scenes with multiple rectangles.
 
-4. **Local-to-global:** Each gap fill is a local operation (filling 0s with 9s in a rectangular region), but the decision to fill depends on global object relationships.
+4. **Selective filling:** Only modifying the gap cells, preserving all other content.
 
-This pattern generalizes to any grid where:
-- Objects are solid rectangles of a single color
-- The task involves filling spaces *between* aligned objects
-- Occlusion by intermediate objects must be respected
+This pattern generalizes to any task where you need to:
+- Detect objects of a specific color
+- Find pairs with specific spatial relationships
+- Check for occlusions/blockers
+- Fill gaps or connect objects conditionally
 
-The algorithm scales to any number of objects and any grid size, making it robust for ARC-style generalization.
+The algorithm is O(n²) in the number of rectangles, which is efficient for typical ARC grid sizes where n is small (usually < 10 rectangles).
