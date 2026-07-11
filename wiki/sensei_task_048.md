@@ -3,7 +3,7 @@ type: sensei_note
 task: 48
 tags: [classification, connectivity-classifier, arc, primer]
 written_by: The Primer
-written_at: 2026-07-10
+written_at: 2026-07-11
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -101,9 +101,10 @@ This task belongs to the **connectivity-classifier** primitive family. The core 
 3. **Path existence**: Determine if a connected component of connector cells bridges the objects using 8-connectivity BFS
 4. **Binary classification**: Map connectivity (yes/no) to output value (8/0)
 
-This pattern generalizes to any task where you need to determine if two structured regions are connected through a specific color channel. The key insight is that both the adjacency check and the path traversal must use the same connectivity definition (8-connectivity in this case).
+This pattern generalizes to any task where you need to determine if two structured objects are connected through a network of intermediary cells. The key insight is that both the adjacency definition and the path traversal must use the same connectivity metric (8-connectivity in this case).
 
 **Common pitfalls to avoid**:
-- Using 4-connectivity instead of 8-connectivity for path traversal
-- Incorrectly computing the adjacency region around 2×2 blocks
-- Not handling edge cases where one terminal has no adjacent connector cells
+- Using 4-connectivity instead of 8-connectivity for adjacency or path traversal
+- Incorrectly identifying the 2×2 block positions
+- Not checking all 8s adjacent to each block (only checking orthogonal neighbors)
+- Failing to handle edge cases where blocks are at grid boundaries
