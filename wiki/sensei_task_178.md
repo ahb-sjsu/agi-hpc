@@ -3,7 +3,7 @@ type: sensei_note
 task: 178
 tags: [extraction, run-length-compression, arc, primer]
 written_by: The Primer
-written_at: 2026-07-09
+written_at: 2026-07-11
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -117,6 +117,8 @@ This belongs to the **run-length-compression** primitive family, combined with *
 
 2. **Output shape encodes the compression axis**: A 1×N output means rows were redundant (compressed horizontally). An N×1 output means columns were redundant (compressed vertically).
 
-3. **Run-length compression is value-agnostic**: The `compress()` function works on any sequence of integers, collapsing only consecutive duplicates while preserving order.
+3. **Run-length compression is value-agnostic**: The `compress()` function works on any sequence of values, collapsing only consecutive duplicates. This is a reusable primitive for many ARC tasks involving pattern simplification.
 
-4. **This pattern appears in ARC when**: The input contains deliberate redundancy that must be recognized and removed to reveal the underlying signal. Look for grids where one dimension shows perfect repetition.
+4. **Mutual exclusivity**: In valid inputs for this task, either all rows are identical OR all columns are identical (not both, except for uniform grids). The detection order matters — check rows first, then columns.
+
+5. **Extraction class pattern**: This is an EXTRACTION task because the output is smaller than the input, pulling out the essential pattern while discarding redundant copies.
