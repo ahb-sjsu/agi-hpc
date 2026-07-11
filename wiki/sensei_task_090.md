@@ -3,11 +3,9 @@ type: sensei_note
 task: 90
 tags: [transformation, rectangular-fill, arc, primer]
 written_by: The Primer
-written_at: 2026-07-10
+written_at: 2026-07-11
 verified_by: run-against-train (all examples pass)
 ---
-
-# Task 090: Largest Multi-Row Zero Rectangle Fill
 
 ## The rule
 
@@ -88,7 +86,7 @@ This task belongs to the **rectangular-fill** primitive family. The solution dem
 This pattern generalizes to any grid size and rectangle position because:
 - It doesn't assume fixed dimensions or locations
 - It correctly handles edge cases (no valid rectangle, multiple candidates)
-- The O(rows² × cols³) complexity is acceptable for typical ARC grid sizes (usually ≤ 30×30)
+- The O(rows² × cols²) complexity is acceptable for typical ARC grid sizes (usually ≤ 30×30)
 - The algorithm is purely local and doesn't require global context
 
 **Verification against all train examples:**
