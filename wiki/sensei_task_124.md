@@ -3,7 +3,7 @@ type: sensei_note
 task: 124
 tags: [expansion, pattern-extension, arc, primer]
 written_by: The Primer
-written_at: 2026-07-09
+written_at: 2026-07-11
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -38,23 +38,18 @@ def transform(grid):
     width = grid.shape[1]
     
     # Strategy 1: Find exact row repetition period
-    period = None
-    for p in range(1, input_rows):
+    for period in range(1, input_rows):
         is_period = True
-        for i in range(p, input_rows):
-            if not np.array_equal(grid[i], grid[i % p]):
+        for i in range(period, input_rows):
+            if not np.array_equal(grid[i], grid[i % period]):
                 is_period = False
                 break
         if is_period:
-            period = p
-            break
-    
-    if period is not None:
-        # Simple case: exact repetition - tile the period to 10 rows
-        output = np.zeros((10, width), dtype=int)
-        for i in range(10):
-            output[i] = grid[i % period]
-        return output.tolist()
+            # Simple case: exact repetition - tile the period to 10 rows
+            output = np.zeros((10, width), dtype=int)
+            for i in range(10):
+                output[i] = grid[i % period]
+            return output.tolist()
     
     # Strategy 2: Detect translational pattern (segments shift horizontally)
     for segment_len in range(2, input_rows // 2 + 1):
@@ -64,6 +59,9 @@ def transform(grid):
             
             # Check if seg1 is a horizontal shift of seg0
             for shift in range(-width + 1, width):
+                if shift == 0:
+                    continue
+                
                 # Create shifted version of seg0
                 shifted_seg0 = np.zeros_like(seg0)
                 for r in range(segment_len):
@@ -100,10 +98,13 @@ This solution belongs to the **pattern-extension** primitive family. The core pr
 
 1. **Period detection**: Many ARC tasks involve repeating patterns. Finding the smallest period allows extrapolation beyond the visible input. This handles cases like vertical lines or alternating row patterns.
 
-2. **Translational symmetry**: When patterns shift horizontally as they progress vertically, detecting the segment length and shift amount enables correct extension. This handles diagonal patterns and zigzag structures.
+2. **Translational symmetry**: When patterns shift position as they repeat (like diagonal lines moving rightward), detecting the shift amount between consecutive segments enables correct extrapolation.
 
-3. **Fixed output size**: The task always produces 10 rows regardless of input height, making this an EXPANSION class task. The extension logic must be robust to various input sizes (5, 6, or 8 rows in the training data).
+3. **Fixed output size**: The task specifies exactly 10 output rows regardless of input height. This is a common ARC pattern where the output dimensions are predetermined.
 
-4. **Color/value preservation**: The pattern's color (1, 2, 3, 6, 8, etc.) is preserved throughout the extension—only the spatial arrangement matters.
+4. **Hierarchical strategy**: Try simpler patterns first (exact repetition), then more complex ones (translational), with a safe fallback. This mirrors how humans approach pattern recognition.
 
-This approach generalizes to any vertical pattern that exhibits either exact repetition or consistent translational shifts between segments.
+This approach generalizes to any task where:
+- Output has a fixed size different from input
+- Input shows regular vertical structure (repetition or translation)
+- Pattern must be extrapolated beyond visible examples
