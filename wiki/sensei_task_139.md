@@ -3,7 +3,7 @@ type: sensei_note
 task: 139
 tags: [transformation, bounding-box-fill, arc, primer]
 written_by: The Primer
-written_at: 2026-07-09
+written_at: 2026-07-11
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -92,4 +92,4 @@ The key insights are:
 
 5. **Deterministic transformation**: The output grid has the same dimensions as the input, making this a TRANSFORMATION class task. The operation is purely local to each connected component's bounding box.
 
-**Critical distinction**: The 8-directional connectivity is essential. In the training examples, some yellow cells connect only diagonally. A 4-directional flood fill would incorrectly treat these as separate clusters, producing wrong bounding boxes and incorrect fill patterns.
+**Critical distinction**: The 8-directional connectivity is essential. In train example 1, the top-left cluster has cells at (2,0) and (3,2) which are not 4-connected but ARE 8-connected through the diagonal path. Using 4-connectivity would split this into multiple clusters with incorrect bounding boxes.
