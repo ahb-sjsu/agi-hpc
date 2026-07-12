@@ -1,9 +1,9 @@
 ---
 type: sensei_note
 task: 13
-tags: [transformation, periodic-replication, arc, primer]
+tags: [expansion, periodic-replication, arc, primer]
 written_by: The Primer
-written_at: 2026-07-11
+written_at: 2026-07-12
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -17,8 +17,8 @@ This task involves **periodic replication** from two source pixels. The transfor
 
 2. **Determine direction**: Compare the row spacing and column spacing between the two sources:
    - If column spacing = 0 (same column): replicate **vertically** (fill entire rows)
-   - If row spacing = 0 (same row): replicate **horizontally** (fill entire columns)
-   - Otherwise: if column_spacing ≤ row_spacing, replicate **horizontally**; else replicate **vertically**
+   - If column spacing ≤ row spacing: replicate **horizontally** (fill entire columns)
+   - Otherwise: replicate **vertically** (fill entire rows)
 
 3. **Calculate period**: The repetition period equals **twice the spacing** between the two sources in the chosen dimension.
 
@@ -61,7 +61,7 @@ def transform(grid):
     
     result = np.zeros((h, w), dtype=int)
     
-    # Determine direction and period
+    # Determine direction: horizontal if col_spacing <= row_spacing (including col_spacing=0 edge)
     if col_spacing == 0:
         # Same column - vertical pattern
         period = 2 * row_spacing
@@ -69,13 +69,6 @@ def transform(grid):
             result[row, :] = v1
         for row in range(r2, h, period):
             result[row, :] = v2
-    elif row_spacing == 0:
-        # Same row - horizontal pattern
-        period = 2 * col_spacing
-        for col in range(c1, w, period):
-            result[:, col] = v1
-        for col in range(c2, w, period):
-            result[:, col] = v2
     elif col_spacing <= row_spacing:
         # Horizontal pattern (column spacing wins ties)
         period = 2 * col_spacing
@@ -84,7 +77,7 @@ def transform(grid):
         for col in range(c2, w, period):
             result[:, col] = v2
     else:
-        # Vertical pattern
+        # Vertical pattern (row spacing is smaller)
         period = 2 * row_spacing
         for row in range(r1, h, period):
             result[row, :] = v1
@@ -96,11 +89,4 @@ def transform(grid):
 
 ## Why this generalizes
 
-This belongs to the **periodic-replication** primitive family. The key insight is that two source points define both a direction and a fundamental period (2× their spacing in the chosen dimension). Each source color propagates independently at that period across the entire grid, filling complete rows or columns.
-
-**Direction selection hierarchy:**
-1. Aligned sources (same row/column) → replicate along the orthogonal axis
-2. Otherwise → smaller spacing dimension wins
-3. Ties → column spacing wins (horizontal replication)
-
-**Critical fix from previous attempts:** The direction logic must check for zero spacing FIRST (col_spacing==0 or row_spacing==0) before comparing magnitudes. This prevents division-by-zero errors and correctly handles the aligned-source cases seen in Examples 3 and 4.
+This belongs to the **periodic-replication** primitive family. The key insight is that two source points define both a direction and a fundamental period (2× their spacing in the chosen dimension). Each source color propagates independently at that period across the entire grid, filling all cells in the corresponding rows or columns. This pattern appears in many ARC tasks where sparse input signals must be expanded into regular, repeating structures based on geometric relationships between the signals.
