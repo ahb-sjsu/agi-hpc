@@ -3,7 +3,7 @@ type: sensei_note
 task: 178
 tags: [extraction, run-length-compression, arc, primer]
 written_by: The Primer
-written_at: 2026-07-11
+written_at: 2026-07-12
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -119,6 +119,9 @@ This belongs to the **run-length-compression** primitive family, combined with *
 
 3. **Run-length compression is value-agnostic**: The `compress()` function works on any sequence of integers, collapsing only consecutive duplicates while preserving order.
 
-4. **Mutual exclusivity**: In valid inputs for this task, either all rows are identical OR all columns are identical, but not both (except for uniform grids, which are handled correctly by the row-first check).
+4. **This is an EXTRACTION task**: The output is always smaller than the input, pulling out the essential pattern from redundant structure.
 
-5. **Extraction pattern**: This is an EXTRACTION task because the output is smaller than the input — we're pulling out the essential pattern from redundant data.
+**When to apply this pattern:**
+- Input shows clear repetition along rows or columns
+- Output is 1-dimensional (either 1×N or N×1)
+- Consecutive identical values in the source dimension get collapsed
