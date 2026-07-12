@@ -101,6 +101,4 @@ This task belongs to the **connectivity-classifier** primitive family. The core 
 3. **Path existence**: Determine if a connected component of connector cells bridges the objects using 8-connectivity BFS
 4. **Binary classification**: Map connectivity (yes/no) to output value (8/0)
 
-This pattern generalizes to any task where you need to determine if two or more objects are connected through a network of intermediary cells. The key insight is that both the adjacency check and the path traversal must use the same connectivity definition (8-connectivity in this case). Using 4-connectivity for either step would produce incorrect results.
-
-The 2×2 block structure is a common ARC primitive that serves as an anchor point. When you see repeated square patterns of a single color, consider them as terminals, ports, or connection points in a larger circuit or network topology problem.
+This pattern generalizes to any task where you need to determine if two structured objects are connected through a network of intermediary cells. The key insight is that both the adjacency definition and the path traversal must use the same connectivity metric (8-connectivity in this case), which allows diagonal connections throughout the circuit.
