@@ -3,7 +3,7 @@ type: sensei_note
 task: 381
 tags: [transformation, gap-fill, arc, primer]
 written_by: The Primer
-written_at: 2026-07-11
+written_at: 2026-07-12
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -110,20 +110,16 @@ def transform(grid):
 
 ## Why this generalizes
 
-This solution belongs to the **gap-fill** primitive family. The key insight is that the task requires reasoning about spatial relationships between multiple objects:
+This task belongs to the **gap-fill** primitive family. The core pattern is:
 
-1. **Object detection:** Identifying rectangles as coherent objects (connected components) rather than individual pixels.
+1. **Object detection:** Identify discrete objects (rectangles of color 2) via connected component analysis.
+2. **Spatial relationship:** Determine which object pairs have a meaningful spatial relationship (shared rows with horizontal separation).
+3. **Occlusion check:** Verify the path between objects is unobstructed by other objects (blocker detection).
+4. **Path filling:** Fill the unobstructed path with a new color (9).
 
-2. **Pairwise spatial reasoning:** Determining which pairs of objects have the right geometric relationship (row overlap + horizontal gap) to potentially connect.
+This generalizes to any task where:
+- Objects need to be "connected" or "bridged"
+- The connection should respect occlusion (other objects block the path)
+- The fill color is distinct from both the objects and background
 
-3. **Occlusion checking:** Verifying that no third object blocks the connection path—this is crucial for handling complex scenes with multiple rectangles.
-
-4. **Selective filling:** Only modifying the gap cells, preserving all other content.
-
-This pattern generalizes to any task where you need to:
-- Detect objects of a specific color
-- Find pairs with specific spatial relationships
-- Check for occlusions/blockers
-- Fill gaps or connect objects conditionally
-
-The algorithm is O(n²) in the number of rectangles, which is efficient for typical ARC grid sizes where n is small (usually < 10 rectangles).
+The algorithm is O(n² × m) where n is the number of rectangles and m is the number of potential blockers, making it efficient for typical ARC grid sizes.
