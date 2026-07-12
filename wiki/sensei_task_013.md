@@ -61,7 +61,7 @@ def transform(grid):
     
     result = np.zeros((h, w), dtype=int)
     
-    # Determine direction: horizontal if col_spacing <= row_spacing (including col_spacing=0 edge)
+    # Determine direction: vertical if same column, else horizontal if col_spacing <= row_spacing
     if col_spacing == 0:
         # Same column - vertical pattern
         period = 2 * row_spacing
@@ -89,4 +89,4 @@ def transform(grid):
 
 ## Why this generalizes
 
-This belongs to the **periodic-replication** primitive family. The key insight is that two source points define both a direction and a fundamental period (2× their spacing in the chosen dimension). Each source color propagates independently at that period across the entire grid, filling all cells in the corresponding rows or columns. This pattern appears in many ARC tasks where sparse input signals must be expanded into regular, repeating structures based on geometric relationships between the signals.
+This belongs to the **periodic-replication** primitive family. The key insight is that two source points define both a direction and a fundamental period (2× their spacing in the chosen dimension). Each source color propagates independently at that period across the entire grid, filling all cells in the corresponding rows or columns. This pattern appears in many ARC tasks where sparse input signals must be expanded into regular, repeating structures based on geometric relationships between the sources.
