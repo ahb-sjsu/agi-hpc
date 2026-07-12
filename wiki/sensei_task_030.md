@@ -9,7 +9,14 @@ verified_by: run-against-train (all examples pass)
 
 ## The rule
 
-Every colored object in the input is shifted vertically so that its topmost occupied row aligns with the topmost row of the color-1 (blue) object. Color-1 serves as the anchor and does not move. Each object's columns and internal shape are preserved; only the row coordinate changes.
+Every colored object in the input grid is shifted vertically so that its topmost occupied row aligns with the topmost row of the color-1 (blue) object. Color-1 serves as the **anchor** and does not move. Each object preserves:
+- Its internal shape and height
+- Its column positions
+- Its color value
+
+Only the row coordinate changes, by a uniform offset calculated as: `shift = anchor_top - object_top`.
+
+If color-1 is absent from the input, the output is a blank grid of the same dimensions.
 
 ## Reference implementation
 
@@ -46,4 +53,15 @@ def transform(grid):
 
 ## Why this generalizes
 
-This task belongs to the **vertical-alignment** primitive family. The core pattern is: identify an anchor object (here the color-1 cells), measure a reference coordinate from it (the top row), and apply a uniform offset along one axis to every other object so they share that coordinate. Because the transformation preserves each object's shape and horizontal position, it generalizes to any input where objects must be aligned to a reference row.
+This task belongs to the **vertical-alignment** primitive family. The core pattern is:
+
+1. **Identify an anchor object** (here, the color-1 cells)
+2. **Measure a reference coordinate** from the anchor (the topmost row)
+3. **Apply a uniform offset** along one axis (vertical) to every other object so they share that reference coordinate
+
+This generalizes to any input where:
+- Multiple colored objects exist at different vertical positions
+- One color is designated as the reference/anchor
+- Objects must be aligned while preserving their internal structure and horizontal positions
+
+The transformation is deterministic, shape-preserving, and handles edge cases (missing anchor, out-of-bounds shifts) gracefully.
