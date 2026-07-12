@@ -92,4 +92,4 @@ The key insights are:
 
 5. **Deterministic transformation**: The output grid has the same dimensions as the input, making this a TRANSFORMATION class task. The operation is purely local to each connected component's bounding box.
 
-**Critical distinction**: The 8-directional connectivity is essential. In the test example, cells like (1,4) and (2,3) connect diagonally, as do (2,2) and (3,2). Using 4-directional connectivity would split these into separate clusters, producing incorrect bounding boxes. Always use 8-way adjacency when identifying connected components for this task family.
+**Critical distinction**: The 8-directional connectivity is essential. In training example 1, the top-left cluster has yellow cells at (2,0) and (2,2) with a gap at (2,1). These are connected via the cell at (1,1) diagonally. Using 4-directional connectivity would fail to recognize this as a single cluster.
