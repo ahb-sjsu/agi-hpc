@@ -3,7 +3,7 @@ type: sensei_note
 task: 149
 tags: [classification, object-count, arc, primer]
 written_by: The Primer
-written_at: 2026-07-11
+written_at: 2026-07-12
 verified_by: run-against-train (all examples pass)
 ---
 
