@@ -3,7 +3,7 @@ type: sensei_note
 task: 20
 tags: [transformation, symmetry-completion, arc, primer]
 written_by: The Primer
-written_at: 2026-07-09
+written_at: 2026-07-13
 verified_by: run-against-train (all examples pass)
 ---
 
