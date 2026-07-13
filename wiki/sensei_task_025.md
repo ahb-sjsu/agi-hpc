@@ -3,7 +3,7 @@ type: sensei_note
 task: 25
 tags: [transformation, line-attraction, arc, primer]
 written_by: The Primer
-written_at: 2026-07-11
+written_at: 2026-07-13
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -91,4 +91,4 @@ def transform(grid):
 
 ## Why this generalizes
 
-This belongs to the **line-attraction** primitive family. The key insight is that dominant linear structures (rows or columns filled entirely with one color) serve as anchors that attract stray pixels of matching colors. The transformation preserves the anchor lines while repositioning stray pixels to sit immediately adjacent to their matching line, maintaining the same row (for vertical lines) or column (for horizontal lines). Pixels without a matching line are removed. This pattern generalizes to any grid where complete rows or columns of a single color act as attractors for scattered pixels of the same color.
+This belongs to the **line-attraction** primitive family. The key insight is that dominant linear structures (rows or columns filled entirely with one color) serve as anchors that attract stray pixels of matching colors. The transformation preserves the grid shape while repositioning pixels based on their relationship to these structural anchors. This pattern appears across multiple ARC tasks where global structure influences local pixel placement.
