@@ -110,4 +110,14 @@ def transform(grid):
 
 ## Why this generalizes
 
-This task exemplifies the **gap-fill** primitive family: when two objects of the same color are aligned along one axis (here, horizontally with row overlap) and separated by empty space, that space gets filled with a new color—unless blocked by a third object. The key insight is that gap-filling is conditional on both geometric alignment (shared rows) and the absence of occluding objects. This pattern appears in many ARC tasks where the goal is to "connect" or "bridge" related objects while respecting obstacles.
+This solution belongs to the **gap-fill** primitive family, which is a fundamental spatial reasoning pattern in ARC. The key insights that enable generalization:
+
+1. **Object abstraction:** By extracting bounding boxes of connected components, the algorithm works regardless of rectangle size, position, or count. The logic operates on abstract geometric relationships, not pixel patterns.
+
+2. **Relational reasoning:** The gap-fill decision depends only on relative positioning (row overlap, horizontal separation, blocker presence), not absolute coordinates. This makes the rule invariant to grid size and object placement.
+
+3. **Compositional structure:** The algorithm composes three primitives—connected component extraction, pairwise spatial relationship computation, and conditional cell modification—each of which generalizes independently.
+
+4. **Blocking semantics:** The blocker check ensures the rule handles complex multi-object scenes correctly, filling only "visible" gaps that aren't occluded by intervening objects.
+
+This pattern appears in many ARC tasks where the goal is to complete or connect partial structures while respecting occlusion and spatial constraints.
