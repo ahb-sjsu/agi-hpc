@@ -9,22 +9,50 @@ verified_by: run-against-train (all examples pass)
 
 ## The rule
 
-Every colored object in the input grid is shifted vertically so that its topmost occupied row aligns with the topmost row of the color-1 (blue) object. Color-1 serves as the **anchor** and does not move. Each object preserves:
+Every colored object in the input grid is shifted vertically so that its **topmost occupied row** aligns with the topmost row of the **color-1 (blue) anchor object**. Color-1 serves as the reference and does not move.
+
+Each object preserves:
 - Its internal shape and height
-- Its column positions
+- Its column positions  
 - Its color value
 
-Only the row coordinate changes, by a uniform offset calculated as: `shift = anchor_top - object_top`.
+Only the row coordinate changes, by a uniform offset calculated as:
 
-If color-1 is absent from the input, the output is a blank grid of the same dimensions.
+```
+shift = anchor_top - object_top
+```
+
+Where:
+- `anchor_top` = minimum row index of any color-1 cell
+- `object_top` = minimum row index of any cell of the current color
+
+**Edge cases:**
+- If color-1 is absent from the input, the output is a blank grid of the same dimensions
+- If a shift would move cells out of bounds, those cells are dropped (not placed in output)
 
 ## Reference implementation
 
 ```python
 def transform(grid):
+    """
+    Vertical alignment transformation.
+    
+    All colored objects shift vertically so their topmost row aligns with
+    the topmost row of the color-1 (blue) anchor object.
+    
+    Args:
+        grid: 2D list of integers (0 = empty, 1-9 = colors)
+    
+    Returns:
+        2D list with same dimensions, colors vertically aligned to anchor
+    """
     h = len(grid)
     w = len(grid[0]) if h > 0 else 0
-
+    
+    # Handle empty grid
+    if h == 0 or w == 0:
+        return grid
+    
     # Collect cells grouped by color
     colors = {}
     for r in range(h):
@@ -32,22 +60,28 @@ def transform(grid):
             val = grid[r][c]
             if val != 0:
                 colors.setdefault(val, []).append((r, c))
-
-    # Color-1 is the anchor; if absent, return a blank grid
+    
+    # Color-1 is the anchor; if absent, return blank grid
     if 1 not in colors:
         return [[0] * w for _ in range(h)]
-
-    ones_top = min(r for r, _ in colors[1])
-
+    
+    # Find anchor's topmost row
+    anchor_top = min(r for r, _ in colors[1])
+    
+    # Create output grid
     output = [[0] * w for _ in range(h)]
+    
+    # Shift each color to align with anchor
     for color, cells in colors.items():
         color_top = min(r for r, _ in cells)
-        shift = ones_top - color_top
+        shift = anchor_top - color_top
+        
         for r, c in cells:
             nr = r + shift
+            # Only place if within bounds
             if 0 <= nr < h:
                 output[nr][c] = color
-
+    
     return output
 ```
 
@@ -64,4 +98,4 @@ This generalizes to any input where:
 - One color is designated as the reference/anchor
 - Objects must be aligned while preserving their internal structure and horizontal positions
 
-The transformation is deterministic, shape-preserving, and handles edge cases (missing anchor, out-of-bounds shifts) gracefully.
+The transformation is **deterministic**, **shape-preserving**, and handles edge cases (missing anchor, out-of-bounds shifts) gracefully. The same primitive could apply to horizontal alignment (using leftmost column as reference) or alignment to other anchor colors in different tasks.
