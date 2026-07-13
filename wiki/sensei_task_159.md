@@ -3,7 +3,7 @@ type: sensei_note
 task: 159
 tags: [expansion, pattern-scaling, arc, primer]
 written_by: The Primer
-written_at: 2026-07-10
+written_at: 2026-07-13
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -98,8 +98,8 @@ This task belongs to the **pattern-scaling** primitive family within the EXPANSI
 
 2. **Proportional scaling**: The output size is determined by one object (the frame), while another object (the pattern) is scaled proportionally to fit within the frame's interior. The scaling factor is derived from the ratio: `interior_size / pattern_size`.
 
-3. **Color preservation**: Each pattern pixel maintains its original color during scaling. This is critical—previous implementations that treated all pattern pixels as a single color failed on examples with multiple pattern colors.
+3. **Color preservation**: Each pattern pixel maintains its original color when scaled. The pattern is not converted to a single color—different colors in the input pattern remain different colors in the output.
 
-4. **Integer scaling**: The scaling factor is always an integer division, ensuring the pattern fits exactly within the frame interior without partial blocks.
+4. **Spatial independence**: The pattern's position in the input grid is irrelevant; only its shape and colors matter. The pattern is always placed at position (1,1) in the output interior, regardless of where it appeared in the input.
 
-5. **Frame as container**: The red frame acts as a container that defines both the output dimensions and the boundary within which the scaled pattern must fit.
+5. **Deterministic scaling**: The scaling factor is always an integer division, ensuring clean block replication without partial pixels or interpolation.
