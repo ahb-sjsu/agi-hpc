@@ -3,7 +3,7 @@ type: sensei_note
 task: 381
 tags: [transformation, gap-fill, arc, primer]
 written_by: The Primer
-written_at: 2026-07-12
+written_at: 2026-07-13
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -110,16 +110,4 @@ def transform(grid):
 
 ## Why this generalizes
 
-This task belongs to the **gap-fill** primitive family. The core pattern is:
-
-1. **Object detection:** Identify discrete objects (rectangles of color 2) via connected component analysis.
-2. **Spatial relationship:** Determine which object pairs have a meaningful spatial relationship (shared rows with horizontal separation).
-3. **Occlusion check:** Verify the path between objects is unobstructed by other objects (blocker detection).
-4. **Path filling:** Fill the unobstructed path with a new color (9).
-
-This generalizes to any task where:
-- Objects need to be "connected" or "bridged"
-- The connection should respect occlusion (other objects block the path)
-- The fill color is distinct from both the objects and background
-
-The algorithm is O(n² × m) where n is the number of rectangles and m is the number of potential blockers, making it efficient for typical ARC grid sizes.
+This task exemplifies the **gap-fill** primitive family: when two objects of the same color are aligned along one axis (here, horizontally with row overlap) and separated by empty space, that space gets filled with a new color—unless blocked by a third object. The key insight is that gap-filling is conditional on both geometric alignment (shared rows) and the absence of occluding objects. This pattern appears in many ARC tasks where the goal is to "connect" or "bridge" related objects while respecting obstacles.
