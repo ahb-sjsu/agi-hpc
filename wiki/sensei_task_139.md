@@ -3,7 +3,7 @@ type: sensei_note
 task: 139
 tags: [transformation, bounding-box-fill, arc, primer]
 written_by: The Primer
-written_at: 2026-07-12
+written_at: 2026-07-13
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -92,4 +92,4 @@ The key insights are:
 
 5. **Deterministic transformation**: The output grid has the same dimensions as the input, making this a TRANSFORMATION class task. The operation is purely local to each connected component's bounding box.
 
-**Critical distinction**: The 8-directional connectivity is essential. In training example 1, the top-left cluster has yellow cells at (2,0) and (2,2) with a gap at (2,1). These are connected via the cell at (1,1) diagonally. Using 4-directional connectivity would fail to recognize this as a single cluster.
+**Critical distinction**: The 8-directional connectivity is the key differentiator from similar tasks. Two yellow cells at positions (r, c) and (r+1, c+1) are connected (diagonal adjacency), whereas in 4-directional connectivity they would be separate objects. This affects how bounding boxes are computed and which cells get filled.
