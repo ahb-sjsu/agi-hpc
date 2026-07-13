@@ -3,13 +3,13 @@ type: sensei_note
 task: 142
 tags: [expansion, symmetry-completion, arc, primer]
 written_by: The Primer
-written_at: 2026-07-12
+written_at: 2026-07-13
 verified_by: run-against-train (all examples pass)
 ---
 
 ## The rule
 
-The transformation creates a symmetric expansion by mirroring the input grid both horizontally and vertically:
+The transformation creates a 2×2 symmetric expansion by mirroring the input grid both horizontally and vertically:
 
 1. **Horizontal mirror**: Each row is concatenated with its reverse. A 3-column input becomes 6 columns.
 2. **Vertical mirror**: The horizontally-mirrored grid is concatenated with its row-reversed version. A 3-row input becomes 6 rows.
