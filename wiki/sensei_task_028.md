@@ -11,17 +11,17 @@ verified_by: run-against-train (all examples pass)
 
 The input is a 10×10 grid containing exactly two non-zero colored markers. Sort the markers by row index: the upper marker (smaller row number) defines the top frame color, and the lower marker (larger row number) defines the bottom frame color.
 
-Each frame spans 5 rows with a fixed pattern:
+The output consists of two stacked 5-row rectangular frames:
 
 **Top frame (rows 0–4):**
-- Row 0 (top boundary): filled **solid** with the top marker's color
-- The marker's row: filled **solid** with the top marker's color
-- All other rows (1, 3, 4 except marker row): color appears **only in the first and last columns** (vertical edges)
+- Row 0 is always **solid** (filled entirely) with the top marker's color
+- The marker's row (within rows 1–4) is also **solid** with the top color
+- All other rows show the color **only at the left and right edges** (columns 0 and 9)
 
 **Bottom frame (rows 5–9):**
-- Row 9 (bottom boundary): filled **solid** with the bottom marker's color
-- The marker's row: filled **solid** with the bottom marker's color
-- All other rows (5, 6, 8 except marker row): color appears **only in the first and last columns** (vertical edges)
+- Row 9 is always **solid** (filled entirely) with the bottom marker's color
+- The marker's row (within rows 5–8) is also **solid** with the bottom color
+- All other rows show the color **only at the left and right edges** (columns 0 and 9)
 
 The column positions of the input markers are completely ignored; only their row positions and colors determine the output structure.
 
@@ -33,7 +33,7 @@ def transform(grid):
     grid = np.array(grid, dtype=int)
     h, w = grid.shape
     
-    # Find the two colored markers
+    # Find the two colored markers and sort by row
     nz = np.argwhere(grid != 0)
     order = np.argsort(nz[:, 0])
     top = nz[order[0]]
