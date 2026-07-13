@@ -82,6 +82,6 @@ def transform(grid):
 
 ## Why this generalizes
 
-This belongs to the **periodic-replication** primitive family. The key insight is that two source points define both a direction and a fundamental period (2× their spacing in the chosen dimension). Each source color propagates independently at that period across the entire grid, filling all cells in the corresponding rows or columns. This pattern appears in many ARC tasks where sparse input signals must be expanded into regular, repeating structures based on geometric relationships between the sources.
+This belongs to the **periodic-replication** primitive family. The key insight is that two source points define both a direction and a fundamental period (2× their spacing in the chosen dimension). Each source color propagates independently at that period across the entire grid, filling all cells in the corresponding rows or columns.
 
-The direction selection rule (vertical when col_spacing=0 or col_spacing>row_spacing, otherwise horizontal) ensures the pattern replicates along the dimension with tighter spacing, creating the most compact periodic structure that honors both source positions.
+The direction selection rule (vertical when col_spacing=0 or col_spacing>row_spacing, otherwise horizontal) ensures the pattern replicates along the dimension with tighter spacing, creating the most dense repeating pattern. This pattern appears in many ARC tasks where sparse input signals must be expanded into regular, repeating structures based on geometric relationships between the sources.
