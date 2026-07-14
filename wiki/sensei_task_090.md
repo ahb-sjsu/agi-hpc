@@ -40,9 +40,16 @@ def transform(grid):
                 continue
             
             for c2 in range(c1, cols):
-                if grid[r1][c2] != 0:
-                    break
+                # Check if all cells in row r1 from c1 to c2 are 0
+                valid_top = True
+                for c in range(c1, c2 + 1):
+                    if grid[r1][c] != 0:
+                        valid_top = False
+                        break
+                if not valid_top:
+                    continue  # Skip this width, but try larger widths
                 
+                # Expand down as far as possible for this width
                 r2 = r1
                 while r2 + 1 < rows:
                     valid = True
@@ -75,7 +82,7 @@ def transform(grid):
 
 This task belongs to the **rectangular-fill** primitive family. The solution demonstrates a systematic approach to geometric pattern detection and transformation:
 
-1. **Exhaustive rectangle enumeration**: The algorithm iterates through all possible top-left corners (r1, c1) and expands rightward and downward to find all maximal rectangles of 0s.
+1. **Exhaustive rectangle enumeration**: The algorithm iterates through all possible top-left corners (r1, c1) and expands rightward to consider all possible widths, even when encountering non-zero cells in the top row. For each width, it expands downward to find the maximum height where all cells remain 0.
 
 2. **Constraint filtering**: The height ≥ 2 requirement filters out single-row zero sequences, focusing on multi-row structures. This is the key distinguishing feature of this task.
 
@@ -85,7 +92,7 @@ This task belongs to the **rectangular-fill** primitive family. The solution dem
 
 This pattern generalizes to any grid size and rectangle position because:
 - It doesn't assume fixed dimensions or locations
-- It correctly handles edge cases (no valid rectangle, multiple candidates)
+- It correctly handles edge cases (no valid rectangle, multiple candidates, non-contiguous zeros in the top row)
 - The O(rows² × cols²) complexity is acceptable for typical ARC grid sizes (usually ≤ 30×30)
 - The algorithm is purely local and doesn't require global context
 
