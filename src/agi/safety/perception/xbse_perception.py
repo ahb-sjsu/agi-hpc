@@ -33,19 +33,23 @@ from typing import Callable, Optional
 logger = logging.getLogger(__name__)
 
 # DEME v3 nine axes + the validated identity_attack extension channel (DEME10).
-# name -> (checkpoint stem in xbse_ckpt/, whether higher score = more harm)
-DEME10_AXES: "OrderedDict[str, tuple[str, bool]]" = OrderedDict(
+# name -> checkpoint stem in xbse_ckpt/.
+#
+# xbse Valence is uniformly sign-normalised: +1 = the value is UPHELD/respected,
+# -1 = VIOLATED, on EVERY axis (fit() always takes pos=upheld, neg=violated).
+# So harm is (1 - value)/2 for all axes — there is no per-axis polarity flip.
+DEME10_AXES: "OrderedDict[str, str]" = OrderedDict(
     [
-        ("physical_harm", ("physharm_joint", True)),
-        ("rights_respect", ("rights_joint", False)),
-        ("fairness_equity", ("fairness_joint", False)),
-        ("autonomy_respect", ("autonomy_joint", False)),
-        ("privacy_protection", ("privacy_joint", False)),
-        ("societal_environmental", ("environmental_joint", False)),
-        ("virtue_care", ("care_joint", False)),
-        ("legitimacy_trust", ("legitimacy_joint", False)),
-        ("epistemic_quality", ("epistemic_joint", False)),
-        ("identity_attack", ("identity_attack_joint", True)),
+        ("physical_harm", "physharm_joint"),
+        ("rights_respect", "rights_joint"),
+        ("fairness_equity", "fairness_joint"),
+        ("autonomy_respect", "autonomy_joint"),
+        ("privacy_protection", "privacy_joint"),
+        ("societal_environmental", "environmental_joint"),
+        ("virtue_care", "care_joint"),
+        ("legitimacy_trust", "legitimacy_joint"),
+        ("epistemic_quality", "epistemic_joint"),
+        ("identity_attack", "identity_attack_joint"),
     ]
 )
 
@@ -183,7 +187,7 @@ class MoralPerception:
             return self._hot[name]
         if name not in self._axes:
             return None  # no calibration → unvalidated, cannot score
-        stem, _ = DEME10_AXES[name]
+        stem = DEME10_AXES[name]
         ckpt = Path(self.cfg.ckpt_dir) / f"{stem}.pt"
         if not ckpt.exists():
             logger.warning("[perception] checkpoint %s missing", ckpt)
@@ -245,9 +249,8 @@ class MoralPerception:
                 reading = AxisReading(name, float(v.value), float(v.confidence), True, True)
                 result.axes[name] = reading
                 result.n_validated += 1
-                _, harm_positive = DEME10_AXES[name]
-                # map signed valence to a 0..1 harm contribution
-                harm = (1.0 - v.value) / 2.0 if not harm_positive else (v.value + 1.0) / 2.0
+                # Uniform valence: +1 upheld → harm 0, -1 violated → harm 1.
+                harm = (1.0 - v.value) / 2.0
                 harms.append(harm)
             except Exception:  # noqa: BLE001
                 logger.exception("[perception] score failed for %s", name)

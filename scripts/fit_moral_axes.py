@@ -100,7 +100,7 @@ def fit_axis(axis: str, ckpt_dir: Path, manifest: dict | None, base_model: str, 
     from xbse import BSEEncoder
     from xbse.scorer import DimensionScorer
 
-    stem, _ = DEME10_AXES[axis]
+    stem = DEME10_AXES[axis]
     ckpt = ckpt_dir / f"{stem}.pt"
     if not ckpt.exists():
         logger.warning("axis %s: checkpoint %s missing — skipping", axis, ckpt)

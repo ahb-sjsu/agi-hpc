@@ -117,25 +117,25 @@ def test_unvalidated_axes_listed_in_dict(monkeypatch):
     assert "physical_harm" in d["dimension_scores"]
 
 
-# ── harm aggregation polarity ──────────────────────────────────────
+# ── harm aggregation polarity (xbse valence is uniformly sign-normalised) ──
 
 
-def test_harm_polarity_harm_positive_axis(monkeypatch):
-    # physical_harm is harm-positive: value +1 (content is harmful) → harm 1.0
+def test_harm_upheld_is_zero(monkeypatch):
+    # +1 = value UPHELD → harm 0.0, on every axis (here physical_harm)
     mp, _ = _perception_with({"physical_harm": 1.0}, monkeypatch)
-    res = mp.score("bad", axes=("physical_harm",))
-    assert res.harm_aggregate == pytest.approx(1.0)
-
-
-def test_harm_polarity_upheld_axis(monkeypatch):
-    # fairness is harm-negative: value +1 (upheld) → harm 0.0
-    mp, _ = _perception_with({"fairness_equity": 1.0}, monkeypatch)
-    res = mp.score("fair", axes=("fairness_equity",))
+    res = mp.score("safe", axes=("physical_harm",))
     assert res.harm_aggregate == pytest.approx(0.0)
 
 
-def test_harm_polarity_violated_axis(monkeypatch):
-    # fairness violated: value -1 → harm 1.0
+def test_harm_violated_is_one(monkeypatch):
+    # -1 = value VIOLATED → harm 1.0 (physical_harm)
+    mp, _ = _perception_with({"physical_harm": -1.0}, monkeypatch)
+    res = mp.score("harmful", axes=("physical_harm",))
+    assert res.harm_aggregate == pytest.approx(1.0)
+
+
+def test_harm_violated_is_one_other_axis(monkeypatch):
+    # same uniform convention on a virtue-named axis
     mp, _ = _perception_with({"fairness_equity": -1.0}, monkeypatch)
     res = mp.score("unfair", axes=("fairness_equity",))
     assert res.harm_aggregate == pytest.approx(1.0)
