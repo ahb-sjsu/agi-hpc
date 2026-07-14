@@ -1,0 +1,38 @@
+[Unit]
+Description=Erebus Discord faculty — gated, honest conversation in #erebus-agi
+Documentation=file:///home/claude/agi-hpc/docs/EREBUS_DISCORD.md
+After=network-online.target atlas-telemetry.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=claude
+WorkingDirectory=/home/claude/agi-hpc
+Environment=PYTHONPATH=/home/claude/agi-hpc/src
+Environment=PYTHONUNBUFFERED=1
+# Cognition endpoint (the running chat pipeline) + safe defaults. The token
+# and channel id live in the env file (NOT committed).
+Environment=EREBUS_COGNITION_URL=http://localhost:8085
+Environment=EREBUS_DISCORD_MODE=autonomous
+EnvironmentFile=/home/claude/.erebus_discord.env
+ExecStart=/home/claude/env/bin/python3 -m agi.discord.bot
+
+# Always-on; reconnect on drop. A clean exit means the client died.
+Restart=always
+RestartSec=15
+StartLimitIntervalSec=600
+StartLimitBurst=5
+RandomizedDelaySec=10
+
+KillSignal=SIGTERM
+TimeoutStopSec=20
+
+StandardOutput=journal
+StandardError=journal
+
+# CPU-only relay; cognition + gate run in other services.
+MemoryMax=1G
+CPUQuota=100%
+
+[Install]
+WantedBy=multi-user.target
