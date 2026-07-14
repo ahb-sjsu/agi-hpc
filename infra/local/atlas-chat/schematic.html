@@ -293,6 +293,20 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     <div class="card-metric" id="director-journal" style="font-size:9px;color:var(--dim);line-height:1.5">journal: --</div>
   </div>
 
+  <div class="sub-card active" id="sc-erebus-tools">
+    <div class="card-header"><span class="status-dot" id="erebus-tools-dot"></span><span class="name">Erebus &middot; Self-Authored Tools</span><span class="model-tag" id="erebus-tools-count">0</span></div>
+    <div class="card-metric" style="font-size:9px;color:var(--dim)">Compiler modules Erebus staged (L2) &mdash; promote is your call (L3)</div>
+    <div id="erebus-tools" style="max-height:240px;overflow-y:auto;font-size:9px;line-height:1.5"></div>
+    <div id="erebus-tools-out" style="font-size:9px;color:var(--dim);min-height:11px;margin-top:2px"></div>
+  </div>
+
+  <div class="sub-card active" id="sc-erebus-moral">
+    <div class="card-header"><span class="status-dot" id="moral-dot"></span><span class="name">Erebus &middot; Moral Spectrum (live)</span><span class="model-tag" id="moral-tag">--</span></div>
+    <div class="card-metric" style="font-size:9px;color:var(--dim)">DEME read on every gated reply / action &mdash; window <span id="moral-n">0</span>, vetoes <span id="moral-vetoes" style="color:var(--red)">0</span></div>
+    <div id="moral-spectrum" style="font-size:9px;line-height:1.4;margin-top:3px"></div>
+    <div id="moral-last" style="font-size:9px;color:var(--dim);margin-top:3px;max-height:42px;overflow:auto"></div>
+  </div>
+
   <div class="sub-card active" id="sc-control">
     <div class="card-header"><span class="status-dot on" id="control-dot"></span><span class="name">Control Plane</span><span class="model-tag" id="control-maint-tag">live</span></div>
     <div class="card-metric" style="margin-bottom:4px">
@@ -1278,6 +1292,96 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       .then(function(r){return r.json();})
       .then(function(d){ directorMsg(d.error||('proposal '+decision+'d')); pollDirector(); })
       .catch(function(){ directorMsg('request failed'); });
+  }
+  // ── Erebus self-authored tool review (stage L2 → human ack → promote L3) ──
+  function _escTool(s){ return String(s==null?'':s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function _toggleToolSrc(id){ var e=document.getElementById('tsrc-'+id);
+    if(e) e.style.display=(e.style.display==='none'?'block':'none'); return false; }
+  function toolsMsg(t){ var el=document.getElementById('erebus-tools-out'); if(el) el.textContent=t; }
+  async function pollTools(){
+    try {
+      var j = await (await fetch('/api/erebus/pending-tools')).json();
+      var pend = j.pending || [];
+      document.getElementById('erebus-tools-count').textContent = pend.length;
+      var dot = document.getElementById('erebus-tools-dot');
+      if(dot) dot.className = 'status-dot' + (pend.length ? ' on' : '');
+      var el = document.getElementById('erebus-tools');
+      if(!pend.length){ el.innerHTML='<div style="color:var(--dim)">no modules awaiting review</div>'; return; }
+      el.innerHTML = pend.map(function(x){
+        var t = x.test||{};
+        var sr = (t.solved_ratio!=null) ? Math.round(t.solved_ratio*100)+'%' : 'n/a';
+        var nflag = (x.static_safety&&x.static_safety.flags) ? x.static_safety.flags.length : 0;
+        var flags = nflag ? ' <span style="color:var(--red)">'+nflag+' safety flags</span>'
+                          : ' <span style="color:var(--green)">safe</span>';
+        var deme = (x.deme&&x.deme.ran) ? (x.deme.allowed ? ' DEME:ok'
+                   : ' <span style="color:var(--red)">DEME:veto</span>') : ' DEME:n/a';
+        var fns = (x.functions||[]).join(', ');
+        var prov = (x.provenance&&x.provenance.rationale)
+          ? '<div style="color:var(--dim)">'+_escTool(x.provenance.rationale).slice(0,160)+'</div>' : '';
+        var src = _escTool(x.source||'').slice(0,6000);
+        return '<div style="border:1px solid var(--dim);border-radius:4px;padding:4px;margin-bottom:4px">'+
+          '<b>'+_escTool(x.tag)+'</b> <span style="color:var(--dim)">'+_escTool(x.id)+'</span><br>'+
+          'tests: '+(t.n_solved||0)+'/'+(t.n_tasks||0)+' ('+sr+')'+flags+deme+'<br>'+
+          '<span style="color:var(--dim)">fns:</span> '+_escTool(fns)+prov+
+          '<div style="margin:3px 0">'+
+          '<a href="#" onclick="return _toggleToolSrc(\''+x.id+'\')">source</a> &middot; '+
+          '<a href="#" style="color:var(--green)" onclick="erebusToolReview(\''+x.id+'\',\'approve\');return false">promote</a> / '+
+          '<a href="#" style="color:var(--red)" onclick="erebusToolReview(\''+x.id+'\',\'reject\');return false">reject</a></div>'+
+          '<pre id="tsrc-'+x.id+'" style="display:none;white-space:pre-wrap;background:rgba(0,0,0,0.3);padding:4px;border-radius:4px;max-height:220px;overflow:auto">'+src+'</pre>'+
+          '</div>';
+      }).join('');
+    } catch(e){ /* best-effort; never disrupt the board */ }
+  }
+  function erebusToolReview(id, decision){
+    if(decision==='approve' && !confirm('Promote this module into Erebus\'s live compiler?\n\nIt becomes callable in future ARC solving.')) return;
+    var body = {decision:decision};
+    if(decision==='reject'){ var r = prompt('Reason for rejection (optional):','not general enough');
+      if(r===null) return; body.reason = r; }
+    toolsMsg(decision==='approve' ? 'promoting…' : 'rejecting…');
+    fetch('/api/erebus/tool/'+encodeURIComponent(id),{method:'POST',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+      .then(function(r){return r.json();})
+      .then(function(d){ toolsMsg(d.error ? ('err: '+d.error)
+        : (decision==='approve' ? ('promoted → '+(d.live_path||'live')) : 'rejected')); pollTools(); })
+      .catch(function(){ toolsMsg('request failed'); });
+  }
+  // ── Erebus live moral spectrum (DEME read on every gated I/O) ──────────
+  var MORAL_AXES = ['physical_harm','rights_respect','fairness_equity','autonomy_respect',
+    'privacy_protection','societal_environmental','virtue_care','legitimacy_trust',
+    'epistemic_quality','identity_attack'];
+  function _moralBar(name, val){
+    // signed [-1,1]: + upheld (green, right of centre) / − violated (red, left)
+    var v = Math.max(-1, Math.min(1, Number(val)||0));
+    var pct = Math.round(Math.abs(v)*50);   // half-width max each side
+    var pos = v >= 0; var color = pos ? 'var(--green)' : 'var(--red)';
+    return '<div style="display:flex;align-items:center;gap:4px;margin:1px 0">'+
+      '<div style="width:98px;color:var(--dim);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_escTool(name.replace(/_/g," "))+'</div>'+
+      '<div style="flex:1;position:relative;height:8px;background:rgba(255,255,255,0.04);border-radius:2px">'+
+        '<div style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--dim)"></div>'+
+        '<div style="position:absolute;top:0;bottom:0;'+(pos?'left:50%':'right:50%')+';width:'+pct+'%;background:'+color+';border-radius:2px"></div>'+
+      '</div>'+
+      '<div style="width:34px;text-align:right;color:'+color+'">'+v.toFixed(2)+'</div></div>';
+  }
+  async function pollMoral(){
+    try {
+      var j = await (await fetch('/api/erebus/moral')).json();
+      document.getElementById('moral-n').textContent = j.n||0;
+      document.getElementById('moral-vetoes').textContent = j.vetoes||0;
+      var latest = j.latest, dot = document.getElementById('moral-dot'), tag = document.getElementById('moral-tag');
+      var spec = document.getElementById('moral-spectrum');
+      if(!latest){ spec.innerHTML='<div style="color:var(--dim)">no gated I/O yet</div>'; if(tag) tag.textContent='--'; return; }
+      if(dot) dot.className='status-dot'+(latest.passed?' on':'');
+      if(tag){ tag.textContent = latest.passed?'PASS':'VETO'; tag.style.color = latest.passed?'var(--green)':'var(--red)'; }
+      var dims = latest.dimensions||{};
+      var keys = MORAL_AXES.filter(function(k){ return k in dims; });
+      Object.keys(dims).forEach(function(k){ if(keys.indexOf(k)<0) keys.push(k); });
+      spec.innerHTML = keys.length ? keys.map(function(k){ return _moralBar(k, dims[k]); }).join('')
+        : '<div style="color:var(--dim)">tactical DEME layer produced no per-axis scores</div>';
+      document.getElementById('moral-last').innerHTML =
+        '<span style="color:var(--dim)">'+_escTool(latest.gate||'')+' &middot; '+_escTool(latest.ts||'')+'</span><br>'+
+        _escTool((latest.preview||'')).slice(0,140);
+    } catch(e){ /* best-effort; never disrupt the board */ }
   }
   function ctlAction(unit, action, chatCritical){
     var warn = chatCritical ? '\n\nThis unit is chat-critical.' : '';
@@ -2943,6 +3047,10 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
   setInterval(pollPerception, 15000);     // Id panel: cache-only status, no weight load; slow poll is plenty
   pollDirector();
   setInterval(pollDirector, 15000);       // Director: file-only status + journal tail; slow poll is plenty
+  pollTools();
+  setInterval(pollTools, 15000);          // staged self-authored modules; slow poll is plenty
+  pollMoral();
+  setInterval(pollMoral, 5000);           // live moral spectrum on gated I/O
 
   // ─── Pod log tooltip ───
   var _logTip = document.createElement('div');

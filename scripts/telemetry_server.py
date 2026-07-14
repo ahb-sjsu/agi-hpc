@@ -2847,6 +2847,76 @@ def _get_director_proposals():
         return {"proposals": []}
 
 
+def _get_pending_tools():
+    """Self-authored compiler modules Erebus has staged for human review.
+
+    Each record already carries provenance, test results, the static-safety
+    verdict, and the DEME read; we attach the staged source so the dashboard
+    can show exactly what would become callable on approval. Promotion is
+    tier L3 — nothing here is live until an admin approves it."""
+    try:
+        from agi.autonomous.erebus_compiler_tools import list_pending_promotions
+
+        pend = list_pending_promotions()
+    except Exception as e:  # noqa: BLE001 - dashboard must not crash on import
+        return {"pending": [], "error": str(e)}
+    for rec in pend:
+        try:
+            rec["source"] = Path(rec["staged_path"]).read_text(encoding="utf-8")
+        except Exception:  # noqa: BLE001 - source is best-effort
+            rec["source"] = ""
+    return {"pending": pend, "n": len(pend)}
+
+
+MORAL_STREAM_PATH = os.path.join(DIRECTOR_DIR, "moral_stream.jsonl")
+
+
+def _tail_lines(path, limit=40, maxbytes=200000):
+    """Read the last `limit` lines of a growing file cheaply (bounded read)."""
+    with open(path, "rb") as f:
+        f.seek(0, 2)
+        size = f.tell()
+        f.seek(max(0, size - maxbytes))
+        data = f.read().decode("utf-8", "replace")
+    return data.splitlines()[-limit:]
+
+
+def _get_moral_stream(limit=40):
+    """Recent moral-tensor records from Erebus's gated I/O, plus a rollup,
+    for the dashboard's live moral-spectrum diagnostic. Each record is one
+    DEME gate decision (Discord reply, Director action, chat) with its
+    per-axis scores."""
+    try:
+        raw = _tail_lines(MORAL_STREAM_PATH, limit)
+    except FileNotFoundError:
+        return {"records": [], "latest": None, "n": 0, "vetoes": 0}
+    except Exception as e:  # noqa: BLE001
+        return {"records": [], "error": str(e)}
+    recs = []
+    for ln in raw:
+        ln = ln.strip()
+        if ln:
+            try:
+                recs.append(json.loads(ln))
+            except Exception:
+                pass
+    latest = recs[-1] if recs else None
+    vetoes = sum(1 for r in recs if not r.get("passed", True))
+    agg, cnt = {}, {}
+    for r in recs:
+        for k, v in (r.get("dimensions") or {}).items():
+            agg[k] = agg.get(k, 0.0) + float(v)
+            cnt[k] = cnt.get(k, 0) + 1
+    avg = {k: round(agg[k] / cnt[k], 4) for k in agg}
+    return {
+        "records": recs[-15:],
+        "latest": latest,
+        "avg": avg,
+        "n": len(recs),
+        "vetoes": vetoes,
+    }
+
+
 def _director_command(cmd: dict, timeout: float = 5.0) -> dict:
     """Publish a command to the Director's NATS node and await one reply.
 
@@ -3257,6 +3327,14 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
             "/api/director/proposals?"
         ):
             self._json_response(_get_director_proposals())
+        elif self.path == "/api/erebus/pending-tools" or self.path.startswith(
+            "/api/erebus/pending-tools?"
+        ):
+            self._json_response(_get_pending_tools())
+        elif self.path == "/api/erebus/moral" or self.path.startswith(
+            "/api/erebus/moral?"
+        ):
+            self._json_response(_get_moral_stream())
         elif self.path == "/api/version":
             self._json_response(
                 {
@@ -3351,6 +3429,8 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
             self._handle_director_post("message")
         elif self.path.startswith("/api/director/proposal/"):
             self._handle_director_post("proposal")
+        elif self.path.startswith("/api/erebus/tool/"):
+            self._handle_director_post("tool")
         else:
             self.send_response(404)
             self.end_headers()
@@ -3409,6 +3489,8 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
             )
         elif kind == "proposal":
             self._handle_director_proposal(data)
+        elif kind == "tool":
+            self._handle_tool_review(data, approver=email or client_ip)
 
     def _handle_director_proposal(self, data: dict):
         """Approve / reject an L3 proposal by id (updates proposals.json).
@@ -3439,6 +3521,38 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
             self._json_response({"error": f"write failed: {e}"}, 500)
             return
         self._json_response({"ok": True, "id": pid, "status": decision})
+
+    def _handle_tool_review(self, data: dict, approver: str):
+        """Approve / reject a staged self-authored compiler module (tier L3).
+
+        Approve → the module moves into the live compiler dir and becomes
+        callable in future solving. Reject → it is discarded. Erebus can
+        stage modules autonomously (L2) but only this human ack promotes
+        one. Every decision is recorded in compiler_audit.jsonl by the
+        underlying functions."""
+        pid = self.path.rsplit("/", 1)[-1]
+        decision = str(data.get("decision", "")).lower()
+        if decision not in ("approve", "reject"):
+            self._json_response({"error": "decision must be approve|reject"}, 400)
+            return
+        try:
+            from agi.autonomous.erebus_compiler_tools import (
+                promote_pending,
+                reject_pending,
+            )
+
+            if decision == "approve":
+                out = promote_pending(pid, approved_by=approver)
+            else:
+                reason = str(data.get("reason", "rejected via dashboard"))[:300]
+                out = reject_pending(pid, reason=reason, rejected_by=approver)
+        except Exception as e:  # noqa: BLE001
+            self._json_response({"error": f"tool review failed: {e}"}, 500)
+            return
+        if not out.get("ok"):
+            self._json_response(out, 404)
+            return
+        self._json_response({"ok": True, "id": pid, "status": decision, **out})
 
     def _handle_control(self):
         """Service start/stop/restart + GPU-1 maintenance (atlas_control)."""

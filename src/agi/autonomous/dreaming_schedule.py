@@ -114,8 +114,13 @@ def run_mediumsleep():
             result = write_compiler_module(
                 code, test_task_nums, tag, min_solved_ratio=0.4
             )
-            if result.get("promoted"):
-                log.info(f"mediumsleep promoted: {result['path']}")
+            if result.get("staged_for_review"):
+                log.info(
+                    "mediumsleep STAGED for review: %s — promote via dashboard",
+                    result.get("pending_id"),
+                )
+            elif result.get("reason"):
+                log.info("mediumsleep not staged: %s", result["reason"])
     dream_update_wiki(analysis or "", new_module or "")
 
 
@@ -457,10 +462,13 @@ def run_dream_cycle():
                     f"  [{stage['stage']}] ok={stage.get('ok')} "
                     f"{stage.get('error', '')[:200]}"
                 )
-            if result.get("promoted"):
-                log.info(f"Promoted: {result['path']}")
+            if result.get("staged_for_review"):
+                log.info(
+                    "STAGED for review: %s — promote via dashboard (L3)",
+                    result.get("pending_id"),
+                )
             else:
-                log.info(f"Not promoted: {result.get('reason', 'pipeline failed')}")
+                log.info(f"Not staged: {result.get('reason', 'pipeline failed')}")
 
     # 4. Update wiki
     dream_update_wiki(analysis, new_module)

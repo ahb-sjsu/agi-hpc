@@ -35,12 +35,15 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
+import json
 import logging
+import os
 import re
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -1030,6 +1033,7 @@ class SafetyGateway:
             "proof_id": result.decision_proof.get("proof_id", ""),
         }
         self._audit_log.append(entry)
+        self._emit_moral_stream(result, content)
 
         if not result.passed:
             logger.warning(
@@ -1045,3 +1049,39 @@ class SafetyGateway:
                 result.score,
                 result.latency_ms,
             )
+
+    def _emit_moral_stream(self, result: SafetyResult, content: str) -> None:
+        """Append a compact moral-tensor record to the realtime stream that
+        the dashboard's moral-spectrum diagnostic reads.
+
+        This is the single choke point for every gated I/O — Discord replies,
+        Director actions, chat — so the diagnostic sees Erebus's whole moral
+        surface. Emits only when the tactical DEME layer produced per-axis
+        scores (nothing to plot otherwise). Path comes from
+        ``EREBUS_MORAL_STREAM`` (default ``/archive/erebus/moral_stream.jsonl``;
+        set to ``off`` to disable). Fully guarded: a sink failure must never
+        perturb a gate decision."""
+        try:
+            path = os.environ.get(
+                "EREBUS_MORAL_STREAM", "/archive/erebus/moral_stream.jsonl"
+            )
+            if not path or path.lower() == "off" or not result.dimension_scores:
+                return
+            rec = {
+                "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                "gate": result.gate,
+                "passed": bool(result.passed),
+                "score": round(float(result.score), 4),
+                "flags": list(result.flags)[:8],
+                "dimensions": {
+                    str(k): round(float(v), 4)
+                    for k, v in result.dimension_scores.items()
+                },
+                "preview": content[:160],
+            }
+            p = Path(path)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            with p.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(rec) + "\n")
+        except Exception:  # noqa: BLE001 - stream is best-effort, never fatal
+            pass
