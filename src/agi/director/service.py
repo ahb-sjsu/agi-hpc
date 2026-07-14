@@ -40,7 +40,8 @@ from pathlib import Path
 
 from agi.common.atomic_write import atomic_write_text
 
-from . import events, journal, perceive
+from . import events, goals_phase, journal, perceive
+from . import goals as goals_mod
 from .policy import AutonomyTier, max_tier
 from .self_model import SelfModel
 
@@ -55,6 +56,11 @@ class Config:
     nats_servers: str
     min_attempts: int
     paths: perceive.Paths
+    charter_path: Path
+    goals_path: Path
+    directives_path: Path
+    wiki_dir: Path
+    max_proposals: int
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -66,6 +72,13 @@ class Config:
             nats_servers=os.environ.get("DIRECTOR_NATS", "nats://127.0.0.1:4222"),
             min_attempts=int(os.environ.get("DIRECTOR_MIN_ATTEMPTS", "10")),
             paths=perceive.Paths(),
+            charter_path=directory / "charter.json",
+            goals_path=directory / "goals.json",
+            directives_path=directory / "directives.json",
+            wiki_dir=Path(
+                os.environ.get("EREBUS_WIKI_DIR", "/home/claude/agi-hpc/wiki")
+            ),
+            max_proposals=int(os.environ.get("DIRECTOR_MAX_PROPOSALS", "5")),
         )
 
 
@@ -156,13 +169,16 @@ def _open_problems(state: perceive.SelfState) -> list[str]:
 # ── one cycle ────────────────────────────────────────────────────
 
 
-async def run_cycle(cfg: Config, node: events.DirectorNode, *, deep: bool) -> dict:
-    """Run one SDCC cycle. Phase A = perceive → reconcile → journal → publish.
+async def run_cycle(cfg: Config, node: events.DirectorNode, *, deep: bool,
+                    gate=None) -> dict:
+    """Run one SDCC cycle: perceive → reconcile → (L1+) deliberate →
+    (L2) dispatch → journal → publish.
 
-    Returns the cycle record. Never raises for expected file/broker issues;
-    unexpected errors propagate to the loop's guard."""
+    Steps 3–4 run only when the autonomy ceiling permits; at L0 the cycle is
+    the Phase-A reflective loop. Returns the cycle record. Never raises for
+    expected file/broker issues; unexpected errors propagate to the guard."""
     ts = time.time()
-    tier = max_tier()  # Phase A: L0
+    tier = max_tier()
 
     # Step 1 — perceive self
     state = perceive.gather(cfg.paths, min_attempts=cfg.min_attempts)
@@ -170,6 +186,30 @@ async def run_cycle(cfg: Config, node: events.DirectorNode, *, deep: bool) -> di
     # Step 2 — update self-model
     prev = SelfModel.load(cfg.directory)
     model, summary = reconcile(prev, state, ts=ts, tier=tier)
+
+    # Steps 3–4 — deliberate + (if L2) dispatch, behind the tier gate. The
+    # goal phase must never crash the cycle.
+    goal_events: list[dict] = []
+    goal_counts: dict = {}
+    if tier >= AutonomyTier.L1:
+        try:
+            goals_note, goal_events, goal_counts = goals_phase.run(
+                cfg, state.to_dict(), tier, model.cycle, gate=gate
+            )
+        except Exception as e:  # noqa: BLE001
+            log.exception("goals phase error: %s", e)
+            goals_note = ""
+        if goals_note:
+            summary = f"{summary} | {goals_note}"
+        # Reflect real goals into the self-model so status/dashboard show them.
+        tree = goals_mod.GoalTree.load(cfg.goals_path)
+        model.active_goals = [
+            {"id": g.id, "title": g.title, "status": g.status}
+            for g in tree.by_status(
+                goals_mod.Status.ACTIVE.value, goals_mod.Status.GATED.value
+            )
+        ][:10]
+
     model.save(cfg.directory)
 
     kind = "deep-cycle" if deep else "tick"
@@ -186,8 +226,7 @@ async def run_cycle(cfg: Config, node: events.DirectorNode, *, deep: bool) -> di
     record["proof"] = proof
     atomic_write_text(cfg.directory / "last_proof.txt", proof)
 
-    # Step 5 — reflect / journal, carrying the chained proof (steps 3–4 are
-    # Phase B, behind the tier gate).
+    # Step 5 — reflect / journal, carrying the chained proof.
     entry = journal.append(
         ts=ts, cycle=model.cycle, kind=kind, summary=summary,
         detail=json.dumps(state.to_dict(), separators=(",", ":")),
@@ -200,6 +239,7 @@ async def run_cycle(cfg: Config, node: events.DirectorNode, *, deep: bool) -> di
             {
                 "summary": model.summary(),
                 "last_cycle": record,
+                "goals": goal_counts,
                 "next_wake_s": cfg.tick_s,
                 "enabled": not cfg.paths.disabled_sentinel.exists(),
                 "max_tier": tier.name,
@@ -212,19 +252,22 @@ async def run_cycle(cfg: Config, node: events.DirectorNode, *, deep: bool) -> di
     await node.publish_state(model.summary())
     await node.publish_journal(entry)
     await node.publish_cycle(record)
+    for ev in goal_events:
+        await node.publish_goal(ev["phase"], ev["goal"])
 
     log.info("%s | %s", kind, summary)
     return record
 
 
-# ── command handler (Phase A: read-only + self-control) ──────────
+# ── command handler (read-only + self-control) ───────────────────
 
 
-def _make_handler(cfg: Config, node: events.DirectorNode):
+def _make_handler(cfg: Config, node: events.DirectorNode, gate=None):
     """Inbound-command handler for ``agi.director.command``.
 
-    Phase A commands never touch the host or act on the world — they read
-    status or control the Director's own cadence via the sentinel."""
+    These commands read status or control the Director's own cadence — they
+    never touch the host and never bypass the tier gate (``run-now`` runs a
+    normal cycle, so it acts only up to the running ceiling)."""
 
     async def handler(cmd: dict) -> dict:
         verb = str(cmd.get("cmd", "")).lower()
@@ -238,7 +281,7 @@ def _make_handler(cfg: Config, node: events.DirectorNode):
             cfg.paths.disabled_sentinel.unlink(missing_ok=True)
             return {"ok": True, "paused": False}
         if verb == "run-now":
-            await run_cycle(cfg, node, deep=False)
+            await run_cycle(cfg, node, deep=False, gate=gate)
             return {"ok": True, "ran": True}
         return {"ok": False, "error": f"unknown or not-yet-permitted command: {verb!r}"}
 
@@ -252,7 +295,15 @@ async def _main_async() -> None:
     cfg = Config.from_env()
     node = events.DirectorNode(cfg.nats_servers)
     await node.connect()
-    await node.subscribe_commands(_make_handler(cfg, node))
+    # Build the ethics gate once (constructing SafetyGateway loads erisml).
+    # Only needed when the ceiling can deliberate (≥ L1); at L0 no gate is
+    # built and the goal phase never runs.
+    gate = None
+    if max_tier() >= AutonomyTier.L1:
+        from .gate import DemeGate
+
+        gate = DemeGate.try_build()
+    await node.subscribe_commands(_make_handler(cfg, node, gate))
     log.info(
         "Director online. dir=%s tick=%ds deep_hour=%02dZ tier=%s",
         cfg.directory, cfg.tick_s, cfg.deep_hour, max_tier().name,
@@ -267,7 +318,7 @@ async def _main_async() -> None:
                 is_deep = now.tm_hour == cfg.deep_hour and now.tm_yday != last_deep_day
                 if is_deep:
                     last_deep_day = now.tm_yday
-                await run_cycle(cfg, node, deep=is_deep)
+                await run_cycle(cfg, node, deep=is_deep, gate=gate)
         except Exception as e:  # noqa: BLE001 - never let the loop die
             log.exception("cycle error: %s", e)
         await asyncio.sleep(cfg.tick_s)

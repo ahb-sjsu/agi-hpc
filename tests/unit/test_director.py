@@ -166,8 +166,9 @@ def test_reconcile_increments_and_summarizes():
 
 
 def _cfg(tmp_path):
+    d = tmp_path / "erebus"
     return service.Config(
-        directory=tmp_path / "erebus",
+        directory=d,
         tick_s=3600,
         deep_hour=9,
         nats_servers="nats://127.0.0.1:4222",
@@ -180,6 +181,11 @@ def _cfg(tmp_path):
             disabled_sentinel=tmp_path / ".dis",
             gpu1_maint_sentinel=tmp_path / ".gpu1",
         ),
+        charter_path=d / "charter.json",
+        goals_path=d / "goals.json",
+        directives_path=d / "directives.json",
+        wiki_dir=tmp_path / "wiki",
+        max_proposals=5,
     )
 
 

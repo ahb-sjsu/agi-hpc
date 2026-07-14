@@ -471,7 +471,43 @@ def _pick_stuck_tasks(cfg: Config) -> list[int]:
             tier2.append((tn, attempts))
     tier1.sort(key=lambda p: -p[1])
     tier2.sort(key=lambda p: -p[1])
-    return [tn for tn, _ in tier1] + [tn for tn, _ in tier2]
+    base = [tn for tn, _ in tier1] + [tn for tn, _ in tier2]
+    return _apply_director_priority(base)
+
+
+def _director_priority_tasks() -> list[int]:
+    """Tasks the Director has explicitly asked the Primer to teach (open
+    ``teach_task`` directives in /archive/erebus/directives.json).
+
+    Guarded so the Primer runs identically with or without the Director:
+    a missing package/file/permission is a silent no-op. This is the one
+    hook the Director's ``teach_task`` dispatch relies on."""
+    try:
+        from agi.director.dispatch import open_teach_tasks
+
+        return open_teach_tasks()
+    except Exception:  # noqa: BLE001 - director is optional; never affect the Primer
+        return []
+
+
+def _apply_director_priority(base: list[int]) -> list[int]:
+    """Move Director-requested tasks to the front of the pick order.
+
+    Director requests override the usual cooldown/min-attempts ordering
+    (the Director only requests tasks whose goals passed the ethics gate and
+    the dispatch rate limit), but never remove tasks the Primer would have
+    picked anyway — they are only reprioritized. Deduplicated, request order
+    preserved."""
+    reqs = _director_priority_tasks()
+    if not reqs:
+        return base
+    seen: set[int] = set()
+    ordered: list[int] = []
+    for tn in list(reqs) + base:
+        if tn not in seen:
+            seen.add(tn)
+            ordered.append(tn)
+    return ordered
 
 
 def _load_task(task_dir: Path, task_num: int) -> dict | None:
