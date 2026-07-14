@@ -3,7 +3,7 @@ type: sensei_note
 task: 381
 tags: [transformation, gap-fill, arc, primer]
 written_by: The Primer
-written_at: 2026-07-13
+written_at: 2026-07-14
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -110,14 +110,12 @@ def transform(grid):
 
 ## Why this generalizes
 
-This solution belongs to the **gap-fill** primitive family, which is a fundamental spatial reasoning pattern in ARC. The key insights that enable generalization:
+This solution belongs to the **gap-fill** primitive family. The core insight is that the task requires detecting spatial relationships between objects (rectangles of color 2) and filling the empty space between them under specific geometric constraints.
 
-1. **Object abstraction:** By extracting bounding boxes of connected components, the algorithm works regardless of rectangle size, position, or count. The logic operates on abstract geometric relationships, not pixel patterns.
+The algorithm generalizes because:
+- **Object detection via connected components** works for any number of rectangles at any positions
+- **Row overlap computation** correctly identifies which rectangle pairs can have horizontal gaps filled
+- **Blocker detection** ensures gaps are only filled when the path is truly clear (no intervening objects)
+- **Conditional filling** (only color 0 cells become 9) preserves any pre-existing content
 
-2. **Relational reasoning:** The gap-fill decision depends only on relative positioning (row overlap, horizontal separation, blocker presence), not absolute coordinates. This makes the rule invariant to grid size and object placement.
-
-3. **Compositional structure:** The algorithm composes three primitives—connected component extraction, pairwise spatial relationship computation, and conditional cell modification—each of which generalizes independently.
-
-4. **Blocking semantics:** The blocker check ensures the rule handles complex multi-object scenes correctly, filling only "visible" gaps that aren't occluded by intervening objects.
-
-This pattern appears in many ARC tasks where the goal is to complete or connect partial structures while respecting occlusion and spatial constraints.
+This pattern appears in many ARC tasks where the goal is to "connect" or "bridge" objects while respecting occlusion. The key primitives—connected component labeling, bounding box computation, and interval intersection—are fundamental building blocks for spatial reasoning tasks.
