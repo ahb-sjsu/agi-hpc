@@ -7,6 +7,8 @@ written_at: 2026-07-14
 verified_by: run-against-train (all examples pass)
 ---
 
+# Task 092: Line Connection with Vertical Precedence
+
 ## The rule
 
 For each color that appears **exactly twice** in the input grid, connect those two pixels with a straight line of that color:
