@@ -275,6 +275,13 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     <div class="card-metric" id="perc-axes" style="font-size:9px;color:var(--dim);line-height:1.5">validated axes: --</div>
   </div>
 
+  <div class="sub-card active" id="sc-director">
+    <div class="card-header"><span class="status-dot" id="director-dot"></span><span class="name">Director · Self-Model</span><span class="model-tag" id="director-tier">--</span></div>
+    <div class="card-metric">Cycle <span class="val" id="director-cycle">--</span> | Goal: <span class="val" id="director-goal">--</span></div>
+    <div class="card-metric">Capabilities: <span class="val" id="director-caps">--</span> | Open problems: <span class="val" id="director-probs">--</span></div>
+    <div class="card-metric" id="director-journal" style="font-size:9px;color:var(--dim);line-height:1.5">journal: --</div>
+  </div>
+
   <div class="sub-card active" id="sc-control">
     <div class="card-header"><span class="status-dot on" id="control-dot"></span><span class="name">Control Plane</span><span class="model-tag" id="control-maint-tag">live</span></div>
     <div class="card-metric" style="margin-bottom:4px">
@@ -1187,6 +1194,26 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       document.getElementById('perc-axes').textContent = 'validated axes: ' +
         (axes.length ? axes.map(function(a){return a.replace(/_/g,' ');}).join(', ') : 'none yet (fit_moral_axes.py)');
     } catch(e){ /* Id panel is best-effort; never disrupt the board */ }
+  }
+  async function pollDirector(){
+    try {
+      var d = await (await fetch('/api/director/status')).json();
+      var dot = document.getElementById('director-dot');
+      var tier = document.getElementById('director-tier');
+      var s = d.summary || {};
+      // green when running, yellow when enabled-but-not-running, grey when paused
+      if(d.enabled === false){ dot.className = 'status-dot'; tier.textContent = 'paused'; }
+      else { dot.className = 'status-dot ' + (d.running ? 'on' : 'degraded'); tier.textContent = d.max_tier || s.autonomy_tier || '--'; }
+      document.getElementById('director-cycle').textContent = (s.cycle != null ? s.cycle : '--');
+      document.getElementById('director-goal').textContent = s.current_goal || 'none yet';
+      document.getElementById('director-caps').textContent = (s.n_capabilities != null ? s.n_capabilities : '--');
+      document.getElementById('director-probs').textContent = (s.n_open_problems != null ? s.n_open_problems : '--');
+      var j = await (await fetch('/api/director/journal?n=3')).json();
+      var entries = (j.entries||[]);
+      document.getElementById('director-journal').textContent = entries.length
+        ? 'journal: ' + entries.map(function(e){ return e.summary; }).join('  ·  ')
+        : 'journal: (no cycles yet)';
+    } catch(e){ /* Director panel is best-effort; never disrupt the board */ }
   }
   function ctlAction(unit, action, chatCritical){
     var warn = chatCritical ? '\n\nThis unit is chat-critical.' : '';
@@ -2850,6 +2877,8 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
   setInterval(pollControl, 7000);         // service/GPU state; 7s balances freshness vs systemctl cost
   pollPerception();
   setInterval(pollPerception, 15000);     // Id panel: cache-only status, no weight load; slow poll is plenty
+  pollDirector();
+  setInterval(pollDirector, 15000);       // Director: file-only status + journal tail; slow poll is plenty
 
   // ─── Pod log tooltip ───
   var _logTip = document.createElement('div');

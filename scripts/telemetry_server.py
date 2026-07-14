@@ -2660,6 +2660,16 @@ PRIMER_EVENTS_PATH = "/archive/neurogolf/primer_events.jsonl"
 PRIMER_WIKI_DIR = os.environ.get("EREBUS_WIKI_DIR", "/home/claude/agi-hpc/wiki")
 IEIP_EVENTS_PATH = "/archive/neurogolf/ieip_events.jsonl"
 
+# Erebus's Director (executive / self-model faculty). Read-only artifacts;
+# see docs/SELF_DIRECTED_COGNITION.md. Named for the mind (erebus), not the
+# metal (atlas).
+DIRECTOR_DIR = os.environ.get("DIRECTOR_DIR", "/archive/erebus")
+DIRECTOR_STATUS_PATH = os.path.join(DIRECTOR_DIR, "director_status.json")
+DIRECTOR_SELF_MODEL_PATH = os.path.join(DIRECTOR_DIR, "self_model.json")
+DIRECTOR_JOURNAL_PATH = os.path.join(DIRECTOR_DIR, "journal.jsonl")
+DIRECTOR_GOALS_PATH = os.path.join(DIRECTOR_DIR, "goals.json")
+DIRECTOR_DISABLED_SENTINEL = "/archive/neurogolf/.director_disabled"
+
 
 def _get_ieip_status():
     """Dashboard snapshot of the I-EIP monitor event stream.
@@ -2755,6 +2765,76 @@ def _get_primer_status():
     except Exception:
         pass
     return status
+
+
+def _get_director_status():
+    """Status probe for Erebus's Director daemon (dashboard Director card).
+
+    Reads only the ``director_status.json`` artifact the daemon writes each
+    cycle — no weight loads, no NATS. Degrades to a sensible empty shape so
+    the card renders "offline" instead of breaking when the Director hasn't
+    run yet (Phase A not deployed / disabled)."""
+    status = {
+        "running": False,
+        "enabled": not os.path.exists(DIRECTOR_DISABLED_SENTINEL),
+        "summary": {},
+        "last_cycle": {},
+        "max_tier": None,
+        "next_wake_s": None,
+    }
+    try:
+        r = subprocess.run(
+            ["pgrep", "-f", "agi.director.service"],
+            capture_output=True,
+            text=True,
+            timeout=4,
+        )
+        status["running"] = r.returncode == 0
+    except Exception:
+        pass
+    try:
+        data = json.loads(Path(DIRECTOR_STATUS_PATH).read_text())
+        if isinstance(data, dict):
+            status.update(
+                {
+                    "summary": data.get("summary", {}),
+                    "last_cycle": data.get("last_cycle", {}),
+                    "max_tier": data.get("max_tier"),
+                    "next_wake_s": data.get("next_wake_s"),
+                }
+            )
+            # Trust the daemon's own enabled flag when present.
+            if "enabled" in data:
+                status["enabled"] = bool(data["enabled"])
+    except Exception:
+        pass
+    return status
+
+
+def _get_director_self_model():
+    """Full self-model doc (JSON) for the dashboard / /api/director/self_model."""
+    try:
+        return json.loads(Path(DIRECTOR_SELF_MODEL_PATH).read_text())
+    except Exception:
+        return {}
+
+
+def _get_director_journal(n=20):
+    """Last ``n`` first-person journal entries (newest last)."""
+    try:
+        from agi.director.journal import tail
+
+        return {"entries": tail(min(int(n), 200), path=Path(DIRECTOR_JOURNAL_PATH))}
+    except Exception:
+        return {"entries": []}
+
+
+def _get_director_goals():
+    """The Director's goal tree (empty until Phase B populates the charter)."""
+    try:
+        return json.loads(Path(DIRECTOR_GOALS_PATH).read_text())
+    except Exception:
+        return {"goals": []}
 
 
 def _get_ukg_status():
@@ -3112,6 +3192,26 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
             "/api/perception/status?"
         ):
             self._json_response(_perception_status())
+        elif self.path == "/api/director/status" or self.path.startswith(
+            "/api/director/status?"
+        ):
+            self._json_response(_get_director_status())
+        elif self.path == "/api/director/self_model" or self.path.startswith(
+            "/api/director/self_model?"
+        ):
+            self._json_response(_get_director_self_model())
+        elif self.path.startswith("/api/director/journal"):
+            n = 20
+            if "n=" in self.path:
+                try:
+                    n = int(self.path.split("n=")[1].split("&")[0])
+                except ValueError:
+                    n = 20
+            self._json_response(_get_director_journal(n))
+        elif self.path == "/api/director/goals" or self.path.startswith(
+            "/api/director/goals?"
+        ):
+            self._json_response(_get_director_goals())
         elif self.path == "/api/version":
             self._json_response(
                 {

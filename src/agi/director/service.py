@@ -172,15 +172,11 @@ async def run_cycle(cfg: Config, node: events.DirectorNode, *, deep: bool) -> di
     model, summary = reconcile(prev, state, ts=ts, tier=tier)
     model.save(cfg.directory)
 
-    # Step 5 — reflect / journal (steps 3–4 are Phase B, behind the tier gate)
     kind = "deep-cycle" if deep else "tick"
-    entry = journal.append(
-        ts=ts, cycle=model.cycle, kind=kind, summary=summary,
-        detail=json.dumps(state.to_dict(), separators=(",", ":")),
-        path=cfg.directory / "journal.jsonl",
-    )
 
-    # Decision proof (chained) + status artifact for the API/dashboard
+    # Decision proof (chained) — computed before journaling so the on-disk
+    # journal line itself is tamper-evident: editing any past cycle breaks
+    # every subsequent hash.
     record = {
         "ts": round(ts, 3), "cycle": model.cycle, "kind": kind,
         "tier": tier.name, "summary": summary,
@@ -188,8 +184,16 @@ async def run_cycle(cfg: Config, node: events.DirectorNode, *, deep: bool) -> di
     prev_proof = _last_proof(cfg.directory)
     proof = _proof(prev_proof, record)
     record["proof"] = proof
-    entry["proof"] = proof
     atomic_write_text(cfg.directory / "last_proof.txt", proof)
+
+    # Step 5 — reflect / journal, carrying the chained proof (steps 3–4 are
+    # Phase B, behind the tier gate).
+    entry = journal.append(
+        ts=ts, cycle=model.cycle, kind=kind, summary=summary,
+        detail=json.dumps(state.to_dict(), separators=(",", ":")),
+        proof=proof,
+        path=cfg.directory / "journal.jsonl",
+    )
     atomic_write_text(
         cfg.directory / "director_status.json",
         json.dumps(

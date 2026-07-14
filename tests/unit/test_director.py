@@ -205,6 +205,12 @@ def test_run_cycle_writes_artifacts_and_chains_proof(tmp_path, monkeypatch):
     assert rec2["proof"] != rec1["proof"]
     assert SelfModel.load(d).cycle == 2
 
+    # The on-disk journal must be tamper-evident: each line carries the
+    # cycle's chained proof, and the latest matches last_proof.txt.
+    entries = journal.tail(10, path=d / "journal.jsonl")
+    assert [e["proof"] for e in entries] == [rec1["proof"], rec2["proof"]]
+    assert (d / "last_proof.txt").read_text().strip() == rec2["proof"]
+
 
 def test_command_handler_status_pause_resume(tmp_path, monkeypatch):
     monkeypatch.setenv("DIRECTOR_MAX_TIER", "L0")
