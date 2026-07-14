@@ -36,6 +36,30 @@ except ImportError:  # control plane is optional; telemetry must always serve
     atlas_control = None
     CONTROL_AVAILABLE = False
 
+# Id panel: validated moral perception status (calibrated axes / device / maint).
+# status() only reads the axis-cache manifest + sentinel — it does NOT load any
+# 2 GB encoder weights, so it is safe to call from the telemetry process.
+try:
+    from agi.safety.perception import MoralPerception, PerceptionConfig
+
+    PERCEPTION_AVAILABLE = True
+except Exception:  # noqa: BLE001 - optional; never block telemetry startup
+    MoralPerception = None
+    PerceptionConfig = None
+    PERCEPTION_AVAILABLE = False
+
+
+def _perception_status():
+    """Cheap Id-panel readout: calibrated axes, device policy, maint state."""
+    if not PERCEPTION_AVAILABLE:
+        return {"available": False}
+    try:
+        st = MoralPerception(config=PerceptionConfig()).status()
+        st["available"] = True
+        return st
+    except Exception as exc:  # noqa: BLE001
+        return {"available": False, "error": str(exc)}
+
 STATIC_DIR = os.environ.get("ATLAS_STATIC", "/home/claude/atlas-chat")
 REPO_DIR = os.environ.get("ATLAS_REPO", "/home/claude/agi-hpc")
 _ui_version_cache = {"sha": "", "ts": 0.0}
@@ -3084,6 +3108,10 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
                 self._json_response(atlas_control.status())
             else:
                 self._json_response({"error": "control plane unavailable"}, 503)
+        elif self.path == "/api/perception/status" or self.path.startswith(
+            "/api/perception/status?"
+        ):
+            self._json_response(_perception_status())
         elif self.path == "/api/version":
             self._json_response(
                 {

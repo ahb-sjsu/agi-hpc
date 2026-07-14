@@ -269,6 +269,12 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     <div class="card-metric">Latency: <span class="val" id="safety-latency">0</span>ms | Audit: <span class="val" id="safety-audit">0</span></div>
   </div>
 
+  <div class="sub-card active" id="sc-perception">
+    <div class="card-header"><span class="status-dot" id="perc-dot"></span><span class="name">Id · Moral Perception</span><span class="model-tag" id="perc-device">--</span></div>
+    <div class="card-metric">Calibrated: <span class="val" id="perc-ncal">--</span>/10 axes | Hot: <span class="val" id="perc-hot">0</span></div>
+    <div class="card-metric" id="perc-axes" style="font-size:9px;color:var(--dim);line-height:1.5">validated axes: --</div>
+  </div>
+
   <div class="sub-card active" id="sc-control">
     <div class="card-header"><span class="status-dot on" id="control-dot"></span><span class="name">Control Plane</span><span class="model-tag" id="control-maint-tag">live</span></div>
     <div class="card-metric" style="margin-bottom:4px">
@@ -1138,7 +1144,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       var tag = document.getElementById('control-maint-tag');
       tag.textContent = _ctlMaint ? 'GPU1 maint' : 'live';
       tag.style.color = _ctlMaint ? 'var(--yellow)' : '';
-      document.getElementById('control-dot').className = 'status-dot ' + (_ctlMaint ? 'warn' : 'on');
+      document.getElementById('control-dot').className = 'status-dot ' + (_ctlMaint ? 'degraded' : 'on');
       var mbtn = document.getElementById('ctl-maint-btn');
       mbtn.textContent = _ctlMaint ? 'Restore GPU 1' : 'Free GPU 1';
       var rows = (d.units||[]).map(function(u){
@@ -1157,6 +1163,30 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       }).join('');
       document.getElementById('ctl-units').innerHTML = rows;
     } catch(e){ ctlMsg('status unavailable', 'var(--red)'); }
+  }
+  async function pollPerception(){
+    try {
+      var d = await (await fetch('/api/perception/status')).json();
+      var dot = document.getElementById('perc-dot');
+      var dev = document.getElementById('perc-device');
+      if(!d.available){
+        dot.className = 'status-dot';
+        dev.textContent = d.enabled === false ? 'off' : 'n/a';
+        document.getElementById('perc-ncal').textContent = '--';
+        document.getElementById('perc-axes').textContent = 'validated axes: unavailable';
+        return;
+      }
+      var ncal = d.n_calibrated || 0;
+      // green when any axis is calibrated, yellow while awaiting calibration
+      dot.className = 'status-dot ' + (ncal > 0 ? 'on' : 'degraded');
+      dev.textContent = (d.maint_gpu1 ? 'CPU (GPU1 maint)' : (d.device || '--'));
+      dev.style.color = d.maint_gpu1 ? 'var(--yellow)' : '';
+      document.getElementById('perc-ncal').textContent = ncal;
+      document.getElementById('perc-hot').textContent = (d.hot_axes||[]).length;
+      var axes = (d.calibrated_axes||[]);
+      document.getElementById('perc-axes').textContent = 'validated axes: ' +
+        (axes.length ? axes.map(function(a){return a.replace(/_/g,' ');}).join(', ') : 'none yet (fit_moral_axes.py)');
+    } catch(e){ /* Id panel is best-effort; never disrupt the board */ }
   }
   function ctlAction(unit, action, chatCritical){
     var warn = chatCritical ? '\n\nThis unit is chat-critical.' : '';
@@ -2818,6 +2848,8 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
   setInterval(pollErebusTrends, 60000);   // trends only shift every few minutes; cheap
   pollControl();
   setInterval(pollControl, 7000);         // service/GPU state; 7s balances freshness vs systemctl cost
+  pollPerception();
+  setInterval(pollPerception, 15000);     // Id panel: cache-only status, no weight load; slow poll is plenty
 
   // ─── Pod log tooltip ───
   var _logTip = document.createElement('div');
