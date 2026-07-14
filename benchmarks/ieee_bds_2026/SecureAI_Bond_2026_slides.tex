@@ -174,6 +174,30 @@ text $\rightarrow$ \hi{LLM extracts ethical facts} $\rightarrow$ \texttt{GenevaE
 \end{frame}
 
 % ---------------------------------------------------------------
+\begin{frame}{Since submission — a measured defense}
+\textbf{Equivalence-class averaging}: generate the input's paraphrase class ($m$ paraphrases), \hi{average per-dimension perception over the class}, then decide.
+\begin{itemize}
+  \item Pre-registered bar: decision-layer drift $\theta_d \le 0.5$. At scale (60 held-out items, $m=6$): raw drift \gold{0.407 $\rightarrow$ 0.219} — the mechanism \hi{halves} salience drift and meets the bar.
+  \item LLM paraphrasers \alert{refuse 24\%} of harmful inputs. A non-refusing red-team paraphraser (NLLB back-translation, 6 pivots): \gold{$\theta_d = 0.301$} on harmful content — the hole is the \hi{generator's}, not the mechanism's.
+  \item Trust boundary: refusal $\rightarrow$ singleton class $\rightarrow$ \hi{escalate by default}; audit proof records class members.
+\end{itemize}
+\vfill
+{\scriptsize Natural (not adversarial) paraphrases at scale. Post-camera-ready results, July 2026 — extended version in preparation. \texttt{pip install moral-spectrum-analyzer}}
+\end{frame}
+
+% ---------------------------------------------------------------
+\begin{frame}{Since submission — the harm space is extensible \emph{and falsifiable}}
+\textbf{Discovery loop}: residual analysis flags candidate missing dimensions $\rightarrow$ pre-registered admission gate.
+\begin{itemize}
+  \item Scorecard: 3 flagged $\rightarrow$ \gold{1 validated} (\texttt{identity\_attack}), \gold{1 retracted} (threat), \gold{1 declined} (sexual content $\rightarrow$ policy channel, not a moral axis). \hi{The gate has teeth.}
+  \item \texttt{identity\_attack}: cross-dataset held-out AUROC \gold{0.80} CI $[0.78, 0.83]$ ($+0.25$ over null, 2 corpora, $n=6400$) — wired live as a \hi{10th channel}; dominant feature of a learned moderation contraction (OOF AUROC \gold{0.863}, leakage-controlled).
+  \item Cross-lingual at scale: invariance index \gold{0.72--0.80} across es/ar/zh/hi/sw, \hi{harmful $\approx$ benign}.
+\end{itemize}
+\vfill
+{\scriptsize Validated on the learned-encoder perception layer (\texttt{xbse}); native DEME re-run of the five tracks is the extended version. Post-camera-ready results, July 2026.}
+\end{frame}
+
+% ---------------------------------------------------------------
 \begin{frame}{Implications for Secure AI deployment}
 \begin{itemize}
   \item \hi{Where to look}: attacks that repackage the same facts with different \gold{salience} (euphemistic minimization).
@@ -190,11 +214,12 @@ text $\rightarrow$ \hi{LLM extracts ethical facts} $\rightarrow$ \texttt{GenevaE
   \item Code + data: \texttt{pip install agi-hpc}, tag \texttt{bds2026-v1}; decision kernel: \hi{ErisML / DEME v3}.
 \end{itemize}
 \vfill
-\begin{block}{Three takeaways}
+\begin{block}{Four takeaways}
 \begin{enumerate}
   \item Vulnerabilities are \gold{selective} — salience manipulation is the surface.
   \item Robustness profiles are \gold{dissociable} — no single score is safe.
   \item The exploit is \gold{end-to-end} — it flips scalar scores \emph{and} typed verdicts.
+  \item It is \gold{defensible} — averaging over the paraphrase class halves drift (since submission).
 \end{enumerate}
 \end{block}
 \end{frame}

@@ -1,0 +1,794 @@
+% =====================================================================
+% EXTENDED / JOURNAL VERSION — draft v0.1 (2026-07-13)
+% Extends BigDataService 2026 paper 0204 (accepted, camera-ready v2).
+% Structure follows EXTENDED_VERSION_OUTLINE.md.
+%
+% DRAFT STATUS: every number in this draft is a MEASURED result from the
+% conference paper, the camera-ready revision runs, or the post-camera-ready
+% gtc-prototype / xbse / erisml-compiler experiments (July 2026).
+% Sections marked \todo{} are the experiments still to run (native 9-D/10-D
+% re-run of the five tracks; cross-projection disagreement; adversarial
+% paraphrase robustness at scale; like-for-like baseline).
+% =====================================================================
+\documentclass[journal]{IEEEtran}
+
+\usepackage[T1]{fontenc}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{url}
+\usepackage{balance}
+
+\newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
+
+\begin{document}
+
+\title{Selective Invariance Violations in Large Language Model Moral Judgment:\\
+Validated Moral Geometry, Verdict-Level Attacks, and an Invariance Defense}
+
+\author{Andrew~H.~Bond,~\IEEEmembership{Senior Member,~IEEE}%
+\thanks{A.~H.~Bond is with the Department of Computer Engineering, San Jose
+State University, San Jose, CA, USA (e-mail: andrew.bond@sjsu.edu; ORCID:
+0009-0003-2599-6158).}%
+\thanks{This article extends ``Selective Invariance Violations in Large
+Language Model Moral Judgment: A Geometric Framework for Behavioral
+Manipulation Detection,'' presented at IEEE BigDataService 2026, Special Track
+on Secure AI~\cite{bond2026bds}.}}
+
+\maketitle
+
+\begin{abstract}
+Large language models increasingly gate safety-critical decisions, yet an
+attacker who controls only the \emph{presentation} of facts---not the facts
+themselves---can displace their moral judgments. Our conference paper
+demonstrated this attack: across five models, salience manipulations
+(linguistic framing, emotional anchoring, irrelevant sensory detail) reliably
+displace judgments in a 7-dimensional harm space, euphemistic rewriting
+silently reclassifies flagged content past a moderation threshold, and the
+displacement propagates through a rule-based decision kernel, flipping typed
+verdicts. This extended article completes the arc from attack to defense.
+First, we \emph{validate the moral geometry} beyond inter-model reliability
+(ICC(2,$k$)$\,=\,$0.97): a pre-registered discovery-and-admission loop flags
+three candidate missing dimensions, validates one (\texttt{identity\_attack};
+cross-dataset held-out AUROC 0.80, CI [0.78, 0.83]), retracts one, and
+declines one---demonstrating that the dimension set is extensible and
+falsifiable, not asserted. Second, we characterize \emph{which} axes are
+robust measurement targets: valence encoders are register-invariant under
+domain-adversarial training while foundation-presence encoders are
+register-bound, a dissociation confirmed by three independent methods. Third,
+we present a \emph{measured defense}: equivalence-class averaging over a
+generated paraphrase class halves decision-layer drift (0.407$\,\to\,$0.219,
+meeting a pre-registered bar of 0.5) and a non-refusing back-translation
+red-team shows the residual hole belongs to the paraphrase generator, not the
+mechanism. Fourth, a leakage-controlled learned contraction (out-of-fold AUROC
+0.863) lets the pipeline \emph{moderate}, not merely escalate, and the
+invariance property extends cross-lingually (index 0.72--0.80 across five
+languages, harmful\,$\approx$\,benign). The result is an end-to-end,
+audit-proof content-moderation instrument in which every scored dimension
+carries validation provenance, and every decision is invariant under
+re-description or explicitly escalated.
+\end{abstract}
+
+\begin{IEEEkeywords}
+LLM security, adversarial evaluation, moral judgment, invariance testing,
+vulnerability profiling, AI safety, content moderation, sentence embeddings,
+audit trails
+\end{IEEEkeywords}
+
+% ================================================================
+\section{Introduction}
+\label{sec:intro}
+
+When a language model judges a moral scenario, its output can be understood as
+a point in a multi-dimensional harm space. A secure evaluator should produce
+the same point regardless of how the scenario is \emph{described}: euphemistic
+or dramatic register, irrelevant sensory detail, social pressure. Failure of
+this property is a \emph{behavioral manipulation vulnerability}: an attacker
+shifts the decision by modifying morally irrelevant surface features without
+changing the underlying facts.
+
+Our conference paper~\cite{bond2026bds} established the attack. Across five
+models and two architecture families, three perturbation types that manipulate
+perceptual salience reliably displace judgments in a 7-dimensional harm space
+(Cohen's $d = 0.60$--$1.06$ for emotional anchoring), while two that do not
+manipulate salience (gender swap, evaluation order) produce no displacement.
+A worked exploit showed the deployment consequence: euphemistic rewriting
+lowers panel-averaged harm by 14.0 points on a 0--70 scale, silently moving
+three of six audited gold items from \textsc{flag} to \textsc{pass} at a
+median-calibrated threshold; routed through the rule-based DEME~v3 decision
+kernel~\cite{erisml_compiler}, the same rewriting flips a restrictive typed
+verdict to a permissive one in 13.7\% of 161 scenario--model cases. Both
+reviewers' principal concern was validation: is the harm space itself
+reliable, or asserted?
+
+This extended article answers that question and completes the arc from attack
+to defense. It makes four contributions beyond~\cite{bond2026bds}:
+
+\begin{enumerate}
+\item \textbf{A validated, extensible, falsifiable moral geometry
+(Sec.~\ref{sec:geometry}).} Beyond the inter-model reliability panel
+(ICC(2,$k$)$=$0.969), we operate a pre-registered
+\emph{discovery-and-admission loop} on the learned-encoder instantiation of
+the same geometry: residual analysis flags candidate missing dimensions, and a
+shared admission gate with pre-registered nulls decides. Of three flagged
+candidates, one is validated (\texttt{identity\_attack}: cross-dataset
+held-out AUROC 0.80, CI [0.78, 0.83], $+0.25$ over its pre-registered null),
+one is retracted (\texttt{threat}), and one is declined
+(\texttt{sexual\_content}, shown to be a policy-norms signal rather than a
+moral axis). A framework that rejects its own candidates cannot be accused of
+asserting its coordinates. We further characterize which axes are robust
+measurement targets: \emph{valence} encoders are register-invariant, while
+foundation-\emph{presence} encoders are register-bound---a dissociation
+confirmed by three independent methods.
+\item \textbf{A measured invariance defense (Sec.~\ref{sec:defense}).}
+Equivalence-class averaging---generate the input's paraphrase class, average
+per-dimension perception over the class, then decide---halves decision-layer
+drift at scale (raw 0.407 $\to$ 0.219 on a pre-registered split-half
+protocol, meeting the pre-registered bar $\theta_d \le 0.5$). A red-team leg
+with a non-refusing back-translation paraphraser closes the LLM generator's
+24\% refusal hole ($\theta_d = 0.301$ on harmful content), locating the
+residual weakness in the generator, not the mechanism. The defense's trust
+boundary is made explicit and auditable.
+\item \textbf{From escalation to moderation (Sec.~\ref{sec:contraction}).} A
+leakage-controlled learned contraction over the validated perception channels
+(out-of-fold AUROC 0.863, $+0.084$ over the pre-extension baseline, with
+\texttt{identity\_attack} the dominant feature) lets the pipeline make
+allow/remove decisions where validated and escalate where not.
+\item \textbf{Cross-lingual generalization (Sec.~\ref{sec:xling}).} The
+invariance property is located architecturally in the canonicalization layer
+and confirmed at scale across five languages and four scripts (invariance
+index 0.72--0.80, harmful $\approx$ benign), converting a stated limitation
+of~\cite{bond2026bds} into a measured result.
+\end{enumerate}
+
+\todo{Contribution 5, once run: native 9-D/10-D re-run of the five
+vulnerability tracks through the erisml-compiler pipeline, measuring
+displacement in the full DEME space and at the verdict level per track
+(outline Part C; NRP open panel; planned August 2026).}
+
+\subsection{Two Instantiations, One Geometry}
+\label{sec:twoinstruments}
+
+A methodological point governs the whole article, and we state it before any
+result. The conference paper measures displacement of \emph{LLM-as-judge}
+scores: a model under test emits the 7-D harm vector directly. The new results
+in Secs.~\ref{sec:geometry}--\ref{sec:xling} were obtained on a
+\emph{learned-encoder perception pipeline}: small per-dimension encoders
+(the \texttt{xbse} library~\cite{xbse}), each validated through a shared,
+pre-registered cross-dataset gate, feeding the same DEME decision kernel
+through the Moral Spectrum Analyzer orchestration
+layer~\cite{msa}. These are two instantiations of one geometric framework,
+not one experiment: the former audits deployed judges; the latter is the
+hardened instrument the audit motivates. The unification is the DEME~v3
+moral vector both emit, and the native re-run of the five vulnerability
+tracks through the learned-encoder pipeline is the designed experiment that
+closes the loop (\todo{Sec.~\ref{sec:rerun}}). Conflating the two
+instantiations would re-open the validation critique this article answers;
+we keep the distinction explicit throughout.
+
+% ================================================================
+\section{Related Work}
+\label{sec:related}
+
+\textbf{Sycophancy, framing, and cognitive biases in LLMs.}
+Sharma~et~al.~\cite{sharma2024sycophancy} and
+Perez~et~al.~\cite{perez2023model} established sycophantic response shifts;
+Tversky and Kahneman~\cite{tversky1981framing} established framing effects in
+humans and Echterhoff~et~al.~\cite{echterhoff2024cognitive} surveyed their LLM
+analogues; Scherrer~et~al.~\cite{scherrer2023moral} measured prompt
+sensitivity of encoded moral beliefs. These probe one perturbation at a time
+and emit scalar robustness scores; our framework applies qualitatively
+distinct perturbations in a shared coordinate system and profiles
+vulnerability per axis~\cite{bond2026bds}.
+
+\textbf{Randomized smoothing and perturbation-averaged defenses.} Our
+equivalence-class averaging defense (Sec.~\ref{sec:defense}) is a semantic
+analogue of randomized smoothing~\cite{cohen2019certified}, which certifies a
+classifier by aggregating predictions over random input perturbations, and of
+SmoothLLM~\cite{robey2023smoothllm}, which averages over character-level
+perturbations to defeat jailbreaks. The differences are the perturbation
+class (meaning-preserving paraphrase, generated by a model that thereby joins
+the trust boundary) and the certified quantity (invariance of a
+multi-dimensional moral decision, not a binary jailbreak flag). Character- or
+token-level smoothing cannot express ``same facts, different salience,''
+which is precisely the attack surface identified in~\cite{bond2026bds}.
+
+\textbf{Toxicity detection and its blind spots.} Perspective-style toxicity
+scoring~\cite{borkan2019nuanced} and Detoxify-class models compress a morally
+significant decision into one scalar; documented identity-term biases
+motivated the \texttt{identity\_attack} attribute in the civil-comments
+corpus~\cite{borkan2019nuanced} and the Measuring Hate Speech
+corpus~\cite{kennedy2020constructing}. Our contribution is not the label but
+the \emph{instrument}: a discovery loop that finds an unscored dimension in a
+fixed taxonomy, a pre-registered gate that validates it cross-dataset, and an
+audit trail that carries its validation provenance into every decision
+(Sec.~\ref{sec:discovery}).
+
+\textbf{Moral Foundations Theory and moral corpora.} MFT's binding
+foundations (loyalty, sanctity/purity)~\cite{graham2013moral} are exactly the
+axes a harm-centric taxonomy under-covers; we test whether they are learnable,
+transferable signals using Social-Chemistry-101~\cite{forbes2020social},
+ETHICS~\cite{hendrycks2021aligning}, and the Moral Foundations Reddit
+Corpus~\cite{trager2022moral} (Sec.~\ref{sec:foundations}).
+
+\textbf{Multilingual representation.} LaBSE~\cite{feng2022labse} and
+BGE-M3~\cite{chen2024bge} provide the multilingual embedding spaces our
+canonicalization layer builds on; NLLB~\cite{nllbteam2022no} provides the
+translation and back-translation machinery for the cross-lingual and red-team
+experiments. Thiele~\cite{thiele2026labse} showed the moral dimensions of the
+geometric-ethics framework~\cite{bond2026geometric} are linearly decodable
+from LaBSE embeddings; the \texttt{xbse} encoders operationalize that finding
+as validated per-dimension instruments~\cite{xbse}.
+
+% ================================================================
+\section{The Measurement Instrument}
+\label{sec:instrument}
+
+\subsection{Harm Space, DEME v3, and the 10th Channel}
+
+The conference framework scores moral judgment in a 7-D harm space
+$\mathcal{H} = (h_\text{phys}, h_\text{emot}, h_\text{fin}, h_\text{auto},
+h_\text{trust}, h_\text{soc}, h_\text{ident})$, a measurement-reliable
+projection of the 9-D DEME~v3 \texttt{MoralVector} of the ErisML
+compiler~\cite{erisml_compiler} (correspondence table
+in~\cite{bond2026bds}). The learned-encoder instantiation scores the DEME
+axes directly: one small encoder per dimension, fine-tuned from
+BGE-M3~\cite{chen2024bge} by a shared contrastive objective, each emitting a
+signed per-axis score~\cite{xbse}.
+
+The discovery result of Sec.~\ref{sec:discovery} adds a tenth channel.
+Because the compiler's \texttt{MoralTensorV3} is a frozen 9-axis type
+(validating \texttt{shape[0]==9}), the validated \texttt{identity\_attack}
+dimension rides as a first-class \emph{extension channel} in tensor
+metadata---not a compiler fork---and the moral vector, decision inputs, and
+hash-chained audit proofs all span 10 axes. This supersedes the conference
+paper's weakest correspondence-table cell, where $h_\text{ident}$ mapped only
+partially onto privacy/standing: identity-directed attack is now a validated,
+separately-scored axis.
+
+\subsection{Pipeline and Audit Trail}
+
+The deployed pipeline (the Moral Spectrum Analyzer~\cite{msa}) composes:
+perception (validated \texttt{xbse} encoders, or a replay cache of their
+outputs; an unvalidated stub backend is labeled as such and never presented
+as a real score) $\to$ canonicalization (Sec.~\ref{sec:xling}) $\to$
+DEME tensor $\to$ decision (learned contraction where validated,
+escalation where not; Sec.~\ref{sec:contraction}) $\to$ hash-chained,
+re-verifiable audit proof. Every dimension score carries validation
+provenance; every decision records the evidence---including, for the
+invariance mechanism of Sec.~\ref{sec:defense}, the paraphrase-class member
+hashes---needed to re-verify it.
+
+% ================================================================
+\section{Validating the Moral Geometry}
+\label{sec:geometry}
+
+Both reviewers of~\cite{bond2026bds} pressed one point: the harm space is
+``asserted more than validated.'' The camera-ready answered with reliability:
+across an open panel of six models from five families, the seven dimensions
+are measured with ICC(2,$k$)$=$0.969 and Krippendorff $\alpha=0.836$
+(test--retest median $r=0.96$)~\cite{bond2026bds}. Reliability, however, only
+shows the coordinates are \emph{consistently readable}. This section shows
+they are \emph{extensible} (missing dimensions can be discovered and
+admitted), \emph{falsifiable} (candidates can fail admission and validated
+axes can be retired), and \emph{characterized} (we know which axes are robust
+measurement targets and which are register-bound).
+
+\subsection{The Validation Gate}
+\label{sec:gate}
+
+Every learned encoder must clear one shared, pre-registered gate before its
+scores may be used downstream: held-out \emph{cross-dataset} transfer
+(structure AUROC on a second, independent corpus), margin over a
+pre-registered null (untrained baseline and bag-of-words control), and a fuzz
+test (surface perturbations must move the score much less than moral
+content). Bars are derived from the data and registered before results are
+seen; an encoder that fails is reported as failed and its axis is escalated,
+not scored. On the nine original DEME axes, eight of nine encoders cleared
+the gate; \texttt{rights\_respect} failed and is carried as unvalidated---the
+framework reports its own gap~\cite{xbse}.
+
+\subsection{Discovery: the Admission Loop Has Teeth}
+\label{sec:discovery}
+
+A fixed taxonomy cannot report what it fails to see. The discovery loop
+mines the residual structure of moderation corpora for signal the current
+axes do not carry, flags candidate dimensions, and submits each to the
+admission gate of Sec.~\ref{sec:gate}. Three candidates were flagged, each
+with bootstrap confidence intervals on its residual lift:
+
+\begin{table}[htbp]
+\caption{Discovery-and-admission scorecard. Residual lift is the
+bootstrap-CI'd improvement in explained moderation signal beyond the
+existing axes at flag time.}
+\label{tab:scorecard}
+\centering
+\footnotesize
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Candidate} & \textbf{Lift} & \textbf{Gate outcome} & \textbf{Disposition} \\
+\midrule
+\texttt{identity\_attack} & $+0.24$ & AUROC 0.80 [0.78, 0.83] & \textbf{validated} \\
+\texttt{threat} & --- & failed balanced resample & retracted \\
+\texttt{sexual\_content} & $+0.20$ & policy signal, not moral & declined \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Validated: \texttt{identity\_attack}.} Trained jointly on two
+independent corpora (Jigsaw civil-comments \texttt{identity\_attack}
+labels~\cite{borkan2019nuanced} and the Berkeley Measuring Hate Speech
+continuous score~\cite{kennedy2020constructing}; $n=6{,}400$), the encoder
+reaches cross-dataset held-out AUROC $0.80$ (anchor-bootstrap CI $[0.78,
+0.83]$), $+0.25$ over its pre-registered null, with fuzz ratio $14.3$. It is
+wired live as the 10th channel (Sec.~\ref{sec:instrument}). Behavior is
+specific: hate incitement scores strongly negative ($-0.50$) while
+journalistic reporting of hate remains near-neutral ($+0.18$); euphemized
+attacks evade the raw feeder ($+0.36$)---which is precisely the
+decision-layer invariance case Sec.~\ref{sec:defense} addresses. We own the
+label overlap plainly: \texttt{identity\_attack} is an existing
+Perspective-style attribute~\cite{borkan2019nuanced}; the novelty is the
+\emph{instrument}---discovery from residuals, pre-registered admission,
+provenance-carrying deployment---not the label.
+
+\textbf{Retracted: \texttt{threat}.} The flagged lift did not survive a
+balanced resample; the candidate was retracted before build.
+
+\textbf{Declined: \texttt{sexual\_content}.} Assessment showed the flagged
+signal is a \emph{policy-norms} channel, not a moral axis: in
+civil-comments, explicit content is 87.7\% toxic vs.\ 1.4\% non-toxic---the
+corpus contains almost no non-harassing explicit content to carry an
+independent moral valence, so the apparent moral weight is harassment
+(already covered). In Social-Chemistry~\cite{forbes2020social}, sexual
+moral valence attaches to \emph{conduct and consent} (autonomy, care), not to
+explicitness itself; consensual explicitness is not a moral violation.
+The dimension is routed as a platform-configurable policy channel
+\emph{outside} the moral tensor.
+
+One validated, one retracted, one declined: the admission criterion has
+teeth, and the geometry's dimension set is an empirical claim with a
+falsification record, not an assertion.
+
+\subsection{Binding Foundations: Loyalty and Purity}
+\label{sec:foundations}
+
+Moral Foundations Theory predicts that a harm-centric taxonomy under-covers
+the ``binding'' foundations~\cite{graham2013moral}. We tested whether
+loyalty/betrayal and sanctity/degradation are learnable, transferable valence
+signals under the same gate: training pairs from Social-Chemistry-101
+(loyalty-betrayal $41$k, sanctity-degradation $15$k, signed by action moral
+judgment)~\cite{forbes2020social} crossed with ETHICS keyword
+scenarios~\cite{hendrycks2021aligning}, with the Moral Foundations Reddit
+Corpus~\cite{trager2022moral} as a presence-only cross-check. Both pass:
+loyalty AUROC $0.911$ ($+0.406$ over null); purity $0.811$---$+0.156$ over a
+deliberately hostile disgust-lexicon bag-of-words null of $0.656$, so the
+encoder learns beyond keywords. MFRC presence cross-checks land at
+$0.608$/$0.635$. Caveats are pre-registered and disclosed: the ETHICS second
+corpus is thin (602/337 rows), so the purity AUROC is provisional; and
+passing the transfer gate does not establish independence from the general
+moral-valence factor (the residualization experiment requires the
+Phase-A bifactor encoder). With these, 11 of 12 learned axes have cleared
+the gate.
+
+\subsection{Which Axes Are Robust Measurement Targets?}
+\label{sec:dissociation}
+
+A validation regime should report not only which axes pass but \emph{what
+kind of signal} each axis is. A $\lambda$-sweep of domain-adversarial
+training (gradient-reversal strength $\lambda=0$ vs.\ $\lambda=1$) across the
+encoder suite produced a clean dissociation:
+
+\begin{table}[htbp]
+\caption{Valence is register-invariant; foundation \emph{presence} is
+register-bound. Cross-dataset structure AUROC at adversary off/on.}
+\label{tab:dissociation}
+\centering
+\footnotesize
+\begin{tabular}{@{}lccl@{}}
+\toprule
+\textbf{Encoder} & \boldmath$\lambda=0$ & \boldmath$\lambda=1$ & \textbf{Verdict} \\
+\midrule
+\multicolumn{4}{@{}l}{\emph{Valence (signed judgment)}} \\
+General moral valence $G$ & 0.856 & 0.850 & invariant (3/3 seeds) \\
+Loyalty valence & 0.911 & 0.892 & invariant \\
+Purity valence & 0.811 & 0.801 & invariant \\
+\midrule
+\multicolumn{4}{@{}l}{\emph{Foundation presence (is the concern at stake?)}} \\
+Purity presence & 0.719 & 0.699 & passes; adversary hurts \\
+Loyalty presence & 0.661 & 0.641 & loses pass under adversary \\
+Care presence & 0.574 & 0.585 & fails both \\
+Legitimacy presence & 0.585 & 0.544 & fails both \\
+Fairness presence & 0.569 & 0.499 & stripped to chance \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The adversary works (domain accuracy driven to $0.12$, near chance) yet
+degrades all five presence encoders while leaving valence essentially
+untouched. Two further methods agree: a frozen-encoder angular-mode-removal
+probe (removing dominant shared principal components and renormalizing to the
+sphere) lifts no presence axis by $\ge 0.05$; and the register/domain
+direction \emph{is} the top principal component of the presence
+representations ($|\text{PC1}\cdot d_{\text{domain}}| = 0.97$--$1.00$)---the
+identity signal for care, fairness, and legitimacy is \emph{entangled within}
+the register subspace, not orthogonal to it. The engineering decision
+follows the measurement: ship purity (robust) and loyalty
+($\lambda=0$ only) presence channels via plain joint-contrastive training,
+no adversary; and report the care/fairness/legitimacy presence axes as
+register-bound, i.e.\ not yet trustworthy cross-register instruments.
+
+For the geometry itself, an effective-rank analysis of the feeder suite
+gives $5.68$ of $9$ (pre-registered orthogonal prediction $6.08$; maximum
+pairwise correlation $0.34$): the axes are partially independent, and the
+deviation from the prediction is a property of the \emph{data}---causally
+removable---not a claim about moral space.
+
+% ================================================================
+\section{The Attack: Scalar and Verdict-Level}
+\label{sec:attack}
+
+We summarize the attack results of~\cite{bond2026bds} that this article
+defends against; full protocols and per-model tables are in the conference
+paper.
+
+\textbf{Selective displacement.} Linguistic framing, emotional anchoring, and
+irrelevant sensory detail displace judgments in every model tested (emotional
+anchoring $d=0.60$--$1.06$; euphemistic rewriting $-10$ to $-16$ points on
+the 0--70 scale); gender swap and evaluation order do not. The common thread
+of the live surfaces is \emph{salience manipulation}.
+
+\textbf{Threshold evasion.} Against a moderation filter flagging total harm
+$>T$, euphemistic rewriting (morally invariant by construction) lowers
+panel-averaged harm by $14.0$ points and silently reclassifies three of six
+audited gold items \textsc{flag}$\to$\textsc{pass}. The asymmetry---evasion
+displacement is twice exaggeration displacement---is the dangerous direction.
+
+\textbf{The exploit survives a principled kernel.} Routing scenarios through
+the DEME~v3 rule kernel (LLM-extracted ethical facts $\to$
+\texttt{GenevaEMV3} $\to$ typed verdict), euphemistic rewriting flips
+\textsc{forbid}/\textsc{avoid} to permissive in $13.7\%$ of 161 cases;
+\textsc{forbid} verdicts fall $44 \to 27$. A rule engine inherits, rather
+than cures, its front-end's salience vulnerability. Hardening must target
+perception---which is what the remainder of this article does.
+
+\todo{Per-track verdict-level attack table from the native 9-D/10-D re-run
+(Sec.~\ref{sec:rerun}): displacement per DEME axis and verdict-flip rate per
+perturbation type, replacing the single aggregate 13.7\% figure.}
+
+% ================================================================
+\section{The Defense: Equivalence-Class Averaging}
+\label{sec:defense}
+
+The attack exploits the fact that a single description is one arbitrary
+representative of an equivalence class of morally identical texts. The
+defense makes the decision a function of the \emph{class}, not the
+representative: generate the input's paraphrase class ($m$ paraphrases),
+average per-dimension perception scores over the class, then decide. This is
+semantic randomized smoothing~\cite{cohen2019certified,robey2023smoothllm}
+with a meaning-preserving perturbation family.
+
+\subsection{Mechanism Selection and the Two-Number Rule}
+\label{sec:mechanism}
+
+We define decision-layer drift $\theta_d$ as the mean per-dimension decision
+movement under re-description, and pre-registered the bar $\theta_d \le
+0.5$. Two candidate mechanisms were compared on the demonstration scenarios
+under a leave-scenario-out proxy: equivalence-class averaging reached
+$\theta_d = 0.42$ (reframe) / $0.39$ (euphemism), while drift-subspace
+projection---removing the top principal component of embedding
+paraphrase-differences---failed even in-sample ($0.52$): the score-moving
+drift is not the top PC of paraphrase variation. Averaging was
+\emph{selected}; we emphasize (two-number rule) that $0.42$ is
+mechanism-selection evidence only, because the bar was calibrated from the
+same smoke scenarios. Bar-meeting is established by the at-scale run:
+
+\subsection{At-Scale Result}
+\label{sec:atscale}
+
+Pre-registered split-half protocol: 60 held-out civil-comments items
+(disjoint by SHA-256 of normalized text from all encoder training rows),
+paraphrase classes of $m=6$ generated by an open instruction model, scored
+through the full 9-feeder perception layer. Result: raw drift $0.407$ $\to$
+averaged $\boldsymbol{\theta_d = 0.219}$---the mechanism halves salience
+drift and meets the pre-registered bar.
+
+Two caveats are part of the record. First, the at-scale paraphrases are
+\emph{natural}, not adversarial (raw drift $0.407$ vs.\ $0.67$--$0.85$ for
+the hand-built adversarial demo transforms); adversarial robustness at scale
+is a distinct, still-open measurement. \todo{adversarial-paraphrase
+$\theta_d$ at scale (containment item).} Second, the LLM paraphrase
+generator \emph{refused} 24\% of harmful inputs (19/79 toxic items),
+producing singleton classes on exactly the content that matters.
+
+\subsection{Red-Team: the Hole Belongs to the Generator}
+\label{sec:redteam}
+
+To test whether the refusal hole is intrinsic to the mechanism, we replaced
+the LLM paraphraser with a non-refusing red-team instrument: NLLB
+back-translation~\cite{nllbteam2022no} through six pivot languages
+(es/fr/de/zh/ar/ru), which refused 0\% of the same items (the LLM refused
+20\% of them). On 50 fresh high-toxicity items ($\text{toxicity} \ge 0.7$):
+raw drift $0.482 \to \theta_d = 0.301 \le 0.5$. The 24\% hole is the
+\emph{generator's}, not the mechanism's: a non-refusing paraphraser closes
+it. Back-translation drifts meaning slightly, so we class it as a red-team
+instrument rather than necessarily the production paraphraser.
+
+\subsection{Trust Boundary and Auditability}
+\label{sec:trust}
+
+Generating the class at inference has three consequences we make explicit.
+\emph{Cost}: perception cost multiplies by $m$; throughput must be measured
+with averaging on. \emph{Security}: the paraphrase generator joins the trust
+boundary---an attacker who can starve it (provoke refusal) reduces the class
+to a singleton and recovers the raw, weakly-invariant score. The deployed
+policy is therefore \emph{refusal $\to$ flagged singleton $\to$ escalate by
+default}. \emph{Auditability}: the decision's hash-chained audit proof
+records the class member hashes, class size, and refusal flag, so the
+invariance evidence behind every decision is re-verifiable.
+
+% ================================================================
+\section{From Escalation to Moderation: the Learned Contraction}
+\label{sec:contraction}
+
+An instrument that only escalates is safe but useless. The pipeline
+moderates---emits allow/remove---exactly where a learned contraction over the
+validated channels is itself validated, and escalates elsewhere.
+
+A logistic contraction over the nine validated feeders (the eight original
+passing axes plus \texttt{identity\_attack}) reaches out-of-fold AUROC
+$\boldsymbol{0.863}$ / F1 $0.76$, a $+0.084$ lift over the 8-feeder baseline
+($0.779$); \texttt{identity\_attack} carries the largest weight ($-2.69$).
+Decision thresholds ($p_{\text{remove}}=0.50$, $p_{\text{allow}}=0.10$,
+validation bar $0.70$) are frozen into a versioned artifact consumed by the
+decision layer: on the balanced evaluation set the pipeline moderates
+$\sim$51\% of items with $\sim$80\% out-of-fold remove-precision and
+escalates the rest.
+
+\textbf{Leakage control.} The \texttt{identity\_attack} encoder was trained
+partly on civil-comments rows, and it is the contraction's dominant feature;
+if fit rows overlapped encoder-training rows, the lift would be
+self-scoring. We measured the overlap (77/1600 rows, 4.8\%, by SHA-256 of
+normalized text) and refit on the 1{,}523 disjoint rows: AUROC $0.872 \to
+0.863$, lift $+0.089 \to +0.084$, weight $-2.78 \to -2.69$. The lift is real
+signal. The fit harness now enforces disjointness. One honest false positive
+(harsh criticism $\to$ remove) is kept in the record; we declined to tune
+the threshold to the demonstration scenarios.
+
+\todo{Like-for-like baseline: decision-vs-decision comparison against a
+scalar-toxicity moderation baseline (Detoxify/Perspective-class) under
+identical inputs and identical euphemistic attack, reporting flip rates for
+both. The scalar baseline's drift is measured; the decision-level comparison
+table is not yet run.}
+
+% ================================================================
+\section{Cross-Lingual Invariance}
+\label{sec:xling}
+
+\cite{bond2026bds} claimed English-only scope. The extended instrument
+locates invariance architecturally and measures it across languages.
+
+\textbf{Invariance lives in the canonicalization layer.} Raw feeder scores
+are only weakly invariant under re-description (invariance ratio $0.60$):
+trained axes \emph{amplify} embedding drift. Canonicalizing to an anchor
+representation before scoring yields same-language invariance index $0.75$
+[0.64, 0.84]. Encoder choice matters and was measured, not assumed: BGE-M3
+is the production canonicalizer (LaBSE wins cross-lingually but collapses
+same-language structure to $0.49$).
+
+\textbf{At scale, across scripts, harmful $\approx$ benign.} On 60 items
+(half harmful) translated to es/ar/zh/hi/sw via NLLB~\cite{nllbteam2022no}:
+invariance index $0.721$ [0.71, 0.74] (BGE-M3) / $0.804$ [0.79, 0.82]
+(LaBSE). Critically, harmful and benign items are indistinguishable (BGE
+$0.704$/$0.739$; LaBSE $0.797$/$0.811$): the invariance is not a benign-only
+artifact, and the small-$n$ demonstration values ($0.74$/$0.81$) are
+confirmed with tight intervals. An operational finding with security
+content: chat LLMs \emph{refuse to translate} harmful content (the same
+failure mode as paraphrase refusal, Sec.~\ref{sec:redteam}); the
+translation legs therefore run on NLLB, a non-refusing dedicated MT model.
+
+% ================================================================
+\section{Native Re-Run of the Vulnerability Tracks}
+\label{sec:rerun}
+
+\todo{This section is the main outstanding experiment (planned August 2026,
+NRP open panel). Design, pre-registered here: (1) each (scenario $\times$
+model $\times$ perturbation) case from the five conference tracks is scored
+natively in the DEME 9-D (+\texttt{identity\_attack}) space through the
+erisml-compiler pipeline, yielding a \texttt{MoralTensorV3} and a
+\texttt{DEMEVerdict} per case; (2) displacement is measured per axis and at
+the verdict level per track, superseding the scalar-total results;
+(3) the compiler's framework-pluralist cross-projection disagreement
+surface is tested as an attack detector: does disagreement light up under
+salience manipulation? (4) the 7-D$\to$9-D mapping table
+of~\cite{bond2026bds} is retained for comparability. Models judge in native
+9-D rather than post-hoc mapping.}
+
+% ================================================================
+\section{Discussion}
+\label{sec:discussion}
+
+\textbf{The arc closes.} The conference paper's finding was uncomfortable:
+salience manipulation displaces every model tested, evasion is easier than
+tripping, and principled downstream kernels inherit the vulnerability. The
+extended results give the deployment answer: measure in a validated,
+falsifiable geometry (Sec.~\ref{sec:geometry}); decide on equivalence
+classes rather than representatives, with the residual attack surface
+(generator starvation) explicitly escalated and audited
+(Sec.~\ref{sec:defense}); moderate only where the contraction is validated
+(Sec.~\ref{sec:contraction}); and carry the whole case in a re-verifiable
+audit proof.
+
+\textbf{What kind of claim the geometry makes.} The discovery scorecard
+(validated / retracted / declined) and the valence--presence dissociation
+change the epistemic status of the coordinate system. The dimension set is
+not a taxonomy we assert; it is an empirical object with an admission gate,
+a falsification record, and a characterization of which axes are
+cross-register trustworthy. When an axis is not trustworthy (rights;
+care/fairness/legitimacy presence), the instrument says so and escalates
+rather than scoring.
+
+\textbf{Limits.} (i) The defense is measured against natural paraphrase
+drift and one non-refusing red-team generator; adversarial-paraphrase
+robustness at scale is open (Sec.~\ref{sec:atscale}). (ii) The
+learned-encoder results validate the perception layer, not the five
+conference tracks re-run natively; that experiment is designed but not run
+(Sec.~\ref{sec:rerun}). (iii) Corpus norms: moderation corpora are
+predominantly English and North-American; the cross-lingual result covers
+re-description of the same content, not cross-cultural moral variation.
+(iv) The purity second-corpus leg is thin (Sec.~\ref{sec:foundations});
+its AUROC is provisional. (v) Sample sizes for the worked exploit remain an
+existence proof ($n=6$ gold), with displacement magnitudes established on
+larger sets.
+
+% ================================================================
+\section{Conclusion}
+\label{sec:conclusion}
+
+We extended a measured attack on LLM moral judgment into a validated,
+defended, auditable moderation instrument. The moral geometry is no longer
+merely reliable but extensible and falsifiable---one dimension discovered and
+validated cross-dataset, one retracted, one declined---and its axes are
+characterized as register-invariant (valence) or register-bound (presence)
+by three agreeing methods. Equivalence-class averaging halves decision-layer
+drift at scale under a pre-registered bar, with the residual hole located in
+the paraphrase generator and closed by a non-refusing red-team instrument. A
+leakage-controlled contraction converts escalation into moderation where
+validated. Invariance is confirmed cross-lingually at scale with harmful
+$\approx$ benign. What remains---the native re-run of the five vulnerability
+tracks through this instrument---is designed, pre-registered, and scheduled;
+it will close the loop between auditing deployed judges and deploying a
+judge built to pass the audit.
+
+% ================================================================
+\section*{Reproducibility}
+
+All post-conference experiments are public: the Moral Spectrum Analyzer
+pipeline (\texttt{pip install moral-spectrum-analyzer})~\cite{msa}, the
+validated per-dimension encoders and gate (\texttt{pip install
+xbse})~\cite{xbse}, and the DEME~v3 kernel
+(\texttt{erisml-compiler}~\cite{erisml_compiler}). Pre-registrations,
+prediction files, discovery records (including the retraction and the
+declination), $\lambda$-sweep artifacts, invariance and cross-lingual data,
+and the contraction with its leakage-control hashes are in the respective
+repositories. Conference-track code and data remain in the \texttt{agi-hpc}
+package (tag \texttt{bds2026-v2}), archived on Zenodo~\cite{bond2026bds}.
+
+\section*{Acknowledgment}
+
+Conference-track experiments used the Kaggle benchmark infrastructure;
+post-conference experiments used the National Research Platform (NRP)
+managed LLM API and SJSU compute.
+
+% ================================================================
+\begin{thebibliography}{00}
+
+\bibitem{bond2026bds}
+A.~H.~Bond, ``Selective invariance violations in large language model moral
+judgment: A geometric framework for behavioral manipulation detection,'' in
+\emph{Proc.\ IEEE Int.\ Conf.\ Big Data Computing Service and Machine
+Learning Applications (BigDataService)}, 2026. Artifact: Zenodo,
+doi:10.5281/zenodo.20660065.
+
+\bibitem{erisml_compiler}
+A.~H.~Bond, \emph{ErisML Compiler: A Framework-Pluralist Compiler from
+Natural-Language Moral Material to a Typed Moral Graph}, software, v0.9,
+2026. Zenodo, doi:10.5281/zenodo.20659432.
+
+\bibitem{xbse}
+A.~H.~Bond, \emph{xbse: Modular Domain-Specific Sentence Embeddings,
+Validated by One Shared Gate}, software, v0.1.0, 2026. [Online]. Available:
+\url{https://github.com/ahb-sjsu/xbse}
+
+\bibitem{msa}
+A.~H.~Bond, \emph{Moral Spectrum Analyzer}, software, v0.1.0, 2026.
+[Online]. Available: \url{https://github.com/ahb-sjsu/moral-spectrum-analyzer}
+
+\bibitem{sharma2024sycophancy}
+M.~Sharma \emph{et al.}, ``Towards understanding sycophancy in language
+models,'' in \emph{Proc.\ ICLR}, 2024.
+
+\bibitem{perez2023model}
+E.~Perez \emph{et al.}, ``Discovering language model behaviors with
+model-written evaluations,'' in \emph{Findings of ACL}, 2023.
+
+\bibitem{tversky1981framing}
+A.~Tversky and D.~Kahneman, ``The framing of decisions and the psychology of
+choice,'' \emph{Science}, vol.~211, pp.~453--458, 1981.
+
+\bibitem{echterhoff2024cognitive}
+J.~M.~Echterhoff, Y.~Liu, and A.~Alessa, ``Cognitive biases in large
+language models: A survey and mitigation framework,'' \emph{arXiv:2410.02466},
+2024.
+
+\bibitem{scherrer2023moral}
+N.~Scherrer \emph{et al.}, ``Evaluating the moral beliefs encoded in LLMs,''
+in \emph{Proc.\ NeurIPS}, 2023.
+
+\bibitem{bond2026geometric}
+A.~H.~Bond, \emph{Geometric Methods in Computational Modeling: From Manifolds
+to Production Systems}. San Jose State University, 2026.
+
+\bibitem{thiele2026labse}
+L.~Thiele, ``Does LaBSE encode moral geometry? Testing Bond's geometric
+ethics framework through cross-lingual probing,'' Undergraduate Research
+Report, UCLA Dept.\ of Cognitive Science, 2026.
+
+\bibitem{cohen2019certified}
+J.~Cohen, E.~Rosenfeld, and Z.~Kolter, ``Certified adversarial robustness via
+randomized smoothing,'' in \emph{Proc.\ ICML}, pp.~1310--1320, 2019.
+
+\bibitem{robey2023smoothllm}
+A.~Robey, E.~Wong, H.~Hassani, and G.~J.~Pappas, ``SmoothLLM: Defending large
+language models against jailbreaking attacks,'' \emph{arXiv:2310.03684},
+2023.
+
+\bibitem{borkan2019nuanced}
+D.~Borkan, L.~Dixon, J.~Sorensen, N.~Thain, and L.~Vasserman, ``Nuanced
+metrics for measuring unintended bias with real data for text
+classification,'' in \emph{Companion Proc.\ WWW}, pp.~491--500, 2019.
+
+\bibitem{kennedy2020constructing}
+C.~J.~Kennedy, G.~Bacon, A.~Sahn, and C.~von~Vacano, ``Constructing interval
+variables via faceted Rasch measurement and multitask deep learning: a
+hate speech application,'' \emph{arXiv:2009.10277}, 2020.
+
+\bibitem{graham2013moral}
+J.~Graham \emph{et al.}, ``Moral foundations theory: The pragmatic validity
+of moral pluralism,'' \emph{Adv.\ Exp.\ Soc.\ Psychol.}, vol.~47,
+pp.~55--130, 2013.
+
+\bibitem{forbes2020social}
+M.~Forbes, J.~D.~Hwang, V.~Shwartz, M.~Sap, and Y.~Choi, ``Social chemistry
+101: Learning to reason about social and moral norms,'' in \emph{Proc.\
+EMNLP}, pp.~653--670, 2020.
+
+\bibitem{hendrycks2021aligning}
+D.~Hendrycks \emph{et al.}, ``Aligning AI with shared human values,'' in
+\emph{Proc.\ ICLR}, 2021.
+
+\bibitem{trager2022moral}
+J.~Trager \emph{et al.}, ``The Moral Foundations Reddit Corpus,''
+\emph{arXiv:2208.05545}, 2022.
+
+\bibitem{feng2022labse}
+F.~Feng \emph{et al.}, ``Language-agnostic BERT sentence embedding,'' in
+\emph{Proc.\ ACL}, pp.~878--891, 2022.
+
+\bibitem{chen2024bge}
+J.~Chen, S.~Xiao, P.~Zhang, K.~Luo, D.~Lian, and Z.~Liu, ``BGE M3-Embedding:
+Multi-lingual, multi-functionality, multi-granularity text embeddings through
+self-knowledge distillation,'' \emph{arXiv:2402.03216}, 2024.
+
+\bibitem{nllbteam2022no}
+NLLB~Team \emph{et al.}, ``No language left behind: Scaling human-centered
+machine translation,'' \emph{arXiv:2207.04672}, 2022.
+
+\end{thebibliography}
+
+\balance
+
+\end{document}
