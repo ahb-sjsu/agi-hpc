@@ -78,6 +78,7 @@ class AxisReading:
     confidence: float      # 0..1
     validated: bool        # axis cleared the gate (cached calibration present)
     present: bool          # a reading was produced (encoder + axis available)
+    low_confidence: bool = False  # sign not robust (small orientation margin)
 
 
 @dataclass
@@ -102,6 +103,10 @@ class PerceptionResult:
                 n: round(r.value, 4) for n, r in self.axes.items() if r.present
             },
             "unvalidated_axes": [n for n, r in self.axes.items() if not r.present],
+            # scored but sign-unreliable: reported, excluded from harm_aggregate
+            "low_confidence_axes": [
+                n for n, r in self.axes.items() if r.present and r.low_confidence
+            ],
         }
 
 
@@ -254,12 +259,17 @@ class MoralPerception:
                 continue
             try:
                 v = scorer.score(text)
-                reading = AxisReading(name, float(v.value), float(v.confidence), True, True)
+                low_conf = bool(self._axes.get(name, {}).get("low_confidence", False))
+                reading = AxisReading(
+                    name, float(v.value), float(v.confidence), True, True, low_conf
+                )
                 result.axes[name] = reading
                 result.n_validated += 1
                 # Uniform valence: +1 upheld → harm 0, -1 violated → harm 1.
-                harm = (1.0 - v.value) / 2.0
-                harms.append(harm)
+                # Low-confidence axes are reported but kept OUT of the aggregate
+                # so an unreliable sign can't corrupt the harm signal.
+                if not low_conf:
+                    harms.append((1.0 - v.value) / 2.0)
             except Exception:  # noqa: BLE001
                 logger.exception("[perception] score failed for %s", name)
                 result.axes[name] = AxisReading(name, 0.0, 0.0, True, False)
@@ -285,6 +295,9 @@ class MoralPerception:
             "hot_axes": list(self._hot),
             "calibrated_axes": sorted(self._axes),
             "n_calibrated": len(self._axes),
+            "low_confidence_axes": sorted(
+                n for n, r in self._axes.items() if r.get("low_confidence")
+            ),
             "max_resident": self.cfg.max_resident,
             "maint_gpu1": GPU1_MAINT_SENTINEL.exists(),
         }

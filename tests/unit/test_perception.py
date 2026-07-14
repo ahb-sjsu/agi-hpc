@@ -202,3 +202,34 @@ def test_all_absent_no_crash(monkeypatch):
     assert res.n_validated == 0
     assert res.harm_aggregate == 0.0
     assert res.escalate is True
+
+
+# ── low-confidence flagging (flag, don't drop) ─────────────────────
+
+
+def test_low_confidence_axis_reported_but_excluded_from_harm(monkeypatch):
+    # a flagged axis is still scored/present but must not drive harm_aggregate
+    axis_cache = {
+        "physical_harm": {"axis": [0.0], "center": 0.0, "scale": 1.0},
+        "autonomy_respect": {"axis": [0.0], "center": 0.0, "scale": 1.0,
+                             "low_confidence": True},
+    }
+    cfg = PerceptionConfig(prefer_gpu=False)
+    mp = MoralPerception(config=cfg, axis_cache=axis_cache)
+    values = {"physical_harm": -1.0, "autonomy_respect": 1.0}
+
+    def fake_build(name, ckpt_path, axis_rec):
+        return _StubScorer(values[name])
+
+    monkeypatch.setattr(mp, "_build_scorer", fake_build)
+    monkeypatch.setattr(xp.Path, "exists", lambda self: True)
+
+    res = mp.score("x", axes=("physical_harm", "autonomy_respect"))
+    # both present
+    assert res.axes["autonomy_respect"].present is True
+    assert res.axes["autonomy_respect"].low_confidence is True
+    assert res.axes["physical_harm"].low_confidence is False
+    # harm aggregate reflects ONLY physical_harm (value -1 -> harm 1.0), not the
+    # flagged autonomy axis (which as +1 would have pulled harm toward 0)
+    assert res.harm_aggregate == pytest.approx(1.0)
+    assert res.to_dict()["low_confidence_axes"] == ["autonomy_respect"]

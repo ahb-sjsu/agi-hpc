@@ -51,6 +51,13 @@ from pathlib import Path
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("fit_moral_axes")
 
+# An axis whose upheld/violated orientation margin is below this is kept but
+# flagged low_confidence: its sign is not robust across text samples, so the
+# consumer should down-weight it (MoralPerception excludes it from the harm
+# aggregate). Empirically fairness (~0.10) and autonomy (~0.19) land here;
+# the solid axes are >= 0.35.
+MIN_ORIENT_SEP = 0.25
+
 # Import the DEME10 axis→checkpoint map from the perception module so there is a
 # single source of truth for stems and harm polarity.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
@@ -271,6 +278,8 @@ def fit_axis(axis: str, ckpt_dir: Path, manifest: dict | None, base_model: str, 
         "seed": bool(used_seed),
         "validated": False,
         "orientation_sep": sep,
+        # NaN (no probes → sign unverified) counts as low confidence.
+        "low_confidence": not (abs(sep) >= MIN_ORIENT_SEP),
     }
 
 
@@ -336,6 +345,7 @@ def fit_axis_validated(axis: str, ckpt_dir: Path, base_model: str, device: str):
         "seed": False,
         "validated": True,
         "orientation_sep": sep,
+        "low_confidence": not (abs(sep) >= MIN_ORIENT_SEP),
     }
     del enc
     if torch.cuda.is_available():
@@ -404,10 +414,11 @@ def main() -> int:
             fit_ok += 1
             logger.info(
                 "axis %s: FIT ok (dim=%d, center=%.3f, scale=%.3f, max_len=%d, "
-                "n=%d/%d, validated=%s, orient_sep=%+.3f)",
+                "n=%d/%d, validated=%s, orient_sep=%+.3f%s)",
                 axis, len(rec["axis"]), rec["center"], rec["scale"],
                 rec.get("max_len", 0), rec.get("n_pos", 0), rec.get("n_neg", 0),
                 rec.get("validated", False), rec.get("orientation_sep", float("nan")),
+                "  [LOW-CONFIDENCE]" if rec.get("low_confidence") else "",
             )
 
     if not records:
@@ -417,8 +428,9 @@ def main() -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     np.savez(out, **{k: np.array(v, dtype=object) for k, v in records.items()})
     n_val = sum(1 for r in records.values() if r.get("validated"))
-    logger.info("wrote %d axes (%d newly fit, %d validated) to %s",
-                len(records), fit_ok, n_val, out)
+    n_low = sum(1 for r in records.values() if r.get("low_confidence"))
+    logger.info("wrote %d axes (%d newly fit, %d validated, %d low-confidence) to %s",
+                len(records), fit_ok, n_val, n_low, out)
     return 0
 
 
