@@ -16,7 +16,7 @@ This task involves **periodic replication** from two source pixels. The transfor
 2. **Determine direction**: Compare the row spacing and column spacing between the two sources:
    - If column spacing = 0 (same column): replicate **vertically** (fill entire rows)
    - If column spacing > row spacing: replicate **vertically** (fill entire rows)
-   - Otherwise (column spacing ≤ row spacing and > 0): replicate **horizontally** (fill entire columns)
+   - Otherwise (column spacing < row spacing): replicate **horizontally** (fill entire columns)
 
 3. **Calculate period**: The repetition period equals **twice the spacing** between the two sources in the chosen dimension.
 
