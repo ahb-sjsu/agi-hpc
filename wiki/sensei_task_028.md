@@ -3,7 +3,7 @@ type: sensei_note
 task: 28
 tags: [transformation, frame-construction, arc, primer]
 written_by: The Primer
-written_at: 2026-07-13
+written_at: 2026-07-14
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -15,12 +15,12 @@ The output consists of two stacked 5-row rectangular frames:
 
 **Top frame (rows 0–4):**
 - Row 0 is always **solid** (filled entirely) with the top marker's color
-- The marker's row (within rows 1–4) is also **solid** with the top color
+- The marker's row (within rows 0–4) is also **solid** with the top color
 - All other rows show the color **only at the left and right edges** (columns 0 and 9)
 
 **Bottom frame (rows 5–9):**
 - Row 9 is always **solid** (filled entirely) with the bottom marker's color
-- The marker's row (within rows 5–8) is also **solid** with the bottom color
+- The marker's row (within rows 5–9) is also **solid** with the bottom color
 - All other rows show the color **only at the left and right edges** (columns 0 and 9)
 
 The column positions of the input markers are completely ignored; only their row positions and colors determine the output structure.
