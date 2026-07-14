@@ -1,0 +1,43 @@
+[Unit]
+Description=Atlas Director — Erebus's executive / self-model loop (Self-Directed Cognition Cycle)
+Documentation=file:///home/claude/agi-hpc/docs/SELF_DIRECTED_COGNITION.md
+After=network-online.target atlas-nats.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=claude
+WorkingDirectory=/home/claude/agi-hpc
+Environment=PYTHONPATH=/home/claude/agi-hpc/src
+Environment=PYTHONUNBUFFERED=1
+# Phase A: autonomy pinned to L0 (perceive + journal only; cannot act).
+# Raise deliberately, with governance, when Phase B lands.
+Environment=DIRECTOR_MAX_TIER=L0
+EnvironmentFile=-/home/claude/.director.env
+ExecStart=/home/claude/env/bin/python3 -m agi.director.service
+
+# Always-on daemon: restart on any exit. A clean exit means the cycle
+# loop broke, which is a bug, not success.
+Restart=always
+RestartSec=10
+
+# Crash-loop guard.
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+# Boot-storm smoothing.
+RandomizedDelaySec=15
+
+# Graceful stop for atomic self-model / journal writes.
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+StandardOutput=journal
+StandardError=journal
+
+# CPU-only reflection loop; cap so it can never starve Erebus's faculties.
+MemoryMax=2G
+CPUQuota=100%
+
+[Install]
+WantedBy=multi-user.target
