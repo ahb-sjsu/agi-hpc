@@ -71,6 +71,25 @@ except ImportError:
 
 
 # ---------------------------------------------------------------------------
+# Optional validated moral perception (xbse encoders → DEME10 vector).
+#
+# This is the "Id" enrichment lane: per-dimension BGE-M3 encoders that score
+# text on validated moral axes. Each axis is a ~2.2 GB forward, so it is NEVER
+# run inside the blocking Tactical budget — it is consulted out-of-band (audit
+# worker / dashboard / high-stakes escalation) via SafetyGateway.perceive().
+# ---------------------------------------------------------------------------
+
+try:
+    from agi.safety.perception import MoralPerception, PerceptionConfig
+
+    PERCEPTION_AVAILABLE = True
+except ImportError:
+    PERCEPTION_AVAILABLE = False
+    MoralPerception = None  # type: ignore[assignment,misc]
+    PerceptionConfig = None  # type: ignore[assignment,misc]
+
+
+# ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
 
@@ -139,6 +158,10 @@ class GatewayConfig:
     reflex_patterns: List[ReflexPattern] = field(default_factory=list)
     enable_tactical: bool = True
     enable_strategic: bool = True
+    # Validated moral perception (xbse) enrichment lane. Off by default: it
+    # needs ~2.2 GB per-axis weights, so it is opt-in on hosts (Atlas) that
+    # have the checkpoints + calibration cache. Never gates the hot path.
+    enable_perception: bool = False
     deme_profile: str = "default"
     blocked_terms: List[str] = field(default_factory=list)
     pii_patterns: Dict[str, str] = field(default_factory=dict)
@@ -326,6 +349,12 @@ class SafetyGateway:
         self._audit_log: List[Dict[str, Any]] = []
         self._dcgm_attestor = dcgm_attestor
         self._nats_publish = nats_publish
+        # Lazily-constructed perception service (see perceive()). Enabling via
+        # config only records intent; the encoders load on first perceive().
+        self._perception: Optional[Any] = None
+        self._perception_enabled = bool(
+            self._config.enable_perception and PERCEPTION_AVAILABLE
+        )
 
         # Initialise DEME pipeline if available and enabled
         if (
@@ -911,6 +940,57 @@ class SafetyGateway:
                 "latency_ms": round(latency_ms, 2),
                 "error": True,
             }
+
+    # ------------------------------------------------------------------
+    # Validated moral perception (xbse) — enrichment lane, NOT hot path
+    # ------------------------------------------------------------------
+
+    def _get_perception(self) -> Optional[Any]:
+        """Lazily construct the MoralPerception service (loads weights)."""
+        if not self._perception_enabled:
+            return None
+        if self._perception is None:
+            try:
+                self._perception = MoralPerception(config=PerceptionConfig())
+                logger.info("[safety-gateway] moral perception service ready")
+            except Exception:
+                logger.exception("[safety-gateway] perception init failed")
+                self._perception_enabled = False
+                return None
+        return self._perception
+
+    def perceive(
+        self,
+        text: str,
+        axes: Optional[List[str]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Score ``text`` on validated moral axes (enrichment / audit lane).
+
+        Returns a serialisable DEME10 perception dict, or ``None`` if the
+        perception lane is unavailable. This performs full BGE-M3 forwards and
+        is *not* latency-bounded — call it from the audit worker, the
+        dashboard Id panel, or a high-stakes escalation, never from the
+        blocking input/output gates.
+        """
+        svc = self._get_perception()
+        if svc is None:
+            return None
+        try:
+            result = svc.score(text, tuple(axes) if axes else None)
+            return result.to_dict()
+        except Exception:
+            logger.exception("[safety-gateway] perceive failed")
+            return None
+
+    def perception_status(self) -> Dict[str, Any]:
+        """Report perception-lane readiness for the dashboard Id panel."""
+        if not self._perception_enabled:
+            return {"enabled": False, "available": PERCEPTION_AVAILABLE}
+        svc = self._get_perception()
+        status = {"enabled": True, "available": True}
+        if svc is not None:
+            status.update(svc.status())
+        return status
 
     # ------------------------------------------------------------------
     # Strategic layer (audit)
