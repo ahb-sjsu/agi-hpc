@@ -3,7 +3,7 @@ type: sensei_note
 task: 30
 tags: [transformation, vertical-alignment, arc, primer]
 written_by: The Primer
-written_at: 2026-07-13
+written_at: 2026-07-14
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -34,22 +34,9 @@ Where:
 
 ```python
 def transform(grid):
-    """
-    Vertical alignment transformation.
-    
-    All colored objects shift vertically so their topmost row aligns with
-    the topmost row of the color-1 (blue) anchor object.
-    
-    Args:
-        grid: 2D list of integers (0 = empty, 1-9 = colors)
-    
-    Returns:
-        2D list with same dimensions, colors vertically aligned to anchor
-    """
     h = len(grid)
     w = len(grid[0]) if h > 0 else 0
     
-    # Handle empty grid
     if h == 0 or w == 0:
         return grid
     
