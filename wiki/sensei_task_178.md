@@ -3,7 +3,7 @@ type: sensei_note
 task: 178
 tags: [extraction, run-length-compression, arc, primer]
 written_by: The Primer
-written_at: 2026-07-13
+written_at: 2026-07-14
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -119,6 +119,6 @@ This belongs to the **run-length-compression** primitive family, combined with *
 
 3. **Run-length compression is value-agnostic**: The `compress()` function works on any sequence of integers, collapsing only consecutive duplicates while preserving order.
 
-4. **Mutual exclusivity**: In valid inputs for this task, either all rows are identical OR all columns are identical, never both (except for uniform grids, which work either way).
+4. **This pattern appears in data compression tasks**: When you see grids with obvious repetition along one axis, check for run-length encoding opportunities.
 
-5. **Extraction pattern**: This is fundamentally an EXTRACTION task — we're pulling out the essential pattern from redundant data, not transforming the whole grid or classifying it.
+5. **The dimension detection is mutually exclusive**: Valid inputs will have either row redundancy OR column redundancy, never both (except for uniform grids, which work either way).
