@@ -3,7 +3,7 @@ type: sensei_note
 task: 117
 tags: [transformation, symmetry-reflection, arc, primer]
 written_by: The Primer
-written_at: 2026-07-11
+written_at: 2026-07-14
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -63,12 +63,15 @@ def transform(grid):
         cr, cc = center
         pos_set = set(positions)
         for r, c in positions:
+            # Check vertical reflection
             vr = 2*cr - r
             if vr != int(vr) or (int(vr), c) not in pos_set:
                 return False
+            # Check horizontal reflection
             hc = 2*cc - c
             if hc != int(hc) or (r, int(hc)) not in pos_set:
                 return False
+            # Check diagonal reflection
             if (int(vr), int(hc)) not in pos_set:
                 return False
         return True
@@ -81,6 +84,7 @@ def transform(grid):
             break
     
     if anchor_color is None:
+        # Fallback: use the shape with smaller bounding box
         def bbox_size(positions):
             rows = [p[0] for p in positions]
             cols = [p[1] for p in positions]
@@ -99,13 +103,17 @@ def transform(grid):
     
     # Reflect the other shape across both axes through anchor center
     for r, c in pos[reflect_color]:
+        # Original position
         output[r, c] = reflect_color
+        # Vertical reflection
         vr = int(round(2 * center_cr - r))
-        hc = int(round(2 * center_cc - c))
         if 0 <= vr < h:
             output[vr, c] = reflect_color
+        # Horizontal reflection
+        hc = int(round(2 * center_cc - c))
         if 0 <= hc < w:
             output[r, hc] = reflect_color
+        # Both reflections (diagonal)
         if 0 <= vr < h and 0 <= hc < w:
             output[vr, hc] = reflect_color
     
@@ -118,6 +126,6 @@ This solution belongs to the **symmetry-reflection** primitive family. The key i
 
 1. Detecting which shape has intrinsic symmetry (the anchor)
 2. Using that shape's center as the reflection point
-3. Applying standard geometric reflection formulas
+3. Applying systematic geometric transformations (vertical, horizontal, and diagonal reflections)
 
-This approach generalizes to any task where objects need to be mirrored across a point defined by another object. The 4-way reflection pattern (original + vertical + horizontal + diagonal) is a common transformation in ARC that creates balanced, symmetric compositions from asymmetric inputs.
+...we can handle any pair of shapes where one is symmetric and one is not. The bounding-box center calculation works regardless of the specific colors or exact pixel patterns, making this approach robust to variations in the input. The fallback to smaller bounding box handles edge cases where symmetry detection might be ambiguous.
