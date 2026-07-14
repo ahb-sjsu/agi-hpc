@@ -1,1 +1,1 @@
-from agi.thermal._thermal import _read_cpu_temp
+# Thermal job queue package (temp readers live in job_queue).
