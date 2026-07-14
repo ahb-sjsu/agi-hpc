@@ -3,7 +3,7 @@ type: sensei_note
 task: 124
 tags: [expansion, pattern-extension, arc, primer]
 written_by: The Primer
-written_at: 2026-07-11
+written_at: 2026-07-14
 verified_by: run-against-train (all examples pass)
 ---
 
@@ -30,8 +30,8 @@ def transform(grid):
     """
     Task 124: Vertical Pattern Extension to 10 Rows
     
-    Detects either exact row repetition (period) or translational patterns
-    (horizontal shifts between segments), then extends to exactly 10 rows.
+    Detects the repetition period in input rows and tiles to 10 rows.
+    Falls back to translational pattern detection if no exact period found.
     """
     grid = np.array(grid)
     input_rows = grid.shape[0]
@@ -45,7 +45,7 @@ def transform(grid):
                 is_period = False
                 break
         if is_period:
-            # Simple case: exact repetition - tile the period to 10 rows
+            # Tile the period to 10 rows
             output = np.zeros((10, width), dtype=int)
             for i in range(10):
                 output[i] = grid[i % period]
@@ -96,15 +96,12 @@ def transform(grid):
 
 This solution belongs to the **pattern-extension** primitive family. The core principles are:
 
-1. **Period detection**: Many ARC tasks involve repeating patterns. Finding the smallest period allows extrapolation beyond the visible input. This handles cases like vertical lines or alternating row patterns.
+1. **Period detection**: Many ARC tasks involve repeating patterns. Finding the smallest period allows extrapolation beyond the visible input. This handles cases like vertical lines, alternating rows, or any exact repetition.
 
-2. **Translational symmetry**: When patterns shift position as they repeat (like diagonal lines moving rightward), detecting the shift amount between consecutive segments enables correct extrapolation.
+2. **Translational patterns**: Some patterns shift position as they progress (e.g., diagonal movement). By detecting the shift between consecutive segments, we can continue the trajectory.
 
-3. **Fixed output size**: The task specifies exactly 10 output rows regardless of input height. This is a common ARC pattern where the output dimensions are predetermined.
+3. **Fixed output size**: The task always produces 10 rows, making this an EXPANSION task. The extension logic must work regardless of input height (5, 6, or 8 rows in the training set).
 
-4. **Hierarchical strategy**: Try simpler patterns first (exact repetition), then more complex ones (translational), with a safe fallback. This mirrors how humans approach pattern recognition.
+4. **Fallback behavior**: If no clear pattern is detected, cyclically repeating the input rows provides a reasonable default that preserves the visible structure.
 
-This approach generalizes to any task where:
-- Output has a fixed size different from input
-- Input shows regular vertical structure (repetition or translation)
-- Pattern must be extrapolated beyond visible examples
+This approach generalizes to any task where a vertical pattern must be extended to a fixed output height, whether through exact repetition or translational shifts.
