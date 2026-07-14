@@ -98,10 +98,8 @@ This solution belongs to the **pattern-extension** primitive family. The core pr
 
 1. **Period detection**: Many ARC tasks involve repeating patterns. Finding the smallest period allows extrapolation beyond the visible input. This handles cases like vertical lines, alternating rows, or any exact repetition.
 
-2. **Translational patterns**: Some patterns shift position as they progress (e.g., diagonal movement). By detecting the shift between consecutive segments, we can continue the trajectory.
+2. **Translational symmetry**: When patterns don't repeat exactly but transform predictably (e.g., shifting horizontally), detecting the transformation rule enables continuation. This is common in diagonal patterns, moving objects, or progressive transformations.
 
-3. **Fixed output size**: The task always produces 10 rows, making this an EXPANSION task. The extension logic must work regardless of input height (5, 6, or 8 rows in the training set).
+3. **Fixed output size**: The task specifies output must be 10 rows regardless of input height. This is a common ARC constraint that requires the model to understand the task's structural requirements beyond just pattern matching.
 
-4. **Fallback behavior**: If no clear pattern is detected, cyclically repeating the input rows provides a reasonable default that preserves the visible structure.
-
-This approach generalizes to any task where a vertical pattern must be extended to a fixed output height, whether through exact repetition or translational shifts.
+The two-strategy approach (exact period first, then translational) covers the main pattern types seen in this task family. The fallback ensures robustness even if neither pattern is detected clearly.
