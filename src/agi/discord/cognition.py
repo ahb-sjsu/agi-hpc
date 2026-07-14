@@ -16,9 +16,28 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import urllib.request
 
 log = logging.getLogger("discord.cognition")
+
+# Some Erebus models emit chain-of-thought in <think>...</think> before the
+# answer. That reasoning must NEVER be posted to people — strip it here so
+# only the final answer leaves the box.
+_THINK_BLOCK = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
+
+
+def clean_reply(text: str) -> str:
+    """Remove chain-of-thought / reasoning tokens from a raw model reply."""
+    if not text:
+        return ""
+    text = _THINK_BLOCK.sub("", text)
+    # Truncated/stray closing tag (opening lost): keep only what follows the
+    # last </think>, which is the actual answer.
+    low = text.lower()
+    if "</think>" in low:
+        text = text[low.rindex("</think>") + len("</think>"):]
+    return text.strip()
 
 
 def http_cognition(base_url: str, timeout: float = 120.0):
@@ -38,6 +57,6 @@ def http_cognition(base_url: str, timeout: float = 120.0):
         )
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-        return str(data.get("response", "")).strip()
+        return clean_reply(str(data.get("response", "")))
 
     return respond

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import types
 
+from agi.discord.cognition import clean_reply
 from agi.discord.config import DiscordConfig
 from agi.discord.handler import BotState, Deps, InMessage, handle
 from agi.discord.ratelimit import RateLimiter
@@ -222,3 +223,15 @@ def test_config_parses_channels(monkeypatch):
     monkeypatch.setenv("EREBUS_DISCORD_CHANNELS", "123, 456 ,abc")
     cfg = DiscordConfig.from_env()
     assert cfg.channel_ids == {123, 456}
+
+
+# ── reply cleaning (never leak chain-of-thought) ─────────────────
+
+
+def test_clean_reply_strips_reasoning():
+    assert clean_reply("<think>secret plan</think>Hello!") == "Hello!"
+    # stray closing tag (opening lost/truncated) → keep only the answer
+    assert clean_reply(" The user wants a hello. </think> Hi there") == "Hi there"
+    # plain answer untouched
+    assert clean_reply("Just a normal reply.") == "Just a normal reply."
+    assert clean_reply("") == ""
