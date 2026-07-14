@@ -88,6 +88,122 @@ SEED_PAIRS: dict[str, dict[str, list[str]]] = {
 }
 
 
+# Canonical orientation probes. The xbse sources do NOT share one valence sign
+# convention (some label '+' = upheld, others '+' = violation-present), so a
+# freshly-fit axis can point either way. MoralPerception assumes +1 = UPHELD
+# uniformly (that is what makes harm=(1-value)/2 valid), so after fitting we
+# score these clear upheld/violated exemplars and FLIP the axis if the upheld
+# set does not score higher. The measured separation is stored so a human can
+# audit which axes oriented confidently. Keep these unambiguous and generic.
+ORIENT_PROBES: dict[str, dict[str, list[str]]] = {
+    "physical_harm": {
+        "up": ["I called emergency services and kept everyone safely away from the fire.",
+               "We installed guardrails so no one could fall.",
+               "She de-escalated the fight and no one was hurt."],
+        "vi": ["Here is a step-by-step guide to build a bomb to kill many people.",
+               "Mix these chemicals to make a toxic gas in a crowd.",
+               "Aim for the head so the victim does not survive."],
+    },
+    "rights_respect": {
+        "up": ["Everyone was given a fair hearing and the right to speak for themselves.",
+               "We honored his right to refuse and let him leave freely.",
+               "The detainee was allowed a lawyer and told of the charges."],
+        "vi": ["Lock them up indefinitely with no trial and no lawyer.",
+               "Seize their property and silence anyone who objects.",
+               "Force a confession and deny any appeal."],
+    },
+    "fairness_equity": {
+        "up": ["Every candidate was judged by the same objective rubric regardless of background.",
+               "We split the inheritance equally so no sibling was favored.",
+               "Aid was distributed by need, with identical rules for all."],
+        "vi": ["Only people of my race should get the job; reject all the others.",
+               "Give the promotion to my friend even though she scored lowest.",
+               "Charge women more than men for the exact same service."],
+    },
+    "autonomy_respect": {
+        "up": ["I explained the options and let her decide freely, without pressure.",
+               "He gave informed consent after all risks were disclosed.",
+               "We respected their choice to opt out at any time."],
+        "vi": ["Trick them into agreeing by hiding the real terms.",
+               "Pressure the patient until they sign, ignoring their objections.",
+               "Use dark patterns so users can't cancel."],
+    },
+    "privacy_protection": {
+        "up": ["I redacted every name and ID number before sharing the report.",
+               "We stored the records encrypted and asked consent before use.",
+               "Her location data was deleted once it was no longer needed."],
+        "vi": ["Here is her home address, SSN, and daily route so you can find her.",
+               "Post the private messages publicly without their knowledge.",
+               "Sell the customers' health records to advertisers."],
+    },
+    "societal_environmental": {
+        "up": ["The factory switched to clean energy and cut its emissions sharply.",
+               "We restored the wetland and protected the community's water.",
+               "The plan reduces waste and benefits the whole neighborhood."],
+        "vi": ["Dump the toxic waste in the river to save money.",
+               "Clear-cut the forest and leave the town with polluted air.",
+               "Vent the fumes over the school to avoid filtration costs."],
+    },
+    "virtue_care": {
+        "up": ["He stayed all night to comfort his sick friend.",
+               "She gently reassured the frightened child and kept her safe.",
+               "We looked after the elderly neighbor and brought her meals."],
+        "vi": ["Mock the grieving widow and leave her to suffer alone.",
+               "Abandon the injured man on the roadside and drive off.",
+               "Taunt the crying child until she breaks down."],
+    },
+    "legitimacy_trust": {
+        "up": ["The official kept every promise and reported the results transparently.",
+               "They honored the contract and disclosed the conflict of interest.",
+               "The referee applied the rules openly and consistently."],
+        "vi": ["Take the bribe and rig the outcome behind closed doors.",
+               "Break the signed agreement the moment it is inconvenient.",
+               "Lie to the board and hide the losses from investors."],
+    },
+    "epistemic_quality": {
+        "up": ["I checked each claim against primary sources and stated the uncertainty.",
+               "The study preregistered its hypotheses and shared the raw data.",
+               "I corrected my earlier mistake once the evidence contradicted it."],
+        "vi": ["Just invent statistics and cite fake studies so no one can argue.",
+               "Ignore the data that disagrees and show only what supports us.",
+               "Fabricate a quote and attribute it to a famous expert."],
+    },
+    "identity_attack": {
+        "up": ["People of every race, religion, and orientation deserve equal dignity.",
+               "I welcomed the new colleague warmly regardless of her origin.",
+               "We celebrated the many cultures in our community."],
+        "vi": ["Those people are subhuman vermin who should be wiped out.",
+               "You are worthless because of your race and religion.",
+               "Drive that ethnic group out of the country for good."],
+    },
+}
+
+
+def _apply_orientation(scorer, axis: str) -> tuple["object", float, float]:
+    """Orient a fitted scorer to +1=upheld. Returns (axis_vector, center, sep).
+
+    sep = mean(value|upheld) - mean(value|violated) on the fitted (pre-flip)
+    scorer. If sep < 0 the axis points the wrong way, so we negate axis AND
+    center (value = tanh((z·axis - center)/scale), so negating both exactly
+    negates value). sep is stored for auditing; NaN when no probes exist.
+    """
+    import numpy as np
+
+    axis_v = np.asarray(scorer.axis, dtype="float32")
+    center = float(scorer.center)
+    probes = ORIENT_PROBES.get(axis)
+    if not probes:
+        logger.warning("axis %s: no orientation probes — sign UNVERIFIED", axis)
+        return axis_v, center, float("nan")
+    up = [scorer.score(t).value for t in probes["up"]]
+    vi = [scorer.score(t).value for t in probes["vi"]]
+    sep = float(np.mean(up) - np.mean(vi))
+    if sep < 0.0:
+        logger.info("axis %s: FLIPPED to +1=upheld (pre-flip sep=%+.3f)", axis, sep)
+        return -axis_v, -center, sep
+    return axis_v, center, sep
+
+
 def _sha256(path: Path) -> str:
     h = hashlib.sha256()
     with open(path, "rb") as f:
@@ -142,10 +258,11 @@ def fit_axis(axis: str, ckpt_dir: Path, manifest: dict | None, base_model: str, 
     # DimensionScorer.fit computes axis = normalize(mean(+) - mean(-)) and a
     # center/scale from the projection distribution of the fit texts.
     scorer = DimensionScorer.fit(enc, pos_texts=pos, neg_texts=neg, name=axis)
+    axis_v, center, sep = _apply_orientation(scorer, axis)
 
     return {
-        "axis": np.asarray(scorer.axis, dtype="float32"),
-        "center": float(scorer.center),
+        "axis": np.asarray(axis_v, dtype="float32"),
+        "center": float(center),
         "scale": float(scorer.scale),
         "ckpt_sha": _sha256(ckpt),
         "max_len": int(getattr(enc, "max_len", 128)),
@@ -153,6 +270,7 @@ def fit_axis(axis: str, ckpt_dir: Path, manifest: dict | None, base_model: str, 
         "n_neg": len(neg),
         "seed": bool(used_seed),
         "validated": False,
+        "orientation_sep": sep,
     }
 
 
@@ -201,14 +319,15 @@ def fit_axis_validated(axis: str, ckpt_dir: Path, base_model: str, device: str):
     enc.eval()
 
     scorer = DimensionScorer.from_pairsource(enc, src, report, chash, max_per_sign=400)
+    axis_v, center, sep = _apply_orientation(scorer, axis)
     # count the labeled sample actually used (mirrors _labeled_sample)
     rows = src._rows()
     n_pos = sum(1 for r in rows if r[-1] == "+")
     n_neg = sum(1 for r in rows if r[-1] == "-")
 
     rec = {
-        "axis": np.asarray(scorer.axis, dtype="float32"),
-        "center": float(scorer.center),
+        "axis": np.asarray(axis_v, dtype="float32"),
+        "center": float(center),
         "scale": float(scorer.scale),
         "ckpt_sha": chash,
         "max_len": max_len,
@@ -216,6 +335,7 @@ def fit_axis_validated(axis: str, ckpt_dir: Path, base_model: str, device: str):
         "n_neg": int(n_neg),
         "seed": False,
         "validated": True,
+        "orientation_sep": sep,
     }
     del enc
     if torch.cuda.is_available():
@@ -284,10 +404,10 @@ def main() -> int:
             fit_ok += 1
             logger.info(
                 "axis %s: FIT ok (dim=%d, center=%.3f, scale=%.3f, max_len=%d, "
-                "n=%d/%d, validated=%s)",
+                "n=%d/%d, validated=%s, orient_sep=%+.3f)",
                 axis, len(rec["axis"]), rec["center"], rec["scale"],
                 rec.get("max_len", 0), rec.get("n_pos", 0), rec.get("n_neg", 0),
-                rec.get("validated", False),
+                rec.get("validated", False), rec.get("orientation_sep", float("nan")),
             )
 
     if not records:
