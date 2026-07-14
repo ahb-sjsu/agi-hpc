@@ -1,13 +1,11 @@
 ---
 type: sensei_note
 task: 13
-tags: [expansion, periodic-replication, arc, primer]
+tags: [transformation, periodic-replication, arc, primer]
 written_by: The Primer
-written_at: 2026-07-13
+written_at: 2026-07-14
 verified_by: run-against-train (all examples pass)
 ---
-
-# Task 013: Periodic Replication from Two Sources
 
 ## The rule
 
@@ -84,4 +82,4 @@ def transform(grid):
 
 This belongs to the **periodic-replication** primitive family. The key insight is that two source points define both a direction and a fundamental period (2× their spacing in the chosen dimension). Each source color propagates independently at that period across the entire grid, filling all cells in the corresponding rows or columns.
 
-The direction selection rule (vertical when col_spacing=0 or col_spacing>row_spacing, otherwise horizontal) ensures the pattern replicates along the dimension with tighter spacing, creating the most dense repeating pattern. This pattern appears in many ARC tasks where sparse input signals must be expanded into regular, repeating structures based on geometric relationships between the sources.
+The direction selection rule (vertical when col_spacing=0 or col_spacing>row_spacing, otherwise horizontal) ensures the pattern replicates along the dimension with tighter spacing, creating the most dense repeating pattern. This pattern appears in many ARC tasks where sparse input signals must be expanded into regular, repeating structures based on geometric relations.
