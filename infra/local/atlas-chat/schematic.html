@@ -269,6 +269,20 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     <div class="card-metric">Latency: <span class="val" id="safety-latency">0</span>ms | Audit: <span class="val" id="safety-audit">0</span></div>
   </div>
 
+  <div class="sub-card active" id="sc-control">
+    <div class="card-header"><span class="status-dot on" id="control-dot"></span><span class="name">Control Plane</span><span class="model-tag" id="control-maint-tag">live</span></div>
+    <div class="card-metric" style="margin-bottom:4px">
+      GPU0: <span class="val" id="ctl-gpu0">--</span> | GPU1: <span class="val" id="ctl-gpu1">--</span>
+    </div>
+    <div style="margin:4px 0;text-align:right">
+      <button id="ctl-maint-btn" onclick="toggleMaint()"
+        style="font-size:10px;padding:2px 8px;border:1px solid var(--accent);background:transparent;color:var(--accent);border-radius:4px;cursor:pointer"
+        title="Free GPU 1 for other work (stops local Ego; NRP fallback carries chat)">Free GPU 1</button>
+    </div>
+    <div id="ctl-units" style="max-height:150px;overflow-y:auto;font-size:10px"></div>
+    <div id="ctl-msg" style="font-size:10px;color:var(--dim);margin-top:4px;min-height:12px"></div>
+  </div>
+
   <div class="sub-card active" id="sc-dreaming">
     <div class="card-header"><span class="status-dot on"></span><span class="name">Dreaming</span><span class="model-tag">DMN</span></div>
     <div class="card-metric">Wiki: <span class="val" id="dream-articles">0</span> | Insights: <span class="val" id="dream-insights">0</span> | Grade: <span class="val" id="dream-grade">--</span></div>
@@ -1103,6 +1117,94 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       btn.textContent = 'Start Training';
       btn.disabled = false;
     });
+  }
+
+  // ---- Control plane (service start/stop + GPU-1 maintenance) ----
+  var _ctlMaint = false;
+  function ctlMsg(t, color){
+    var m = document.getElementById('ctl-msg');
+    if(m){ m.textContent = t; m.style.color = color || 'var(--dim)'; }
+  }
+  async function pollControl(){
+    try {
+      var d = await (await fetch('/api/control/status')).json();
+      if(d.error){ ctlMsg(d.error, 'var(--red)'); return; }
+      var g = {};
+      (d.gpus||[]).forEach(function(x){ g[x.index] = x; });
+      function gtxt(i){ return g[i] ? (Math.round(g[i].mem_used_mib/1024*10)/10)+'GB '+g[i].util_pct+'%' : '--'; }
+      document.getElementById('ctl-gpu0').textContent = gtxt(0);
+      document.getElementById('ctl-gpu1').textContent = gtxt(1);
+      _ctlMaint = !!(d.maint && d.maint.gpu1);
+      var tag = document.getElementById('control-maint-tag');
+      tag.textContent = _ctlMaint ? 'GPU1 maint' : 'live';
+      tag.style.color = _ctlMaint ? 'var(--yellow)' : '';
+      document.getElementById('control-dot').className = 'status-dot ' + (_ctlMaint ? 'warn' : 'on');
+      var mbtn = document.getElementById('ctl-maint-btn');
+      mbtn.textContent = _ctlMaint ? 'Restore GPU 1' : 'Free GPU 1';
+      var rows = (d.units||[]).map(function(u){
+        var on = u.active === 'active';
+        var dot = on ? 'var(--green)' : (u.active === 'failed' ? 'var(--red)' : 'var(--dim)');
+        var btns = (u.actions||[]).map(function(a){
+          return '<button onclick="ctlAction(\''+u.unit+'\',\''+a+'\','+u.chat_critical+')" '+
+            'style="font-size:9px;padding:1px 5px;margin-left:3px;border:1px solid var(--dim);'+
+            'background:transparent;color:var(--fg);border-radius:3px;cursor:pointer">'+a+'</button>';
+        }).join('');
+        return '<div style="display:flex;align-items:center;gap:4px;padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.04)">'+
+          '<span style="width:7px;height:7px;border-radius:50%;background:'+dot+';flex:0 0 auto"></span>'+
+          '<span title="'+u.desc+'" style="flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+
+          u.unit.replace('atlas-','')+(u.chat_critical?' ⚠':'')+'</span>'+
+          '<span style="flex:0 0 auto">'+btns+'</span></div>';
+      }).join('');
+      document.getElementById('ctl-units').innerHTML = rows;
+    } catch(e){ ctlMsg('status unavailable', 'var(--red)'); }
+  }
+  function ctlAction(unit, action, chatCritical){
+    var warn = chatCritical ? '\n\nThis unit is chat-critical.' : '';
+    if(!confirm(action.toUpperCase()+' '+unit+'?'+warn)) return;
+    ctlMsg(action+' '+unit+'...', 'var(--yellow)');
+    fetch('/api/control/service', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({unit:unit, action:action})
+    }).then(function(r){ return r.json().then(function(d){ return {code:r.status, d:d}; }); })
+    .then(function(res){
+      if(res.code === 409 && confirm('Chat active within guard window. Force '+action+' anyway?')){
+        return fetch('/api/control/service', {method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({unit:unit, action:action, force:true})}).then(function(r){return r.json();})
+          .then(function(d){ ctlMsg((d.ok?'ok: ':'err: ')+action+' '+unit, d.ok?'var(--green)':'var(--red)'); pollControl(); });
+      }
+      var d = res.d;
+      ctlMsg((d.ok?'ok: ':'err: ')+(d.error||action+' '+unit), d.ok?'var(--green)':'var(--red)');
+      addFeedEvent('Control: '+action+' '+unit+' → '+(d.ok?'ok':(d.error||'failed')), d.ok?'var(--green)':'var(--red)');
+      pollControl();
+    }).catch(function(e){ ctlMsg('request failed: '+e, 'var(--red)'); });
+  }
+  function toggleMaint(){
+    var entering = !_ctlMaint;
+    var verb = entering ? 'enter' : 'exit';
+    var prompt = entering
+      ? 'Enter GPU-1 maintenance? Stops the local Ego (atlas-id); NRP fallback carries chat while GPU 1 is free.'
+      : 'Exit GPU-1 maintenance? (Restore the local Ego separately via its start button.)';
+    if(!confirm(prompt)) return;
+    ctlMsg('maint '+verb+'...', 'var(--yellow)');
+    fetch('/api/control/maint', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({mode:entering?'enter':'exit'})
+    }).then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d.ok){
+        var note = d.note || (verb+' ok');
+        if(d.gpu1_residents && d.gpu1_residents.length && confirm(note+'\n\nKill '+d.gpu1_residents.length+' residual GPU-1 process(es)?')){
+          return fetch('/api/control/maint', {method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({mode:'enter', force:true})}).then(function(r){return r.json();})
+            .then(function(d2){ ctlMsg(d2.note||'forced', 'var(--green)'); pollControl(); });
+        }
+        ctlMsg(note, 'var(--green)');
+        addFeedEvent('Maintenance '+verb+': '+note, 'var(--yellow)');
+      } else {
+        ctlMsg(d.error||'maint failed', 'var(--red)');
+      }
+      pollControl();
+    }).catch(function(e){ ctlMsg('request failed: '+e, 'var(--red)'); });
   }
 
   function renderFeed(){
@@ -2714,6 +2816,8 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
   setInterval(pollPrimer, 10000);
   setInterval(pollUKG, 15000);            // graph shifts slowly; 15s is plenty
   setInterval(pollErebusTrends, 60000);   // trends only shift every few minutes; cheap
+  pollControl();
+  setInterval(pollControl, 7000);         // service/GPU state; 7s balances freshness vs systemctl cost
 
   // ─── Pod log tooltip ───
   var _logTip = document.createElement('div');

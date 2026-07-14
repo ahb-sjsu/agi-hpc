@@ -1,0 +1,31 @@
+# Atlas control plane — scoped systemctl escalation for the telemetry user.
+# Install: sudo cp deploy/systemd/atlas-control.sudoers /etc/sudoers.d/atlas-control
+#          sudo chmod 0440 /etc/sudoers.d/atlas-control
+#          sudo visudo -c   (must report OK before logging out!)
+#
+# Deliberately enumerated (no wildcards): infrastructure units (nats, caddy,
+# oauth2-proxy, telemetry, watchdog, victoriametrics) are NOT escalatable
+# from the dashboard, by design. Keep in sync with ALLOWED_UNITS in
+# scripts/atlas_control.py.
+
+Cmnd_Alias ATLAS_CTL = \
+    /usr/bin/systemctl start atlas-id.service, /usr/bin/systemctl stop atlas-id.service, /usr/bin/systemctl restart atlas-id.service, \
+    /usr/bin/systemctl start atlas-superego.service, /usr/bin/systemctl stop atlas-superego.service, /usr/bin/systemctl restart atlas-superego.service, \
+    /usr/bin/systemctl start atlas-ego.service, /usr/bin/systemctl stop atlas-ego.service, /usr/bin/systemctl restart atlas-ego.service, \
+    /usr/bin/systemctl start atlas-scientist.service, /usr/bin/systemctl stop atlas-scientist.service, /usr/bin/systemctl restart atlas-scientist.service, \
+    /usr/bin/systemctl start atlas-primer.service, /usr/bin/systemctl stop atlas-primer.service, /usr/bin/systemctl restart atlas-primer.service, \
+    /usr/bin/systemctl start atlas-dreaming.service, /usr/bin/systemctl stop atlas-dreaming.service, /usr/bin/systemctl restart atlas-dreaming.service, \
+    /usr/bin/systemctl start atlas-dreaming-schedule.service, /usr/bin/systemctl stop atlas-dreaming-schedule.service, /usr/bin/systemctl restart atlas-dreaming-schedule.service, \
+    /usr/bin/systemctl start atlas-jobs.service, /usr/bin/systemctl stop atlas-jobs.service, /usr/bin/systemctl restart atlas-jobs.service, \
+    /usr/bin/systemctl start atlas-memory.service, /usr/bin/systemctl stop atlas-memory.service, /usr/bin/systemctl restart atlas-memory.service, \
+    /usr/bin/systemctl start atlas-safety.service, /usr/bin/systemctl stop atlas-safety.service, /usr/bin/systemctl restart atlas-safety.service, \
+    /usr/bin/systemctl start atlas-reasoning.service, /usr/bin/systemctl stop atlas-reasoning.service, /usr/bin/systemctl restart atlas-reasoning.service, \
+    /usr/bin/systemctl start atlas-metacognition.service, /usr/bin/systemctl stop atlas-metacognition.service, /usr/bin/systemctl restart atlas-metacognition.service, \
+    /usr/bin/systemctl start atlas-rag-server.service, /usr/bin/systemctl stop atlas-rag-server.service, /usr/bin/systemctl restart atlas-rag-server.service, \
+    /usr/bin/systemctl start atlas-artemis-avatar.service, /usr/bin/systemctl stop atlas-artemis-avatar.service, /usr/bin/systemctl restart atlas-artemis-avatar.service, \
+    /usr/bin/systemctl start atlas-sigma4-avatar.service, /usr/bin/systemctl stop atlas-sigma4-avatar.service, /usr/bin/systemctl restart atlas-sigma4-avatar.service, \
+    /usr/bin/systemctl start atlas-artemis-tts-worker.service, /usr/bin/systemctl stop atlas-artemis-tts-worker.service, /usr/bin/systemctl restart atlas-artemis-tts-worker.service, \
+    /usr/bin/systemctl start atlas-llm-arbiter.service, /usr/bin/systemctl stop atlas-llm-arbiter.service, /usr/bin/systemctl restart atlas-llm-arbiter.service, \
+    /usr/bin/systemctl start atlas-backup.service
+
+claude ALL=(root) NOPASSWD: ATLAS_CTL

@@ -3,6 +3,9 @@ Description=Atlas Id (Qwen 3 32B on GPU 1)
 After=network.target
 StartLimitIntervalSec=120
 StartLimitBurst=3
+# Maintenance mode (control plane): sentinel blocks start so GPU 1 stays
+# free while loaned out. Managed by scripts/atlas_control.py.
+ConditionPathExists=!/archive/neurogolf/.gpu1_maint
 
 [Service]
 Type=simple

@@ -55,6 +55,18 @@ check_systemd() {
     systemctl is-active "$svc" 2>/dev/null || echo "unknown"
 }
 
+# Maintenance sentinels (control plane / atlas_control.py): a unit under
+# maintenance is expected to be down — suppress its alerts.
+GPU1_MAINT_SENTINEL="/archive/neurogolf/.gpu1_maint"
+
+in_maintenance() {
+    local svc="$1"
+    if [ -f "$GPU1_MAINT_SENTINEL" ] && { [ "$svc" = "atlas-id" ] || [ "$svc" = "Id" ]; }; then
+        return 0
+    fi
+    return 1
+}
+
 log "=== Atlas Watchdog Started ==="
 log "Monitoring ${#SERVICES[@]} HTTP endpoints, ${#SYSTEMD_SERVICES[@]} systemd services"
 log "Check interval: ${INTERVAL}s"
@@ -67,6 +79,10 @@ while true; do
     # HTTP health checks
     for entry in "${SERVICES[@]}"; do
         IFS=: read -r name port endpoint <<< "$entry"
+        if in_maintenance "$name"; then
+            STATUS_LINE="$STATUS_LINE $name=maint"
+            continue
+        fi
         result=$(check_http "$name" "$port" "$endpoint")
         if [ "$result" = "online" ]; then
             ONLINE=$((ONLINE + 1))
@@ -80,6 +96,9 @@ while true; do
     # Systemd service checks
     SYSTEMD_DOWN=""
     for svc in "${SYSTEMD_SERVICES[@]}"; do
+        if in_maintenance "$svc"; then
+            continue
+        fi
         state=$(check_systemd "$svc")
         if [ "$state" != "active" ]; then
             SYSTEMD_DOWN="$SYSTEMD_DOWN $svc($state)"

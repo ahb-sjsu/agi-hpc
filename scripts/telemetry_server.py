@@ -28,6 +28,14 @@ logging.basicConfig(
 )
 log = logging.getLogger("telemetry")
 
+try:
+    import atlas_control  # service start/stop + GPU-1 maint (scripts/atlas_control.py)
+
+    CONTROL_AVAILABLE = True
+except ImportError:  # control plane is optional; telemetry must always serve
+    atlas_control = None
+    CONTROL_AVAILABLE = False
+
 STATIC_DIR = os.environ.get("ATLAS_STATIC", "/home/claude/atlas-chat")
 REPO_DIR = os.environ.get("ATLAS_REPO", "/home/claude/agi-hpc")
 _ui_version_cache = {"sha": "", "ts": 0.0}
@@ -3069,6 +3077,13 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
             subsystem = qs.get("subsystem", ["scientist"])[0]
             limit = min(int(qs.get("limit", ["100"])[0]), 500)
             self._json_response(_get_lifecycle_recent(subsystem, limit))
+        elif self.path == "/api/control/status" or self.path.startswith(
+            "/api/control/status?"
+        ):
+            if CONTROL_AVAILABLE:
+                self._json_response(atlas_control.status())
+            else:
+                self._json_response({"error": "control plane unavailable"}, 503)
         elif self.path == "/api/version":
             self._json_response(
                 {
@@ -3148,14 +3163,44 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
             else:
                 self._json_response({"error": "mode must be auto|heavy|swarm"}, 400)
         elif self.path == "/api/erebus/chat":
+            if CONTROL_AVAILABLE:
+                atlas_control.note_chat()  # chat-guard timestamp
             self._handle_erebus_chat()
         elif self.path == "/api/erebus/chat/finalize":
             self._handle_erebus_chat_finalize()
         elif self.path == "/api/erebus/result":
             self._handle_erebus_result()
+        elif self.path in ("/api/control/service", "/api/control/maint"):
+            self._handle_control()
         else:
             self.send_response(404)
             self.end_headers()
+
+    def _handle_control(self):
+        """Service start/stop/restart + GPU-1 maintenance (atlas_control)."""
+        if not CONTROL_AVAILABLE:
+            self._json_response({"error": "control plane unavailable"}, 503)
+            return
+        length = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(length) if length else b"{}"
+        try:
+            data = json.loads(body)
+        except Exception:
+            data = {}
+        email = self.headers.get("X-Forwarded-Email", "")
+        client_ip = self.client_address[0]
+        force = bool(data.get("force"))
+        if self.path == "/api/control/service":
+            payload, code = atlas_control.control_service(
+                str(data.get("unit", "")), str(data.get("action", "")),
+                email, client_ip, force,
+            )
+        else:
+            payload, code = atlas_control.maint_gpu1(
+                str(data.get("mode", "")), email, client_ip, force,
+            )
+        log.info(f"[control] {self.path} {data} by {email or client_ip} -> {code}")
+        self._json_response(payload, code)
 
     def _handle_erebus_result(self):
         """HTTP bridge for Erebus worker results.
