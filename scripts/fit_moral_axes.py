@@ -8,17 +8,32 @@ an embedding into a [-1,+1] moral score. That axis is
 calibration, and it must be fit once from labeled pairs and cached. At serve
 time MoralPerception loads backbone + this cache; no training data is needed.
 
+Two fit paths:
+  * VALIDATED (default) — the production path. Each DEME10 axis has an xbse
+    JointPairSource (``xbse.instances.joint_builders.BUILDERS``) and a gate
+    report (``{stem}_report.json``). We load backbone + source, enforce the
+    gate with ``require_pass`` (refuses on FAIL or checkpoint-hash mismatch),
+    and fit via ``DimensionScorer.from_pairsource`` on cross-dataset labeled
+    pairs. This is what makes an axis "validated": it is calibrated only from
+    data whose held-out cross-domain AUROC cleared the pre-registered bar.
+  * SEED / manifest (``--seed`` / ``--manifest``) — a fallback for a proof or
+    for an axis with no builder: a handful of exemplars or a supplied JSON.
+
 Output: an ``.npz`` (default ~/xbse_ckpt/moral_axes.npz) with one record per
 axis: ``{axis: float32[D], center: float, scale: float, ckpt_sha: str,
-n_pos: int, n_neg: int}``. Only axes that were successfully fit are written,
-which is exactly the "validated or absent" contract MoralPerception relies on.
+max_len: int, n_pos: int, n_neg: int, validated: bool}``. ``max_len`` is stored
+because the axis lives in the encoder's embedding space at THAT truncation;
+MoralPerception must build its encoder with the same max_len or scoring drifts
+on long texts. Only axes that were fit are written — the "validated or absent"
+contract MoralPerception relies on.
 
-Usage (on Atlas, inside /home/claude/env):
-    python fit_moral_axes.py --axis physical_harm            # seed set proof
-    python fit_moral_axes.py --manifest pairs.json --all     # full calibration
-    python fit_moral_axes.py --all --out ~/xbse_ckpt/moral_axes.npz
+Usage (on Atlas GPU 1, inside /home/claude/env):
+    CUDA_VISIBLE_DEVICES=1 HF_HOME=/archive/cache/huggingface \
+      python fit_moral_axes.py --all --device cuda      # validated, all 10
+    python fit_moral_axes.py --axis physical_harm --seed # seed proof (no data)
+    python fit_moral_axes.py --manifest pairs.json --all --seed
 
-Manifest JSON shape:
+Manifest JSON shape (seed/manifest path only):
     {"physical_harm": {"pos": ["...upheld..."], "neg": ["...violated..."]}, ...}
 "pos" = the value is UPHELD/respected (valence → +1);
 "neg" = the value is VIOLATED (valence → -1).
@@ -133,10 +148,79 @@ def fit_axis(axis: str, ckpt_dir: Path, manifest: dict | None, base_model: str, 
         "center": float(scorer.center),
         "scale": float(scorer.scale),
         "ckpt_sha": _sha256(ckpt),
+        "max_len": int(getattr(enc, "max_len", 128)),
         "n_pos": len(pos),
         "n_neg": len(neg),
         "seed": bool(used_seed),
+        "validated": False,
     }
+
+
+def fit_axis_validated(axis: str, ckpt_dir: Path, base_model: str, device: str):
+    """VALIDATED fit via xbse JointPairSource + gate report + from_pairsource.
+
+    Returns a record dict, or None if the axis has no builder, the checkpoint
+    is missing, or the gate does not pass for this exact checkpoint. Refusing
+    on a FAIL/hash-mismatch report is the point: an axis reaches the cache only
+    if its held-out cross-domain AUROC cleared the pre-registered bar.
+    """
+    import numpy as np
+    import torch
+    from xbse.encoder import BSEEncoder
+    from xbse.instances.joint_builders import BUILDERS
+    from xbse.report import Report, hash_checkpoint, require_pass
+    from xbse.scorer import DimensionScorer
+
+    stem = DEME10_AXES[axis]
+    ckpt = ckpt_dir / f"{stem}.pt"
+    report_path = ckpt_dir / f"{stem}_report.json"
+    if not ckpt.exists():
+        logger.warning("axis %s: checkpoint %s missing — absent", axis, ckpt)
+        return None
+    if stem not in BUILDERS:
+        logger.warning("axis %s: no JointPairSource builder for %s — use --seed", axis, stem)
+        return None
+    if not report_path.exists():
+        logger.warning("axis %s: gate report %s missing — absent", axis, report_path)
+        return None
+
+    # Reconstruct the Report from its JSON (no from_json on the dataclass) and
+    # let require_pass enforce passed==True AND checkpoint_hash match.
+    from dataclasses import fields as _fields
+
+    rj = json.loads(report_path.read_text())
+    valid = {f.name for f in _fields(Report)}
+    report = Report(**{k: v for k, v in rj.items() if k in valid})
+    chash = hash_checkpoint(str(ckpt))
+    require_pass(report, chash)  # raises NotValidatedError on FAIL / hash drift
+
+    src = BUILDERS[stem]()
+    max_len = int(getattr(src, "max_len", 128))
+    enc = BSEEncoder(base_model=base_model, max_len=max_len, device=device, pooling="mean")
+    enc.load_state_dict(torch.load(str(ckpt), map_location=device), strict=False)
+    enc.eval()
+
+    scorer = DimensionScorer.from_pairsource(enc, src, report, chash, max_per_sign=400)
+    # count the labeled sample actually used (mirrors _labeled_sample)
+    rows = src._rows()
+    n_pos = sum(1 for r in rows if r[-1] == "+")
+    n_neg = sum(1 for r in rows if r[-1] == "-")
+
+    rec = {
+        "axis": np.asarray(scorer.axis, dtype="float32"),
+        "center": float(scorer.center),
+        "scale": float(scorer.scale),
+        "ckpt_sha": chash,
+        "max_len": max_len,
+        "n_pos": int(n_pos),
+        "n_neg": int(n_neg),
+        "seed": False,
+        "validated": True,
+    }
+    del enc
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    return rec
 
 
 def main() -> int:
@@ -148,6 +232,9 @@ def main() -> int:
     ap.add_argument("--device", default="cuda:1")
     ap.add_argument("--axis", action="append", help="axis name (repeatable)")
     ap.add_argument("--all", action="store_true", help="fit every DEME10 axis")
+    ap.add_argument("--seed", action="store_true",
+                    help="use the SEED/manifest path instead of the validated "
+                         "JointPairSource+gate path (proof / no-data fallback)")
     args = ap.parse_args()
 
     if not args.axis and not args.all:
@@ -178,19 +265,29 @@ def main() -> int:
         except Exception:
             logger.warning("could not read existing cache %s; starting fresh", out)
 
+    mode = "seed/manifest" if args.seed else "validated (from_pairsource+gate)"
+    logger.info("fit mode: %s | device=%s | axes=%d", mode, args.device, len(axes))
+
     fit_ok = 0
     for axis in axes:
         try:
-            rec = fit_axis(axis, ckpt_dir, manifest, args.base_model, args.device)
-        except Exception:
-            logger.exception("axis %s: fit failed", axis)
+            if args.seed:
+                rec = fit_axis(axis, ckpt_dir, manifest, args.base_model, args.device)
+            else:
+                rec = fit_axis_validated(axis, ckpt_dir, args.base_model, args.device)
+        except Exception as exc:  # noqa: BLE001
+            # NotValidatedError (gate fail / hash drift) lands here as "absent".
+            logger.warning("axis %s: not fit — %s", axis, exc)
             rec = None
         if rec is not None:
             records[axis] = rec
             fit_ok += 1
             logger.info(
-                "axis %s: FIT ok (dim=%d, center=%.3f, scale=%.3f, seed=%s)",
-                axis, len(rec["axis"]), rec["center"], rec["scale"], rec["seed"],
+                "axis %s: FIT ok (dim=%d, center=%.3f, scale=%.3f, max_len=%d, "
+                "n=%d/%d, validated=%s)",
+                axis, len(rec["axis"]), rec["center"], rec["scale"],
+                rec.get("max_len", 0), rec.get("n_pos", 0), rec.get("n_neg", 0),
+                rec.get("validated", False),
             )
 
     if not records:
@@ -199,7 +296,9 @@ def main() -> int:
 
     out.parent.mkdir(parents=True, exist_ok=True)
     np.savez(out, **{k: np.array(v, dtype=object) for k, v in records.items()})
-    logger.info("wrote %d axes (%d newly fit) to %s", len(records), fit_ok, out)
+    n_val = sum(1 for r in records.values() if r.get("validated"))
+    logger.info("wrote %d axes (%d newly fit, %d validated) to %s",
+                len(records), fit_ok, n_val, out)
     return 0
 
 

@@ -63,6 +63,7 @@ class PerceptionConfig:
         "XBSE_AXIS_CACHE", "/home/claude/xbse_ckpt/moral_axes.npz"
     )
     base_model: str = "BAAI/bge-m3"
+    max_len: int = 128             # fallback truncation if a cache record omits it
     max_resident: int = 4          # LRU cap on hot encoders (bounds VRAM/RAM)
     prefer_gpu: bool = True
     gpu_index: int = 1             # the loanable GPU
@@ -208,12 +209,19 @@ class MoralPerception:
         import numpy as np
 
         device = self._pick_device()
+        # The axis was fit in the encoder's embedding space at a specific
+        # truncation; build the serving encoder with the SAME max_len (stored
+        # in the cache) or scores drift on texts longer than the default.
+        max_len = int(axis_rec.get("max_len", self.cfg.max_len))
         if self._factory is not None:
             enc = self._factory(self.cfg.base_model, device)
         else:
             from xbse import BSEEncoder
 
-            enc = BSEEncoder(base_model=self.cfg.base_model, device=device, pooling="mean")
+            enc = BSEEncoder(
+                base_model=self.cfg.base_model, max_len=max_len,
+                device=device, pooling="mean",
+            )
         import torch
 
         state = torch.load(ckpt_path, map_location=device, weights_only=False)
