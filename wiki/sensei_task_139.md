@@ -92,4 +92,4 @@ The key insights are:
 
 5. **Deterministic transformation**: The output grid has the same dimensions as the input, making this a TRANSFORMATION class task. The operation is purely local to each connected component's bounding box.
 
-**Critical distinction**: The 8-directional connectivity is the key primitive here. Many ARC tasks use 4-directional connectivity, but this one specifically requires diagonal connections to be considered. This affects how clusters are identified and therefore how bounding boxes are computed.
+**Critical distinction**: The 8-directional connectivity is essential. In the test example, cells at (1,4) and (2,3) are connected diagonally, as are (2,2) and (3,2). Using 4-directional connectivity would fail to recognize these as single clusters, producing incorrect bounding boxes.
