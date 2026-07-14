@@ -279,6 +279,17 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     <div class="card-header"><span class="status-dot" id="director-dot"></span><span class="name">Director · Self-Model</span><span class="model-tag" id="director-tier">--</span></div>
     <div class="card-metric">Cycle <span class="val" id="director-cycle">--</span> | Goal: <span class="val" id="director-goal">--</span></div>
     <div class="card-metric">Capabilities: <span class="val" id="director-caps">--</span> | Open problems: <span class="val" id="director-probs">--</span></div>
+    <div style="margin:4px 0;text-align:right">
+      <button onclick="directorControl('run-now')" style="font-size:9px;padding:1px 6px;border:1px solid var(--accent);background:transparent;color:var(--accent);border-radius:4px;cursor:pointer">Run cycle</button>
+      <button id="director-pause-btn" onclick="directorToggle()" style="font-size:9px;padding:1px 6px;border:1px solid var(--accent);background:transparent;color:var(--accent);border-radius:4px;cursor:pointer">Pause</button>
+    </div>
+    <div id="director-goals" style="max-height:120px;overflow-y:auto;font-size:9px;line-height:1.5"></div>
+    <div id="director-proposals" style="font-size:9px;color:var(--yellow);line-height:1.6"></div>
+    <div style="display:flex;gap:4px;margin-top:4px">
+      <input id="director-msg" placeholder="directive / question…" style="flex:1;min-width:0;font-size:9px;background:transparent;border:1px solid var(--dim);border-radius:4px;color:inherit;padding:2px 4px">
+      <button onclick="directorSend()" style="font-size:9px;padding:1px 6px;border:1px solid var(--accent);background:transparent;color:var(--accent);border-radius:4px;cursor:pointer">Send</button>
+    </div>
+    <div id="director-msg-out" style="font-size:9px;color:var(--dim);min-height:11px;margin-top:2px"></div>
     <div class="card-metric" id="director-journal" style="font-size:9px;color:var(--dim);line-height:1.5">journal: --</div>
   </div>
 
@@ -1213,7 +1224,60 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       document.getElementById('director-journal').textContent = entries.length
         ? 'journal: ' + entries.map(function(e){ return e.summary; }).join('  ·  ')
         : 'journal: (no cycles yet)';
+      // pause/resume button label reflects enabled state
+      var pb = document.getElementById('director-pause-btn');
+      if(pb) pb.textContent = (d.enabled === false) ? 'Resume' : 'Pause';
+      // goal tree (open goals only)
+      var gj = await (await fetch('/api/director/goals')).json();
+      var open = (gj.goals||[]).filter(function(x){
+        return ['proposed','gated','active','blocked'].indexOf(x.status) >= 0; });
+      document.getElementById('director-goals').innerHTML = open.length
+        ? open.slice(0,12).map(function(x){
+            return '<div>'+_gDot(x.status)+' '+(x.title||x.id)+
+              ' <span style="color:var(--dim)">['+x.status+']</span></div>'; }).join('')
+        : '<div style="color:var(--dim)">no active goals</div>';
+      // pending L3 proposals (human-review gate)
+      var pj = await (await fetch('/api/director/proposals')).json();
+      var pend = (pj.proposals||[]).filter(function(x){ return (x.status||'pending')==='pending'; });
+      document.getElementById('director-proposals').innerHTML = pend.map(function(x){
+        return '&#9873; '+(x.title||x.id)+
+          ' <a href="#" onclick="directorProposal(\''+x.id+'\',\'approve\');return false">approve</a> / '+
+          '<a href="#" onclick="directorProposal(\''+x.id+'\',\'reject\');return false">reject</a>'; }).join('<br>');
     } catch(e){ /* Director panel is best-effort; never disrupt the board */ }
+  }
+  function _gDot(status){
+    var c = {gated:'var(--green)',active:'var(--accent)',blocked:'var(--red)',
+             proposed:'var(--yellow)',done:'var(--dim)'}[status] || 'var(--dim)';
+    return '<span style="color:'+c+'">&#9679;</span>';
+  }
+  function directorMsg(t){ var el=document.getElementById('director-msg-out'); if(el) el.textContent=t; }
+  function directorControl(action){
+    fetch('/api/director/control',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:action})})
+      .then(function(r){return r.json();})
+      .then(function(d){ directorMsg(d.error?('err: '+d.error):(action+' ok')); pollDirector(); })
+      .catch(function(){ directorMsg('request failed'); });
+  }
+  function directorToggle(){
+    var paused = document.getElementById('director-pause-btn').textContent === 'Resume';
+    directorControl(paused ? 'resume' : 'pause');
+  }
+  function directorSend(){
+    var el=document.getElementById('director-msg'); var text=(el.value||'').trim();
+    if(!text) return;
+    directorMsg('sending…');
+    fetch('/api/director/message',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:text})})
+      .then(function(r){return r.json();})
+      .then(function(d){ directorMsg(d.error?('err: '+d.error):'directive sent'); el.value=''; })
+      .catch(function(){ directorMsg('request failed'); });
+  }
+  function directorProposal(id, decision){
+    fetch('/api/director/proposal/'+encodeURIComponent(id),{method:'POST',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({decision:decision})})
+      .then(function(r){return r.json();})
+      .then(function(d){ directorMsg(d.error||('proposal '+decision+'d')); pollDirector(); })
+      .catch(function(){ directorMsg('request failed'); });
   }
   function ctlAction(unit, action, chatCritical){
     var warn = chatCritical ? '\n\nThis unit is chat-critical.' : '';

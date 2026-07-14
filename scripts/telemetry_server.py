@@ -2668,7 +2668,9 @@ DIRECTOR_STATUS_PATH = os.path.join(DIRECTOR_DIR, "director_status.json")
 DIRECTOR_SELF_MODEL_PATH = os.path.join(DIRECTOR_DIR, "self_model.json")
 DIRECTOR_JOURNAL_PATH = os.path.join(DIRECTOR_DIR, "journal.jsonl")
 DIRECTOR_GOALS_PATH = os.path.join(DIRECTOR_DIR, "goals.json")
+DIRECTOR_PROPOSALS_PATH = os.path.join(DIRECTOR_DIR, "proposals.json")
 DIRECTOR_DISABLED_SENTINEL = "/archive/neurogolf/.director_disabled"
+DIRECTOR_NATS = os.environ.get("DIRECTOR_NATS", "nats://127.0.0.1:4222")
 
 
 def _get_ieip_status():
@@ -2835,6 +2837,45 @@ def _get_director_goals():
         return json.loads(Path(DIRECTOR_GOALS_PATH).read_text())
     except Exception:
         return {"goals": []}
+
+
+def _get_director_proposals():
+    """Pending L3 proposals awaiting human approve/reject."""
+    try:
+        return json.loads(Path(DIRECTOR_PROPOSALS_PATH).read_text())
+    except Exception:
+        return {"proposals": []}
+
+
+def _director_command(cmd: dict, timeout: float = 5.0) -> dict:
+    """Publish a command to the Director's NATS node and await one reply.
+
+    Used by the write-side POST endpoints. Runs a short asyncio loop in the
+    request thread (telemetry is a ThreadingHTTPServer). Degrades to an error
+    dict if nats is unavailable or no reply arrives — never raises."""
+    try:
+        import asyncio
+
+        import nats
+    except Exception:
+        return {"ok": False, "error": "nats unavailable"}
+
+    async def _run():
+        nc = await nats.connect(DIRECTOR_NATS)
+        sub = await nc.subscribe("agi.director.reply")
+        await nc.publish("agi.director.command", json.dumps(cmd).encode())
+        try:
+            msg = await asyncio.wait_for(sub.next_msg(), timeout)
+            reply = json.loads(msg.data.decode())
+        except Exception:
+            reply = {"ok": True, "note": "sent (no reply within timeout)"}
+        await nc.close()
+        return reply
+
+    try:
+        return asyncio.run(_run())
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)[:200]}
 
 
 def _get_ukg_status():
@@ -3212,6 +3253,10 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
             "/api/director/goals?"
         ):
             self._json_response(_get_director_goals())
+        elif self.path == "/api/director/proposals" or self.path.startswith(
+            "/api/director/proposals?"
+        ):
+            self._json_response(_get_director_proposals())
         elif self.path == "/api/version":
             self._json_response(
                 {
@@ -3300,9 +3345,100 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
             self._handle_erebus_result()
         elif self.path in ("/api/control/service", "/api/control/maint"):
             self._handle_control()
+        elif self.path == "/api/director/control":
+            self._handle_director_post("control")
+        elif self.path == "/api/director/message":
+            self._handle_director_post("message")
+        elif self.path.startswith("/api/director/proposal/"):
+            self._handle_director_post("proposal")
         else:
             self.send_response(404)
             self.end_headers()
+
+    def _handle_director_post(self, kind: str):
+        """Write-side Director controls. Admin-gated (reuses the control-plane
+        authorizer: X-Forwarded-Email in ADMIN_EMAILS, or a localhost client).
+
+        - control:  pause / resume (sentinel file) · run-now (NATS command)
+        - message:  inject a directive / question (NATS command)
+        - proposal: approve / reject an L3 proposal (proposals.json)
+        """
+        if not CONTROL_AVAILABLE:
+            self._json_response({"error": "auth unavailable"}, 503)
+            return
+        length = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(length) if length else b"{}"
+        try:
+            data = json.loads(body)
+        except Exception:
+            data = {}
+        email = self.headers.get("X-Forwarded-Email", "")
+        client_ip = self.client_address[0]
+        if not atlas_control._authorized(email, client_ip):
+            self._json_response({"error": "unauthorized"}, 403)
+            return
+        log.info(f"[director] {kind} {data} by {email or client_ip}")
+
+        if kind == "control":
+            action = str(data.get("action", "")).lower()
+            if action == "pause":
+                sent = Path(DIRECTOR_DISABLED_SENTINEL)
+                sent.parent.mkdir(parents=True, exist_ok=True)
+                sent.touch()
+                self._json_response({"ok": True, "paused": True})
+            elif action == "resume":
+                try:
+                    Path(DIRECTOR_DISABLED_SENTINEL).unlink()
+                except FileNotFoundError:
+                    pass
+                self._json_response({"ok": True, "paused": False})
+            elif action == "run-now":
+                self._json_response(_director_command({"cmd": "run-now"}, timeout=30.0))
+            else:
+                self._json_response(
+                    {"error": "action must be pause|resume|run-now"}, 400)
+        elif kind == "message":
+            text = str(data.get("text", ""))[:1000]
+            if not text:
+                self._json_response({"error": "empty message"}, 400)
+                return
+            self._json_response(
+                _director_command(
+                    {"cmd": "message", "text": text, "by": email or client_ip}
+                )
+            )
+        elif kind == "proposal":
+            self._handle_director_proposal(data)
+
+    def _handle_director_proposal(self, data: dict):
+        """Approve / reject an L3 proposal by id (updates proposals.json).
+
+        L3 actions never execute autonomously; this is the human-review gate.
+        Approval only records the decision — wiring approved proposals into
+        the goal tree arrives with the first L3 action type."""
+        pid = self.path.rsplit("/", 1)[-1]
+        decision = str(data.get("decision", "")).lower()
+        if decision not in ("approve", "reject"):
+            self._json_response({"error": "decision must be approve|reject"}, 400)
+            return
+        doc = _get_director_proposals()
+        props = doc.get("proposals", [])
+        found = False
+        for p in props:
+            if str(p.get("id")) == pid:
+                p["status"] = "approved" if decision == "approve" else "rejected"
+                found = True
+        if not found:
+            self._json_response({"error": f"no proposal {pid!r}"}, 404)
+            return
+        try:
+            from agi.common.atomic_write import atomic_write_text
+
+            atomic_write_text(Path(DIRECTOR_PROPOSALS_PATH), json.dumps(doc, indent=2))
+        except Exception as e:  # noqa: BLE001
+            self._json_response({"error": f"write failed: {e}"}, 500)
+            return
+        self._json_response({"ok": True, "id": pid, "status": decision})
 
     def _handle_control(self):
         """Service start/stop/restart + GPU-1 maintenance (atlas_control)."""

@@ -283,6 +283,18 @@ def _make_handler(cfg: Config, node: events.DirectorNode, gate=None):
         if verb == "run-now":
             await run_cycle(cfg, node, deep=False, gate=gate)
             return {"ok": True, "ran": True}
+        if verb == "message":
+            # Injected human directive/question. Recorded to the journal
+            # (auditable) and acknowledged. Incorporating directives into
+            # deliberation is future work — for now it is a logged signal.
+            text = str(cmd.get("text", ""))[:1000]
+            by = cmd.get("by", "?")
+            journal.append(
+                ts=time.time(), cycle=SelfModel.load(cfg.directory).cycle,
+                kind="directive", summary=f"directive from {by}: {text}",
+                path=cfg.directory / "journal.jsonl",
+            )
+            return {"ok": True, "received": True}
         return {"ok": False, "error": f"unknown or not-yet-permitted command: {verb!r}"}
 
     return handler
