@@ -9,11 +9,11 @@ verified_by: run-against-train (all examples pass)
 
 ## The rule
 
-Every colored object in the input grid is shifted vertically so that its **topmost occupied row** aligns with the topmost row of the **color-1 (blue) anchor object**. Color-1 serves as the reference and does not move.
+Every colored object in the input grid shifts **vertically** so that its **topmost occupied row** aligns with the topmost row of the **color-1 (blue) anchor object**. Color-1 serves as the reference and does not move.
 
 Each object preserves:
 - Its internal shape and height
-- Its column positions  
+- Its column positions
 - Its color value
 
 Only the row coordinate changes, by a uniform offset calculated as:
