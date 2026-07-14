@@ -97,7 +97,8 @@ def fit_axis(axis: str, ckpt_dir: Path, manifest: dict | None, base_model: str, 
     """Fit one axis; returns a record dict or None if it cannot be fit."""
     import numpy as np
     import torch
-    from xbse import BSEEncoder, DimensionScorer
+    from xbse import BSEEncoder
+    from xbse.scorer import DimensionScorer
 
     stem, _ = DEME10_AXES[axis]
     ckpt = ckpt_dir / f"{stem}.pt"

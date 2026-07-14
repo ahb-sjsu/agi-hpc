@@ -218,7 +218,7 @@ class MoralPerception:
         if unexpected:
             logger.debug("[perception] %s unexpected keys: %d", name, len(unexpected))
 
-        from xbse import DimensionScorer  # numpy-only, torch-free
+        from xbse.scorer import DimensionScorer  # numpy-only, torch-free
 
         return DimensionScorer(
             enc,
