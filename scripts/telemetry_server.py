@@ -229,7 +229,7 @@ def _get_system_deep():
 
     # Disk usage
     try:
-        df = _run(["df", "-BG", "/", "/mnt/raid5"])
+        df = _run(["df", "-BG", "/", "/archive"])
         for line in df.split("\n")[1:]:
             parts = line.split()
             if len(parts) >= 5:
