@@ -2847,6 +2847,34 @@ def _get_director_proposals():
         return {"proposals": []}
 
 
+def _import_ect():
+    """Import ``agi.autonomous.erebus_compiler_tools`` robustly.
+
+    The Erebus chat handler synthesizes a partial ``agi.autonomous`` in
+    ``sys.modules`` (it loads ``arc_scientist``/``tools`` by file path), which
+    leaves ``agi.autonomous`` as a non-package in this process and makes a
+    normal ``from agi.autonomous... import`` fail with "not a package". So we
+    try the normal import first and fall back to loading the file directly."""
+    try:
+        import agi.autonomous.erebus_compiler_tools as m  # type: ignore
+
+        return m
+    except Exception:  # noqa: BLE001 - package state may be shadowed; load by path
+        import importlib.util as _u
+
+        here = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.abspath(
+            os.path.join(here, "..", "src", "agi", "autonomous",
+                         "erebus_compiler_tools.py")
+        )
+        spec = _u.spec_from_file_location(
+            "agi.autonomous.erebus_compiler_tools", path
+        )
+        mod = _u.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+
 def _get_pending_tools():
     """Self-authored compiler modules Erebus has staged for human review.
 
@@ -2855,9 +2883,7 @@ def _get_pending_tools():
     can show exactly what would become callable on approval. Promotion is
     tier L3 — nothing here is live until an admin approves it."""
     try:
-        from agi.autonomous.erebus_compiler_tools import list_pending_promotions
-
-        pend = list_pending_promotions()
+        pend = _import_ect().list_pending_promotions()
     except Exception as e:  # noqa: BLE001 - dashboard must not crash on import
         return {"pending": [], "error": str(e)}
     for rec in pend:
@@ -3536,16 +3562,12 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
             self._json_response({"error": "decision must be approve|reject"}, 400)
             return
         try:
-            from agi.autonomous.erebus_compiler_tools import (
-                promote_pending,
-                reject_pending,
-            )
-
+            ect = _import_ect()
             if decision == "approve":
-                out = promote_pending(pid, approved_by=approver)
+                out = ect.promote_pending(pid, approved_by=approver)
             else:
                 reason = str(data.get("reason", "rejected via dashboard"))[:300]
-                out = reject_pending(pid, reason=reason, rejected_by=approver)
+                out = ect.reject_pending(pid, reason=reason, rejected_by=approver)
         except Exception as e:  # noqa: BLE001
             self._json_response({"error": f"tool review failed: {e}"}, 500)
             return
