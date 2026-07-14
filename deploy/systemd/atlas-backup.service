@@ -7,7 +7,11 @@ Documentation=Backs up the AGI's life story and knowledge to RAID5
 Type=oneshot
 User=claude
 ExecStart=/bin/bash /home/claude/agi-hpc/scripts/daily_backup.sh
-TimeoutStartSec=3600
+# The episodic-memory DB dumps to 21 GB+ (compressed custom format) and the
+# full run (PG + wiki + configs + logs) exceeds an hour; the old 3600s cap
+# SIGTERM'd pg_dump mid-write, leaving partial dumps and no complete backup
+# since 2026-07-07. 6h is a generous ceiling that still catches a genuine hang.
+TimeoutStartSec=21600
 StandardOutput=journal
 StandardError=journal
 
