@@ -1550,6 +1550,14 @@ def _pod_age_s(pod) -> float | None:
 # hf_transfer. A hoarding pod idle past 10 min is still killed.
 NRP_COLDSTART_GRACE_S = 600
 
+# Consecutive 30s strikes before killing a sustained under-utilizer. 2 (60s) was
+# too twitchy for real GPU batch jobs, which legitimately idle the GPU >60s
+# while loading a large model from cephfs or doing large-vocab CPU-side metric
+# work between forward passes — this killed arc-latte-*, tq-lb-gate-*, tq-paper2,
+# tq-illusion. 5 strikes (~2.5min sustained idle) still catches true hoarders /
+# a parked idle pod, but lets working jobs through.
+NRP_KILL_STRIKES = 5
+
 
 def _nrp_watchdog_check(pods: list[dict]):
     """Enforce NRP utilization rules. Kill violating pods AND the
@@ -1594,7 +1602,7 @@ def _nrp_watchdog_check(pods: list[dict]):
             count = _nrp_violations[name]
             log.warning(f"[nrp-watchdog] {name}: {violation} (strike {count})")
 
-            if count >= 2:
+            if count >= NRP_KILL_STRIKES:
                 pods_to_kill.append((name, pod, violation))
         else:
             _nrp_violations.pop(name, None)
