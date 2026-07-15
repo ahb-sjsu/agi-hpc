@@ -44,6 +44,10 @@ class NullOutputGate:
     def check(self, reply: str, user_message: str) -> GateResult:
         return GateResult(False, reason="no output gate available; staying silent")
 
+    def score_input(self, user_message: str) -> GateResult:
+        # No gateway → nothing to score. Observe-only, so this is a no-op.
+        return GateResult(False, reason="no input gate available")
+
 
 class DemeOutputGate:
     """Adapter over ``SafetyGateway.check_output``. Built lazily so importing
@@ -71,5 +75,21 @@ class DemeOutputGate:
             allowed=bool(res.passed),
             score=float(getattr(res, "score", 0.0)),
             reason=("passed" if res.passed else "vetoed by output gate"),
+            flags=list(getattr(res, "flags", []) or []),
+        )
+
+    def score_input(self, user_message: str) -> GateResult:
+        """Run the DEME input gate on an inbound message so its moral read is
+        recorded (populates the 'what was asked' diagnostic). Observe-only:
+        the caller does not block on the result — the output gate stays the
+        enforcing guard. Reuses the same gateway instance as ``check``."""
+        try:
+            res = self._gateway.check_input(user_message)
+        except Exception as e:  # noqa: BLE001 - scoring must never break a reply
+            return GateResult(False, reason=f"input scoring error: {e}")
+        return GateResult(
+            allowed=bool(res.passed),
+            score=float(getattr(res, "score", 0.0)),
+            reason=("passed" if res.passed else "input flagged"),
             flags=list(getattr(res, "flags", []) or []),
         )

@@ -113,6 +113,22 @@ def test_autonomous_reply_with_disclosure(tmp_path):
     assert "hello there" in out.text
 
 
+def test_input_gate_scored_when_supported(tmp_path):
+    # Observe-only: score_input is called with the inbound text, and a veto
+    # there does NOT block the reply (the output gate is the guard).
+    scored = []
+
+    class GateWithInput(FakeGate):
+        def score_input(self, user_message):
+            scored.append(user_message)
+            return GateResult(False, reason="flagged")  # veto → must not block
+
+    out = handle(_msg(text="hello there"),
+                 _deps(tmp_path, lambda t, c: "hi", GateWithInput(True)), _cfg())
+    assert scored == ["hello there"]
+    assert out.action == "reply"          # input veto did not suppress
+
+
 def test_disclosure_only_first_time(tmp_path):
     state = BotState()
     d = _deps(tmp_path, lambda t, c: "yo", FakeGate(True), state=state)

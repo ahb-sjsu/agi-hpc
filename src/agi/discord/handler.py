@@ -94,6 +94,17 @@ def handle(msg: InMessage, deps: Deps, cfg) -> Outcome:
     deps.audit.inbound(msg)
     conv = deps.state.conv_for(msg.channel_id)
 
+    # Observe-only input gate: score *what was asked* so the moral diagnostic
+    # shows the incoming message's read separately from Erebus's reply. Never
+    # blocks — the output gate below stays the enforcing guard. Absent on gates
+    # that don't support it (e.g. test fakes), so it's looked up defensively.
+    _score_input = getattr(deps.gate, "score_input", None)
+    if _score_input is not None:
+        try:
+            _score_input(msg.text)
+        except Exception:  # noqa: BLE001 - scoring must never break a reply
+            pass
+
     try:
         reply = deps.cognition(msg.text, conv)
     except Exception as e:  # noqa: BLE001 - a cognition failure → stay silent
