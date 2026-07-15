@@ -1544,7 +1544,11 @@ def _pod_age_s(pod) -> float | None:
 # (arc-latte-*, tq-*). Pods younger than this are exempt from *utilization*
 # kills; sustained under-utilization past the grace is still killed, and the
 # emergency 4+-violator ban-avoidance path is unchanged.
-NRP_COLDSTART_GRACE_S = 300
+#
+# 600s (not 300): a multi-GB / multi-model batch job spends pip-install +
+# model-download time at 0% GPU; 35GB across models can take ~8 min even with
+# hf_transfer. A hoarding pod idle past 10 min is still killed.
+NRP_COLDSTART_GRACE_S = 600
 
 
 def _nrp_watchdog_check(pods: list[dict]):
