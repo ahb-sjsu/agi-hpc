@@ -23,6 +23,8 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from agi.discord.safety import GateResult
+
 log = logging.getLogger("discord.handler")
 
 
@@ -107,9 +109,25 @@ def handle(msg: InMessage, deps: Deps, cfg) -> Outcome:
 
     try:
         reply = deps.cognition(msg.text, conv)
-    except Exception as e:  # noqa: BLE001 - a cognition failure → stay silent
+    except Exception as e:  # noqa: BLE001 - cognition failed (timeout / backend)
         deps.audit.error(msg, str(e))
-        return Outcome("suppress", reason=f"cognition-error: {e}")
+        fallback = (getattr(cfg, "timeout_fallback", "") or "").strip()
+        if not fallback:
+            return Outcome("suppress", reason=f"cognition-error: {e}")
+        # A slow or failed reasoning call shouldn't read as a snub. Post a
+        # fixed, operator-authored fallback. It carries no model output, so it
+        # is a safe constant that doesn't need the output gate — still disclosed
+        # on first contact and audited. Not logged as a conversation (it isn't
+        # a real exchange).
+        text = fallback
+        if msg.author_id not in deps.state.seen_authors:
+            deps.state.seen_authors.add(msg.author_id)
+            text = cfg.disclosure_prefix + text
+        verdict = GateResult(True, reason=f"cognition-error fallback ({e})")
+        deps.audit.outbound(msg, text, verdict, posted=cfg.mode != "draft")
+        if cfg.mode == "draft":
+            return Outcome("drafted", text=text, reason="cognition-error-fallback")
+        return Outcome("reply", text=text, reason="cognition-error-fallback")
 
     reply = (reply or "").strip()
     if not reply:

@@ -22,6 +22,14 @@ DEFAULT_INTRO = (
     "I say passes a safety check first. Say hello."
 )
 
+# Posted when a reasoning call times out or the cognition backend errors, so a
+# slow moment isn't silent (which reads as being ignored). Set the env var to
+# an empty string to restore the old stay-silent behavior.
+DEFAULT_TIMEOUT_FALLBACK = (
+    "Sorry — my reasoning timed out just now and I couldn't finish a reply. "
+    "Please ask me again."
+)
+
 
 @dataclass
 class DiscordConfig:
@@ -37,6 +45,7 @@ class DiscordConfig:
     per_channel_window_s: float = 60.0
     disclosure_prefix: str = DEFAULT_DISCLOSURE
     intro_text: str = DEFAULT_INTRO
+    timeout_fallback: str = DEFAULT_TIMEOUT_FALLBACK
     disabled_sentinel: Path = Path("/archive/neurogolf/.discord_disabled")
 
     @classmethod
@@ -61,5 +70,8 @@ class DiscordConfig:
             per_channel_max=int(os.environ.get("EREBUS_DISCORD_CHAN_MAX", "15")),
             per_channel_window_s=float(
                 os.environ.get("EREBUS_DISCORD_CHAN_WINDOW", "60")
+            ),
+            timeout_fallback=os.environ.get(
+                "EREBUS_DISCORD_TIMEOUT_FALLBACK", DEFAULT_TIMEOUT_FALLBACK
             ),
         )

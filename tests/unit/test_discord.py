@@ -144,14 +144,29 @@ def test_gate_veto_suppresses(tmp_path):
     assert out.action == "suppress" and "gate" in out.reason
 
 
-def test_cognition_error_suppresses(tmp_path):
+def test_cognition_error_suppresses_when_no_fallback(tmp_path):
     def boom(t, c):
         raise RuntimeError("nrp down")
 
     audit = FakeAudit()
-    out = handle(_msg(), _deps(tmp_path, boom, FakeGate(True), audit=audit), _cfg())
+    out = handle(_msg(), _deps(tmp_path, boom, FakeGate(True), audit=audit),
+                 _cfg(timeout_fallback=""))       # fallback disabled → stay silent
     assert out.action == "suppress" and "cognition-error" in out.reason
     assert ("error", "nrp down") in audit.events
+
+
+def test_cognition_error_posts_fallback(tmp_path):
+    def boom(t, c):
+        raise RuntimeError("timed out")
+
+    audit = FakeAudit()
+    out = handle(_msg(), _deps(tmp_path, boom, FakeGate(True), audit=audit),
+                 _cfg(timeout_fallback="Sorry, ask me again."))
+    assert out.action == "reply"
+    assert out.text.startswith("[AI] ")            # first-contact disclosure kept
+    assert "ask me again" in out.text.lower()
+    assert ("error", "timed out") in audit.events  # still audited as an error
+    assert ("out", True) in audit.events           # and posted (outbound audit)
 
 
 def test_empty_reply_suppressed(tmp_path):
