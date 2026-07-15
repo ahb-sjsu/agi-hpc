@@ -1521,6 +1521,32 @@ def _pod_owner(name: str, ns: str, kubeconfig: str) -> tuple[str, str]:
         return ("", "")
 
 
+def _pod_age_s(pod) -> float | None:
+    """Seconds since the pod's creationTimestamp, or None if unparseable."""
+    created = pod.get("created", "")
+    if not created:
+        return None
+    try:
+        from datetime import datetime as _dt, timezone as _tz
+
+        ts = _dt.strptime(created.rstrip("Z"), "%Y-%m-%dT%H:%M:%S").replace(
+            tzinfo=_tz.utc
+        )
+        return (_dt.now(_tz.utc) - ts).total_seconds()
+    except Exception:
+        return None
+
+
+# Cold-start grace: a legitimate batch Job idles the GPU/CPU/RAM for the first
+# few minutes while it pip-installs and downloads/loads a model — NRP policy
+# explicitly allows this for Jobs. Without a grace the watchdog kills these on
+# their 2nd 30s strike (~60-70s in), which repeatedly killed real jobs
+# (arc-latte-*, tq-*). Pods younger than this are exempt from *utilization*
+# kills; sustained under-utilization past the grace is still killed, and the
+# emergency 4+-violator ban-avoidance path is unchanged.
+NRP_COLDSTART_GRACE_S = 300
+
+
 def _nrp_watchdog_check(pods: list[dict]):
     """Enforce NRP utilization rules. Kill violating pods AND the
     controllers that would respawn them.
@@ -1550,6 +1576,15 @@ def _nrp_watchdog_check(pods: list[dict]):
         violation = _pod_is_violating(pod)
 
         if violation:
+            age_s = _pod_age_s(pod)
+            if age_s is not None and age_s < NRP_COLDSTART_GRACE_S:
+                # Cold-start: batch job still loading its model. Don't strike.
+                log.info(
+                    f"[nrp-watchdog] {name}: {violation} but age {age_s:.0f}s "
+                    f"< {NRP_COLDSTART_GRACE_S}s cold-start grace — not counting"
+                )
+                _nrp_violations.pop(name, None)
+                continue
             n_violating += 1
             _nrp_violations[name] = _nrp_violations.get(name, 0) + 1
             count = _nrp_violations[name]
