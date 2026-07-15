@@ -2847,30 +2847,34 @@ def _get_director_proposals():
         return {"proposals": []}
 
 
-def _import_ect():
-    """Import ``agi.autonomous.erebus_compiler_tools`` robustly.
+PENDING_TOOLS_PATH = os.path.join(DIRECTOR_DIR, "pending_promotions.json")
 
-    The Erebus chat handler synthesizes a partial ``agi.autonomous`` in
-    ``sys.modules`` (it loads ``arc_scientist``/``tools`` by file path), which
-    leaves ``agi.autonomous`` as a non-package in this process and makes a
-    normal ``from agi.autonomous... import`` fail with "not a package". So we
-    try the normal import first and fall back to loading the file directly."""
+
+def _import_ect():
+    """Import ``agi.autonomous.erebus_compiler_tools`` robustly (for the admin
+    promote/reject POST only — the read path reads the JSON directly).
+
+    The Erebus chat handler's fingerprint preload synthesizes a partial
+    ``agi.autonomous`` in ``sys.modules`` (loading ``arc_scientist``/``tools``
+    by file path), leaving ``agi.autonomous`` a non-package here. So load the
+    file under a standalone module name that doesn't resolve that shadowed
+    parent package."""
     try:
         import agi.autonomous.erebus_compiler_tools as m  # type: ignore
 
         return m
-    except Exception:  # noqa: BLE001 - package state may be shadowed; load by path
+    except Exception:  # noqa: BLE001 - package state shadowed; load standalone
         import importlib.util as _u
+        import sys as _sys
 
         here = os.path.dirname(os.path.abspath(__file__))
         path = os.path.abspath(
             os.path.join(here, "..", "src", "agi", "autonomous",
                          "erebus_compiler_tools.py")
         )
-        spec = _u.spec_from_file_location(
-            "agi.autonomous.erebus_compiler_tools", path
-        )
+        spec = _u.spec_from_file_location("_erebus_compiler_tools_standalone", path)
         mod = _u.module_from_spec(spec)
+        _sys.modules["_erebus_compiler_tools_standalone"] = mod
         spec.loader.exec_module(mod)
         return mod
 
@@ -2878,13 +2882,22 @@ def _import_ect():
 def _get_pending_tools():
     """Self-authored compiler modules Erebus has staged for human review.
 
-    Each record already carries provenance, test results, the static-safety
-    verdict, and the DEME read; we attach the staged source so the dashboard
-    can show exactly what would become callable on approval. Promotion is
-    tier L3 — nothing here is live until an admin approves it."""
+    Reads ``pending_promotions.json`` directly (no package import — that path
+    is shadowed in this process). Each record carries provenance, test
+    results, the static-safety verdict, and the DEME read; we attach the
+    staged source so the dashboard shows exactly what would become callable on
+    approval. Promotion is tier L3 — nothing here is live until an admin
+    approves it."""
     try:
-        pend = _import_ect().list_pending_promotions()
-    except Exception as e:  # noqa: BLE001 - dashboard must not crash on import
+        with open(PENDING_TOOLS_PATH, encoding="utf-8") as f:
+            doc = json.load(f)
+        pend = [
+            r for r in (doc.get("pending", []) if isinstance(doc, dict) else [])
+            if r.get("status") == "pending"
+        ]
+    except FileNotFoundError:
+        return {"pending": [], "n": 0}
+    except Exception as e:  # noqa: BLE001 - dashboard must not crash
         return {"pending": [], "error": str(e)}
     for rec in pend:
         try:
