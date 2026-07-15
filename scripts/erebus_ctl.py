@@ -152,8 +152,10 @@ def _comm(pid: int) -> str:
 
 
 def _gpu_llama_leaders() -> list[int]:
-    """Thread-group leaders of every GPU-resident ``llama-server`` (both GPUs)."""
-    leaders: set[int] = set()
+    """One representative pid per GPU-resident ``llama-server`` process group
+    (both GPUs). Deduping by process group collapses a server's parent+worker
+    pair to a single entry so we snapshot / kill / replay it once."""
+    by_group: dict[int, int] = {}
     for gpu in (0, 1):
         rc, out = _run(
             ["nvidia-smi", f"--id={gpu}",
@@ -165,9 +167,14 @@ def _gpu_llama_leaders() -> list[int]:
             pid = int(s)
             tgid = _proc_field(pid, "Tgid")
             leader = int(tgid) if tgid.isdigit() else pid
-            if _comm(leader).startswith("llama-server"):
-                leaders.add(leader)
-    return sorted(leaders)
+            if not _comm(leader).startswith("llama-server"):
+                continue
+            try:
+                pgid = os.getpgid(leader)
+            except OSError:
+                pgid = leader
+            by_group.setdefault(pgid, leader)
+    return sorted(by_group.values())
 
 
 def _snapshot_proc(pid: int) -> dict | None:
@@ -195,24 +202,32 @@ def _snapshot_proc(pid: int) -> dict | None:
 
 
 def _kill_leader(pid: int, grace: float = 12.0) -> bool:
+    """Terminate the whole process group so a llama-server's parent+worker pair
+    both go (each backend is launched detached, so its group is its own)."""
     try:
-        os.kill(pid, signal.SIGTERM)
+        pgid = os.getpgid(pid)
     except ProcessLookupError:
         return True
-    except OSError as e:
-        _log(f"SIGTERM {pid}: {e}")
+    except OSError:
+        pgid = pid
+
+    def _signal(sig):
+        try:
+            os.killpg(pgid, sig)
+        except ProcessLookupError:
+            return True
+        except OSError as e:
+            _log(f"killpg {pgid} sig {sig}: {e}")
+        return False
+
+    _signal(signal.SIGTERM)
     deadline = time.time() + grace
     while time.time() < deadline:
         if not Path(f"/proc/{pid}").exists():
             return True
         time.sleep(0.5)
-    try:
-        os.kill(pid, signal.SIGKILL)
-        time.sleep(1.0)
-    except ProcessLookupError:
-        return True
-    except OSError as e:
-        _log(f"SIGKILL {pid}: {e}")
+    _signal(signal.SIGKILL)
+    time.sleep(1.0)
     return not Path(f"/proc/{pid}").exists()
 
 
