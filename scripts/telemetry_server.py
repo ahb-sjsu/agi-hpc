@@ -2964,6 +2964,26 @@ def _get_moral_stream(limit=40):
     }
 
 
+def _strip_reasoning(text: str) -> str:
+    """Strip chain-of-thought from a raw model reply so only the final answer
+    reaches people.
+
+    Handles ``<think>...</think>`` pairs and — the common case here — a reply
+    where the chat template pre-filled the opening ``<think>`` (so it never
+    appears in the output) and only a trailing ``</think>`` separates the
+    reasoning from the answer. Mirrors the Discord faculty's ``clean_reply`` so
+    the web chat UI and the moral-stream previews get the same clean text."""
+    if not text:
+        return ""
+    import re as _re
+
+    text = _re.sub(r"<think>.*?</think>", "", text, flags=_re.DOTALL | _re.IGNORECASE)
+    low = text.lower()
+    if "</think>" in low:
+        text = text[low.rindex("</think>") + len("</think>"):]
+    return text.strip()
+
+
 def _director_command(cmd: dict, timeout: float = 5.0) -> dict:
     """Publish a command to the Director's NATS node and await one reply.
 
@@ -3747,6 +3767,10 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
         except Exception as e:
             self._json_response({"error": str(e)[:200]}, 500)
             return
+        # Never surface chain-of-thought: the model emits reasoning then a
+        # trailing </think> before the answer. Strip it before the reply is
+        # returned, recorded to the Gap-Mapping corpus, or shown anywhere.
+        response = _strip_reasoning(response)
 
         # Gap Mapping plumbing: record both turns + lazy-sweep for idle
         # conversations. All fire-and-forget — a hook failure must
