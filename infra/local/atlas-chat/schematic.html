@@ -293,6 +293,21 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     <div class="card-metric" id="director-journal" style="font-size:9px;color:var(--dim);line-height:1.5">journal: --</div>
   </div>
 
+  <div class="sub-card active" id="sc-erebus-power">
+    <div class="card-header"><span class="status-dot" id="power-dot"></span><span class="name">Erebus &middot; Power</span><span class="model-tag" id="power-tag">--</span></div>
+    <div class="card-metric" style="font-size:9px;color:var(--dim)">Park Erebus to free Atlas for research, then bring it back &mdash; suspend stops the faculties &amp; releases GPU VRAM</div>
+    <div id="power-state" style="font-size:10px;margin:4px 0;min-height:12px"></div>
+    <div style="margin:4px 0;display:flex;gap:6px">
+      <button id="power-suspend-btn" onclick="erebusPower('suspend')"
+        style="font-size:10px;padding:3px 10px;border:1px solid var(--red);background:transparent;color:var(--red);border-radius:4px;cursor:pointer"
+        title="Stop all Erebus faculties and free the GPU backends">&#9208; Suspend Erebus</button>
+      <button id="power-resume-btn" onclick="erebusPower('resume')"
+        style="font-size:10px;padding:3px 10px;border:1px solid var(--green);background:transparent;color:var(--green);border-radius:4px;cursor:pointer"
+        title="Restore exactly what suspend stopped">&#9654; Resume</button>
+    </div>
+    <div id="power-out" style="font-size:9px;color:var(--dim);min-height:11px"></div>
+  </div>
+
   <div class="sub-card active" id="sc-erebus-tools">
     <div class="card-header"><span class="status-dot" id="erebus-tools-dot"></span><span class="name">Erebus &middot; Self-Authored Tools</span><span class="model-tag" id="erebus-tools-count">0</span></div>
     <div class="card-metric" style="font-size:9px;color:var(--dim)">Compiler modules Erebus staged (L2) &mdash; promote is your call (L3)</div>
@@ -1345,6 +1360,58 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       .then(function(d){ toolsMsg(d.error ? ('err: '+d.error)
         : (decision==='approve' ? ('promoted → '+(d.live_path||'live')) : 'rejected')); pollTools(); })
       .catch(function(){ toolsMsg('request failed'); });
+  }
+  // ── Erebus power (suspend / resume to free Atlas for research) ─────────
+  function powerOut(t){ var el=document.getElementById('power-out'); if(el) el.textContent=t; }
+  async function pollPower(){
+    try {
+      var s = await (await fetch('/api/erebus/power')).json();
+      var dot = document.getElementById('power-dot');
+      var tag = document.getElementById('power-tag');
+      var st  = document.getElementById('power-state');
+      var sBtn= document.getElementById('power-suspend-btn');
+      var rBtn= document.getElementById('power-resume-btn');
+      if(s.error){ if(st) st.innerHTML='<span style="color:var(--dim)">'+s.error+'</span>'; return; }
+      var g = (s.gpus||[]).map(function(x){
+        return 'GPU'+x.index+' '+((x.total_mib-x.used_mib)/1024).toFixed(1)+'GB free'; }).join(' &middot; ');
+      var up = (s.running_faculties||[]).length;
+      if(s.suspended){
+        if(dot) dot.className='status-dot';           // dark = parked
+        if(tag) tag.textContent='SUSPENDED';
+        var parked = (s.killed_llama||[]).map(function(k){return ':'+k.port+' '+k.model;}).join(', ');
+        if(st) st.innerHTML='<b style="color:var(--red)">SUSPENDED</b> since '+_escTool(s.since||'?')+
+          ' ('+_escTool(s.mode||'')+')<br><span style="color:var(--dim)">'+g+'</span>'+
+          (parked?'<br><span style="color:var(--dim)">parked backends: '+_escTool(parked)+'</span>':'');
+        if(sBtn) sBtn.disabled=true, sBtn.style.opacity=0.4;
+        if(rBtn) rBtn.disabled=false, rBtn.style.opacity=1;
+      } else {
+        if(dot) dot.className='status-dot on';
+        if(tag) tag.textContent='RUNNING';
+        if(st) st.innerHTML='<b style="color:var(--green)">RUNNING</b> &middot; '+up+' faculties up<br>'+
+          '<span style="color:var(--dim)">'+g+'</span>';
+        if(sBtn) sBtn.disabled=false, sBtn.style.opacity=1;
+        if(rBtn) rBtn.disabled=true, rBtn.style.opacity=0.4;
+      }
+    } catch(e){ /* best-effort */ }
+  }
+  function erebusPower(action){
+    if(action==='suspend' && !confirm('Suspend Erebus?\n\nThis stops all cognition faculties and frees the GPU VRAM so you can use Atlas for research. Resume restores exactly what was stopped.')) return;
+    powerOut(action==='suspend' ? 'suspending… (stopping faculties, freeing GPU)' : 'resuming… (restarting faculties, relaunching backends)');
+    fetch('/api/erebus/power',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:action})})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(d.error){ powerOut('err: '+d.error); return; }
+        if(action==='suspend'){
+          var n=(d.stopped_units||[]).length, k=(d.killed_llama||[]).length;
+          powerOut('suspended: '+n+' faculties stopped, '+k+' GPU backend(s) freed');
+        } else {
+          var n=(d.started_units||[]).length, k=(d.relaunched_llama||[]).length;
+          powerOut('resumed: '+n+' faculties started, '+k+' GPU backend(s) relaunched');
+        }
+        pollPower();
+      })
+      .catch(function(){ powerOut('request failed'); });
   }
   // ── Erebus live moral spectrum (DEME read on every gated I/O) ──────────
   var MORAL_AXES = ['physical_harm','rights_respect','fairness_equity','autonomy_respect',
@@ -3072,6 +3139,8 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
   setInterval(pollPerception, 15000);     // Id panel: cache-only status, no weight load; slow poll is plenty
   pollDirector();
   setInterval(pollDirector, 15000);       // Director: file-only status + journal tail; slow poll is plenty
+  pollPower();
+  setInterval(pollPower, 8000);           // suspend/resume state + GPU headroom
   pollTools();
   setInterval(pollTools, 15000);          // staged self-authored modules; slow poll is plenty
   pollMoral();

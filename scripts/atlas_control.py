@@ -33,6 +33,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -251,6 +252,47 @@ def control_service(
         },
         200 if ok else 500,
     )
+
+
+_EREBUS_CTL = str(Path(__file__).resolve().parent / "erebus_ctl.py")
+
+
+def erebus_power_status() -> dict:
+    """Live suspend/resume state for the dashboard (no escalation, read-only)."""
+    rc, out = _run([sys.executable, _EREBUS_CTL, "status", "--json"], timeout=30)
+    try:
+        return json.loads(out)
+    except ValueError:
+        return {"error": "status unavailable", "detail": out[:200]}
+
+
+def erebus_power(
+    action: str, email: str, client_ip: str, soft: bool = False
+) -> tuple[dict, int]:
+    """Suspend / resume all of Erebus from the dashboard.
+
+    ``suspend`` stops the cognition faculties (and, unless ``soft``, frees the
+    GPU backends); ``resume`` restores exactly what was stopped. Admin-gated and
+    audited like every other control action. Delegates to erebus_ctl.py so the
+    CLI and the button share one implementation."""
+    detail = {"action": action, "soft": soft}
+    if not _authorized(email, client_ip):
+        _audit("power", email, detail, False, "unauthorized")
+        return {"error": "unauthorized"}, 403
+    if action not in ("suspend", "resume"):
+        _audit("power", email, detail, False, "bad action")
+        return {"error": "action must be suspend|resume"}, 400
+    cmd = [sys.executable, _EREBUS_CTL, action, "--by", f"dash:{email or client_ip}"]
+    if action == "suspend" and soft:
+        cmd.append("--soft")
+    rc, out = _run(cmd, timeout=180)
+    try:
+        payload = json.loads(out)
+    except ValueError:
+        payload = {"ok": rc == 0, "detail": out[:400]}
+    ok = rc == 0 and payload.get("ok", False)
+    _audit("power", email, detail, ok, f"{action} rc={rc}")
+    return payload, (200 if ok else 500)
 
 
 def maint_gpu1(

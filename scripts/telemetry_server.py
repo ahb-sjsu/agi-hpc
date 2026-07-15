@@ -3402,6 +3402,13 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
             "/api/erebus/moral?"
         ):
             self._json_response(_get_moral_stream())
+        elif self.path == "/api/erebus/power" or self.path.startswith(
+            "/api/erebus/power?"
+        ):
+            if CONTROL_AVAILABLE:
+                self._json_response(atlas_control.erebus_power_status())
+            else:
+                self._json_response({"error": "control plane unavailable"}, 503)
         elif self.path == "/api/version":
             self._json_response(
                 {
@@ -3490,6 +3497,8 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
             self._handle_erebus_result()
         elif self.path in ("/api/control/service", "/api/control/maint"):
             self._handle_control()
+        elif self.path == "/api/erebus/power":
+            self._handle_erebus_power()
         elif self.path == "/api/director/control":
             self._handle_director_post("control")
         elif self.path == "/api/director/message":
@@ -3641,6 +3650,29 @@ class TelemetryHandler(SimpleHTTPRequestHandler):
                 str(data.get("mode", "")), email, client_ip, force,
             )
         log.info(f"[control] {self.path} {data} by {email or client_ip} -> {code}")
+        self._json_response(payload, code)
+
+    def _handle_erebus_power(self):
+        """Suspend / resume all of Erebus to free Atlas for research.
+
+        Admin-gated (same authorizer as the control plane). Delegates to
+        atlas_control.erebus_power, which shells to erebus_ctl.py — the same
+        implementation the ``erebus`` CLI uses."""
+        if not CONTROL_AVAILABLE:
+            self._json_response({"error": "control plane unavailable"}, 503)
+            return
+        length = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(length) if length else b"{}"
+        try:
+            data = json.loads(body)
+        except Exception:
+            data = {}
+        email = self.headers.get("X-Forwarded-Email", "")
+        client_ip = self.client_address[0]
+        action = str(data.get("action", "")).lower()
+        soft = bool(data.get("soft"))
+        payload, code = atlas_control.erebus_power(action, email, client_ip, soft)
+        log.info(f"[power] {action} soft={soft} by {email or client_ip} -> {code}")
         self._json_response(payload, code)
 
     def _handle_erebus_result(self):
