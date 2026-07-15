@@ -719,6 +719,7 @@ class SafetyGateway:
         tactical_score = 1.0
         tactical_flags: List[str] = []
         tactical_vetoed = False
+        dim_scores: Dict[str, float] = {}
 
         if self._deme is not None and self._config.enable_tactical:
             tactical_result = self._run_tactical(user_message, response, ctx)
@@ -726,6 +727,7 @@ class SafetyGateway:
             tactical_score = tactical_result.get("score", 1.0)
             tactical_flags = tactical_result.get("flags", [])
             tactical_vetoed = tactical_result.get("vetoed", False)
+            dim_scores = tactical_result.get("dimension_scores", {})
 
         # Combine scores
         reflex_score = reflex_result.get("score", 1.0)
@@ -745,6 +747,7 @@ class SafetyGateway:
             decision_proof=self._build_proof("output", proof_layers, response),
             gate="output",
             latency_ms=latency_ms,
+            dimension_scores=dim_scores,
         )
 
         self._log_decision(result, response)
@@ -789,6 +792,7 @@ class SafetyGateway:
         tactical_score = 1.0
         tactical_flags: List[str] = []
         tactical_vetoed = False
+        dim_scores: Dict[str, float] = {}
 
         if self._deme is not None and self._config.enable_tactical:
             tactical_result = self._run_tactical(action_desc, "", ctx)
@@ -796,6 +800,7 @@ class SafetyGateway:
             tactical_score = tactical_result.get("score", 1.0)
             tactical_flags = tactical_result.get("flags", [])
             tactical_vetoed = tactical_result.get("vetoed", False)
+            dim_scores = tactical_result.get("dimension_scores", {})
 
         reflex_score = reflex_result.get("score", 1.0)
         if self._deme is not None:
@@ -814,6 +819,7 @@ class SafetyGateway:
             decision_proof=self._build_proof("action", proof_layers, action_desc),
             gate="action",
             latency_ms=latency_ms,
+            dimension_scores=dim_scores,
         )
 
         self._log_decision(result, action_desc)
