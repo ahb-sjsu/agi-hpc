@@ -2942,7 +2942,14 @@ def _get_moral_stream(limit=40):
     latest = recs[-1] if recs else None
     vetoes = sum(1 for r in recs if not r.get("passed", True))
     agg, cnt = {}, {}
+    # Most recent record per gate — input ("what was asked"), output ("what
+    # Erebus said"), action (Director). Records are in chronological order, so
+    # the last write for each gate wins.
+    latest_by_gate: dict = {}
     for r in recs:
+        g = r.get("gate")
+        if g:
+            latest_by_gate[g] = r
         for k, v in (r.get("dimensions") or {}).items():
             agg[k] = agg.get(k, 0.0) + float(v)
             cnt[k] = cnt.get(k, 0) + 1
@@ -2950,6 +2957,7 @@ def _get_moral_stream(limit=40):
     return {
         "records": recs[-15:],
         "latest": latest,
+        "latest_by_gate": latest_by_gate,
         "avg": avg,
         "n": len(recs),
         "vetoes": vetoes,

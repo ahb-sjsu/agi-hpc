@@ -1363,24 +1363,49 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       '</div>'+
       '<div style="width:34px;text-align:right;color:'+color+'">'+v.toFixed(2)+'</div></div>';
   }
+  function _moralGateBlock(label, rec){
+    var dims = rec.dimensions||{};
+    var keys = MORAL_AXES.filter(function(k){ return k in dims; });
+    Object.keys(dims).forEach(function(k){ if(keys.indexOf(k)<0) keys.push(k); });
+    var status = rec.passed ? '<span style="color:var(--green)">PASS</span>'
+                            : '<span style="color:var(--red)">VETO</span>';
+    var bars = keys.length ? keys.map(function(k){ return _moralBar(k, dims[k]); }).join('')
+      : '<div style="color:var(--dim)">no per-axis scores</div>';
+    return '<div style="margin-bottom:6px">'+
+      '<div style="color:var(--accent);font-weight:600;border-bottom:1px solid var(--dim);margin-bottom:2px">'+
+        _escTool(label)+'<span style="float:right;font-weight:400">'+status+
+        (rec.score!=null?(' &middot; '+Number(rec.score).toFixed(2)):'')+'</span></div>'+
+      bars+
+      '<div style="color:var(--dim);margin-top:1px">'+_escTool((rec.preview||'')).slice(0,90)+'</div>'+
+      '</div>';
+  }
   async function pollMoral(){
     try {
       var j = await (await fetch('/api/erebus/moral')).json();
       document.getElementById('moral-n').textContent = j.n||0;
       document.getElementById('moral-vetoes').textContent = j.vetoes||0;
-      var latest = j.latest, dot = document.getElementById('moral-dot'), tag = document.getElementById('moral-tag');
+      var byGate = j.latest_by_gate || {};
       var spec = document.getElementById('moral-spectrum');
-      if(!latest){ spec.innerHTML='<div style="color:var(--dim)">no gated I/O yet</div>'; if(tag) tag.textContent='--'; return; }
-      if(dot) dot.className='status-dot'+(latest.passed?' on':'');
-      if(tag){ tag.textContent = latest.passed?'PASS':'VETO'; tag.style.color = latest.passed?'var(--green)':'var(--red)'; }
-      var dims = latest.dimensions||{};
-      var keys = MORAL_AXES.filter(function(k){ return k in dims; });
-      Object.keys(dims).forEach(function(k){ if(keys.indexOf(k)<0) keys.push(k); });
-      spec.innerHTML = keys.length ? keys.map(function(k){ return _moralBar(k, dims[k]); }).join('')
-        : '<div style="color:var(--dim)">tactical DEME layer produced no per-axis scores</div>';
-      document.getElementById('moral-last').innerHTML =
-        '<span style="color:var(--dim)">'+_escTool(latest.gate||'')+' &middot; '+_escTool(latest.ts||'')+'</span><br>'+
-        _escTool((latest.preview||'')).slice(0,140);
+      // output = "what Erebus said", input = "what was asked", action = Director
+      var order = [['output','What Erebus said'],['input','What was asked'],
+                   ['action','Director actions']];
+      var html = '', any = false;
+      order.forEach(function(p){
+        var rec = byGate[p[0]];
+        if(rec){ any = true; html += _moralGateBlock(p[1], rec); }
+      });
+      spec.innerHTML = any ? html : '<div style="color:var(--dim)">no gated I/O yet</div>';
+      // header reflects Erebus's most recent utterance (output gate), else latest
+      var head = byGate.output || j.latest;
+      var dot = document.getElementById('moral-dot'), tag = document.getElementById('moral-tag');
+      if(head){
+        if(dot) dot.className='status-dot'+(head.passed?' on':'');
+        if(tag){ tag.textContent = head.passed?'PASS':'VETO';
+                 tag.style.color = head.passed?'var(--green)':'var(--red)'; }
+      } else if(tag){ tag.textContent='--'; }
+      document.getElementById('moral-last').innerHTML = j.latest ?
+        ('<span style="color:var(--dim)">last: '+_escTool(j.latest.gate||'')+' &middot; '+
+         _escTool(j.latest.ts||'')+'</span>') : '';
     } catch(e){ /* best-effort; never disrupt the board */ }
   }
   function ctlAction(unit, action, chatCritical){
