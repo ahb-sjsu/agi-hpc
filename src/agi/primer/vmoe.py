@@ -107,16 +107,18 @@ def default_experts() -> list[Expert]:
             model="kimi",
             base_url=nrp,
             api_key_env=nrp_key,
-            role_hints=frozenset({"code", "agentic", "long_context", "default"}),
+            role_hints=frozenset(
+                {"code", "agentic", "long_context", "default", "council"}
+            ),
             timeout_s=300.0,
             priority=10,
         ),
         Expert(
-            name="glm-4.7",
-            model="glm-4.7",
+            name="glm-5",
+            model="glm-5",
             base_url=nrp,
             api_key_env=nrp_key,
-            role_hints=frozenset({"reason", "chat", "long_context"}),
+            role_hints=frozenset({"reason", "chat", "long_context", "council"}),
             timeout_s=300.0,
             priority=20,
         ),
@@ -148,6 +150,24 @@ def default_experts() -> list[Expert]:
             priority=100,
         ),
     ]
+    # Optional cloud expert — Anthropic Claude Fable 5 — for high-stakes "Divine
+    # Council" deliberation (Director SDCC). Dormant unless ANTHROPIC_API_KEY is
+    # set, so the pool is byte-for-byte unchanged until a key is provisioned. It
+    # is tagged only for the 'council'/'high_stakes' hints, so routine Primer
+    # cognition (code/agentic/…) never routes to it; NRP experts stay the
+    # fallback via cascade().
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        all_experts.append(
+            Expert(
+                name="fable",
+                model=os.environ.get("DIRECTOR_FABLE_MODEL", "claude-fable-5"),
+                base_url=os.environ.get("ANTHROPIC_BASE_URL", "https://api.anthropic.com/v1"),
+                api_key_env="ANTHROPIC_API_KEY",
+                role_hints=frozenset({"reason", "high_stakes", "council"}),
+                timeout_s=120.0,
+                priority=5,
+            )
+        )
     include = os.environ.get("EREBUS_VMOE_EXPERTS", "").strip()
     if include:
         wanted = {n.strip() for n in include.split(",") if n.strip()}

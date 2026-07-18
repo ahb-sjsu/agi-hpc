@@ -1,7 +1,7 @@
 """Expert health tracking for the vMOE.
 
 Managed LLM endpoints have time-of-day load variance. When a heavy
-reasoning model (kimi, glm-4.7) has timed out its last N calls, the
+reasoning model (kimi, glm-5) has timed out its last N calls, the
 next N calls are overwhelmingly likely to time out too. Keep calling
 them and we just burn wall-clock per tick for nothing. Mark them
 degraded; prefer the canary (fastest model) during a bad window.

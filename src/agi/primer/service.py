@@ -42,11 +42,10 @@ import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from . import events
 from .validator import ValidationResult, extract_code, validate
-from .vmoe import Response, vMOE, default_experts
+from .vmoe import Response, default_experts, vMOE
 
 log = logging.getLogger("primer")
 
@@ -537,7 +536,7 @@ async def _process_one(tn: int, cfg: Config, moe: vMOE) -> bool:
     # Drop experts currently in a health cooldown — the canary (qwen3)
     # being consistently slow means NRP's thinking models will definitely
     # timeout too; don't burn 5 min each on foregone conclusions.
-    candidate = moe.healthy_subset(["kimi", "glm-4.7", "qwen3"])
+    candidate = moe.healthy_subset(["kimi", "glm-5", "qwen3"])
     if not candidate:
         # All experts degraded — still probe qwen3 once to see if it
         # recovered. A probe succeeding clears the degradation via the

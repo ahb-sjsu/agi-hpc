@@ -26,6 +26,7 @@ from pathlib import Path
 
 from . import dispatch as dispatch_mod
 from .charter import Charter
+from .council import build_council_enrich
 from .deliberate import deliberate, read_stuck_tasks
 from .gate import DemeGate, GoalGate
 from .goals import GoalTree, Status
@@ -74,6 +75,7 @@ def run(cfg, self_state: dict, tier: AutonomyTier, cycle: int,
     proposals = deliberate(
         charter, self_state, tree, gate,
         cycle=cycle, stuck_provider=stuck_provider, max_proposals=cfg.max_proposals,
+        enrich=build_council_enrich(),  # dormant unless DIRECTOR_COUNCIL=1; fail-open
     )
     events = [_event("proposed", g) for g in proposals]
     n_gated = sum(1 for g in proposals if g.status == Status.GATED.value)
