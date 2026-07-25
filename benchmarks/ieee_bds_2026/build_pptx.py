@@ -347,8 +347,9 @@ para(tf, [("Discovery loop", "bold"),
      size=16, first=True, space_after=12)
 para(tf, [("Scorecard: 3 flagged → ", None), ("1 validated", "gold"), (" (identity_attack), ", None),
           ("1 retracted", "gold"), (" (threat), ", None), ("1 declined", "gold"),
-          (" (sexual content → policy channel, not a moral axis). ", None),
-          ("The gate has teeth.", "hi")],
+          (" (sexual content → policy channel); plus a registered rescue of the rights channel ", None),
+          ("refuted", "gold"), (" (trained 0.509 vs null 0.512 — stays a hard channel). ", None),
+          ("The gate has teeth, in both directions.", "hi")],
      size=16, bullet=True, space_after=10)
 para(tf, [("identity_attack", "mono"), (": cross-dataset held-out AUROC ", None), ("0.80", "gold"),
           (" CI [0.78, 0.83] (+0.25 over null, 2 corpora, n = 6400) — wired live as a ", None),
@@ -362,8 +363,38 @@ para(tf, [("Cross-lingual at scale: invariance index ", None), ("0.72–0.80", "
 footnote(s, [("Validated on the learned-encoder perception layer (", None), ("xbse", "mono"),
              ("); native DEME re-run of the five tracks is the extended version. Post-camera-ready results, July 2026.", None)], size=11)
 
+# ---- 11b. bifactor: reliable != distinct (since submission) ---------------------
+s = new_slide("Since submission — reliable ≠ distinct: the space is bifactor", 12)
+tf = textbox(s, Inches(0.55), Inches(0.9), Inches(12.2), Inches(1.6))
+para(tf, [("ICC 0.97 proves the dimensions are reliably measurable — are they distinct?", "bold")],
+     size=17, first=True, space_after=8)
+para(tf, [("A registered bifactor readout, answered against ourselves: a ", None),
+          ("general moral-valence channel G", "hi"), (" is real (cross-dataset AUROC ", None),
+          ("0.856 ± 0.008", "gold"), (", +0.337 over null, n = 51,319) — and five named axes are ≥ ", None),
+          ("0.98", "gold"), (" predictable from G alone.", None)], size=15)
+rows = [
+    [[("Own-axis (specific)", "bold")],
+     [("environmental +.31 · privacy +.28 · identity_attack +.25 · autonomy +.17 · physical +.08", None)]],
+    [[("Demote to G", "bold")],
+     [("fairness · loyalty · care · legitimacy · epistemic · purity  (−.02 to −.12)", None)]],
+]
+table(s, Inches(0.55), Inches(2.6), Inches(12.2), rows, [2.5, 9.7], header=False, size=13, row_h=0.5)
+tf = textbox(s, Inches(0.55), Inches(3.7), Inches(12.2), Inches(0.4))
+para(tf, [("The G row is bimodal: 0.85–0.94 on demoted axes' own pairs, chance on the specific ones.", None)],
+     size=12, first=True, color=GRAY)
+block(s, Inches(0.55), Inches(4.2), Inches(12.2), Inches(2.05), "Consequence for Secure AI", [
+    {"segments": [("A scalar robustness score is now ", None), ("measured, not argued", "gold"),
+                  (", to be mostly G — the vulnerability structure lives in the surviving specifics.", None)],
+     "space_after": 6},
+    {"segments": [("In this talk's terms: ", None), ("autonomy, identity, social, physical", "hi"),
+                  (" are specific; ", None), ("trust, emotional, financial", "hi"),
+                  (" largely ride G. The readout shows G plus survivors — ", None),
+                  ("never a hollow axis", "gold"), (".", None)]},
+], body_size=15)
+footnote(s, [("12×12 specificity gate, registered margin 0.05, production checkpoints. Post-camera-ready results, July 2026.", None)], size=11)
+
 # ---- 12. implications ------------------------------------------------------------
-s = new_slide("Implications for Secure AI deployment", 12)
+s = new_slide("Implications for Secure AI deployment", 13)
 tf = textbox(s, Inches(0.55), Inches(1.1), Inches(12.2), Inches(5.2))
 para(tf, [("Where to look", "hi"), (": attacks that repackage the same facts with different ", None),
           ("salience", "gold"), (" (euphemistic minimization).", None)],
@@ -376,8 +407,37 @@ para(tf, [("Ask the right question", "hi"), (": “which vulnerabilities matter 
 para(tf, [("Hardening target", "hi"), (": the fact-extraction front-end, since downstream kernels inherit its failures.", None)],
      size=17, bullet=True)
 
+# ---- 13b. philosophy engineering -------------------------------------------------
+s = new_slide("The larger program: philosophy engineering", 14)
+tf = textbox(s, Inches(0.55), Inches(0.95), Inches(12.2), Inches(1.5))
+para(tf, [("This paper is one instance of a method: take a construct usually settled by ", None),
+          ("argument", "hi"),
+          (" — what is a harm? has this judgment been manipulated? — and build it into an ", None),
+          ("instrument", "gold"), (" you can measure, falsify, and harden.", None)],
+     size=17, first=True)
+tf = textbox(s, Inches(0.55), Inches(2.55), Inches(6.65), Inches(3.9))
+para(tf, [("What makes it engineering, not rhetoric", "bold")], size=16, first=True, space_after=10)
+para(tf, [("A ", None), ("space", "hi"), (", not a slogan: judgments are points, manipulation is ", None),
+          ("displacement", "hi"), (", robustness is ", None), ("invariance", "hi"), (".", None)],
+     size=15, bullet=True, space_after=12)
+para(tf, [("Pre-registration", "hi"), (" + ", None), ("admission gates that retract", "hi"),
+          (": this talk's own bifactor test ", None), ("failed", "em"),
+          (" its P1; a channel rescue was ", None), ("refuted", "em"),
+          (". Claims that don't transfer are demoted — ", None), ("in public", "gold"), (".", None)],
+     size=15, bullet=True)
+block(s, Inches(7.45), Inches(2.55), Inches(5.35), Inches(3.35), "The wager", [
+    {"segments": [("Normative and aesthetic structure is ", None), ("geometric", "gold"),
+                  (" — it lives in ", None), ("compressibility", "hi"), (" and ", None),
+                  ("coarse-graining under an observer", "hi"), (".", None)], "space_after": 12},
+    {"segments": [("One instrument, many manifolds: ", None), ("harm", "hi"),
+                  (" today; ", None), ("aesthetics, law, cognition", "hi"),
+                  (" on the same frame.", None)]},
+], body_size=15)
+footnote(s, [("A philosophical claim you can ", None), ("ship, measure, and be wrong about", "gold"),
+             (" outranks one you can only defend.", None)])
+
 # ---- 13. repro + takeaways --------------------------------------------------------
-s = new_slide("Reproducibility & takeaways", 13)
+s = new_slide("Reproducibility & takeaways", 15)
 tf = textbox(s, Inches(0.55), Inches(0.95), Inches(12.2), Inches(1.7))
 para(tf, [("Five tracks, multi-model, ~8,000 calls — under ", None), ("$50/day", "hi"),
           (" (Kaggle); validation panel on the open ", None), ("NRP managed LLM API", "hi"), (".", None)],

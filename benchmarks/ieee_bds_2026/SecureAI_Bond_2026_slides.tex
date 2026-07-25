@@ -189,12 +189,32 @@ text $\rightarrow$ \hi{LLM extracts ethical facts} $\rightarrow$ \texttt{GenevaE
 \begin{frame}{Since submission — the harm space is extensible \emph{and falsifiable}}
 \textbf{Discovery loop}: residual analysis flags candidate missing dimensions $\rightarrow$ pre-registered admission gate.
 \begin{itemize}
-  \item Scorecard: 3 flagged $\rightarrow$ \gold{1 validated} (\texttt{identity\_attack}), \gold{1 retracted} (threat), \gold{1 declined} (sexual content $\rightarrow$ policy channel, not a moral axis). \hi{The gate has teeth.}
+  \item Scorecard: 3 flagged $\rightarrow$ \gold{1 validated} (\texttt{identity\_attack}), \gold{1 retracted} (threat), \gold{1 declined} (sexual content $\rightarrow$ policy channel, not a moral axis); plus a registered rescue of the \texttt{rights} channel \gold{refuted} (trained 0.509 vs null 0.512 — it stays a hand-specified hard channel). \hi{The gate has teeth, in both directions.}
   \item \texttt{identity\_attack}: cross-dataset held-out AUROC \gold{0.80} CI $[0.78, 0.83]$ ($+0.25$ over null, 2 corpora, $n=6400$) — wired live as a \hi{10th channel}; dominant feature of a learned moderation contraction (OOF AUROC \gold{0.863}, leakage-controlled).
   \item Cross-lingual at scale: invariance index \gold{0.72--0.80} across es/ar/zh/hi/sw, \hi{harmful $\approx$ benign}.
 \end{itemize}
 \vfill
 {\scriptsize Validated on the learned-encoder perception layer (\texttt{xbse}); native DEME re-run of the five tracks is the extended version. Post-camera-ready results, July 2026.}
+\end{frame}
+
+% ---------------------------------------------------------------
+\begin{frame}{Since submission — reliable $\neq$ distinct: the space is bifactor}
+\textbf{ICC 0.97 proves the dimensions are reliably \emph{measurable} — are they \emph{distinct}?}\\[2pt]
+A registered bifactor readout answered against ourselves: a \hi{general moral-valence channel $G$} is real (cross-dataset AUROC \gold{0.856 $\pm$ 0.008}, $+0.337$ over null, $n=51{,}319$) — and five named axes are $\ge$\gold{0.98} predictable from $G$ alone.
+\vfill
+\centering\footnotesize
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Own-axis (specific)} & environmental $+.31$ · privacy $+.28$ · identity\_attack $+.25$ · autonomy $+.17$ · physical $+.08$\\
+\textbf{Demote to $G$} & fairness · loyalty · care · legitimacy · epistemic · purity ($-.02$ to $-.12$)\\
+\bottomrule
+\end{tabular}\\[3pt]
+{\small The $G$ row is \hi{bimodal}: 0.85--0.94 on demoted axes' own pairs, chance on the specific ones.}
+\vfill
+\begin{block}{Consequence for Secure AI}
+A scalar robustness score is now \gold{measured, not argued}, to be mostly $G$ — the vulnerability structure lives in the surviving specifics. In this talk's terms: \hi{autonomy, identity, social, physical} are specific; \hi{trust, emotional, financial} largely ride $G$. The readout shows $G$ plus survivors — \gold{never a hollow axis}.
+\end{block}
+{\scriptsize 12$\times$12 specificity gate, registered margin 0.05, production checkpoints. Post-camera-ready results, July 2026.}
 \end{frame}
 
 % ---------------------------------------------------------------
@@ -205,6 +225,29 @@ text $\rightarrow$ \hi{LLM extracts ethical facts} $\rightarrow$ \texttt{GenevaE
   \item \hi{Ask the right question}: ``\emph{which} vulnerabilities matter for our use case?'' — not ``what's the robustness score?''
   \item \hi{Hardening target}: the fact-extraction front-end, since downstream kernels inherit its failures.
 \end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------
+\begin{frame}{The larger program: \emph{philosophy engineering}}
+This paper is one instance of a method: take a construct usually settled by \hi{argument} --- \emph{what is a harm? has this judgment been manipulated?} --- and build it into an \gold{instrument} you can measure, falsify, and harden.
+\vfill
+\begin{columns}[T]
+\begin{column}{0.53\textwidth}
+\textbf{What makes it engineering, not rhetoric}
+\begin{itemize}
+  \item A \hi{space}, not a slogan: judgments are points, manipulation is \hi{displacement}, robustness is \hi{invariance}.
+  \item \hi{Pre-registration} + \hi{admission gates that retract}: this talk's own bifactor test \emph{failed} its $P1$; a channel rescue was \emph{refuted}. Claims that don't transfer are demoted --- \gold{in public}.
+\end{itemize}
+\end{column}
+\begin{column}{0.43\textwidth}
+\begin{block}{The wager}
+Normative and aesthetic structure is \gold{geometric} --- it lives in \hi{compressibility} and \hi{coarse-graining under an observer}.\\[3pt]
+One instrument, many manifolds: \hi{harm} today; \hi{aesthetics, law, cognition} on the same frame.
+\end{block}
+\end{column}
+\end{columns}
+\vfill
+{\scriptsize A philosophical claim you can \gold{ship, measure, and be wrong about} outranks one you can only defend.}
 \end{frame}
 
 % ---------------------------------------------------------------
