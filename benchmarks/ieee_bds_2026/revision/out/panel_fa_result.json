@@ -1,0 +1,86 @@
+{
+ "consensus": {
+  "eigenvalues": [
+   3.7931,
+   1.3396,
+   0.8799,
+   0.4199,
+   0.2708,
+   0.2289,
+   0.0678
+  ],
+  "variance_share": [
+   0.5419,
+   0.1914,
+   0.1257,
+   0.06,
+   0.0387,
+   0.0327,
+   0.0097
+  ],
+  "pc1_share": 0.5419,
+  "parallel_analysis_factors": 1,
+  "pa_null95_eig1": 2.0196,
+  "pc1_loadings": {
+   "physical": -0.0012,
+   "emotional": 0.4765,
+   "financial": 0.235,
+   "autonomy": 0.3945,
+   "trust": 0.4534,
+   "social": 0.4007,
+   "identity": 0.4427
+  },
+  "pc1_r2": {
+   "physical": 0.0,
+   "emotional": 0.8611,
+   "financial": 0.2095,
+   "autonomy": 0.5904,
+   "trust": 0.7796,
+   "social": 0.6089,
+   "identity": 0.7435
+  },
+  "n_rows": 31
+ },
+ "pooled": {
+  "eigenvalues": [
+   3.7187,
+   1.1653,
+   0.9018,
+   0.4778,
+   0.3316,
+   0.2841,
+   0.1207
+  ],
+  "variance_share": [
+   0.5312,
+   0.1665,
+   0.1288,
+   0.0683,
+   0.0474,
+   0.0406,
+   0.0172
+  ],
+  "pc1_share": 0.5312,
+  "parallel_analysis_factors": 2,
+  "pa_null95_eig1": 1.2159,
+  "pc1_loadings": {
+   "physical": 0.0598,
+   "emotional": 0.4761,
+   "financial": 0.2464,
+   "autonomy": 0.3851,
+   "trust": 0.445,
+   "social": 0.4061,
+   "identity": 0.4447
+  },
+  "pc1_r2": {
+   "physical": 0.0133,
+   "emotional": 0.8431,
+   "financial": 0.2258,
+   "autonomy": 0.5514,
+   "trust": 0.7365,
+   "social": 0.6132,
+   "identity": 0.7353
+  },
+  "n_rows": 558
+ }
+}

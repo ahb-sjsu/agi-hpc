@@ -3,12 +3,13 @@
 % Extends BigDataService 2026 paper 0204 (accepted, camera-ready v2).
 % Structure follows EXTENDED_VERSION_OUTLINE.md.
 %
-% DRAFT STATUS: every number in this draft is a MEASURED result from the
-% conference paper, the camera-ready revision runs, or the post-camera-ready
-% gtc-prototype / xbse / erisml-compiler experiments (July 2026).
-% Sections marked \todo{} are the experiments still to run (native 9-D/10-D
-% re-run of the five tracks; cross-projection disagreement; adversarial
-% paraphrase robustness at scale; like-for-like baseline).
+% DRAFT STATUS (v0.2, 2026-07-25): every number is a MEASURED result from
+% the conference paper, the camera-ready revision runs, or the
+% post-camera-ready gtc-prototype / xbse / erisml-compiler / panel-FA /
+% gold-defended experiments (July 2026). Submission posture: contributions
+% 1-4 stand alone; the native re-run and the two containment items live in
+% Future Work (Sec. IX) as pre-registered designs. No red TODOs remain in
+% the body.
 % =====================================================================
 \documentclass[journal]{IEEEtran}
 
@@ -73,7 +74,10 @@ falsifiable, not asserted. A pre-registered bifactor readout sharpens what
 factor plus a few separable specifics---five nominal axes are $\ge$0.98
 predictable from general valence, while privacy, autonomy, and environmental
 are genuinely their own---so the framework distinguishes validated
-\emph{transfer} from validated \emph{specificity}. Second, we characterize \emph{which} axes are
+\emph{transfer} from validated \emph{specificity}. The judge panel's own
+score matrix independently reproduces the structure: its first principal
+component carries 54\% of panel variance and is the only component
+surviving parallel analysis. Second, we characterize \emph{which} axes are
 robust measurement targets: valence encoders are register-invariant under
 domain-adversarial training while foundation-presence encoders are
 register-bound, a dissociation confirmed by three independent methods. Third,
@@ -81,7 +85,11 @@ we present a \emph{measured defense}: equivalence-class averaging over a
 generated paraphrase class halves decision-layer drift (0.407$\,\to\,$0.219,
 meeting a pre-registered bar of 0.5) and a non-refusing back-translation
 red-team shows the residual hole belongs to the paraphrase generator, not the
-mechanism. Fourth, a leakage-controlled learned contraction (out-of-fold AUROC
+mechanism; a gold-set decision-level translation is then reported as a
+measured negative---against hand-audited adversarial-register rewrites,
+averaging reduces displacement only 17\% and restores none of the flipped
+decisions, locating the remaining surface in the generator's register
+diversity and making the escalation path load-bearing. Fourth, a leakage-controlled learned contraction (out-of-fold AUROC
 0.863) lets the pipeline \emph{moderate}, not merely escalate, and the
 invariance property extends cross-lingually (index 0.72--0.80 across five
 languages, harmful\,$\approx$\,benign). The result is an end-to-end,
@@ -167,10 +175,11 @@ index 0.72--0.80, harmful $\approx$ benign), converting a stated limitation
 of~\cite{bond2026bds} into a measured result.
 \end{enumerate}
 
-\todo{Contribution 5, once run: native 9-D/10-D re-run of the five
-vulnerability tracks through the erisml-compiler pipeline, measuring
-displacement in the full DEME space and at the verdict level per track
-(outline Part C; NRP open panel; planned August 2026).}
+Contributions 1--4 stand on their own evidence. The fifth experiment---the
+native 9-D/10-D re-run of the five vulnerability tracks through the
+erisml-compiler pipeline, measuring displacement in the full DEME space and
+at the verdict level per track---is designed and pre-registered as future
+work (Sec.~\ref{sec:rerun}; NRP open panel; planned August 2026).
 
 \subsection{Two Instantiations, One Geometry}
 \label{sec:twoinstruments}
@@ -188,9 +197,12 @@ not one experiment: the former audits deployed judges; the latter is the
 hardened instrument the audit motivates. The unification is the DEME~v3
 moral vector both emit, and the native re-run of the five vulnerability
 tracks through the learned-encoder pipeline is the designed experiment that
-closes the loop (\todo{Sec.~\ref{sec:rerun}}). Conflating the two
+closes the loop (future work, Sec.~\ref{sec:rerun}). Conflating the two
 instantiations would re-open the validation critique this article answers;
-we keep the distinction explicit throughout.
+we keep the distinction explicit throughout---and where a bridge \emph{is}
+measurable today (the panel's own factor structure,
+Sec.~\ref{sec:bifactor}; the gold-set defended decisions,
+Sec.~\ref{sec:defense}), we measure it rather than assert it.
 
 % ================================================================
 \section{Related Work}
@@ -582,6 +594,28 @@ a gate. The two methods diverge on exactly one axis, recorded not adjudicated:
 \texttt{identity\_attack} is decisively specific by the gate ($+.25$) but
 mixed by A2 residualization ($G$-share $0.67$).
 
+\textbf{The judge panel replicates the general factor.} The bifactor
+readout above is an encoder-instantiation measurement; the natural
+challenge is whether the \emph{LLM-judge} space of
+Sec.~\ref{sec:instrument} shows the same structure. Factor-analyzing the
+validation panel's own score matrix (31 scenarios $\times$ 7 dimensions;
+consensus over 6 models $\times$ 3 repetitions; artifact
+\texttt{panel\_fa\_result.json}) answers directly: the first principal
+component carries $54.2\%$ of consensus variance ($53.1\%$ pooled) and is
+the \emph{only} component surviving Horn's parallel analysis at the
+consensus level (observed $\lambda_1 = 3.79$ vs.\ a permutation-null 95th
+percentile of $2.02$). The per-axis pattern partially matches the encoder
+mapping: physical is fully specific on the panel too (PC1 $R^2 = 0.00$,
+strikingly consistent with its surviving encoder residual), and emotional
+($R^2=0.86$) and trust ($0.78$) are the most $G$-laden, as the
+correspondence table predicts; financial ($0.21$, panel-specific) and
+identity ($0.74$, panel-general) \emph{diverge} from their encoder-side
+assignments---recorded, not adjudicated, like the
+\texttt{identity\_attack} divergence above. With $n=31$ scenarios the
+per-axis loadings are coarse; the factor-\emph{count} conclusion (one
+strong general factor) is the robust part, and it is now measured on both
+instantiations independently.
+
 \textbf{What this binds.} The pre-registration's demotion rule is adopted: a
 channel that fails specificity is displayed \emph{as} $G$, never as a hollow
 named axis. Two consequences for this section's claims. First, the ``11 of
@@ -722,9 +756,9 @@ the DEME~v3 rule kernel (LLM-extracted ethical facts $\to$
 than cures, its front-end's salience vulnerability. Hardening must target
 perception---which is what the remainder of this article does.
 
-\todo{Per-track verdict-level attack table from the native 9-D/10-D re-run
-(Sec.~\ref{sec:rerun}): displacement per DEME axis and verdict-flip rate per
-perturbation type, replacing the single aggregate 13.7\% figure.}
+The per-track verdict-level attack table---displacement per DEME axis and
+verdict-flip rate per perturbation type, replacing the single aggregate
+13.7\% figure---is part of the pre-registered re-run (Sec.~\ref{sec:rerun}).
 
 % ================================================================
 \section{The Defense: Equivalence-Class Averaging}
@@ -828,11 +862,11 @@ item.}
 Two caveats are part of the record (both visible in
 Fig.~\ref{fig:defense}). First, the at-scale paraphrases are
 \emph{natural}, not adversarial (raw drift $0.407$ vs.\ $0.67$--$0.85$ for
-the hand-built adversarial demo transforms); adversarial robustness at scale
-is a distinct, still-open measurement. \todo{adversarial-paraphrase
-$\theta_d$ at scale (containment item).} Second, the LLM paraphrase
-generator \emph{refused} 24\% of harmful inputs (19/79 toxic items),
-producing singleton classes on exactly the content that matters.
+the hand-built adversarial demo transforms); adversarial-paraphrase
+$\theta_d$ at scale is a registered, still-open containment item. Second,
+the LLM paraphrase generator \emph{refused} 24\% of harmful inputs (19/79
+toxic items), producing singleton classes on exactly the content that
+matters.
 
 \subsection{Red-Team: the Hole Belongs to the Generator}
 \label{sec:redteam}
@@ -846,6 +880,41 @@ raw drift $0.482 \to \theta_d = 0.301 \le 0.5$. The 24\% hole is the
 \emph{generator's}, not the mechanism's: a non-refusing paraphraser closes
 it. Back-translation drifts meaning slightly, so we class it as a red-team
 instrument rather than necessarily the production paraphraser.
+
+\subsection{Decision-Level Translation: the Gold Set Says the Register Gap
+Is Real}
+\label{sec:goldflips}
+
+$\theta_d$ is a per-dimension movement, not a flip rate; the referee-grade
+question is what the \emph{decision} does with averaging on. We measured it
+on the deployed instrument, mirroring the conference paper's
+median-calibrated construction exactly: for each of the six hand-audited
+gold items, the contracted decision scalar $S$ of the base text and of its
+euphemistic rewrite, in a raw arm and a defended arm (class of $m=6$,
+same reframe generator family as the at-scale run; zero refusals on these
+scenarios), with the flag threshold set per arm to the median base-$S$.
+Artifact: \texttt{gold\_defended\_result.json}.
+
+The result is an honest negative, and an informative one. Raw: all three
+flagged items flip \textsc{flag}$\to$\textsc{pass} under euphemism.
+\emph{Defended: all three still flip.} Mean displacement falls only $0.336
+\to 0.279$ ($-17\%$, against the $46\%$ reduction on natural paraphrases;
+per-item reduction in five of six, one small increase). The mechanism's
+failure mode here is exactly the adaptive-attack concern:
+\emph{paraphrases of a euphemism stay euphemistic}---a reframe-class
+average removes surface variation while preserving \emph{register}, and
+register is the attack vector. Three consequences. First, the at-scale
+halving (Sec.~\ref{sec:atscale}) does not transfer to adversarial-register
+transforms; the registered containment item (defended adversarial
+$\theta_d$ at scale) is the binding open measurement, and this $n=6$
+existence proof predicts its direction. Second, the defense's residual
+attack surface is now located twice over---generator refusal
+(Sec.~\ref{sec:redteam}) and generator register-diversity (here)---both
+properties of the \emph{generator}, sharpening the hardening target: a
+class generator that provably crosses registers (dramatic and neutral
+re-verbalizations, not only literal reframes). Third, escalate-by-default
+(Sec.~\ref{sec:trust}) is doing real security work in deployment until
+that generator exists.
 
 \subsection{Trust Boundary and Auditability}
 \label{sec:trust}
@@ -891,14 +960,13 @@ civil-comments); cross-family transfer of the contraction is untested. One hones
 (harsh criticism $\to$ remove) is kept in the record; we declined to tune
 the threshold to the demonstration scenarios.
 
-\todo{Like-for-like baseline: decision-vs-decision comparison against a
-scalar-toxicity moderation baseline (Detoxify/Perspective-class) under
-identical inputs and identical euphemistic attack, reporting flip rates for
-both. The scalar baseline's drift is measured; the decision-level comparison
-table is not yet run. The same table owes the defense its decision-level
-translation: the \emph{defended} verdict-flip rate---the defended analogue
-of the attack's 13.7\%---which $\theta_d$, a per-dimension movement rather
-than a flip rate, does not by itself provide.}
+One registered comparison remains open here (Sec.~\ref{sec:rerun}): the
+like-for-like, decision-vs-decision baseline against a scalar-toxicity
+moderator (Detoxify/Perspective-class) under identical inputs and identical
+euphemistic attack, reporting flip rates for both. The gold-set
+decision-level measurement of Sec.~\ref{sec:goldflips} supplies the
+defense's own flip-rate translation; the baseline's side of the table is
+not yet run.
 
 % ================================================================
 \section{Cross-Lingual Invariance}
@@ -927,21 +995,25 @@ failure mode as paraphrase refusal, Sec.~\ref{sec:redteam}); the
 translation legs therefore run on NLLB, a non-refusing dedicated MT model.
 
 % ================================================================
-\section{Native Re-Run of the Vulnerability Tracks}
+\section{Future Work: the Native Re-Run}
 \label{sec:rerun}
 
-\todo{This section is the main outstanding experiment (planned August 2026,
-NRP open panel). Design, pre-registered here: (1) each (scenario $\times$
-model $\times$ perturbation) case from the five conference tracks is scored
-natively in the DEME 9-D (+\texttt{identity\_attack}) space through the
-erisml-compiler pipeline, yielding a \texttt{MoralTensorV3} and a
-\texttt{DEMEVerdict} per case; (2) displacement is measured per axis and at
-the verdict level per track, superseding the scalar-total results;
-(3) the compiler's framework-pluralist cross-projection disagreement
-surface is tested as an attack detector: does disagreement light up under
-salience manipulation? (4) the 7-D$\to$9-D mapping table
-of~\cite{bond2026bds} is retained for comparability. Models judge in native
-9-D rather than post-hoc mapping.}
+The main outstanding experiment is the native re-run of the five
+vulnerability tracks (planned August 2026, NRP open panel), whose design is
+pre-registered here: (1) each (scenario $\times$ model $\times$
+perturbation) case from the five conference tracks is scored natively in
+the DEME 9-D (+\texttt{identity\_attack}) space through the erisml-compiler
+pipeline, yielding a \texttt{MoralTensorV3} and a \texttt{DEMEVerdict} per
+case; (2) displacement is measured per axis and at the verdict level per
+track, superseding the scalar-total results; (3) the compiler's
+framework-pluralist cross-projection disagreement surface is tested as an
+attack detector: does disagreement light up under salience manipulation?
+(4) the 7-D$\to$9-D mapping table of~\cite{bond2026bds} is retained for
+comparability. Models judge in native 9-D rather than post-hoc mapping.
+Alongside it sit the two registered containment items of
+Secs.~\ref{sec:atscale} and~\ref{sec:contraction}: adversarial-paraphrase
+$\theta_d$ at scale, and the like-for-like decision-level baseline
+comparison.
 
 % ================================================================
 \section{Discussion}
@@ -971,9 +1043,11 @@ When an axis is not trustworthy (rights; care/fairness/legitimacy presence) or
 not specific (the demoted axes), the instrument says so---displaying $G$, or
 escalating---rather than scoring a hollow coordinate.
 
-\textbf{Limits.} (i) The defense is measured against natural paraphrase
-drift and one non-refusing red-team generator; adversarial-paraphrase
-robustness at scale is open (Sec.~\ref{sec:atscale}). (ii) The
+\textbf{Limits.} (i) The defense's halving is established on natural
+paraphrase drift; the gold-set decision translation
+(Sec.~\ref{sec:goldflips}) shows it does \emph{not} yet extend to
+adversarial-register transforms ($n=6$ existence proof), and the at-scale
+defended-adversarial measurement remains the binding open item. (ii) The
 learned-encoder results validate the perception layer, not the five
 conference tracks re-run natively; that experiment is designed but not run
 (Sec.~\ref{sec:rerun}). (iii) Corpus norms: moderation corpora are

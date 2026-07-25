@@ -334,7 +334,9 @@ para(tf, [("LLM paraphrasers ", None), ("refuse 24%", "gold"),
 para(tf, [("Trust boundary: refusal → singleton class → ", None), ("escalate by default", "hi"),
           ("; the audit proof records class members.", None)],
      size=16, bullet=True)
-footnote(s, [("Natural (not adversarial) paraphrases at scale. Post-camera-ready results, July 2026 — extended version in preparation.", None)], size=11)
+footnote(s, [("Natural (not adversarial) paraphrases at scale. Gold-set decision translation (measured negative, n=6): adversarial-register rewrites still flip ", None),
+             ("3/3", "gold"),
+             (" flagged items defended, displacement −17% — paraphrases of euphemism stay euphemistic; the register gap is the live surface, and escalation carries it. July 2026.", None)], size=10)
 
 # ---- 10. bifactor (since submission) — native editable chart -------------------
 s = new_slide("Since submission — reliable ≠ distinct: the geometry is bifactor", 10)
@@ -379,15 +381,16 @@ block(s, Inches(7.1), Inches(2.05), Inches(5.75), Inches(2.35), "Consequence for
     {"segments": [("The vulnerability structure lives in the ", None),
                   ("surviving specific axes", "hi"), (".", None)]},
 ], body_size=14)
-tf = textbox(s, Inches(7.1), Inches(4.6), Inches(5.75), Inches(1.75))
-para(tf, [("Mapped to this talk's 7-D space ", None),
-          ("(a transfer hypothesis, not a measurement)", "em"), (": ", None),
-          ("social, identity, autonomy", "hi"), (" carry specific signal, ", None),
-          ("physical", "hi"), (" marginally; ", None), ("trust, emotional, financial", "hi"),
-          (" are mostly carried by G.", None)],
+tf = textbox(s, Inches(7.1), Inches(4.6), Inches(5.75), Inches(1.85))
+para(tf, [("And the ", None), ("judge panel's own 31×7 score matrix replicates it", "hi"),
+          (": PC1 = ", None), ("54%", "gold"),
+          (" of variance, the only component surviving parallel analysis — ", None),
+          ("physical", "hi"), (" fully specific there too (R² ≈ 0), ", None),
+          ("emotional/trust", "hi"),
+          (" most G-laden; financial and identity diverge across instantiations.", None)],
      size=13, first=True)
-footnote(s, [("Measured on the learned-encoder instantiation (", None), ("xbse", "mono"),
-             (") over moderation corpora — not a factor analysis of the judge panel. 12×12 specificity gate, margin 0.05; the gate-vs-residualization divergence on identity_attack is recorded, not adjudicated. July 2026.", None)], size=10)
+footnote(s, [("Bifactor: learned-encoder instantiation (", None), ("xbse", "mono"),
+             ("), 12×12 gate at margin 0.05; identity_attack divergence recorded, not adjudicated. Panel FA: 6 models × 3 reps consensus, Horn's parallel analysis, n=31 (loadings coarse; the factor count is the robust part). July 2026.", None)], size=10)
 
 # ---- 11. implications ------------------------------------------------------------
 s = new_slide("Implications for Secure AI deployment", 11)
@@ -599,12 +602,12 @@ RED-TEAM: LLM paraphrasers refuse 24% of harmful inputs. NLLB back-translation (
 
 Deployment rule: refusal -> singleton class -> ESCALATE by default; audit proof records class member hashes.
 
-If asked about adaptive attackers ("paraphrases of euphemism stay euphemistic"): yes — the mechanism works to the extent the generator re-verbalizes across registers; register-diversity measurement is open work; the adaptive attack we identified (starving the generator) is closed by escalate-by-default.""",
+ADAPTIVE ATTACKER — now MEASURED (footer): on the 6 gold adversarial-register rewrites, class averaging reduced displacement only 17% and all 3 flagged items still flipped defended. Paraphrases of euphemism stay euphemistic — the mechanism removes surface variation, not register. Say this proactively if time allows; it is the talk's freshest honest negative and it strengthens the escalate-by-default story. The fix on the roadmap: a class generator that provably crosses registers.""",
 
 # 10 — bifactor
 """Post-camera-ready. THE SLIDE'S QUESTION: ICC 0.97 showed the dimensions are reliably MEASURABLE — a skeptic asks whether they are DISTINCT. We ran the test against ourselves, pre-registered.
 
-CRITICAL SCOPE (bottom of slide, say it): this is measured on the learned-encoder instantiation (xbse) over moderation corpora — NOT a factor analysis of the judge panel. The 7-D mapping on the right is a TRANSFER HYPOTHESIS. If asked "did you factor-analyze your own panel's 31x7 scores?" — answer: "not yet; that's part of the extended version's native re-run."
+SCOPE + THE NEW RESULT (right column, bottom): the bifactor readout is encoder-instantiation; we then factor-analyzed the JUDGE PANEL'S OWN 31x7 score matrix directly. It REPLICATES the general factor: PC1 = 54% of variance (consensus; 53% pooled), and it is the ONLY component surviving Horn's parallel analysis. Per-axis: physical fully specific on the panel too (R^2 ~ 0 — striking agreement with the encoder residual), emotional (0.86) and trust (0.78) most G-laden as predicted; financial and identity DIVERGE across instantiations — recorded, not adjudicated. n=31, so per-axis loadings are coarse; the factor COUNT is the robust claim.
 
 RESULTS: a general moral-valence channel G is real and strong (cross-dataset AUROC 0.856, n=51k). Five named axes — purity, legitimacy, loyalty, care, fairness — are >=0.98 predictable from G on independent corpora: their gate-passing transfer is general valence, not their named dimension. The 12x12 specificity gate confirms it independently: specific = environmental, privacy, identity_attack, autonomy, physical(+.08, marginal); demoted = the rest. The pre-registered P1 FAILED (4/11 diagonal-dominant vs required 8) — we publish the failure.
 
@@ -650,10 +653,10 @@ Spoken closer after takeaway 4 (borrowed from slide 12): "One instrument today �
 # 14 — thanks / Q&A prep
 """Q&A PREP — hardest questions, one-line answers:
 
-Q: You showed ICC 0.97, then a bifactor result saying most axes are one factor — measured on different encoders. Did you factor-analyze the panel's own scores? A: Not yet — the bifactor claim is about the encoder instantiation; the direct panel factor analysis is part of the extended version. The slide's 7-D mapping is the transfer hypothesis, labeled as such.
+Q: You showed ICC 0.97, then a bifactor result saying most axes are one factor — measured on different encoders. Did you factor-analyze the panel's own scores? A: Yes — the panel's own 31x7 matrix gives PC1 = 54% of variance, the only component surviving parallel analysis, with physical fully specific there too. The general factor replicates across both instantiations; two per-axis assignments (financial, identity) diverge and are recorded as such.
 Q: Isn't G-dominance guaranteed by construction? A: G is a maximally strong competitor by design — which is why surviving it is informative; privacy, autonomy, environmental measurably do.
 Q: Your drift bar 0.5 is met by the raw pipeline (0.407). What did the defense buy? A: On natural paraphrases the bar doesn't bind — it was set against adversarial transforms (raw 0.67-0.85); the at-scale result is the HALVING, confirmed on harmful content via a non-refusing generator; defended-adversarial is the registered open item.
-Q: With averaging on, how many gold items still flip? What does 13.7% become? A: theta_d is per-dimension movement, not a flip rate — the defended verdict-flip table is the pending like-for-like comparison in the extended version. Fair ask.
+Q: With averaging on, how many gold items still flip? What does 13.7% become? A: Measured, and it's an honest negative — on the deployed encoder instrument all 3 flagged gold items STILL flip defended (displacement only −17% vs −46% on natural paraphrases). Paraphrases of euphemism stay euphemistic: the class inherits the register, and register is the attack vector. That's why the residual surface is the generator's register diversity and why escalate-by-default is load-bearing. The DEME-instantiation defended-13.7% is the native re-run.
 Q: Euphemism deletes information — isn't a lower score rational? A: Gold transforms are hand-audited to preserve stated facts; the DEME leg shows the same facts get EXTRACTED differently — perception failure, not updating.
 Q: Six LLMs agreeing isn't validity — where are humans? A: Agreed — the panel establishes reliability and cross-family consistency; single-rater ICC ~0.84; human-rater validation is future work.
 Q: Rule-engine result is garbage-in-garbage-out by construction? A: The quantification is the finding — 13.7% flips and -39% forbid rebut the assumption that a symbolic layer confers robustness, and locate the hardening budget.
