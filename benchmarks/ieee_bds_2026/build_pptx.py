@@ -163,6 +163,70 @@ def new_slide(title=None, num=None):
     return s
 
 
+# ---- diagram helpers (native shapes for the four concept figures) ----------
+
+def fbox(slide, x, y, w, h, segments, border=ATLASBLUE, fill=None, size=10,
+         dashed=False, bold_title=False):
+    shp = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, x, y, w, h)
+    shp.adjustments[0] = 0.10
+    shp.fill.solid()
+    shp.fill.fore_color.rgb = fill if fill is not None else WHITE
+    shp.line.color.rgb = border
+    shp.line.width = Pt(1.2)
+    if dashed:
+        ln = shp.line._get_or_add_ln()
+        d = ln.makeelement(qn("a:prstDash"), {"val": "dash"})
+        ln.append(d)
+    tf = shp.text_frame
+    tf.word_wrap = True
+    tf.margin_left = tf.margin_right = Inches(0.03)
+    tf.margin_top = tf.margin_bottom = Inches(0.02)
+    tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+    p = tf.paragraphs[0]
+    p.alignment = PP_ALIGN.CENTER
+    add_runs(p, segments, size)
+    return shp
+
+
+def harrow(slide, x, y, w, color=GRAY, h=Inches(0.16)):
+    shp = slide.shapes.add_shape(MSO_SHAPE.RIGHT_ARROW, x, y, w, h)
+    shp.adjustments[0] = 0.55
+    shp.adjustments[1] = 0.55
+    shp.fill.solid()
+    shp.fill.fore_color.rgb = color
+    shp.line.fill.background()
+    return shp
+
+
+def varrow(slide, x, y, h, color=GRAY, w=Inches(0.16), up=False):
+    kind = MSO_SHAPE.UP_ARROW if up else MSO_SHAPE.DOWN_ARROW
+    shp = slide.shapes.add_shape(kind, x, y, w, h)
+    shp.adjustments[0] = 0.55
+    shp.adjustments[1] = 0.55
+    shp.fill.solid()
+    shp.fill.fore_color.rgb = color
+    shp.line.fill.background()
+    return shp
+
+
+def dot(slide, x, y, color, r=Inches(0.055)):
+    shp = slide.shapes.add_shape(MSO_SHAPE.OVAL, x - r, y - r, 2 * r, 2 * r)
+    shp.fill.solid()
+    shp.fill.fore_color.rgb = color
+    shp.line.fill.background()
+    return shp
+
+
+def larrow(slide, x, y, w, color, h=Inches(0.10)):
+    shp = slide.shapes.add_shape(MSO_SHAPE.LEFT_ARROW, x, y, w, h)
+    shp.adjustments[0] = 0.5
+    shp.adjustments[1] = 0.5
+    shp.fill.solid()
+    shp.fill.fore_color.rgb = color
+    shp.line.fill.background()
+    return shp
+
+
 # ---- 1. title slide --------------------------------------------------------
 s = prs.slides.add_slide(BLANK)
 s.shapes.add_picture(ASSETS + r"\atlas_mark_light.png", Inches(5.92), Inches(0.55), height=Inches(1.5))
@@ -179,17 +243,36 @@ para(tf, [("IEEE BigDataService 2026 — Special Track on Secure AI", "em")],
 
 # ---- 2. the problem ---------------------------------------------------------
 s = new_slide("The problem: LLMs as decision services", 2)
-tf = textbox(s, Inches(0.55), Inches(1.0), Inches(12.2), Inches(2.9))
+tf = textbox(s, Inches(0.55), Inches(1.0), Inches(7.2), Inches(3.2))
 para(tf, [("LLMs increasingly gate ", None), ("safety-critical decisions", "hi"),
           (" — content moderation, clinical triage, legal analysis.", None)],
-     size=17, bullet=True, first=True, space_after=10)
+     size=15, bullet=True, first=True, space_after=10)
 para(tf, [("A secure evaluator should judge the ", None), ("facts", "hi"),
           (", not their ", None), ("presentation", "hi"), (".", None)],
-     size=17, bullet=True, space_after=10)
+     size=15, bullet=True, space_after=10)
 para(tf, [("Behavioral manipulation vulnerability", "gold"),
-          (": an attacker shifts the decision by changing morally ", None), ("irrelevant", "em"),
-          (" surface features — framing, tone, sensory detail — without changing the underlying situation.", None)],
-     size=17, bullet=True)
+          (": the attacker changes morally ", None), ("irrelevant", "em"),
+          (" surface features — framing, tone, sensory detail — never the underlying situation.", None)],
+     size=15, bullet=True)
+# right-hand concept diagram: same facts -> two wordings -> opposite verdicts
+LIGHT = RGBColor(0xF3, 0xF3, 0xF3)
+fbox(s, Inches(9.15), Inches(0.95), Inches(2.6), Inches(0.45),
+     [("the same facts", "bold")], border=INK, fill=LIGHT, size=11)
+varrow(s, Inches(9.35), Inches(1.46), Inches(0.32))
+varrow(s, Inches(11.55), Inches(1.46), Inches(0.32))
+fbox(s, Inches(8.25), Inches(1.85), Inches(2.15), Inches(0.5),
+     [("stated plainly", None)], border=GRAY, size=10)
+fbox(s, Inches(10.65), Inches(1.85), Inches(2.15), Inches(0.5),
+     [("euphemistic rewording", None)], border=GRAY, size=10)
+varrow(s, Inches(9.22), Inches(2.42), Inches(0.32))
+varrow(s, Inches(11.62), Inches(2.42), Inches(0.32))
+fbox(s, Inches(8.75), Inches(2.82), Inches(1.05), Inches(0.42),
+     [("FLAG", "hi")], border=ATLASBLUE, size=11)
+fbox(s, Inches(11.15), Inches(2.82), Inches(1.05), Inches(0.42),
+     [("PASS", "gold")], border=ERISGOLD, size=11)
+tf = textbox(s, Inches(8.05), Inches(3.35), Inches(4.9), Inches(0.65))
+para(tf, [("same situation — different verdict: the wording is an attack surface", None)],
+     size=10, align=PP_ALIGN.CENTER, color=GRAY, first=True)
 block(s, Inches(0.55), Inches(4.35), Inches(12.2), Inches(2.35), "The measurement gap", [
     {"segments": [("Prior work probes one bias at a time and reports a ", None),
                   ("single scalar robustness score", "hi"),
@@ -274,66 +357,130 @@ footnote(s, [("Test–retest median r = 0.96. Dimensions index a shared structur
 
 # ---- 7. worked exploit ---------------------------------------------------------
 s = new_slide("Worked exploit: threshold evasion", 7)
-tf = textbox(s, Inches(0.55), Inches(1.1), Inches(12.2), Inches(5.2))
-para(tf, [("Content-moderation filter: flag if total harm > T.", "bold")], size=18, first=True, space_after=14)
+tf = textbox(s, Inches(0.55), Inches(0.95), Inches(12.2), Inches(3.1))
+para(tf, [("Content-moderation filter: flag if total harm > T.", "bold")], size=16, first=True, space_after=8)
 para(tf, [("Euphemistic rewriting (morally invariant) lowers panel-averaged harm by ", None),
           ("−14.0 points", "gold"),
           (" on the 0–70 scale (4/6 gold > 10 pts); dramatic only +7.3.", None)],
-     size=17, bullet=True, space_after=12)
+     size=15, bullet=True, space_after=8)
 para(tf, [("At a median-calibrated threshold, ", None), ("3 of 6", "gold"),
           (" gold items silently reclassify FLAG → PASS ", None),
           ("(existence proof: n = 6 hand-audited gold items).", "em")],
-     size=17, bullet=True, space_after=12)
+     size=15, bullet=True, space_after=8)
 para(tf, [("Asymmetry", "gold"), (": far easier to ", None), ("evade", "em"),
           (" (hide harm) than to ", None), ("trigger", "em"),
           (" a false positive — the dangerous direction.", None)],
-     size=17, bullet=True)
+     size=15, bullet=True)
+# threshold strip: base (blue) dots pulled left across T by euphemism (orange)
+AX_X0, AX_W = 0.8, 11.7
+
+
+def _ax(v):  # data 0..11.4 -> slide inches
+    return Inches(AX_X0 + v * (AX_W / 11.4))
+
+
+bar = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(AX_X0), Inches(6.05), Inches(AX_W), Pt(1.4))
+bar.fill.solid(); bar.fill.fore_color.rgb = GRAY; bar.line.fill.background()
+thr = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, _ax(5.6), Inches(4.45), Pt(1.6), Inches(1.75))
+thr.fill.solid(); thr.fill.fore_color.rgb = INK; thr.line.fill.background()
+tf = textbox(s, _ax(5.6) - Inches(0.8), Inches(4.12), Inches(1.7), Inches(0.3))
+para(tf, [("threshold T", "bold")], size=10, align=PP_ALIGN.CENTER, first=True)
+tf = textbox(s, _ax(2.2), Inches(4.45), Inches(1.5), Inches(0.3))
+para(tf, [("PASS side", None)], size=9, color=GRAY, first=True)
+tf = textbox(s, _ax(8.0), Inches(4.45), Inches(1.5), Inches(0.3))
+para(tf, [("FLAG side", None)], size=9, color=GRAY, first=True)
+ROWS = [(6.3, 4.1, 4.95), (7.2, 4.9, 5.25), (8.4, 5.2, 5.55),
+        (7.9, 6.1, 4.95), (9.3, 7.4, 5.25), (10.4, 8.6, 5.55)]
+for xb, xe, yy in ROWS:
+    larrow(s, _ax(xe), Inches(yy - 0.05), _ax(xb) - _ax(xe), ERISGOLD)
+    dot(s, _ax(xb), Inches(yy), ATLASBLUE)
+    dot(s, _ax(xe), Inches(yy), ERISGOLD)
+tf = textbox(s, Inches(0.85), Inches(4.75), Inches(2.2), Inches(0.6))
+para(tf, [("●", "hi"), (" original", None)], size=9, color=GRAY, first=True, space_after=1)
+para(tf, [("●", "gold"), (" euphemistic", None)], size=9, color=GRAY)
+tf = textbox(s, Inches(6.6), Inches(6.25), Inches(6.0), Inches(0.3))
+para(tf, [("schematic geometry — the measured statistics are the bullets above", None)],
+     size=9, align=PP_ALIGN.RIGHT, color=GRAY, first=True)
 
 # ---- 8. kernel ---------------------------------------------------------------
 s = new_slide("The exploit survives a principled kernel", 8)
-tf = textbox(s, Inches(0.55), Inches(0.95), Inches(12.2), Inches(1.3))
+tf = textbox(s, Inches(0.55), Inches(0.92), Inches(12.2), Inches(0.45))
 para(tf, [("Route each scenario through the real ", None), ("ErisML DEME v3", "hi"), (" decision kernel:", None)],
-     size=16, first=True, space_after=6)
-para(tf, [("text → ", None), ("LLM extracts ethical facts", "hi"), (" → ", None),
-          ("GenevaEMV3", "mono"), (" → typed verdict   ", None),
-          ("(forbid → avoid → neutral → prefer → strongly_prefer)", None)],
-     size=14, align=PP_ALIGN.CENTER)
-block(s, Inches(0.55), Inches(2.55), Inches(12.2), Inches(2.5), "Across 161 scenario–model cases", [
+     size=15, first=True)
+BLUE6 = RGBColor(0xEE, 0xF4, 0xFA)
+LIGHT = RGBColor(0xF3, 0xF3, 0xF3)
+fbox(s, Inches(1.0), Inches(1.95), Inches(1.9), Inches(0.62),
+     [("scenario text", None)], fill=BLUE6, size=11)
+fbox(s, Inches(3.5), Inches(1.95), Inches(2.3), Inches(0.62),
+     [("LLM extracts\n", None), ("ethical facts", "bold")], fill=BLUE6, size=11)
+fbox(s, Inches(6.45), Inches(1.95), Inches(2.5), Inches(0.62),
+     [("GenevaEMV3\n", "mono"), ("fixed rule module", None)], border=GRAY, fill=LIGHT, size=10)
+fbox(s, Inches(9.6), Inches(1.95), Inches(2.9), Inches(0.62),
+     [("typed verdict\n", None), ("forbid ⋯ strongly_prefer", "mono")], fill=BLUE6, size=10)
+harrow(s, Inches(2.98), Inches(2.18), Inches(0.44))
+harrow(s, Inches(5.88), Inches(2.18), Inches(0.44))
+harrow(s, Inches(9.03), Inches(2.18), Inches(0.44))
+varrow(s, Inches(4.52), Inches(1.36), Inches(0.5), color=ERISGOLD)
+tf = textbox(s, Inches(4.95), Inches(1.30), Inches(3.6), Inches(0.5))
+para(tf, [("euphemistic rewrite lands ", None), ("HERE", "gold")], size=11, first=True)
+tf = textbox(s, Inches(6.45), Inches(2.60), Inches(2.5), Inches(0.3))
+para(tf, [("rules unchanged", None)], size=9, align=PP_ALIGN.CENTER, color=GRAY, first=True)
+block(s, Inches(0.55), Inches(3.15), Inches(12.2), Inches(2.3), "Across 161 scenario–model cases", [
     {"segments": [("Euphemistic rewriting flips forbid/avoid → permissive in ", None),
                   ("13.7%", "gold"), (" of cases; mean shift ", None), ("+0.65", "gold"),
                   (" ordinal steps.", None)], "bullet": True, "space_after": 8},
     {"segments": [("forbid verdicts fall ", None), ("44 → 27", "gold"),
                   (" (−39%); strongly_prefer rises 46 → 78.", None)], "bullet": True},
 ], body_size=16)
-tf = textbox(s, Inches(0.55), Inches(5.45), Inches(12.2), Inches(1.2))
+tf = textbox(s, Inches(0.55), Inches(5.7), Inches(12.2), Inches(1.0))
 para(tf, [("A rule engine inherits, rather than cures, the front-end's salience vulnerability.", "gold"),
           ("  Harden ", None), ("fact extraction", "em"), (", not just the rule.", None)],
      size=16, first=True)
 
 # ---- 9. defense (since submission) ---------------------------------------------
 s = new_slide("Since submission — a measured defense", 9)
-tf = textbox(s, Inches(0.55), Inches(0.92), Inches(12.2), Inches(5.4))
+tf = textbox(s, Inches(0.55), Inches(0.90), Inches(12.2), Inches(0.4))
 para(tf, [("Second instantiation from here on: validated learned encoders (", None),
           ("xbse", "mono"), (") replace LLM judges; same DEME kernel.", None)],
-     size=13, color=GRAY, first=True, space_after=8)
-para(tf, [("Equivalence-class averaging", "bold"),
-          (": generate the input's paraphrase class (m paraphrases), ", None),
-          ("average per-dimension perception over the class", "hi"), (", then decide.", None)],
-     size=16, space_after=10)
+     size=12, color=GRAY, first=True)
+# mechanism flow: x -> generated class -> encoders -> average -> decide
+BLUE6 = RGBColor(0xEE, 0xF4, 0xFA)
+ORANGE6 = RGBColor(0xFC, 0xF1, 0xE8)
+TEAL8 = RGBColor(0xE9, 0xF5, 0xF1)
+fbox(s, Inches(0.7), Inches(1.55), Inches(1.35), Inches(0.6),
+     [("input x", None)], fill=BLUE6, size=11)
+fbox(s, Inches(2.6), Inches(1.55), Inches(2.55), Inches(0.6),
+     [("paraphrase class\n", None), ("x₁ ⋯ xₘ (generated)", None)],
+     border=ERISGOLD, fill=ORANGE6, size=10, dashed=True)
+fbox(s, Inches(5.7), Inches(1.55), Inches(1.95), Inches(0.6),
+     [("validated encoders", None)], fill=BLUE6, size=11)
+fbox(s, Inches(8.2), Inches(1.55), Inches(2.1), Inches(0.6),
+     [("average\n", "bold"), ("over the class", None)], border=CBTEAL, fill=TEAL8, size=10)
+fbox(s, Inches(10.85), Inches(1.55), Inches(1.4), Inches(0.6),
+     [("decide", None)], fill=BLUE6, size=11)
+harrow(s, Inches(2.10), Inches(1.77), Inches(0.44))
+harrow(s, Inches(5.20), Inches(1.77), Inches(0.44))
+harrow(s, Inches(7.70), Inches(1.77), Inches(0.44))
+harrow(s, Inches(10.35), Inches(1.77), Inches(0.44))
+tf = textbox(s, Inches(2.15), Inches(2.22), Inches(3.6), Inches(0.6))
+para(tf, [("the measured hole: a euphemistic x yields a class that ", None),
+          ("stays", "em"), (" euphemistic", None)],
+     size=9, align=PP_ALIGN.CENTER, color=ERISGOLD, first=True)
+tf = textbox(s, Inches(10.15), Inches(2.22), Inches(2.8), Inches(0.6))
+para(tf, [("refusal → singleton → ", None), ("escalate", "bold")],
+     size=9, align=PP_ALIGN.CENTER, color=GRAY, first=True)
+tf = textbox(s, Inches(0.55), Inches(2.95), Inches(12.2), Inches(3.0))
 para(tf, [("At scale (60 held-out items, m = 6): raw drift ", None),
           ("0.407 → θ\u2094 = 0.219", "gold"), (" — the mechanism ", None), ("halves", "hi"),
           (" salience drift (θ\u2094: mean per-dimension decision movement). The registered bar θ\u2094 ≤ 0.5 ", None),
           ("binds for adversarial-register inputs", "hi"),
           (" (raw 0.67–0.85); the defended run there is the registered open item.", None)],
-     size=16, bullet=True, space_after=10)
+     size=15, bullet=True, first=True, space_after=10)
 para(tf, [("LLM paraphrasers ", None), ("refuse 24%", "gold"),
           (" of harmful inputs. A non-refusing red-team paraphraser (NLLB back-translation, 6 pivots): ", None),
           ("θ\u2094 = 0.301", "gold"), (" on harmful content — the weakness is the ", None),
           ("generator's", "hi"), (", not the mechanism's.", None)],
-     size=16, bullet=True, space_after=10)
-para(tf, [("Trust boundary: refusal → singleton class → ", None), ("escalate by default", "hi"),
-          ("; the audit proof records class members.", None)],
-     size=16, bullet=True)
+     size=15, bullet=True)
 footnote(s, [("Natural (not adversarial) paraphrases at scale. Gold-set decision translation (measured negative, n=6): adversarial-register rewrites still flip ", None),
              ("3/3", "gold"),
              (" flagged items defended, displacement −17% — paraphrases of euphemism stay euphemistic; the register gap is the live surface, and escalation carries it. July 2026.", None)], size=10)

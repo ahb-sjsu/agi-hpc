@@ -17,6 +17,7 @@
 \usepackage{booktabs}
 \usepackage{graphicx}
 \usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc}
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.17}
 \graphicspath{{revision/assets/}}
@@ -78,11 +79,38 @@
 
 % ---------------------------------------------------------------
 \begin{frame}{The problem: LLMs as decision services}
+\begin{columns}[T]
+\begin{column}{0.56\textwidth}
 \begin{itemize}
-  \item LLMs increasingly gate \hi{safety-critical decisions} --- content moderation, clinical triage, legal analysis.
-  \item A secure evaluator should judge the \hi{facts}, not their \hi{presentation}.
-  \item \alert{Behavioral manipulation vulnerability}: an attacker shifts the decision by changing morally \emph{irrelevant} surface features --- framing, tone, sensory detail --- without changing the underlying situation.
+  \item \small LLMs increasingly gate \hi{safety-critical decisions} --- content moderation, clinical triage, legal analysis.
+  \item \small A secure evaluator should judge the \hi{facts}, not their \hi{presentation}.
+  \item \small \alert{Behavioral manipulation vulnerability}: the attacker changes morally \emph{irrelevant} surface features --- framing, tone, sensory detail --- never the underlying situation.
 \end{itemize}
+\end{column}
+\begin{column}{0.42\textwidth}
+\centering
+\begin{tikzpicture}[>=Stealth, node distance=2.2mm,
+  fact/.style={draw=ink, thick, rounded corners=1.5pt, fill=black!4,
+    font=\scriptsize, align=center, inner sep=3pt, text width=30mm},
+  word/.style={draw=cbgray, semithick, rounded corners=1.5pt, fill=white,
+    font=\scriptsize, align=center, inner sep=2.5pt, text width=25mm},
+  verd/.style={font=\scriptsize\bfseries, inner sep=2.5pt, rounded
+    corners=1.5pt},
+  arr/.style={->, semithick, draw=cbgray}]
+\node[fact] (f) {the same facts};
+\node[word, below left=4mm and -9mm of f] (d) {stated plainly};
+\node[word, below right=4mm and -9mm of f] (e) {euphemistic\\rewording};
+\node[verd, draw=cbblue, text=cbblue, below=3.5mm of d] (v1) {FLAG};
+\node[verd, draw=cborange, text=cborange, below=3.5mm of e] (v2) {PASS};
+\draw[arr] (f) -- (d);
+\draw[arr] (f) -- (e);
+\draw[arr] (d) -- node[left, font=\tiny, text=cbgray] {judge} (v1);
+\draw[arr] (e) -- node[right, font=\tiny, text=cbgray] {judge} (v2);
+\node[below=1.5mm of $(v1)!0.5!(v2)$, font=\tiny, text=cbgray,
+  align=center] {same situation --- different verdict:\\the wording is an attack surface};
+\end{tikzpicture}
+\end{column}
+\end{columns}
 \vfill
 \begin{block}{The measurement gap}
 Prior work probes one bias at a time and reports a \hi{single scalar robustness score}. Across $n$ independent failure directions, a scalar discards $n-1$ of them. \gold{No post-hoc procedure recovers the lost structure.}
@@ -173,18 +201,59 @@ Physical / Autonomy (lowest) & 0.893 & $\approx$0.57\\
 \begin{frame}{Worked exploit: threshold evasion}
 \textbf{Content-moderation filter: flag if total harm $> T$.}
 \begin{itemize}
-  \item Euphemistic rewriting (morally invariant) lowers panel-averaged harm by \gold{$-14.0$ points} on the 0--70 scale (4/6 gold $>10$ pts); dramatic only $+7.3$.
-  \item At a median-calibrated threshold, \gold{3 of 6} gold items silently reclassify \textsc{flag}$\rightarrow$\textsc{pass} {\small (existence proof: $n=6$ hand-audited gold items)}.
-  \item \alert{Asymmetry}: far easier to \emph{evade} (hide harm) than to \emph{trigger} a false positive --- the dangerous direction.
+  \item \small Euphemistic rewriting (morally invariant) lowers panel-averaged harm by \gold{$-14.0$ points} on the 0--70 scale (4/6 gold $>10$ pts); dramatic only $+7.3$.
+  \item \small At a median-calibrated threshold, \gold{3 of 6} gold items silently reclassify \textsc{flag}$\rightarrow$\textsc{pass} {\small (existence proof: $n=6$ hand-audited gold items)}.
+  \item \small \alert{Asymmetry}: far easier to \emph{evade} (hide harm) than to \emph{trigger} a false positive --- the dangerous direction.
 \end{itemize}
+\vfill
+\centering
+\begin{tikzpicture}[>=Stealth]
+\draw[->, thick, cbgray!70] (0,0) -- (11.4,0);
+\node[font=\scriptsize, text=cbgray] at (2.0,-0.35) {total harm (0--70) $\rightarrow$};
+\draw[dashed, thick, ink] (5.6,-0.3) -- (5.6,1.55)
+  node[above, font=\scriptsize] {threshold $T$};
+\node[font=\tiny, text=cbgray] at (2.8,1.45) {\textsc{pass} side};
+\node[font=\tiny, text=cbgray] at (8.6,1.45) {\textsc{flag} side};
+% six gold items: base (blue) on the flag side; euphemistic rewrite (orange)
+% pulls each left; three cross T (schematic geometry; measured stats below)
+\foreach \xb/\xe/\y in {6.3/4.1/0.45, 7.2/4.9/0.80, 8.4/5.2/1.15,
+                        7.9/6.1/0.45, 9.3/7.4/0.80, 10.4/8.6/1.15}{
+  \fill[cbblue] (\xb,\y) circle (2.1pt);
+  \fill[cborange] (\xe,\y) circle (2.1pt);
+  \draw[->, semithick, cborange!80] (\xb-0.12,\y) -- (\xe+0.14,\y);
+}
+\node[font=\tiny, text=cbgray, align=left, anchor=west] at (0.15,0.85)
+  {\textcolor{cbblue}{$\bullet$} original\\[-2pt]
+   \textcolor{cborange}{$\bullet$} euphemistic};
+\node[font=\tiny, text=cbgray, anchor=east] at (11.3,-0.62)
+  {schematic geometry --- the measured statistics are the bullets above};
+\end{tikzpicture}
 \end{frame}
 
 % ---------------------------------------------------------------
 \begin{frame}{The exploit survives a principled kernel}
-Route each scenario through the real \hi{ErisML DEME v3} decision kernel:\\
-\centering\small
-text $\rightarrow$ \hi{LLM extracts ethical facts} $\rightarrow$ \texttt{GenevaEMV3} $\rightarrow$ typed verdict\\
-{\scriptsize (\textsc{forbid} $\rightarrow$ \textsc{avoid} $\rightarrow$ \textsc{neutral} $\rightarrow$ \textsc{prefer} $\rightarrow$ \textsc{strongly\_prefer})}
+Route each scenario through the real \hi{ErisML DEME v3} decision kernel:
+\smallskip
+\begin{center}
+\begin{tikzpicture}[>=Stealth, node distance=5mm,
+  stage/.style={draw=cbblue, thick, rounded corners=1.5pt, fill=cbblue!6,
+    font=\scriptsize, align=center, inner sep=3.5pt},
+  arr/.style={->, semithick, draw=cbgray}]
+\node[stage] (t) {scenario\\text};
+\node[stage, right=of t] (fx) {LLM extracts\\\textbf{ethical facts}};
+\node[stage, right=of fx, fill=black!4, draw=cbgray]
+  (rl) {\texttt{GenevaEMV3}\\fixed rule module};
+\node[stage, right=of rl] (v) {typed verdict\\{\tiny \textsc{forbid} $\cdots$ \textsc{strongly\_prefer}}};
+\draw[arr] (t) -- (fx);
+\draw[arr] (fx) -- (rl);
+\draw[arr] (rl) -- (v);
+\draw[->, very thick, cborange]
+  ($(fx.north)+(0,7mm)$) -- (fx.north)
+  node[midway, right=1mm, font=\scriptsize, text=cborange,
+    align=left] {euphemistic rewrite\\lands \textbf{here}};
+\node[below=1.5mm of rl, font=\tiny, text=cbgray] {rules unchanged};
+\end{tikzpicture}
+\end{center}
 \vfill
 \begin{block}{Across 161 scenario--model cases}
 \begin{itemize}
@@ -198,12 +267,31 @@ text $\rightarrow$ \hi{LLM extracts ethical facts} $\rightarrow$ \texttt{GenevaE
 % ---------------------------------------------------------------
 \begin{frame}{Since submission --- a measured defense}
 {\small\color{cbgray} Second instantiation from here on: validated learned encoders (\texttt{xbse}) replace LLM judges; same DEME kernel.\par}
-\smallskip
-\textbf{Equivalence-class averaging}: generate the input's paraphrase class ($m$ paraphrases), \hi{average per-dimension perception over the class}, then decide.
+\begin{center}
+\begin{tikzpicture}[>=Stealth, node distance=4.5mm,
+  stage/.style={draw=cbblue, thick, rounded corners=1.5pt, fill=cbblue!6,
+    font=\scriptsize, align=center, inner sep=3pt},
+  arr/.style={->, semithick, draw=cbgray}]
+\node[stage] (x) {input $x$};
+\node[stage, right=of x, draw=cborange, dashed, fill=cborange!6]
+  (cls) {paraphrase class\\$x_1 \cdots x_m$ {\tiny(generated)}};
+\node[stage, right=of cls] (enc) {validated\\encoders};
+\node[stage, right=of enc, draw=cbteal, fill=cbteal!8]
+  (avg) {\textbf{average}\\over the class};
+\node[stage, right=of avg] (dec) {decide};
+\draw[arr] (x) -- (cls);
+\draw[arr] (cls) -- (enc);
+\draw[arr] (enc) -- (avg);
+\draw[arr] (avg) -- (dec);
+\node[below=1.2mm of cls, font=\tiny, text=cborange, align=center]
+  {the measured hole: a euphemistic $x$\\yields a class that \emph{stays} euphemistic};
+\node[below=1.2mm of dec, font=\tiny, text=cbgray, align=center]
+  {refusal $\rightarrow$ singleton\\$\rightarrow$ \textbf{escalate}};
+\end{tikzpicture}
+\end{center}
 \begin{itemize}
-  \item At scale (60 held-out items, $m=6$): raw drift \gold{0.407 $\rightarrow$ $\theta_d$ = 0.219} --- the mechanism \hi{halves} salience drift {\small ($\theta_d$: mean per-dimension decision movement)}. The registered bar $\theta_d \le 0.5$ \hi{binds for adversarial-register inputs} (raw 0.67--0.85); the defended run there is the registered open item.
-  \item LLM paraphrasers \alert{refuse 24\%} of harmful inputs. A non-refusing red-team paraphraser (NLLB back-translation, 6 pivots): \gold{$\theta_d = 0.301$} on harmful content --- the weakness is the \hi{generator's}, not the mechanism's.
-  \item Trust boundary: refusal $\rightarrow$ singleton class $\rightarrow$ \hi{escalate by default}; the audit proof records class members.
+  \item \small At scale (60 held-out items, $m=6$): raw drift \gold{0.407 $\rightarrow$ $\theta_d$ = 0.219} --- the mechanism \hi{halves} salience drift {\small ($\theta_d$: mean per-dimension decision movement)}. The registered bar $\theta_d \le 0.5$ \hi{binds for adversarial-register inputs} (raw 0.67--0.85); the defended run there is the registered open item.
+  \item \small LLM paraphrasers \alert{refuse 24\%} of harmful inputs. A non-refusing red-team paraphraser (NLLB back-translation, 6 pivots): \gold{$\theta_d = 0.301$} on harmful content --- the weakness is the \hi{generator's}, not the mechanism's.
 \end{itemize}
 \vfill
 {\scriptsize Natural (not adversarial) paraphrases at scale. Gold-set decision translation (measured negative, $n{=}6$): adversarial-register rewrites still flip \gold{3/3} flagged items defended, displacement $-17\%$ --- paraphrases of euphemism stay euphemistic; the register gap is the live surface, and escalation carries it. July 2026.}
