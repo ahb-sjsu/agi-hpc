@@ -390,7 +390,7 @@ para(tf, [("And the ", None), ("judge panel's own 31×7 score matrix replicates 
           (" most G-laden; financial and identity diverge across instantiations.", None)],
      size=13, first=True)
 footnote(s, [("Bifactor: learned-encoder instantiation (", None), ("xbse", "mono"),
-             ("), 12×12 gate at margin 0.05; identity_attack divergence recorded, not adjudicated. Panel FA: 6 models × 3 reps consensus, Horn's parallel analysis, n=31 (loadings coarse; the factor count is the robust part). July 2026.", None)], size=10)
+             ("), 12×12 gate at margin 0.05; identity_attack divergence recorded, not adjudicated. Panel FA: Horn's parallel analysis, n=31; per-judge FAs agree — one factor in all six models (PC1 0.51–0.60), Tucker congruence 0.989–0.999 vs consensus. July 2026.", None)], size=10)
 
 # ---- 11. implications ------------------------------------------------------------
 s = new_slide("Implications for Secure AI deployment", 11)
@@ -608,6 +608,8 @@ ADAPTIVE ATTACKER — now MEASURED (footer): on the 6 gold adversarial-register 
 """Post-camera-ready. THE SLIDE'S QUESTION: ICC 0.97 showed the dimensions are reliably MEASURABLE — a skeptic asks whether they are DISTINCT. We ran the test against ourselves, pre-registered.
 
 SCOPE + THE NEW RESULT (right column, bottom): the bifactor readout is encoder-instantiation; we then factor-analyzed the JUDGE PANEL'S OWN 31x7 score matrix directly. It REPLICATES the general factor: PC1 = 54% of variance (consensus; 53% pooled), and it is the ONLY component surviving Horn's parallel analysis. Per-axis: physical fully specific on the panel too (R^2 ~ 0 — striking agreement with the encoder residual), emotional (0.86) and trust (0.78) most G-laden as predicted; financial and identity DIVERGE across instantiations — recorded, not adjudicated. n=31, so per-axis loadings are coarse; the factor COUNT is the robust claim.
+
+ROBUSTNESS (if pressed "is that just aggregation?"): run separately on each judge's own 31x7 matrix, ALL SIX models keep exactly one factor (PC1 51-60%), and each model's PC1 is the SAME factor as the consensus — Tucker congruence 0.989-0.999, above the 0.95 factor-equality convention. The general factor lives inside every judge, not just in the average.
 
 RESULTS: a general moral-valence channel G is real and strong (cross-dataset AUROC 0.856, n=51k). Five named axes — purity, legitimacy, loyalty, care, fairness — are >=0.98 predictable from G on independent corpora: their gate-passing transfer is general valence, not their named dimension. The 12x12 specificity gate confirms it independently: specific = environmental, privacy, identity_attack, autonomy, physical(+.08, marginal); demoted = the rest. The pre-registered P1 FAILED (4/11 diagonal-dominant vs required 8) — we publish the failure.
 

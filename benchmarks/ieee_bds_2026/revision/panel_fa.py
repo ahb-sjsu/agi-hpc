@@ -86,9 +86,45 @@ out = {
     "consensus": pca_report(M, "consensus (31 scenarios, panel mean)"),
     "pooled": pca_report(P, "pooled (scenario x model x rep rows)"),
 }
+
+# ---- per-model FA: does the one-strong-factor structure hold inside each
+# judge, or only in the aggregate? Each model gets its own 31x7 matrix
+# (reps averaged), its own PCA + parallel analysis, and a Tucker congruence
+# coefficient of its PC1 against the consensus PC1.
+models = sorted({m for sid in scen_ids for m in raw[sid]})
+cons_pc1 = np.array([out["consensus"]["pc1_loadings"][d] for d in DIMS])
+per_model = {}
+for model in models:
+    rows_m = []
+    for sid in scen_ids:
+        reps = raw[sid].get(model, {})
+        vecs = [leaf["vec"] for leaf in reps.values()
+                if leaf.get("vec") is not None and len(leaf["vec"]) == 7]
+        if vecs:
+            rows_m.append(np.mean(np.asarray(vecs, dtype=float), axis=0))
+    Xm = np.asarray(rows_m)
+    rep = pca_report(Xm, f"model: {model} ({Xm.shape[0]} scenarios)")
+    pc1_m = np.array([rep["pc1_loadings"][d] for d in DIMS])
+    phi = float(np.dot(pc1_m, cons_pc1)
+                / np.sqrt(np.dot(pc1_m, pc1_m) * np.dot(cons_pc1, cons_pc1)))
+    rep["tucker_congruence_vs_consensus"] = round(phi, 4)
+    print(f"  Tucker congruence vs consensus PC1: {phi:.3f}")
+    per_model[model] = rep
+out["per_model"] = per_model
+shares = [r["pc1_share"] for r in per_model.values()]
+phis = [r["tucker_congruence_vs_consensus"] for r in per_model.values()]
+facs = [r["parallel_analysis_factors"] for r in per_model.values()]
+out["per_model_summary"] = {
+    "pc1_share_min": round(min(shares), 4), "pc1_share_max": round(max(shares), 4),
+    "congruence_min": round(min(phis), 4), "congruence_max": round(max(phis), 4),
+    "pa_factors": {m: per_model[m]["parallel_analysis_factors"] for m in per_model},
+}
+
 json.dump(out, open("panel_fa_result.json", "w"), indent=1)
 print("\nSAVED panel_fa_result.json")
-print("DONE PANEL_FA pc1_consensus=%.3f pc1_pooled=%.3f factors=%d/%d" % (
-    out["consensus"]["pc1_share"], out["pooled"]["pc1_share"],
-    out["consensus"]["parallel_analysis_factors"],
-    out["pooled"]["parallel_analysis_factors"]))
+print("DONE PANEL_FA pc1_consensus=%.3f pc1_pooled=%.3f factors=%d/%d "
+      "permodel_pc1=[%.3f,%.3f] congruence=[%.3f,%.3f]" % (
+          out["consensus"]["pc1_share"], out["pooled"]["pc1_share"],
+          out["consensus"]["parallel_analysis_factors"],
+          out["pooled"]["parallel_analysis_factors"],
+          min(shares), max(shares), min(phis), max(phis)))

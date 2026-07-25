@@ -82,5 +82,279 @@
    "identity": 0.7353
   },
   "n_rows": 558
+ },
+ "per_model": {
+  "gemma": {
+   "eigenvalues": [
+    3.6033,
+    1.1776,
+    0.9363,
+    0.6927,
+    0.2879,
+    0.2164,
+    0.086
+   ],
+   "variance_share": [
+    0.5148,
+    0.1682,
+    0.1338,
+    0.099,
+    0.0411,
+    0.0309,
+    0.0123
+   ],
+   "pc1_share": 0.5148,
+   "parallel_analysis_factors": 1,
+   "pa_null95_eig1": 2.0207,
+   "pc1_loadings": {
+    "physical": -0.1163,
+    "emotional": 0.4655,
+    "financial": 0.2777,
+    "autonomy": 0.3231,
+    "trust": 0.4814,
+    "social": 0.4092,
+    "identity": 0.4349
+   },
+   "pc1_r2": {
+    "physical": 0.0488,
+    "emotional": 0.7807,
+    "financial": 0.2778,
+    "autonomy": 0.3761,
+    "trust": 0.835,
+    "social": 0.6034,
+    "identity": 0.6816
+   },
+   "n_rows": 31,
+   "tucker_congruence_vs_consensus": 0.9894
+  },
+  "glm-5": {
+   "eigenvalues": [
+    3.689,
+    1.4295,
+    0.8277,
+    0.4514,
+    0.2955,
+    0.2392,
+    0.0679
+   ],
+   "variance_share": [
+    0.527,
+    0.2042,
+    0.1182,
+    0.0645,
+    0.0422,
+    0.0342,
+    0.0097
+   ],
+   "pc1_share": 0.527,
+   "parallel_analysis_factors": 1,
+   "pa_null95_eig1": 2.0227,
+   "pc1_loadings": {
+    "physical": 0.0335,
+    "emotional": 0.496,
+    "financial": 0.2081,
+    "autonomy": 0.3871,
+    "trust": 0.4551,
+    "social": 0.3967,
+    "identity": 0.4418
+   },
+   "pc1_r2": {
+    "physical": 0.0041,
+    "emotional": 0.9075,
+    "financial": 0.1598,
+    "autonomy": 0.5528,
+    "trust": 0.7641,
+    "social": 0.5805,
+    "identity": 0.7202
+   },
+   "n_rows": 31,
+   "tucker_congruence_vs_consensus": 0.9988
+  },
+  "gpt-oss": {
+   "eigenvalues": [
+    3.8156,
+    1.2627,
+    0.913,
+    0.51,
+    0.2111,
+    0.1669,
+    0.1207
+   ],
+   "variance_share": [
+    0.5451,
+    0.1804,
+    0.1304,
+    0.0729,
+    0.0302,
+    0.0238,
+    0.0172
+   ],
+   "pc1_share": 0.5451,
+   "parallel_analysis_factors": 1,
+   "pa_null95_eig1": 2.0028,
+   "pc1_loadings": {
+    "physical": 0.0533,
+    "emotional": 0.4402,
+    "financial": 0.1785,
+    "autonomy": 0.3927,
+    "trust": 0.4459,
+    "social": 0.4425,
+    "identity": 0.4719
+   },
+   "pc1_r2": {
+    "physical": 0.0108,
+    "emotional": 0.7393,
+    "financial": 0.1215,
+    "autonomy": 0.5885,
+    "trust": 0.7588,
+    "social": 0.747,
+    "identity": 0.8496
+   },
+   "n_rows": 31,
+   "tucker_congruence_vs_consensus": 0.9949
+  },
+  "minimax-m2": {
+   "eigenvalues": [
+    4.1829,
+    1.4343,
+    0.631,
+    0.3618,
+    0.182,
+    0.1487,
+    0.0593
+   ],
+   "variance_share": [
+    0.5976,
+    0.2049,
+    0.0901,
+    0.0517,
+    0.026,
+    0.0212,
+    0.0085
+   ],
+   "pc1_share": 0.5976,
+   "parallel_analysis_factors": 1,
+   "pa_null95_eig1": 2.0174,
+   "pc1_loadings": {
+    "physical": 0.0641,
+    "emotional": 0.4557,
+    "financial": 0.1961,
+    "autonomy": 0.4295,
+    "trust": 0.4513,
+    "social": 0.3951,
+    "identity": 0.4534
+   },
+   "pc1_r2": {
+    "physical": 0.0172,
+    "emotional": 0.8687,
+    "financial": 0.1609,
+    "autonomy": 0.7715,
+    "trust": 0.8521,
+    "social": 0.6528,
+    "identity": 0.8597
+   },
+   "n_rows": 31,
+   "tucker_congruence_vs_consensus": 0.9962
+  },
+  "qwen3": {
+   "eigenvalues": [
+    3.5581,
+    1.1232,
+    1.0876,
+    0.5137,
+    0.4219,
+    0.2315,
+    0.064
+   ],
+   "variance_share": [
+    0.5083,
+    0.1605,
+    0.1554,
+    0.0734,
+    0.0603,
+    0.0331,
+    0.0091
+   ],
+   "pc1_share": 0.5083,
+   "parallel_analysis_factors": 1,
+   "pa_null95_eig1": 2.0285,
+   "pc1_loadings": {
+    "physical": -0.0544,
+    "emotional": 0.5004,
+    "financial": 0.3213,
+    "autonomy": 0.344,
+    "trust": 0.4258,
+    "social": 0.3715,
+    "identity": 0.4537
+   },
+   "pc1_r2": {
+    "physical": 0.0105,
+    "emotional": 0.8908,
+    "financial": 0.3673,
+    "autonomy": 0.4209,
+    "trust": 0.645,
+    "social": 0.4911,
+    "identity": 0.7324
+   },
+   "n_rows": 31,
+   "tucker_congruence_vs_consensus": 0.9924
+  },
+  "qwen3-small": {
+   "eigenvalues": [
+    3.7276,
+    1.2253,
+    1.012,
+    0.4782,
+    0.3326,
+    0.1594,
+    0.0648
+   ],
+   "variance_share": [
+    0.5325,
+    0.175,
+    0.1446,
+    0.0683,
+    0.0475,
+    0.0228,
+    0.0093
+   ],
+   "pc1_share": 0.5325,
+   "parallel_analysis_factors": 1,
+   "pa_null95_eig1": 2.0276,
+   "pc1_loadings": {
+    "physical": 0.1279,
+    "emotional": 0.4755,
+    "financial": 0.2204,
+    "autonomy": 0.4136,
+    "trust": 0.4524,
+    "social": 0.4118,
+    "identity": 0.4045
+   },
+   "pc1_r2": {
+    "physical": 0.0609,
+    "emotional": 0.8429,
+    "financial": 0.1811,
+    "autonomy": 0.6378,
+    "trust": 0.7629,
+    "social": 0.6323,
+    "identity": 0.6098
+   },
+   "n_rows": 31,
+   "tucker_congruence_vs_consensus": 0.9906
+  }
+ },
+ "per_model_summary": {
+  "pc1_share_min": 0.5083,
+  "pc1_share_max": 0.5976,
+  "congruence_min": 0.9894,
+  "congruence_max": 0.9988,
+  "pa_factors": {
+   "gemma": 1,
+   "glm-5": 1,
+   "gpt-oss": 1,
+   "minimax-m2": 1,
+   "qwen3": 1,
+   "qwen3-small": 1
+  }
  }
 }
