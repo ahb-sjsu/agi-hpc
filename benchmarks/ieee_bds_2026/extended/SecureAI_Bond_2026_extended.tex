@@ -56,7 +56,12 @@ First, we \emph{validate the moral geometry} beyond inter-model reliability
 three candidate missing dimensions, validates one (\texttt{identity\_attack};
 cross-dataset held-out AUROC 0.80, CI [0.78, 0.83]), retracts one, and
 declines one---demonstrating that the dimension set is extensible and
-falsifiable, not asserted. Second, we characterize \emph{which} axes are
+falsifiable, not asserted. A pre-registered bifactor readout sharpens what
+``validated'' means: the coordinate system is one strong general-valence
+factor plus a few separable specifics---five nominal axes are $\ge$0.98
+predictable from general valence, while privacy, autonomy, and environmental
+are genuinely their own---so the framework distinguishes validated
+\emph{transfer} from validated \emph{specificity}. Second, we characterize \emph{which} axes are
 robust measurement targets: valence encoders are register-invariant under
 domain-adversarial training while foundation-presence encoders are
 register-bound, a dissociation confirmed by three independent methods. Third,
@@ -120,8 +125,12 @@ held-out AUROC 0.80, CI [0.78, 0.83], $+0.25$ over its pre-registered null),
 one is retracted (\texttt{threat}), and one is declined
 (\texttt{sexual\_content}, shown to be a policy-norms signal rather than a
 moral axis). A framework that rejects its own candidates cannot be accused of
-asserting its coordinates. We further characterize which axes are robust
-measurement targets: \emph{valence} encoders are register-invariant, while
+asserting its coordinates. A pre-registered bifactor readout then separates
+general moral valence from axis-specific signal: the geometry is one strong
+shared factor plus a handful of separable specifics, so axes that clear the
+gate on \emph{transfer} are distinguished from those with validated
+\emph{specificity}. We further characterize which axes are robust measurement
+targets: \emph{valence} encoders are register-invariant, while
 foundation-\emph{presence} encoders are register-bound---a dissociation
 confirmed by three independent methods.
 \item \textbf{A measured invariance defense (Sec.~\ref{sec:defense}).}
@@ -370,9 +379,90 @@ encoder learns beyond keywords. MFRC presence cross-checks land at
 $0.608$/$0.635$. Caveats are pre-registered and disclosed: the ETHICS second
 corpus is thin (602/337 rows), so the purity AUROC is provisional; and
 passing the transfer gate does not establish independence from the general
-moral-valence factor (the residualization experiment requires the
-Phase-A bifactor encoder). With these, 11 of 12 learned axes have cleared
-the gate.
+moral-valence factor---the residualization that settles it is
+Sec.~\ref{sec:bifactor}. With these, 11 of 12 learned axes have cleared the
+gate on \emph{transfer}; Sec.~\ref{sec:bifactor} separates transfer from
+specificity.
+
+\subsection{Bifactor Structure: One Strong Factor Plus Separable Specifics}
+\label{sec:bifactor}
+
+Clearing the cross-dataset gate establishes that an axis carries real,
+generalizing signal; it does \emph{not} establish that the signal is the
+axis's \emph{own}, rather than a general good/bad valence shared across axes.
+A pre-registered bifactor readout---registered before the general-valence
+encoder $G$ was trained and before any loading was fit---separates the two,
+and its verdict is decisive.
+
+\textbf{$G$ is real (Phase A1).} A family-pooled signed-valence encoder clears
+the same baseline-relative gate as every named axis: cross-dataset AUROC
+$0.856 \pm 0.008$ ($n=51{,}319$, three seeds), $+0.337$ over its maximum null
+(untrained $0.480$, bag-of-words $0.519$). The general good/bad factor is not
+an artifact of any single corpus.
+
+\textbf{Most named axes are $G$ in a coat (Phase A2).} Residualizing each
+specific axis against $G$ and re-measuring cross-corpus transfer, the
+pre-registration required $\ge 8$ of 11 axes to remain diagonal-dominant.
+\emph{Four did} (Table~\ref{tab:bifactor}). Five axes---purity, legitimacy,
+loyalty, care, fairness---are $\ge 0.98$ predictable from $G$ on independent
+corpora: their real, gate-passing AUROCs are substantially \emph{general
+valence}, not their named dimension. The genuinely specific axes are privacy,
+autonomy, and environmental, with physical harm's residual surviving. The
+transfer matrix's off-diagonal mean falls only $0.726 \to 0.527$ under
+residualization while its diagonal falls $0.954 \to 0.779$: the shared factor
+was carrying most of the apparent cross-axis structure.
+
+\begin{table}[htbp]
+\caption{Bifactor readout (Phase A2): how much of each named axis is general
+valence $G$ (\texttt{gpred}, $G$'s cross-corpus prediction of the axis), and
+whether the residual still best predicts its own axis. Pre-registration
+required $\ge 8$ of 11 diagonal-dominant; four are.}
+\label{tab:bifactor}
+\centering
+\footnotesize
+\begin{tabular}{@{}lcl@{}}
+\toprule
+\textbf{Axis} & \boldmath$G$\textbf{-share} & \textbf{After residual} \\
+\midrule
+purity & 0.9997 & is $G$ \\
+legitimacy & 0.9986 & is $G$ \\
+loyalty & 0.9900 & is $G$ \\
+care & 0.9873 & is $G$ \\
+fairness & 0.9836 & is $G$ \\
+epistemic & 0.9396 & mostly $G$ \\
+physical harm & 0.8197 & residual survives \\
+\texttt{identity\_attack} & 0.6658 & mixed \\
+privacy & 0.6421 & \textbf{specific} \\
+environmental & 0.5538 & \textbf{specific} \\
+autonomy & 0.4945 & \textbf{specific} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{The standing gate confirms it independently.} Running the specificity
+gate---each axis scored against $G$ on its own held-out pairs, registered
+margin $0.05$---reproduces the split through independent computation: own-axis
+environmental $+.31$, privacy $+.28$, \texttt{identity\_attack} $+.25$,
+autonomy $+.17$, physical $+.08$; demote-to-$G$ purity $-.12$, epistemic
+$-.07$, legitimacy $-.05$, care $-.04$, loyalty $-.02$, fairness $-.02$. The
+$G$ row is bimodal---$0.85$--$0.94$ on the demoted axes' own pairs, chance
+($0.43$--$0.51$) on the specific ones---the residualization result restated as
+a gate. The two methods diverge on exactly one axis, recorded not adjudicated:
+\texttt{identity\_attack} is decisively specific by the gate ($+.25$) but
+mixed by A2 residualization ($G$-share $0.67$).
+
+\textbf{What this binds.} The pre-registration's demotion rule is adopted: a
+channel that fails specificity is displayed \emph{as} $G$, never as a hollow
+named axis. Two consequences for this section's claims. First, the ``11 of
+12'' count of Sec.~\ref{sec:foundations} measures validated \emph{transfer};
+the count with validated \emph{specificity} is smaller---five own-axis plus
+the surviving physical residual. Second, the coordinate system is, on these
+corpora, one strong valence factor plus a small number of separable
+specifics---consistent with the effective rank $\approx 5.7$ of 9 measured in
+Sec.~\ref{sec:dissociation}, the very rank collapse that motivated the
+pre-registration. This is a finding about these corpora as sampled, labeled as
+such, not a claim that moral space is one-dimensional: the specific axes are
+genuinely separable, and the instrument now reports \emph{which}.
 
 \subsection{Which Axes Are Robust Measurement Targets?}
 \label{sec:dissociation}
@@ -623,13 +713,17 @@ classes rather than representatives, with the residual attack surface
 audit proof.
 
 \textbf{What kind of claim the geometry makes.} The discovery scorecard
-(validated / retracted / declined) and the valence--presence dissociation
-change the epistemic status of the coordinate system. The dimension set is
-not a taxonomy we assert; it is an empirical object with an admission gate,
-a falsification record, and a characterization of which axes are
-cross-register trustworthy. When an axis is not trustworthy (rights;
-care/fairness/legitimacy presence), the instrument says so and escalates
-rather than scoring.
+(validated / retracted / declined), the bifactor separation of shared valence
+from axis-specific signal, and the valence--presence dissociation change the
+epistemic status of the coordinate system. The dimension set is not a taxonomy
+we assert; it is an empirical object with an admission gate, a falsification
+record, a measured factor structure, and a characterization of which axes are
+cross-register trustworthy. The bifactor result is the sharpest of these: most
+nominal axes are, on these corpora, one strong valence factor in different
+coats, and the instrument now reports specificity rather than merely transfer.
+When an axis is not trustworthy (rights; care/fairness/legitimacy presence) or
+not specific (the demoted five), the instrument says so---displaying $G$, or
+escalating---rather than scoring a hollow coordinate.
 
 \textbf{Limits.} (i) The defense is measured against natural paraphrase
 drift and one non-refusing red-team generator; adversarial-paraphrase
@@ -642,7 +736,12 @@ re-description of the same content, not cross-cultural moral variation.
 (iv) The purity second-corpus leg is thin (Sec.~\ref{sec:foundations});
 its AUROC is provisional. (v) Sample sizes for the worked exploit remain an
 existence proof ($n=6$ gold), with displacement magnitudes established on
-larger sets.
+larger sets. (vi) The bifactor separation (Sec.~\ref{sec:bifactor}) is
+measured on the present moderation and social-norm corpora; whether the strong
+shared valence factor reflects moral space or these corpora's sampling of it
+is not settled here, and the demotion it drives is a property of the
+instrument on this data, not a claim that the demoted concerns lack
+independent moral content.
 
 % ================================================================
 \section{Conclusion}
