@@ -324,7 +324,7 @@ s = new_slide("Finding 2 — Robustness profiles are dissociable", 5)
 tf = textbox(s, Inches(0.55), Inches(1.05), Inches(12.2), Inches(2.6))
 para(tf, [("No model dominates", "hi"), (" all attack surfaces.", None)],
      size=17, bullet=True, first=True, space_after=10)
-para(tf, [("Claude: ", None), ("zero observed sycophancy", "gold"), (" (0/9) — but ", None), ("worst", "gold"),
+para(tf, [("Claude: ", None), ("zero observed sycophancy", "gold"), (" (0/9 — small n, directionally clear) — but ", None), ("worst", "gold"),
           (" emotional-anchoring recovery (20%) and worst divided attention.", None)],
      size=17, bullet=True, space_after=10)
 para(tf, [("Flash 2.0: ", None), ("best", "gold"), (" anchoring recovery (73%) — but ", None),
@@ -432,16 +432,18 @@ block(s, Inches(0.55), Inches(3.15), Inches(12.2), Inches(2.3), "Across 161 scen
     {"segments": [("forbid verdicts fall ", None), ("44 → 27", "gold"),
                   (" (−39%); strongly_prefer rises 46 → 78.", None)], "bullet": True},
 ], body_size=16)
-tf = textbox(s, Inches(0.55), Inches(5.7), Inches(12.2), Inches(1.0))
+tf = textbox(s, Inches(0.55), Inches(5.62), Inches(12.2), Inches(1.05))
 para(tf, [("A rule engine inherits, rather than cures, the front-end's salience vulnerability.", "gold"),
           ("  Harden ", None), ("fact extraction", "em"), (", not just the rule.", None)],
-     size=16, first=True)
+     size=16, first=True, space_after=4)
+para(tf, [("DEME v3 is our own kernel, frozen for this test (nothing tuned to these flips) — a stress substrate, not the ground truth (which is the audited meaning-invariance of the rewrites).", None)],
+     size=11, color=GRAY)
 
 # ---- 9. defense (since submission) ---------------------------------------------
 s = new_slide("Since submission — a measured defense", 9)
 tf = textbox(s, Inches(0.55), Inches(0.90), Inches(12.2), Inches(0.4))
-para(tf, [("Second instantiation from here on: validated learned encoders (", None),
-          ("xbse", "mono"), (") replace LLM judges; same DEME kernel.", None)],
+para(tf, [("Second instantiation from here on: validated per-axis learned encoders (", None),
+          ("xbse", "mono"), (" — one small trained scorer per axis) replace the LLM judges; same DEME kernel.", None)],
      size=12, color=GRAY, first=True)
 # mechanism flow: x -> generated class -> encoders -> average -> decide
 BLUE6 = RGBColor(0xEE, 0xF4, 0xFA)
@@ -489,11 +491,13 @@ footnote(s, [("Natural (not adversarial) paraphrases at scale. Gold-set decision
 s = new_slide("Since submission — reliable ≠ distinct: the geometry is bifactor", 10)
 tf = textbox(s, Inches(0.55), Inches(0.92), Inches(12.2), Inches(1.1))
 para(tf, [("ICC 0.969 = reliably measurable. Are the dimensions distinct?", "bold"),
-          ("  A registered test against our own axes: a ", None),
+          ("  A registered test on the ", None),
+          ("fuller DEME 9-axis set + identity_attack", "hi"),
+          (" (the moral-foundations superset the 7-D harm space of slides 2–3 projects from — backup B1): a ", None),
           ("general moral-valence channel G", "hi"), (" gate-passes (AUROC ", None),
           ("0.856", "gold"), ("); five named axes are ≥ ", None), ("0.98", "gold"),
           (" predictable from G alone.", None)],
-     size=15, first=True)
+     size=14, first=True)
 # native clustered-bar chart: categories bottom-up so purity lands on top
 cats = ["autonomy", "environmental", "privacy", "identity attack", "physical",
         "epistemic", "fairness", "care", "loyalty", "legitimacy", "purity"]
@@ -520,22 +524,17 @@ va.maximum_scale = 1.0
 va.tick_labels.font.size = Pt(9)
 chart.category_axis.tick_labels.font.size = Pt(9)
 # right column: consequence + mapping
-block(s, Inches(7.1), Inches(2.05), Inches(5.75), Inches(2.35), "Consequence for Secure AI", [
-    {"segments": [("A scalar ", None), ("harm", "em"), (" score is ", None),
-                  ("measured, not argued", "gold"),
-                  (", to be mostly G — and a scalar robustness score inherits the collapse by construction.", None)],
-     "space_after": 6},
-    {"segments": [("The vulnerability structure lives in the ", None),
-                  ("surviving specific axes", "hi"), (".", None)]},
+block(s, Inches(7.1), Inches(2.05), Inches(5.75), Inches(2.6), "Why this doesn't undercut Findings 1–2", [
+    {"segments": [("Harm ", None), ("scores", "em"), (" collapse to G; ", None),
+                  ("vulnerability does not", "hi"), (".", None)], "space_after": 6},
+    {"segments": [("The attack surfaces that dissociate (Finding 2) are the specific axes that survive G — ", None),
+                  ("“G plus physical” discards where manipulation lives", "gold"), (".", None)]},
 ], body_size=14)
-tf = textbox(s, Inches(7.1), Inches(4.6), Inches(5.75), Inches(1.85))
-para(tf, [("And the ", None), ("judge panel's own 31×7 score matrix replicates it", "hi"),
+tf = textbox(s, Inches(7.1), Inches(4.85), Inches(5.75), Inches(1.6))
+para(tf, [("The ", None), ("judge panel's own 31×7 matrix replicates it", "hi"),
           (": PC1 = ", None), ("54%", "gold"),
-          (" of variance, the only component surviving parallel analysis — ", None),
-          ("physical", "hi"), (" fully specific there too (R² ≈ 0), ", None),
-          ("emotional/trust", "hi"),
-          (" most G-laden; financial and identity diverge across instantiations.", None)],
-     size=13, first=True)
+          (" of variance, sole factor surviving parallel analysis; per-judge FAs agree (all six models one factor, Tucker congruence 0.989–0.999).", None)],
+     size=12, first=True)
 footnote(s, [("Bifactor: learned-encoder instantiation (", None), ("xbse", "mono"),
              ("), 12×12 gate at margin 0.05; identity_attack divergence recorded, not adjudicated. Panel FA: Horn's parallel analysis, n=31; per-judge FAs agree — one factor in all six models (PC1 0.51–0.60), Tucker congruence 0.989–0.999 vs consensus. July 2026.", None)], size=10)
 
@@ -546,15 +545,34 @@ para(tf, [("Where to look", "hi"), (": attacks that repackage the same facts wit
           ("salience", "gold"), (" (euphemistic minimization).", None)],
      size=17, bullet=True, first=True, space_after=12)
 para(tf, [("Prompt-level defenses are bounded", "hi"),
-          (": explicit warnings recover only ~38% — a ceiling co-occurring with universal overconfidence (ECE 0.19–0.42).", None)],
+          (": explicit warnings recover only ~38% — a ceiling co-occurring with universal overconfidence (ECE, calibration error, 0.19–0.42).", None)],
      size=17, bullet=True, space_after=12)
 para(tf, [("Ask the right question", "hi"), (": “which vulnerabilities matter for our use case?” — not “what's the robustness score?”", None)],
      size=17, bullet=True, space_after=12)
 para(tf, [("Hardening target", "hi"), (": the fact-extraction front-end, since downstream kernels inherit its failures.", None)],
      size=17, bullet=True)
 
-# ---- 12. philosophy engineering -------------------------------------------------
-s = new_slide("The larger program: philosophy engineering", 12)
+# ---- 12. limitations ------------------------------------------------------------
+s = new_slide("What we have not shown — limitations", 12)
+tf = textbox(s, Inches(0.55), Inches(1.05), Inches(12.2), Inches(5.4))
+para(tf, [("Adversarial defense is unproven at scale", "hi"),
+          (". Class averaging halves natural-paraphrase drift; against adversarial register the gold set (n=6) shows it ", None),
+          ("does not hold", "gold"),
+          (" (3/3 still flip). Escalate-by-default carries these until a register-crossing generator exists; the at-scale adversarial run is registered, unrun.", None)],
+     size=15, bullet=True, first=True, space_after=10)
+para(tf, [("Small samples on two claims", "hi"),
+          (": the end-to-end exploit is an n=6 existence proof; “zero sycophancy” is 0/9. Directionally clear, not population rates.", None)],
+     size=15, bullet=True, space_after=10)
+para(tf, [("Two instantiations", "hi"),
+          (": attack results are on LLM judges; defense/bifactor on the learned encoders. The native re-run of all five tracks through one pipeline is designed, not yet run.", None)],
+     size=15, bullet=True, space_after=10)
+para(tf, [("Corpus scope", "hi"),
+          (": moderation/social-norm corpora, predominantly English; the contraction's 0.863 is within-corpus-family. Cross-cultural and cross-family transfer untested.", None)],
+     size=15, bullet=True)
+footnote(s, [("Every number in the talk is hedged at its point of use; this slide collects the four that bound the claims.", None)], size=11)
+
+# ---- 13. philosophy engineering -------------------------------------------------
+s = new_slide("The larger program: philosophy engineering", 13)
 tf = textbox(s, Inches(0.55), Inches(0.95), Inches(12.2), Inches(1.5))
 para(tf, [("This paper is one instance of a method: take a construct usually settled by ", None),
           ("argument", "hi"),
@@ -582,8 +600,8 @@ block(s, Inches(7.45), Inches(2.5), Inches(5.35), Inches(3.3), "The conjecture b
 footnote(s, [("A philosophical claim you can ", None), ("build, measure, and be proven wrong about", "gold"),
              (" outranks one you can only defend.", None)])
 
-# ---- 13. takeaways --------------------------------------------------------------
-s = new_slide("Takeaways", 13)
+# ---- 14. takeaways --------------------------------------------------------------
+s = new_slide("Takeaways", 14)
 block(s, Inches(0.55), Inches(1.15), Inches(12.2), Inches(3.9), "Four takeaways", [
     {"segments": [("1.  Vulnerabilities are ", None), ("selective", "gold"),
                   (" — salience manipulation is the surface.", None)], "space_after": 10},
@@ -781,7 +799,14 @@ If asked about identity_attack: the gate says specific (+.25), A2 residualizatio
 
 ECE = expected calibration error: gap between stated confidence and actual accuracy.""",
 
-# 12 — philosophy
+# 12 — limitations
+"""RIGOR SLIDE — deliver it confidently, not apologetically; naming the four bounds is the point. ~45 sec.
+
+Four bounds: (1) ADVERSARIAL DEFENSE UNPROVEN AT SCALE — natural drift halves, but the n=6 gold set shows it does NOT hold against adversarial register (3/3 flip); escalate-by-default covers those, at-scale adversarial run registered/unrun. (2) SMALL SAMPLES — n=6 exploit, 0/9 sycophancy: directional, not population rates. (3) TWO INSTANTIATIONS — attack on LLM judges, defense/bifactor on encoders; the native single-pipeline re-run is designed not run. (4) CORPUS SCOPE — English/moderation, contraction is within-corpus-family.
+
+This slide pre-empts most of the Q&A: if a reviewer raises any of the four, the answer is "yes — it's on the limitations slide, and here's the plan." That converts an attack into a point of agreement. Do not add new hedges live; these four are the complete set.""",
+
+# 13 — philosophy
 """ONE-MINUTE SLIDE — the zoom-out. Deliver the headline sentence, one beat on each column, move on.
 
 LEFT (all measured, grounded in this talk): the method treats constructs usually settled by argument as INSTRUMENTS — a space (points/displacement/invariance), pre-registration, and admission gates that retract. Evidence from this very talk: the bifactor test FAILED its own P1; the rights-channel rescue was REFUTED. Claims that don't transfer get publicly demoted.
@@ -790,7 +815,7 @@ RIGHT (explicitly labeled a conjecture, NOT tested here): the wager that normati
 
 Q&A DISCIPLINE: if someone pushes on the conjecture ("is this science or manifesto?"), the full answer is: "that's the motivating conjecture of a larger program, not a result — this talk contributes the harm instance and its falsification record." Say exactly that and stop. Do NOT elaborate on aesthetics in a Secure AI Q&A.""",
 
-# 13 — takeaways
+# 14 — takeaways
 """THE FOUR TAKEAWAYS — read slowly; this is the photographed slide:
 1. Vulnerabilities are SELECTIVE — salience manipulation is the attack surface.
 2. Robustness profiles are DISSOCIABLE — and a single score is now MEASURED to be mostly general valence (bifactor, slide 10).
@@ -803,7 +828,7 @@ Reproducibility (footer, one breath): pip install agi-hpc (tag bds2026-v2), mora
 
 Spoken closer after takeaway 4 (borrowed from slide 12): "One instrument today — many domains tomorrow. Thank you." """,
 
-# 14 — thanks / Q&A prep
+# 15 — thanks / Q&A prep
 """Q&A PREP — hardest questions, one-line answers:
 
 Q: You showed ICC 0.97, then a bifactor result saying most axes are one factor — measured on different encoders. Did you factor-analyze the panel's own scores? A: Yes — the panel's own 31x7 matrix gives PC1 = 54% of variance, the only component surviving parallel analysis, with physical fully specific there too. The general factor replicates across both instantiations; two per-axis assignments (financial, identity) diverge and are recorded as such.

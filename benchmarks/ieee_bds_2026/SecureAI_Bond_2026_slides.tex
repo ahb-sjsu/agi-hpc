@@ -168,7 +168,7 @@ $\Rightarrow$ The attack mechanism is \gold{salience manipulation} --- and the f
 \begin{frame}{Finding 2 --- Robustness profiles are dissociable}
 \begin{itemize}
   \item \hi{No model dominates} all attack surfaces.
-  \item Claude: \gold{zero observed sycophancy} (0/9) --- but \gold{worst} emotional-anchoring recovery (20\%) and worst divided attention.
+  \item Claude: \gold{zero observed sycophancy} (0/9 --- small $n$, directionally clear) --- but \gold{worst} emotional-anchoring recovery (20\%) and worst divided attention.
   \item Flash 2.0: \gold{best} anchoring recovery (73\%) --- but \gold{worst} working memory.
 \end{itemize}
 \vfill
@@ -256,17 +256,15 @@ Route each scenario through the real \hi{ErisML DEME v3} decision kernel:
 \end{center}
 \vfill
 \begin{block}{Across 161 scenario--model cases}
-\begin{itemize}
-  \item Euphemistic rewriting flips \textsc{forbid/avoid}$\rightarrow$permissive in \gold{13.7\%} of cases; mean shift \gold{$+0.65$} ordinal steps.
-  \item \textsc{forbid} verdicts fall \gold{44 $\rightarrow$ 27} ($-39\%$); \textsc{strongly\_prefer} rises 46 $\rightarrow$ 78.
-\end{itemize}
+Euphemistic rewriting flips \textsc{forbid/avoid}$\rightarrow$permissive in \gold{13.7\%} of cases; \textsc{forbid} verdicts fall \gold{44 $\rightarrow$ 27} ($-39\%$).
 \end{block}
 \gold{A rule engine inherits, rather than cures, the front-end's salience vulnerability.} Harden \emph{fact extraction}, not just the rule.
+{\scriptsize\\[2pt] DEME v3 is our own kernel, \hi{frozen} for this test (nothing tuned to these flips) --- a stress substrate, not the ground truth (which is the audited meaning-invariance of the rewrites).}
 \end{frame}
 
 % ---------------------------------------------------------------
 \begin{frame}{Since submission --- a measured defense}
-{\small\color{cbgray} Second instantiation from here on: validated learned encoders (\texttt{xbse}) replace LLM judges; same DEME kernel.\par}
+{\small\color{cbgray} Second instantiation from here on: validated per-axis learned encoders (\texttt{xbse} --- one small trained scorer per axis) replace the LLM judges; same DEME kernel.\par}
 \begin{center}
 \begin{tikzpicture}[>=Stealth, node distance=4.5mm,
   stage/.style={draw=cbblue, thick, rounded corners=1.5pt, fill=cbblue!6,
@@ -299,7 +297,7 @@ Route each scenario through the real \hi{ErisML DEME v3} decision kernel:
 
 % ---------------------------------------------------------------
 \begin{frame}{Since submission --- reliable $\neq$ distinct: the geometry is bifactor}
-{\small\textbf{ICC 0.969 = reliably \emph{measurable}. Are the dimensions \emph{distinct}?} A registered test against our own axes: a \hi{general moral-valence channel $G$} gate-passes (AUROC \gold{0.856}); five named axes are $\ge$\gold{0.98} predictable from $G$ alone.\par}
+{\small\textbf{ICC 0.969 = reliably \emph{measurable}. Are the dimensions \emph{distinct}?} A registered test on the \hi{fuller DEME 9-axis set $+$ \texttt{identity\_attack}} {\scriptsize(the moral-foundations superset the 7-D harm space of slides 2--3 projects from --- backup B1)}: a \hi{general moral-valence channel $G$} gate-passes (AUROC \gold{0.856}); five named axes are $\ge$\gold{0.98} predictable from $G$ alone.\par}
 \smallskip
 \begin{columns}[T]
 \begin{column}{0.52\textwidth}
@@ -340,11 +338,11 @@ Route each scenario through the real \hi{ErisML DEME v3} decision kernel:
 \end{tikzpicture}
 \end{column}
 \begin{column}{0.46\textwidth}
-\begin{block}{\small Consequence for Secure AI}
-\small A scalar \emph{harm} score is \gold{measured, not argued}, to be mostly $G$ --- and a scalar robustness score inherits the collapse by construction. The vulnerability structure lives in the \hi{surviving specific axes}.
+\begin{block}{\small Why this doesn't undercut Findings 1--2}
+\small Harm \emph{scores} collapse to $G$; \hi{vulnerability does not}. The attack surfaces that dissociate (Finding~2) are the specific axes that survive $G$ --- ``$G$ plus physical'' discards where manipulation lives.
 \end{block}
 \smallskip
-{\footnotesize And the \hi{judge panel's own 31$\times$7 matrix replicates it}: PC1 = \gold{54\%}, the only component surviving parallel analysis; \hi{physical} fully specific there too; financial/identity diverge across instantiations.}
+{\footnotesize The \hi{judge panel's own 31$\times$7 matrix replicates it}: PC1 = \gold{54\%}, sole factor surviving parallel analysis; per-judge FAs agree.}
 \end{column}
 \end{columns}
 \vfill
@@ -355,10 +353,22 @@ Route each scenario through the real \hi{ErisML DEME v3} decision kernel:
 \begin{frame}{Implications for Secure AI deployment}
 \begin{itemize}
   \item \hi{Where to look}: attacks that repackage the same facts with different \gold{salience} (euphemistic minimization).
-  \item \hi{Prompt-level defenses are bounded}: explicit warnings recover only $\sim$38\% --- a ceiling co-occurring with universal overconfidence (ECE 0.19--0.42).
+  \item \hi{Prompt-level defenses are bounded}: explicit warnings recover only $\sim$38\% --- a ceiling co-occurring with universal overconfidence (ECE, calibration error, 0.19--0.42).
   \item \hi{Ask the right question}: ``\emph{which} vulnerabilities matter for our use case?'' --- not ``what's the robustness score?''
   \item \hi{Hardening target}: the fact-extraction front-end, since downstream kernels inherit its failures.
 \end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------
+\begin{frame}{What we have \emph{not} shown --- limitations}
+\begin{itemize}
+  \item \small \hi{Adversarial defense is unproven at scale.} Class averaging halves \emph{natural}-paraphrase drift; against adversarial register the gold set ($n{=}6$) shows it \gold{does not hold} (3/3 still flip). Escalate-by-default carries these until a register-crossing generator exists; the at-scale adversarial run is registered, unrun.
+  \item \small \hi{Small samples on two claims}: the end-to-end exploit is an $n{=}6$ existence proof; ``zero sycophancy'' is 0/9. Directionally clear, not population rates.
+  \item \small \hi{Two instantiations.} Attack results are on LLM judges; defense/bifactor on the learned encoders. The native re-run of all five tracks through one pipeline is designed, not yet run.
+  \item \small \hi{Corpus scope.} Moderation/social-norm corpora, predominantly English; the contraction's 0.863 is within-corpus-family. Cross-cultural and cross-family transfer untested.
+\end{itemize}
+\vfill
+{\scriptsize Every number in the talk is hedged at its point of use; this slide collects the four that bound the claims.}
 \end{frame}
 
 % ---------------------------------------------------------------

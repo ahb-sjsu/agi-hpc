@@ -760,7 +760,15 @@ the DEME~v3 rule kernel (LLM-extracted ethical facts $\to$
 \textsc{forbid}/\textsc{avoid} to permissive in $13.7\%$ of 161 cases;
 \textsc{forbid} verdicts fall $44 \to 27$. A rule engine inherits, rather
 than cures, its front-end's salience vulnerability. Hardening must target
-perception---which is what the remainder of this article does.
+perception---which is what the remainder of this article does. On the
+potential conflict of interest---the kernel is our own ErisML
+framework---the design guards against self-serving results: the
+\texttt{GenevaEMV3} rule module and its operating points were \emph{frozen}
+for this test (no threshold or rule tuned to produce these flips), so the
+kernel serves as a fixed stress substrate rather than the ground truth; the
+ground truth is the hand-audited meaning-invariance of the rewrites, and a
+kernel tuned to flatter the front-end would only \emph{understate} the
+inherited vulnerability.
 
 The per-track verdict-level attack table---displacement per DEME axis and
 verdict-flip rate per perturbation type, replacing the single aggregate
