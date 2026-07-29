@@ -770,6 +770,40 @@ ground truth is the hand-audited meaning-invariance of the rewrites, and a
 kernel tuned to flatter the front-end would only \emph{understate} the
 inherited vulnerability.
 
+\textbf{Which axes the kernel actually consumes.} The bifactor analysis of
+Sec.~\ref{sec:bifactor} characterizes the axes' \emph{variance} structure; a
+structural-fuzzing campaign over the kernel gives the interventional
+complement---which axes the verdict \emph{behaviorally} depends on. Each of
+the nine DEME axes receives a gain parameter on its deviation from the
+neutral value (gain $1$ = the production kernel, exactly reproducing all 515
+stored verdicts; ablation neutralizes the axis and its veto channel), and the
+readout is mean ordinal verdict shift against the full kernel (artifact
+\texttt{fuzz\_deme\_axes\_results.json}). Exactly four axes are load-bearing:
+ablating \texttt{legitimacy\_trust} costs $+0.48$ MAE,
+\texttt{physical\_harm} $+0.12$, \texttt{rights\_respect} $+0.10$, and
+\texttt{fairness\_equity} $+0.04$, while a compositional build over just
+these four reproduces the full kernel's verdicts exactly (MAE $=0$); the
+remaining five axes---autonomy, privacy, societal, virtue, epistemic---have
+identically zero effect on the typed verdict in this instantiation. Variance
+importance and behavioral importance dissociate: \texttt{legitimacy\_trust},
+among the most $G$-laden axes in the panel factor analysis
+($R^2=0.78$), is the single most load-bearing axis behaviorally, and
+\texttt{physical\_harm}, fully $G$-specific there, matters only for the
+\textsc{prefer}/\textsc{strongly\_prefer} split. Adversarial threshold search
+adds a brittleness readout: the three veto channels are knife-edge (any gain
+below $1$ dissolves \textsc{forbid} into \textsc{avoid}), whereas
+\texttt{legitimacy\_trust} tolerates a ${\sim}5\times$ gain reduction before
+average verdicts move half an ordinal step. Two consequences follow. The
+hardening budget of Sec.~\ref{sec:defense} concentrates on the extraction
+fields feeding these four axes (\texttt{expected\_harm},
+\texttt{violates\_rights}, \texttt{discriminates\_protected},
+\texttt{violates\_explicit\_rule}, \texttt{role\_duty\_conflict}, and the
+consent/vulnerability booleans)---euphemistic ablation of the five dead axes
+leaves the measured exploit unchanged (flip-rate excess $-0.03$). And five of
+nine axes being verdict-inert is a property of \emph{this} rule module, not
+of the axes: a kernel consuming the full vector would widen the attack
+surface accordingly, which the per-track re-run below will measure.
+
 The per-track verdict-level attack table---displacement per DEME axis and
 verdict-flip rate per perturbation type, replacing the single aggregate
 13.7\% figure---is part of the pre-registered re-run (Sec.~\ref{sec:rerun}).

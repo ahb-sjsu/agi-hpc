@@ -1,0 +1,77 @@
+cases=515 match_rate=1.0000 flip_ref=0.1030
+
+======================================================================
+STRUCTURAL FUZZING REPORT
+======================================================================
+
+Dimensions: 9
+Dimension names: physical_harm, rights_respect, fairness_equity, autonomy_respect, privacy_protection, societal_environmental, virtue_care, legitimacy_trust, epistemic_quality
+Total configurations evaluated: 255
+
+Best configuration:
+  Dimensions: physical_harm, rights_respect, fairness_equity, legitimacy_trust (k=4)
+  MAE: 0.0563
+  Errors:
+    dramatic_shift: +0.0647
+    euph_flip_excess: -0.0303
+    euphemistic_shift: +0.0400
+    neutral_shift: +0.0529
+
+Pareto frontier (4 points):
+  k=1: MAE=0.3767 [legitimacy_trust]
+  k=2: MAE=0.1961 [fairness_equity, legitimacy_trust]
+  k=3: MAE=0.0951 [physical_harm, rights_respect, legitimacy_trust]
+  k=4: MAE=0.0563 [physical_harm, rights_respect, fairness_equity, legitimacy_trust]
+
+Sensitivity ranking:
+  1. legitimacy_trust: delta_MAE=+0.4816 (with=0.0563, without=0.5379)
+  2. physical_harm: delta_MAE=+0.1184 (with=0.0563, without=0.1748)
+  3. rights_respect: delta_MAE=+0.0951 (with=0.0563, without=0.1515)
+  4. fairness_equity: delta_MAE=+0.0388 (with=0.0563, without=0.0951)
+  5. autonomy_respect: delta_MAE=+0.0000 (with=0.0563, without=0.0563)
+  6. privacy_protection: delta_MAE=+0.0000 (with=0.0563, without=0.0563)
+  7. societal_environmental: delta_MAE=+0.0000 (with=0.0563, without=0.0563)
+  8. virtue_care: delta_MAE=+0.0000 (with=0.0563, without=0.0563)
+  9. epistemic_quality: delta_MAE=+0.0000 (with=0.0563, without=0.0563)
+
+Model Robustness Index:
+  MRI = 0.3512
+  Mean omega = 0.2550
+  P75 omega = 0.3947
+  P95 omega = 0.5264
+  Worst-case MAE = 0.8311
+  Perturbations = 300
+
+Adversarial thresholds (1 found):
+  legitimacy_trust (decrease): 1.2318 -> 0.2613 (ratio=0.21x, flips 'neutral_shift')
+
+Compositional test:
+  Build order: physical_harm -> legitimacy_trust -> rights_respect -> fairness_equity -> autonomy_respect -> privacy_protection -> societal_environmental -> virtue_care -> epistemic_quality
+  Step 1: +physical_harm => MAE=1.1961 [physical_harm]
+  Step 2: +legitimacy_trust => MAE=0.2194 [physical_harm + legitimacy_trust]
+  Step 3: +rights_respect => MAE=0.0932 [physical_harm + legitimacy_trust + rights_respect]
+  Step 4: +fairness_equity => MAE=0.0000 [physical_harm + legitimacy_trust + rights_respect + fairness_equity]
+  Step 5: +autonomy_respect => MAE=0.0000 [physical_harm + legitimacy_trust + rights_respect + fairness_equity + autonomy_respect]
+  Step 6: +privacy_protection => MAE=0.0835 [physical_harm + legitimacy_trust + rights_respect + fairness_equity + autonomy_respect + privacy_protection]
+  Step 7: +societal_environmental => MAE=0.0000 [physical_harm + legitimacy_trust + rights_respect + fairness_equity + autonomy_respect + privacy_protection + societal_environmental]
+  Step 8: +virtue_care => MAE=0.0000 [physical_harm + legitimacy_trust + rights_respect + fairness_equity + autonomy_respect + privacy_protection + societal_environmental + virtue_care]
+  Step 9: +epistemic_quality => MAE=0.0951 [physical_harm + legitimacy_trust + rights_respect + fairness_equity + autonomy_respect + privacy_protection + societal_environmental + virtue_care + epistemic_quality]
+
+Forward selection (4 steps):
+  k=1: MAE=0.3767 [legitimacy_trust]
+  k=2: MAE=0.1961 [legitimacy_trust, fairness_equity]
+  k=3: MAE=0.1029 [legitimacy_trust, fairness_equity, physical_harm]
+  k=4: MAE=0.1398 [legitimacy_trust, fairness_equity, physical_harm, rights_respect]
+
+Backward elimination (9 steps):
+  k=9: MAE=0.0932 [physical_harm, rights_respect, fairness_equity, autonomy_respect, privacy_protection, societal_environmental, virtue_care, legitimacy_trust, epistemic_quality]
+  k=8: MAE=0.0835 [physical_harm, rights_respect, fairness_equity, privacy_protection, societal_environmental, virtue_care, legitimacy_trust, epistemic_quality]
+  k=7: MAE=0.0835 [physical_harm, rights_respect, fairness_equity, societal_environmental, virtue_care, legitimacy_trust, epistemic_quality]
+  k=6: MAE=0.0583 [physical_harm, rights_respect, fairness_equity, societal_environmental, virtue_care, legitimacy_trust]
+  k=5: MAE=0.0680 [physical_harm, fairness_equity, societal_environmental, virtue_care, legitimacy_trust]
+  k=4: MAE=0.0660 [physical_harm, fairness_equity, virtue_care, legitimacy_trust]
+  k=3: MAE=0.1049 [physical_harm, fairness_equity, legitimacy_trust]
+  k=2: MAE=0.1961 [fairness_equity, legitimacy_trust]
+  k=1: MAE=0.3767 [legitimacy_trust]
+
+======================================================================
