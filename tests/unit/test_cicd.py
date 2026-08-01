@@ -11,9 +11,9 @@ Validates that the GitHub Actions workflow and deploy script
 exist, have correct structure, and don't contain secrets.
 """
 
-import os
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 
