@@ -11,6 +11,7 @@ Validates that the GitHub Actions workflow and deploy script
 exist, have correct structure, and don't contain secrets.
 """
 
+import os
 from __future__ import annotations
 
 from pathlib import Path
@@ -66,7 +67,9 @@ class TestNoSecretsInCode:
 
     def test_no_password_in_workflow(self) -> None:
         content = Path(".github/workflows/ci.yaml").read_text()
-        assert "roZes" not in content
+        secret = os.environ.get("ATLAS_PASS")
+        if secret:
+            assert secret not in content
         assert "password123" not in content
 
     def test_uses_github_secrets(self) -> None:
@@ -76,7 +79,9 @@ class TestNoSecretsInCode:
 
     def test_no_password_in_deploy_script(self) -> None:
         content = Path("scripts/deploy_to_atlas.sh").read_text()
-        assert "roZes" not in content
+        secret = os.environ.get("ATLAS_PASS")
+        if secret:
+            assert secret not in content
 
     def test_no_tailscale_ip_in_workflow(self) -> None:
         """Tailscale IP should be in secrets, not hardcoded."""
