@@ -14,6 +14,7 @@ Exits 0 on success (report printed). Exits non-zero if Atlas is
 unreachable or auth fails.
 """
 
+import os
 from __future__ import annotations
 
 import sys
@@ -22,7 +23,7 @@ import paramiko
 
 ATLAS_HOST = "100.68.134.21"  # Tailscale
 ATLAS_USER = "claude"
-ATLAS_PASS = "roZes9090!~"  # stored per atlas-operations.md
+ATLAS_PASS = os.environ.get("ATLAS_PASS", "")  # never hardcode: this repo is PUBLIC
 
 
 _CHECKS: list[tuple[str, str]] = [

@@ -6,6 +6,7 @@ Before I propose anything that collides with it, I need to know
 what it is.
 """
 
+import os
 from __future__ import annotations
 
 import sys
@@ -14,7 +15,7 @@ import paramiko
 
 ATLAS_HOST = "100.68.134.21"
 ATLAS_USER = "claude"
-ATLAS_PASS = "roZes9090!~"
+ATLAS_PASS = os.environ.get("ATLAS_PASS", "")  # never hardcode: this repo is PUBLIC
 
 _CHECKS: list[tuple[str, str]] = [
     ("livekit-smoke image / command",

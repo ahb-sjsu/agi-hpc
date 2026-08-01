@@ -4,9 +4,13 @@ MANDATORY rules when running ANY work on the Atlas workstation (HP Z840).
 
 ## SSH Access
 
-- ALWAYS use paramiko: `ssh.connect('100.68.134.21', username='claude', password='roZes9090!~')`
+- ALWAYS use paramiko: `ssh.connect('100.68.134.21', username='claude', password=<from your secret store>)`
 - NEVER use ssh CLI, scp, or ssh-agent — the SSH key passphrase is unknown
 - ALWAYS set `AutoAddPolicy()` for host keys
+
+- NEVER hardcode the password in this repo. It is PUBLIC. A previous
+  hardcoded copy was scraped-exposed for ~3.5 months and had to be rotated.
+  Read it from your local secret store or the `ATLAS_PASS` env var.
 
 ## HuggingFace
 
