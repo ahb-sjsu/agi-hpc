@@ -199,13 +199,13 @@ def build_board():
     print(f"  panel 7: draw_nazi_attic at scale {s:.2f}")
     cxr = X0 + 26.0 + (X1 - X0 - 26.0) / 2
     board.text(cxr, hero_y + 5.5, "One command. Real numbers.\nA hash you can verify.",
-               fontsize=30, color=VIOLET, weight="bold", ha="center", va="center", zorder=5)
+               fontsize=33, color=VIOLET, weight="bold", ha="center", va="center", zorder=5)
     board.text(cxr, hero_y + 3.4, "$ erisml-compile examples/nazi_attic",
-               fontsize=20, color=INK, ha="center", va="center", zorder=5,
+               fontsize=21, color=INK, ha="center", va="center", zorder=5,
                family="DejaVu Sans Mono")
     board.text(cxr, hero_y + 1.9,
                "per-party verdicts · Gini 0.43 · exact Shapley\nDecisionProof chained to the IR hash — replay the judgment",
-               fontsize=17, color=INK, ha="center", va="center", zorder=5)
+               fontsize=18, color=INK, ha="center", va="center", zorder=5)
 
     # ---------------------------------------------------------------- footer
     fy0, fy1 = Y0, 3.5
@@ -216,12 +216,12 @@ def build_board():
         "3.  Auditable by construction; fails safe, never open.",
     ]
     for k, t in enumerate(takeaways):
-        board.text(X0, fy1 - 0.42 - k * 0.58, t, fontsize=22, color=INK, va="center", zorder=5)
-    board.text(X0 + 25.6, fy1 - 1.0,
+        board.text(X0, fy1 - 0.42 - k * 0.60, t, fontsize=24, color=INK, va="center", zorder=5)
+    board.text(X0 + 26.2, fy1 - 1.0,
                "alpha v0.9.0 · text path solid · activation lens early / uncalibrated\n"
                "ranks 1–3 real, higher partial · V4 measured, D4 posited (Lean + Mathlib verified)\n"
                "embodied = design target · conversational agents = live",
-               fontsize=15, color=MUTE, style="italic", va="center", zorder=5)
+               fontsize=16, color=MUTE, style="italic", va="center", zorder=5)
     qy = (fy0 + fy1) / 2 + 0.22
     draw_qr(board, X1 - 8.6, qy, 1.45, "https://pypi.org/project/erisml-compiler/", "erisml-compiler")
     draw_qr(board, X1 - 5.1, qy, 1.45, "https://github.com/ahb-sjsu/erisml-lib", "erisml-lib")
