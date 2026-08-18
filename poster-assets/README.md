@@ -9,11 +9,19 @@ Vector diagram assets for the two poster submissions. Built with pure matplotlib
 
 ```bash
 cd poster-assets
-python build_poster1.py     # Applications — Atlas teal accent
-python build_poster2.py     # Responsible AI — Eris violet accent
+python build_poster1.py        # Applications — Atlas teal accent
+python build_poster2.py        # Responsible AI — Eris violet accent
+python build_poster2_board.py  # FULL 48x36 print-ready board for Poster #2
 ```
 
-Output lands in `out/`. Requires only `matplotlib` + `numpy`.
+Output lands in `out/`. Requires `matplotlib` + `numpy` (+ `qrcode` for the board).
+
+`out/p2_board_48x36.pdf` is the assembled Poster #2 board (vector, landscape
+48"x36", per `pytorch-poster-2-LAYOUT.md`): title bar, six panels, the
+nazi_attic hero band, footer takeaways + honesty strip + QR codes. Panels are
+drawn live from `build_poster2.py`'s `draw_*` functions (fonts/arrows rescaled
+with each panel), so editing a panel updates both the standalone asset and the
+board. Proof a letter-size tile at 100% before sending to print.
 
 ## What maps where
 

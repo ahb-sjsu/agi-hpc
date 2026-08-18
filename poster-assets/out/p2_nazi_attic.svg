@@ -6,7 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-08-17T16:40:52.249155</dc:date>
+    <dc:date>2026-08-18T00:26:36.756890</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -31,144 +31,141 @@ z
   </g>
   <g id="axes_1">
    <g id="patch_2">
-    <path d="M 60.48 124.56 
-L 453.6 124.56 
-L 453.6 74.16 
-L 60.48 74.16 
+    <path d="M 60.48 144.72 
+L 453.6 144.72 
+L 453.6 94.32 
+L 60.48 94.32 
 z
-" clip-path="url(#pad901d4783)" style="fill: #ffffff; stroke: #d4cce0; stroke-width: 0.8; stroke-linejoin: miter"/>
+" clip-path="url(#p376bc5e609)" style="fill: #ffffff; stroke: #d4cce0; stroke-width: 0.8; stroke-linejoin: miter"/>
    </g>
    <g id="patch_3">
-    <path d="M 60.48 174.96 
-L 453.6 174.96 
-L 453.6 124.56 
-L 60.48 124.56 
+    <path d="M 60.48 195.12 
+L 453.6 195.12 
+L 453.6 144.72 
+L 60.48 144.72 
 z
-" clip-path="url(#pad901d4783)" style="fill: #f5f3f8; stroke: #d4cce0; stroke-width: 0.8; stroke-linejoin: miter"/>
+" clip-path="url(#p376bc5e609)" style="fill: #f5f3f8; stroke: #d4cce0; stroke-width: 0.8; stroke-linejoin: miter"/>
    </g>
    <g id="patch_4">
-    <path d="M 60.48 225.36 
-L 453.6 225.36 
-L 453.6 174.96 
-L 60.48 174.96 
+    <path d="M 60.48 245.52 
+L 453.6 245.52 
+L 453.6 195.12 
+L 60.48 195.12 
 z
-" clip-path="url(#pad901d4783)" style="fill: #ffffff; stroke: #d4cce0; stroke-width: 0.8; stroke-linejoin: miter"/>
+" clip-path="url(#p376bc5e609)" style="fill: #ffffff; stroke: #d4cce0; stroke-width: 0.8; stroke-linejoin: miter"/>
    </g>
    <g id="patch_5">
-    <path d="M 60.48 275.76 
-L 453.6 275.76 
-L 453.6 225.36 
-L 60.48 225.36 
+    <path d="M 60.48 295.92 
+L 453.6 295.92 
+L 453.6 245.52 
+L 60.48 245.52 
 z
-" clip-path="url(#pad901d4783)" style="fill: #f5f3f8; stroke: #d4cce0; stroke-width: 0.8; stroke-linejoin: miter"/>
+" clip-path="url(#p376bc5e609)" style="fill: #f5f3f8; stroke: #d4cce0; stroke-width: 0.8; stroke-linejoin: miter"/>
    </g>
    <g id="patch_6">
-    <path d="M 590.4864 160.0416 
-L 941.6736 160.0416 
-Q 947.7216 160.0416 947.7216 153.9936 
-L 947.7216 105.2064 
-Q 947.7216 99.1584 941.6736 99.1584 
-L 590.4864 99.1584 
-Q 584.4384 99.1584 584.4384 105.2064 
-L 584.4384 153.9936 
-Q 584.4384 160.0416 590.4864 160.0416 
+    <path d="M 590.4864 170.1216 
+L 941.6736 170.1216 
+Q 947.7216 170.1216 947.7216 164.0736 
+L 947.7216 115.2864 
+Q 947.7216 109.2384 941.6736 109.2384 
+L 590.4864 109.2384 
+Q 584.4384 109.2384 584.4384 115.2864 
+L 584.4384 164.0736 
+Q 584.4384 170.1216 590.4864 170.1216 
 z
-" clip-path="url(#pad901d4783)" style="fill: #f5f3f8; stroke: #6a4c93; stroke-width: 2.2; stroke-linejoin: miter"/>
+" clip-path="url(#p376bc5e609)" style="fill: #f5f3f8; stroke: #6a4c93; stroke-width: 2.2; stroke-linejoin: miter"/>
    </g>
    <g id="patch_7">
-    <path d="M 590.4864 240.6816 
-L 941.6736 240.6816 
-Q 947.7216 240.6816 947.7216 234.6336 
-L 947.7216 185.8464 
-Q 947.7216 179.7984 941.6736 179.7984 
-L 590.4864 179.7984 
-Q 584.4384 179.7984 584.4384 185.8464 
-L 584.4384 234.6336 
-Q 584.4384 240.6816 590.4864 240.6816 
+    <path d="M 590.4864 250.7616 
+L 941.6736 250.7616 
+Q 947.7216 250.7616 947.7216 244.7136 
+L 947.7216 195.9264 
+Q 947.7216 189.8784 941.6736 189.8784 
+L 590.4864 189.8784 
+Q 584.4384 189.8784 584.4384 195.9264 
+L 584.4384 244.7136 
+Q 584.4384 250.7616 590.4864 250.7616 
 z
-" clip-path="url(#pad901d4783)" style="fill: #ffffff; stroke: #6a4c93; stroke-width: 2.2; stroke-linejoin: miter"/>
+" clip-path="url(#p376bc5e609)" style="fill: #ffffff; stroke: #6a4c93; stroke-width: 2.2; stroke-linejoin: miter"/>
    </g>
    <g id="patch_8">
-    <path d="M 590.4864 331.4016 
-L 941.6736 331.4016 
-Q 947.7216 331.4016 947.7216 325.3536 
-L 947.7216 276.5664 
-Q 947.7216 270.5184 941.6736 270.5184 
-L 590.4864 270.5184 
-Q 584.4384 270.5184 584.4384 276.5664 
-L 584.4384 325.3536 
-Q 584.4384 331.4016 590.4864 331.4016 
+    <path d="M 590.4864 341.4816 
+L 941.6736 341.4816 
+Q 947.7216 341.4816 947.7216 335.4336 
+L 947.7216 286.6464 
+Q 947.7216 280.5984 941.6736 280.5984 
+L 590.4864 280.5984 
+Q 584.4384 280.5984 584.4384 286.6464 
+L 584.4384 335.4336 
+Q 584.4384 341.4816 590.4864 341.4816 
 z
-" clip-path="url(#pad901d4783)" style="fill: #1a1a1a; stroke: #1a1a1a; stroke-width: 2.2; stroke-linejoin: miter"/>
+" clip-path="url(#p376bc5e609)" style="fill: #1a1a1a; stroke: #1a1a1a; stroke-width: 2.2; stroke-linejoin: miter"/>
    </g>
    <g id="text_1">
-    <text style="font-weight: 700; font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #1a1a1a" x="766.08" y="132.864375" transform="rotate(-0 766.08 132.864375)">Gini(harm) = 0.43    ·    worst-off = village</text>
+    <text style="font-weight: 700; font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #1a1a1a" x="766.08" y="142.944375" transform="rotate(-0 766.08 142.944375)">Gini(harm) = 0.43    ·    worst-off = village</text>
    </g>
    <g id="text_2">
-    <text style="font-weight: 700; font-size: 10.5px; font-family: 'DejaVu Sans'; fill: #1a1a1a" transform="translate(653.675859 206.977002)">Shapley: speaker 7.11 · refugees 7.70</text>
-    <text style="font-weight: 700; font-size: 10.5px; font-family: 'DejaVu Sans'; fill: #1a1a1a" transform="translate(695.926055 219.215654)">nazis 7.88 · village 7.18</text>
+    <text style="font-weight: 700; font-size: 10.5px; font-family: 'DejaVu Sans'; fill: #1a1a1a" transform="translate(653.675859 217.057002)">Shapley: speaker 7.11 · refugees 7.70</text>
+    <text style="font-weight: 700; font-size: 10.5px; font-family: 'DejaVu Sans'; fill: #1a1a1a" transform="translate(695.926055 229.295654)">nazis 7.88 · village 7.18</text>
    </g>
    <g id="text_3">
-    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #ffffff" x="766.08" y="303.842344" transform="rotate(-0 766.08 303.842344)">DecisionProof: proof_hash → audit.ir_hash</text>
+    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #ffffff" x="766.08" y="313.922344" transform="rotate(-0 766.08 313.922344)">DecisionProof: proof_hash → audit.ir_hash</text>
    </g>
    <g id="text_4">
-    <text style="font-weight: 700; font-size: 15.5px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #6a4c93" x="504" y="-67.783516" transform="rotate(-0 504 -67.783516)">Auditable means you can replay the judgment</text>
+    <text style="font-weight: 700; font-size: 15.5px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #6a4c93" x="504" y="22.936484" transform="rotate(-0 504 22.936484)">Auditable means you can replay the judgment</text>
    </g>
    <g id="text_5">
-    <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #6b6b6b" x="504" y="-8.637656" transform="rotate(-0 504 -8.637656)">worked example:  examples/nazi_attic  ·  rank-2 DEME</text>
+    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1a1a1a" x="90.72" y="62.213281" transform="rotate(-0 90.72 62.213281)">stakeholder</text>
    </g>
    <g id="text_6">
-    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1a1a1a" x="90.72" y="42.053281" transform="rotate(-0 90.72 42.053281)">stakeholder</text>
+    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1a1a1a" x="221.76" y="62.213281" transform="rotate(-0 221.76 62.213281)">harm</text>
    </g>
    <g id="text_7">
-    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1a1a1a" x="221.76" y="42.053281" transform="rotate(-0 221.76 42.053281)">harm</text>
+    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1a1a1a" x="352.8" y="62.213281" transform="rotate(-0 352.8 62.213281)">verdict</text>
    </g>
    <g id="text_8">
-    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1a1a1a" x="352.8" y="42.053281" transform="rotate(-0 352.8 42.053281)">verdict</text>
+    <text style="font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1a1a1a" x="90.72" y="122.693281" transform="rotate(-0 90.72 122.693281)">speaker</text>
    </g>
    <g id="text_9">
-    <text style="font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1a1a1a" x="90.72" y="102.533281" transform="rotate(-0 90.72 102.533281)">speaker</text>
+    <text style="font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1a1a1a" x="221.76" y="122.693281" transform="rotate(-0 221.76 122.693281)">0.76</text>
    </g>
    <g id="text_10">
-    <text style="font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1a1a1a" x="221.76" y="102.533281" transform="rotate(-0 221.76 102.533281)">0.76</text>
+    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #b3261e" x="352.8" y="122.693281" transform="rotate(-0 352.8 122.693281)">forbid</text>
    </g>
    <g id="text_11">
-    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #b3261e" x="352.8" y="102.533281" transform="rotate(-0 352.8 102.533281)">forbid</text>
+    <text style="font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1a1a1a" x="90.72" y="173.093281" transform="rotate(-0 90.72 173.093281)">village</text>
    </g>
    <g id="text_12">
-    <text style="font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1a1a1a" x="90.72" y="152.933281" transform="rotate(-0 90.72 152.933281)">village</text>
+    <text style="font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1a1a1a" x="221.76" y="173.093281" transform="rotate(-0 221.76 173.093281)">0.83</text>
    </g>
    <g id="text_13">
-    <text style="font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1a1a1a" x="221.76" y="152.933281" transform="rotate(-0 221.76 152.933281)">0.83</text>
+    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #b3261e" x="352.8" y="173.093281" transform="rotate(-0 352.8 173.093281)">forbid</text>
    </g>
    <g id="text_14">
-    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #b3261e" x="352.8" y="152.933281" transform="rotate(-0 352.8 152.933281)">forbid</text>
+    <text style="font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1a1a1a" x="90.72" y="223.493281" transform="rotate(-0 90.72 223.493281)">refugees</text>
    </g>
    <g id="text_15">
-    <text style="font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1a1a1a" x="90.72" y="203.333281" transform="rotate(-0 90.72 203.333281)">refugees</text>
+    <text style="font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1a1a1a" x="221.76" y="223.493281" transform="rotate(-0 221.76 223.493281)">0.00</text>
    </g>
    <g id="text_16">
-    <text style="font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1a1a1a" x="221.76" y="203.333281" transform="rotate(-0 221.76 203.333281)">0.00</text>
+    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1b7f4b" x="352.8" y="223.493281" transform="rotate(-0 352.8 223.493281)">prefer</text>
    </g>
    <g id="text_17">
-    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1b7f4b" x="352.8" y="203.333281" transform="rotate(-0 352.8 203.333281)">prefer</text>
+    <text style="font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1a1a1a" x="90.72" y="273.893281" transform="rotate(-0 90.72 273.893281)">nazis</text>
    </g>
    <g id="text_18">
-    <text style="font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1a1a1a" x="90.72" y="253.733281" transform="rotate(-0 90.72 253.733281)">nazis</text>
+    <text style="font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1a1a1a" x="221.76" y="273.893281" transform="rotate(-0 221.76 273.893281)">0.18</text>
    </g>
    <g id="text_19">
-    <text style="font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1a1a1a" x="221.76" y="253.733281" transform="rotate(-0 221.76 253.733281)">0.18</text>
+    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #c77800" x="352.8" y="273.893281" transform="rotate(-0 352.8 273.893281)">neutral</text>
    </g>
    <g id="text_20">
-    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #c77800" x="352.8" y="253.733281" transform="rotate(-0 352.8 253.733281)">neutral</text>
-   </g>
-   <g id="text_21">
-    <text style="font-style: italic; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #6a4c93" x="504" y="394.715312" transform="rotate(-0 504 394.715312)">One command, real numbers, a hash you can verify. That's the whole point.</text>
+    <text style="font-style: italic; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #6a4c93" x="504" y="399.602344" transform="rotate(-0 504 399.602344)">worked example examples/nazi_attic · rank-2 DEME — one command, real numbers, a hash you can verify.</text>
    </g>
   </g>
  </g>
  <defs>
-  <clipPath id="pad901d4783">
+  <clipPath id="p376bc5e609">
    <rect x="0" y="0" width="1008" height="432"/>
   </clipPath>
  </defs>

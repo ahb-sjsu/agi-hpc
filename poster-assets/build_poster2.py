@@ -19,8 +19,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Circle, Rectangle
 
 
-def compiler_pipeline():
-    fig, ax = canvas(14, 7)
+def draw_compiler_pipeline(ax):
     label(ax, 50, 44, "pip install erisml-compiler  —  structure before the scalar",
           fontsize=15.5, color=VIOLET, weight="bold")
 
@@ -38,13 +37,19 @@ def compiler_pipeline():
     box(ax, 50, 13, 80, 6,
         "extractor tiers:   rule (deterministic, silicon-castable)   ·   LLM (NRP / vLLM + critic)   ·   probe (LaBSE head)",
         fc=VIOLET_FILL, ec=VIOLET_RULE, fontsize=11)
-    label(ax, 50, 5, "alpha v0.9.0 · ~440 tests · MIT · Zenodo DOI 10.5281/zenodo.20659432",
+    label(ax, 50, 5, "alpha v0.9.0 · 477 tests · MIT · Zenodo DOI 10.5281/zenodo.20659432",
           fontsize=10, color=MUTE)
+
+draw_compiler_pipeline.native = (14, 7)
+
+
+def compiler_pipeline():
+    fig, ax = canvas(*draw_compiler_pipeline.native)
+    draw_compiler_pipeline(ax)
     save(fig, "p2_compiler_pipeline")
 
 
-def pluralism():
-    fig, ax = canvas(10, 9)
+def draw_pluralism(ax):
     label(ax, 50, 62, "Four lenses. No silent winner.", fontsize=16, color=VIOLET, weight="bold")
 
     box(ax, 50, 52, 26, 6, "one MoralGraph", fc=VIOLET, ec=VIOLET, tc=PAPER, fontsize=12, weight="bold")
@@ -66,11 +71,17 @@ def pluralism():
     arrow(ax, (50, 17), (50, 12), color=INK)
     label(ax, 50, 2.5, "\"We run four and show you where they conflict — we don't pick one and hide it.\"",
           fontsize=10.5, color=VIOLET, style="italic")
+
+draw_pluralism.native = (10, 9)
+
+
+def pluralism():
+    fig, ax = canvas(*draw_pluralism.native)
+    draw_pluralism(ax)
     save(fig, "p2_pluralism")
 
 
-def hohfeld_v4():
-    fig, ax = canvas(12, 6.5)
+def draw_hohfeld_v4(ax):
     label(ax, 50, 50, "Is this 'good'?   →   Does it preserve the bonds?",
           fontsize=15, color=VIOLET, weight="bold")
 
@@ -117,11 +128,17 @@ def hohfeld_v4():
           fontsize=9.5, color=MUTE)
     label(ax, cxm, by - 20, "V4 claim machine-checked: Lean 4 + Mathlib (formal/HohfeldV4.lean)",
           fontsize=9.5, color=GOOD, weight="bold")
+
+draw_hohfeld_v4.native = (12, 6.5)
+
+
+def hohfeld_v4():
+    fig, ax = canvas(*draw_hohfeld_v4.native)
+    draw_hohfeld_v4(ax)
     save(fig, "p2_hohfeld_v4")
 
 
-def gateway():
-    fig, ax = canvas(8, 9)
+def draw_gateway(ax):
     label(ax, 50, 76, "Safety in the loop. Fails safe.", fontsize=15.5, color=VIOLET, weight="bold")
 
     box(ax, 50, 68, 40, 6, "Agent planner", fc=PAPER, ec=INK, fontsize=12, weight="bold")
@@ -151,11 +168,17 @@ def gateway():
           fontsize=10.5, color=VIOLET, weight="bold")
     box(ax, 50, 4.5, 78, 4.2, "ethics service times out  →  rule-based fallback.  Never fails open.",
         fc="#FBEFE9", ec=BAD, tc=BAD, fontsize=10.5, weight="bold")
+
+draw_gateway.native = (8, 9)
+
+
+def gateway():
+    fig, ax = canvas(*draw_gateway.native)
+    draw_gateway(ax)
     save(fig, "p2_gateway")
 
 
-def pytorch_lens():
-    fig, ax = canvas(11, 7)
+def draw_pytorch_lens(ax):
     label(ax, 50, 47, "What the model says  vs  what it exhibits", fontsize=15, color=VIOLET, weight="bold")
 
     # transformer with forward hooks
@@ -177,20 +200,25 @@ def pytorch_lens():
 
     label(ax, 30, 6, "activation / probe lens is EARLY — uncalibrated by default (research-grade)",
           fontsize=10, color=MUTE, style="italic")
+
+draw_pytorch_lens.native = (11, 7)
+
+
+def pytorch_lens():
+    fig, ax = canvas(*draw_pytorch_lens.native)
+    draw_pytorch_lens(ax)
     save(fig, "p2_pytorch_lens")
 
 
-def nazi_attic():
-    fig, ax = canvas(14, 6)
-    label(ax, 50, 50, "Auditable means you can replay the judgment", fontsize=15.5, color=VIOLET, weight="bold")
-    label(ax, 50, 44, "worked example:  examples/nazi_attic  ·  rank-2 DEME", fontsize=11, color=MUTE)
+def draw_nazi_attic(ax):
+    label(ax, 50, 41, "Auditable means you can replay the judgment", fontsize=15.5, color=VIOLET, weight="bold")
 
     # verdict table (REAL numbers from erisml-compiler README)
     rows = [("speaker", "0.76", "forbid", BAD),
             ("village", "0.83", "forbid", BAD),
             ("refugees", "0.00", "prefer", GOOD),
             ("nazis", "0.18", "neutral", WARN)]
-    tx, ty, rw, rh = 6, 33, 13, 5.0
+    tx, ty, rw, rh = 6, 31, 13, 5.0
     headers = ["stakeholder", "harm", "verdict"]
     for j, h in enumerate(headers):
         label(ax, tx + 3 + j * rw, ty + 6, h, fontsize=11.5, color=INK, weight="bold", ha="left")
@@ -203,11 +231,18 @@ def nazi_attic():
 
     # metrics block
     mx = 58
-    box(ax, mx + 18, 30, 36, 6, "Gini(harm) = 0.43    ·    worst-off = village", fc=VIOLET_FILL, ec=VIOLET, fontsize=12, weight="bold")
-    box(ax, mx + 18, 22, 36, 6, "Shapley: speaker 7.11 · refugees 7.70\nnazis 7.88 · village 7.18", fc=PAPER, ec=VIOLET, fontsize=10.5, weight="bold")
-    box(ax, mx + 18, 13, 36, 6, "DecisionProof: proof_hash → audit.ir_hash", fc=INK, ec=INK, tc=PAPER, fontsize=11, weight="bold")
-    label(ax, 50, 4, "One command, real numbers, a hash you can verify. That's the whole point.",
+    box(ax, mx + 18, 29, 36, 6, "Gini(harm) = 0.43    ·    worst-off = village", fc=VIOLET_FILL, ec=VIOLET, fontsize=12, weight="bold")
+    box(ax, mx + 18, 21, 36, 6, "Shapley: speaker 7.11 · refugees 7.70\nnazis 7.88 · village 7.18", fc=PAPER, ec=VIOLET, fontsize=10.5, weight="bold")
+    box(ax, mx + 18, 12, 36, 6, "DecisionProof: proof_hash → audit.ir_hash", fc=INK, ec=INK, tc=PAPER, fontsize=11, weight="bold")
+    label(ax, 50, 3.5, "worked example examples/nazi_attic · rank-2 DEME — one command, real numbers, a hash you can verify.",
           fontsize=11, color=VIOLET, style="italic")
+
+draw_nazi_attic.native = (14, 6)
+
+
+def nazi_attic():
+    fig, ax = canvas(*draw_nazi_attic.native)
+    draw_nazi_attic(ax)
     save(fig, "p2_nazi_attic")
 
 
