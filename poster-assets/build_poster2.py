@@ -198,8 +198,13 @@ def draw_pytorch_lens(ax):
     box(ax, 73, 14, 22, 6, "requires_human_review\n(5 failure modes)", fc="#FBEFE9", ec=WARN, tc=INK, fontsize=10, weight="bold")
     arrow(ax, (73, 24.5), (73, 17), color=WARN)
 
-    label(ax, 30, 6, "activation / probe lens is EARLY — uncalibrated by default (research-grade)",
-          fontsize=10, color=MUTE, style="italic")
+    label(ax, 24, 6.5, "activation / probe lens is EARLY —\nuncalibrated by default (research-grade)",
+          fontsize=9, color=MUTE, style="italic")
+    box(ax, 72.5, 5.5, 49, 8.5,
+        "turboquant-pro (PyPI): PyTorch-native compression\n"
+        "HF 1-liner: generate(past_key_values=TurboQuantCache()) · Triton + Volta kernels · vLLM ~5× KV\n"
+        "live in this stack: 3-bit embedding codec on the NATS memory bus · claims CI-gated (CLAIMS.md)",
+        fc=PAPER, ec=VIOLET_RULE, tc=INK, fontsize=7.8)
 
 draw_pytorch_lens.native = (11, 7)
 

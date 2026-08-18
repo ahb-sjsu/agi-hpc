@@ -109,6 +109,11 @@
   beside it the **text lens**; a **delta lens** comparing them → fires `requires_human_review`
   (5 named failure modes).
 - Honesty tag (small, italic): "activation/probe lens is **early — uncalibrated by default**."
+- Bottom-right strip: **turboquant-pro** — PyTorch-native compression: HF one-liner
+  `past_key_values=TurboQuantCache()`, **Triton + Volta sm_70** attention-on-codes kernels,
+  vLLM plugin ~5× KV memory; live in this stack as the 3-bit embedding codec on the NATS memory
+  bus; claims CI-gated (`CLAIMS.md`) — the compression layer gets the same replay discipline as
+  the decisions.
 - Bottom: the **Halyard** demo — NPCs **ARTEMIS / SIGMA-4** gated by validator + DecisionProofs +
   a human **Keeper kill switch**.
 

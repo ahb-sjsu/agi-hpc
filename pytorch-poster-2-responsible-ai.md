@@ -77,6 +77,14 @@ Qwen/Gemma stack and two governed AI NPCs.
    transformer layers) vs the **text lens**, with a **delta lens** + five named failure modes →
    `requires_human_review`. Demo: the **Halyard** AI NPCs (ARTEMIS / SIGMA-4) gated by the validator
    + DecisionProofs + a human Keeper kill switch. Repos: `erisml-compiler`, `erisml-lib`, `agi-hpc`.
+   Second PyTorch-native hook: **turboquant-pro** (PyPI, MIT, Zenodo DOI 10.5281/zenodo.20660087) —
+   consumer-aware compression with a one-line HF drop-in
+   (`model.generate(..., past_key_values=TurboQuantCache(hot_window=512))`, calibration-free
+   asym-NF4 KV), **Triton** + **Volta sm_70** fused attention-on-codes kernels (the deployment
+   GPUs), torch as the cross-device portability plane (CUDA/ROCm/MPS/XPU), and a **vLLM plugin**
+   (~5× KV memory). Live in this stack today as the **3-bit embedding codec on the NATS memory
+   bus**. Its headline numbers are CI-gated and replayable (`CLAIMS.md` + `tqp replay`) — the same
+   replay discipline DecisionProofs apply to judgments.
 
 ## Key takeaways
 
@@ -94,6 +102,10 @@ Qwen/Gemma stack and two governed AI NPCs.
   back to rule-based checks (never open) when the ethics engine is unavailable.
 - **A real PyTorch hook:** an activation lens reads transformer internals to catch *say-vs-exhibit*
   mismatches — demonstrated on a Qwen/Gemma stack and two governed AI NPCs.
+- **PyTorch-native compression with receipts:** `turboquant-pro` — one-line HF KV-cache drop-in,
+  Triton/Volta fused kernels, vLLM plugin; live here as the 3-bit embedding codec on the memory
+  bus; every claim CI-gated and replayable (`CLAIMS.md`), the compression-layer analogue of a
+  DecisionProof.
 
 ## Speaker
 

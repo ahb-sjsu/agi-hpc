@@ -1,7 +1,7 @@
 % PyTorch Conference NA 2026 — Poster #2 companion paper (extended abstract)
 % Updated 2026-08-17: D4 -> V4 correction (erisml-lib commit ea7ee82 / DEME keystone correction)
 \documentclass[10pt,twocolumn]{article}
-\usepackage[margin=0.85in]{geometry}
+\usepackage[margin=0.78in]{geometry}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage{booktabs}
@@ -29,9 +29,9 @@ defers to a human. At runtime, ErisML's three-layer gateway drops the same evalu
 into an agent's plan$\to$act loop, sealing each decision in a SHA-256 hash-chained
 DecisionProof and failing safe, never open. The geometry grounds it: correlative swap
 and deontic negation are commuting involutions on Hohfeld's normative positions,
-generating the \emph{measured} Klein four-group $V_4$; the full dihedral $D_4$ is a
-posited, testable extension, not an established result --- a correction we made to our
-own earlier claim and document here. A Bond Index tests whether a judgment survives
+generating the \emph{measured} Klein four-group $V_4$; the full dihedral $D_4$
+remains a posited, testable extension --- a correction of our own earlier claim,
+documented here. A Bond Index tests whether a judgment survives
 the agent$\leftrightarrow$patient swap. The PyTorch hook is literal: forward hooks on
 transformer layers compare what a model \emph{says} with what it internally
 \emph{exhibits}. Running today on a Qwen/Gemma agent stack and two governed AI NPCs.
@@ -84,9 +84,9 @@ C$\leftrightarrow$N). These are \emph{commuting involutions}, so the group they
 generate is the Klein four-group $V_4=\{e,s,r^2,sr^2\}$ --- abelian, order 4. That
 is the \textbf{measured} structure.
 
-Our earlier materials (including the originally submitted version of this poster)
-claimed the full dihedral group $D_4$ (order 8, non-abelian). That was an overclaim,
-and we corrected it in July 2026: $D_4$ is \textbf{posited}, licensed only if
+Our earlier materials (including this poster's original submission) claimed the
+full dihedral group $D_4$ (order 8, non-abelian). That was an overclaim,
+corrected in July 2026: $D_4$ is \textbf{posited}, licensed only if
 quarter-turn operations ($r, r^3, sr, sr^3$) are independently demonstrated as
 normative operations, which has not been done empirically. The library implements
 the full $D_4$ machinery so the hypothesis stays testable, with a regression test
@@ -120,8 +120,8 @@ The PyTorch hook is literal. Forward hooks on selected transformer layers feed a
 \emph{activation lens} (what the model exhibits internally), compared against a
 \emph{text lens} (what it says); a \emph{delta lens} flags divergence and raises
 \texttt{requires\_human\_review} across five named failure modes. The adapters run
-against Hugging Face causal LMs, with Qwen- and Gemma-family models exercised in
-deployment. Caveat: the activation probe is \emph{uncalibrated by default} --- its
+against Hugging Face causal LMs (Qwen and Gemma families in deployment).
+Caveat: the activation probe is \emph{uncalibrated by default} --- its
 numeric output is research-grade, a promising extension rather than a finished
 detector.
 
@@ -139,6 +139,14 @@ and two governed AI NPCs (ARTEMIS and SIGMA-4 in the Halyard RPG), each behind t
 validator, DecisionProofs, and a human keeper kill switch. Embodied robotics is the
 design target; conversational agents are the live deployment.
 
+A second PyTorch-native piece serves the stack's memory layer:
+\texttt{turboquant-pro} (PyPI, MIT) --- consumer-aware compression with a one-line
+HuggingFace KV drop-in (\texttt{past\_key\_values=TurboQuantCache(...)}), Triton
+and Volta \texttt{sm\_70} attention-on-codes kernels, and a vLLM plugin
+($\approx$5$\times$ KV memory). It runs here today as the 3-bit embedding codec on
+the NATS memory bus; its headline numbers are CI-gated and replayable
+(\texttt{CLAIMS.md}) --- the compression-layer analogue of a DecisionProof.
+
 \section{Epistemic status and limits}
 Alpha software (compiler v0.9.0); the rule/LLM text path is solid and tested; the
 activation lens is early and uncalibrated; tensor ranks 1--3 are fully real, higher
@@ -147,18 +155,17 @@ Hohfeld/$V_4$ module and Bond Index live in \texttt{erisml-lib}, not yet in the
 compiler. None of this is a solved-ethics claim --- it is an auditability claim.
 
 \section*{Availability}
-\texttt{pip install erisml-compiler}. Source: \texttt{github.com/ahb-sjsu}
-(\texttt{erisml-compiler}, \texttt{erisml-lib}, \texttt{agi-hpc}). Zenodo DOIs:
-10.5281/zenodo.20659432 (compiler); 10.5281/zenodo.21310251 (COMPAS/LBI analysis
-archive).
+\texttt{pip install erisml-compiler} $\cdot$ \texttt{turboquant-pro}. Source:
+\texttt{github.com/ahb-sjsu}. Zenodo: 10.5281/zenodo.20659432 (compiler),
+.20660087 (turboquant-pro), .21310251 (COMPAS/LBI archive).
 
-\begin{thebibliography}{9}\footnotesize\setlength{\parskip}{0pt}\setlength{\itemsep}{1pt}
-\bibitem{hohfeld} W.~N.~Hohfeld. \emph{Fundamental Legal Conceptions as Applied in
-Judicial Reasoning}. Yale Law Journal, 1917.
-\bibitem{bond-tensorial} A.~H.~Bond. \emph{Tensorial Ethics}. 2025.
-\bibitem{sqnd} A.~H.~Bond. SQND-Probe: falsification tests for gauge-theoretic
-models of moral judgment. 2026.
-\bibitem{socialchem} M.~Forbes et al. Social Chemistry 101. EMNLP 2020.
-\end{thebibliography}
+\medskip
+\noindent{\footnotesize\textbf{References.}\enspace
+[1] W.~N.~Hohfeld, \emph{Fundamental Legal Conceptions as Applied in Judicial
+Reasoning}, Yale Law Journal, 1917.\enspace
+[2] A.~H.~Bond, \emph{Tensorial Ethics}, 2025.\enspace
+[3] A.~H.~Bond, SQND-Probe: falsification tests for gauge-theoretic models of
+moral judgment, 2026.\enspace
+[4] M.~Forbes et al., Social Chemistry 101, EMNLP 2020.\par}
 
 \end{document}
