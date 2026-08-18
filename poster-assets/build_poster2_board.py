@@ -200,8 +200,8 @@ def build_board():
     cxr = X0 + 26.0 + (X1 - X0 - 26.0) / 2
     board.text(cxr, hero_y + 5.5, "One command. Real numbers.\nA hash you can verify.",
                fontsize=33, color=VIOLET, weight="bold", ha="center", va="center", zorder=5)
-    board.text(cxr, hero_y + 3.4, "$ erisml-compile examples/nazi_attic",
-               fontsize=21, color=INK, ha="center", va="center", zorder=5,
+    board.text(cxr, hero_y + 3.4, "$ eris-compile compile examples/nazi_attic.txt --rank 2",
+               fontsize=19, color=INK, ha="center", va="center", zorder=5,
                family="DejaVu Sans Mono")
     board.text(cxr, hero_y + 1.9,
                "per-party verdicts · Gini 0.43 · exact Shapley\nDecisionProof chained to the IR hash — replay the judgment",
