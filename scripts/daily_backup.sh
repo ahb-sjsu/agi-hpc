@@ -11,7 +11,7 @@
 #   - Daily backups: last 30 days
 #   - Weekly backups: last 12 weeks (every Sunday kept)
 #
-# Destination: /mnt/raid5/atlas-backups/ (15TB RAID5)
+# Destination: /archive/atlas-backups/ (15TB RAID5, /dev/md5)
 #
 # Usage:
 #   bash scripts/daily_backup.sh
@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-BACKUP_ROOT="/mnt/raid5/atlas-backups"
+BACKUP_ROOT="/archive/atlas-backups"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 DAY_OF_WEEK=$(date +%u)  # 1=Monday, 7=Sunday
 BACKUP_DIR="$BACKUP_ROOT/daily/$TIMESTAMP"
