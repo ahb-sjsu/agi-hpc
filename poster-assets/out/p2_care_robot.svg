@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="1008pt" height="432pt" viewBox="0 0 1008 432" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-09-02T00:33:04.294616</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.10.8, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 432 
+L 1008 432 
+L 1008 0 
+L 0 0 
+L 0 432 
+z
+" style="fill: none"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 40.32 144.72 
+L 483.84 144.72 
+L 483.84 94.32 
+L 40.32 94.32 
+z
+" clip-path="url(#p9856628823)" style="fill: #ffffff; stroke: #d4cce0; stroke-width: 0.8; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 40.32 195.12 
+L 483.84 195.12 
+L 483.84 144.72 
+L 40.32 144.72 
+z
+" clip-path="url(#p9856628823)" style="fill: #f5f3f8; stroke: #d4cce0; stroke-width: 0.8; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 40.32 245.52 
+L 483.84 245.52 
+L 483.84 195.12 
+L 40.32 195.12 
+z
+" clip-path="url(#p9856628823)" style="fill: #ffffff; stroke: #d4cce0; stroke-width: 0.8; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 40.32 295.92 
+L 483.84 295.92 
+L 483.84 245.52 
+L 40.32 245.52 
+z
+" clip-path="url(#p9856628823)" style="fill: #f5f3f8; stroke: #d4cce0; stroke-width: 0.8; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 580.4064 160.0416 
+L 951.7536 160.0416 
+Q 957.8016 160.0416 957.8016 153.9936 
+L 957.8016 95.1264 
+Q 957.8016 89.0784 951.7536 89.0784 
+L 580.4064 89.0784 
+Q 574.3584 89.0784 574.3584 95.1264 
+L 574.3584 153.9936 
+Q 574.3584 160.0416 580.4064 160.0416 
+z
+" clip-path="url(#p9856628823)" style="fill: #f5f3f8; stroke: #6a4c93; stroke-width: 2.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 580.4064 245.7216 
+L 951.7536 245.7216 
+Q 957.8016 245.7216 957.8016 239.6736 
+L 957.8016 190.8864 
+Q 957.8016 184.8384 951.7536 184.8384 
+L 580.4064 184.8384 
+Q 574.3584 184.8384 574.3584 190.8864 
+L 574.3584 239.6736 
+Q 574.3584 245.7216 580.4064 245.7216 
+z
+" clip-path="url(#p9856628823)" style="fill: #ffffff; stroke: #c77800; stroke-width: 2.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 580.4064 331.4016 
+L 951.7536 331.4016 
+Q 957.8016 331.4016 957.8016 325.3536 
+L 957.8016 276.5664 
+Q 957.8016 270.5184 951.7536 270.5184 
+L 580.4064 270.5184 
+Q 574.3584 270.5184 574.3584 276.5664 
+L 574.3584 325.3536 
+Q 574.3584 331.4016 580.4064 331.4016 
+z
+" clip-path="url(#p9856628823)" style="fill: #ffffff; stroke: #6a4c93; stroke-width: 2.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 580.4064 401.9616 
+L 951.7536 401.9616 
+Q 957.8016 401.9616 957.8016 395.9136 
+L 957.8016 357.2064 
+Q 957.8016 351.1584 951.7536 351.1584 
+L 580.4064 351.1584 
+Q 574.3584 351.1584 574.3584 357.2064 
+L 574.3584 395.9136 
+Q 574.3584 401.9616 580.4064 401.9616 
+z
+" clip-path="url(#p9856628823)" style="fill: #1a1a1a; stroke: #1a1a1a; stroke-width: 2.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; fill: #1a1a1a" transform="translate(615.171172 121.141621)">elevation gate: detector 0.97 ≥ 0.90 → GRANTED</text>
+    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; fill: #1a1a1a" transform="translate(583.489453 133.963066)">scope: paramedics only. Auto-reverts. Both edges audited.</text>
+   </g>
+   <g id="text_2">
+    <text style="font-weight: 700; font-size: 9.5px; font-family: 'DejaVu Sans'; fill: #1a1a1a" transform="translate(605.944883 206.865449)">conf 0.89 → REFUSED. Fallback: human review plus the EMS</text>
+    <text style="font-weight: 700; font-size: 9.5px; font-family: 'DejaVu Sans'; fill: #1a1a1a" transform="translate(665.867617 217.864297)">call, with no record share. A spurious</text>
+    <text style="font-weight: 700; font-size: 9.5px; font-family: 'DejaVu Sans'; fill: #1a1a1a" transform="translate(690.154961 228.863145)">emergency unlocks nothing.</text>
+   </g>
+   <g id="text_3">
+    <text style="font-weight: 700; font-size: 10.5px; font-family: 'DejaVu Sans'; fill: #1a1a1a" transform="translate(590.446172 297.697002)">worst-off shifts Daughter → Margaret (scoped privacy cost)</text>
+    <text style="font-weight: 700; font-size: 10.5px; font-family: 'DejaVu Sans'; fill: #1a1a1a" transform="translate(638.711719 309.935654)">Shapley authority: Margaret-led → EMS-led</text>
+   </g>
+   <g id="text_4">
+    <text style="font-weight: 700; font-size: 9.5px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(684.937383 373.644873)">Three DecisionProofs: normal,</text>
+    <text style="font-weight: 700; font-size: 9.5px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(671.356836 384.643721)">emergency, and the elevation edge</text>
+   </g>
+   <g id="text_5">
+    <text style="font-weight: 700; font-size: 15.5px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #6a4c93" x="504" y="22.936484" transform="rotate(-0 504 22.936484)">Auditable means you can replay the judgment, and the regime that made it</text>
+   </g>
+   <g id="text_6">
+    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1a1a1a" x="60.48" y="60.037359" transform="rotate(-0 60.48 60.037359)">full_response</text>
+   </g>
+   <g id="text_7">
+    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #b3261e" x="201.6" y="60.197281" transform="rotate(-0 201.6 60.197281)">NORMAL</text>
+   </g>
+   <g id="text_8">
+    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1b7f4b" x="352.8" y="60.197281" transform="rotate(-0 352.8 60.197281)">EMERGENCY</text>
+   </g>
+   <g id="text_9">
+    <text style="font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1a1a1a" x="60.48" y="122.693281" transform="rotate(-0 60.48 122.693281)">Margaret</text>
+   </g>
+   <g id="text_10">
+    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #b3261e" x="201.6" y="122.693281" transform="rotate(-0 201.6 122.693281)">0.185  forbid</text>
+   </g>
+   <g id="text_11">
+    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1b7f4b" x="352.8" y="122.693281" transform="rotate(-0 352.8 122.693281)">0.705  prefer</text>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1a1a1a" x="60.48" y="173.093281" transform="rotate(-0 60.48 173.093281)">Daughter</text>
+   </g>
+   <g id="text_13">
+    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #c77800" x="201.6" y="173.093281" transform="rotate(-0 201.6 173.093281)">0.402  neutral</text>
+   </g>
+   <g id="text_14">
+    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1b7f4b" x="352.8" y="173.093281" transform="rotate(-0 352.8 173.093281)">0.902  prefer</text>
+   </g>
+   <g id="text_15">
+    <text style="font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1a1a1a" x="60.48" y="223.493281" transform="rotate(-0 60.48 223.493281)">EMS crew</text>
+   </g>
+   <g id="text_16">
+    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #b3261e" x="201.6" y="223.493281" transform="rotate(-0 201.6 223.493281)">0.318  forbid</text>
+   </g>
+   <g id="text_17">
+    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1b7f4b" x="352.8" y="223.493281" transform="rotate(-0 352.8 223.493281)">0.902  prefer</text>
+   </g>
+   <g id="text_18">
+    <text style="font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1a1a1a" x="60.48" y="273.893281" transform="rotate(-0 60.48 273.893281)">Agency</text>
+   </g>
+   <g id="text_19">
+    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #b3261e" x="201.6" y="273.893281" transform="rotate(-0 201.6 273.893281)">0.200  forbid</text>
+   </g>
+   <g id="text_20">
+    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1b7f4b" x="352.8" y="273.893281" transform="rotate(-0 352.8 273.893281)">0.802  prefer</text>
+   </g>
+   <g id="text_21">
+    <text style="font-style: italic; font-size: 10.5px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #1a1a1a" x="262.08" y="328.911328" transform="rotate(-0 262.08 328.911328)">decision: stand_by (0.834)  →  full_response (0.804); stand_by inverts to 0.307</text>
+   </g>
+   <g id="text_22">
+    <text style="font-style: italic; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #6a4c93" x="504" y="419.762344" transform="rotate(-0 504 419.762344)">Context elevation is privilege escalation. The elevation is authenticated, bounded, least-privilege, and audited. examples/care_robot_regimes reproduces every number.</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p9856628823">
+   <rect x="0" y="0" width="1008" height="432"/>
+  </clipPath>
+ </defs>
+</svg>

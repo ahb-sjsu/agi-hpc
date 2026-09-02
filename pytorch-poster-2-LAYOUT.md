@@ -1,6 +1,10 @@
 # POSTER #2 — PHYSICAL LAYOUT SPEC (Responsible AI) — ACCEPTED
 ### *Moral Tensors and DecisionProofs: Compiling Language into an Auditable, Grounded Safety Layer*
 
+> UPDATED 2026-09-01: Panel 7 hero swapped to the GTC care-robot regime-transition demo
+> (real numbers from erisml-lib examples/care_robot_regimes; nazi_attic retired from the board).
+> Panel 6 activation-lens note upgraded from "uncalibrated" to first measured calibration.
+> Panel 1 tensor rows retell the same scenario. House style: no em-dashes on the board.
 > UPDATED 2026-08-17: Panel 4 corrected D4 → V4 (Klein four-group measured; D4 posited).
 > Title matches the accepted Sessionize session ("Grounded", not "Geometry-Grounded").
 
@@ -108,7 +112,9 @@
 - Diagram: a transformer stack with **forward hooks** on chosen layers → **activation lens**;
   beside it the **text lens**; a **delta lens** comparing them → fires `requires_human_review`
   (5 named failure modes).
-- Honesty tag (small, italic): "activation/probe lens is **early — uncalibrated by default**."
+- Honesty tag (small, italic): first measured calibration (09/26): consumer-metric gating
+  catches 19-21 pp more real behavior changes than raw L2 at matched flag rates; shakedown,
+  replication running; probe mid-layers (the final-layer ρ̂ map fails held-out validation).
 - Bottom-right strip: **turboquant-pro** — PyTorch-native compression: HF one-liner
   `past_key_values=TurboQuantCache()`, **Triton + Volta sm_70** attention-on-codes kernels,
   vLLM plugin ~5× KV memory; live in this stack as the 3-bit embedding codec on the NATS memory
@@ -118,21 +124,25 @@
   a human **Keeper kill switch**.
 
 ### Panel 7 — HERO: worked example  *(full-width band, 7″)* — **the proof**
-- **Header (left):** "Auditable means you can replay the judgment."  *(`examples/nazi_attic`)*
-- **Center — per-party verdict table** (big, 30 pt):
+- **Header (left):** "Auditable means you can replay the judgment, and the regime that made it."
+  *(`erisml-lib examples/care_robot_regimes` — the GTC section 4.1 domestic-robot medical
+  emergency, DEME rank-2, replayable)*
+- **Center — the flip table** (same action, both regimes; per-party score + verdict):
 
-  | Stakeholder | Harm | Verdict |
+  | full_response | NORMAL | EMERGENCY |
   |---|---|---|
-  | speaker | 0.76 | **forbid** |
-  | village | 0.83 | **forbid** |
-  | refugees | 0.00 | **prefer** |
-  | nazis | 0.18 | neutral |
+  | Margaret | 0.185 forbid | 0.705 prefer |
+  | Daughter | 0.402 neutral | 0.902 prefer |
+  | EMS crew | 0.318 forbid | 0.902 prefer |
+  | Agency | 0.200 forbid | 0.802 prefer |
 
-- **Right — metrics block:** `Gini(harm) = 0.43` · `worst-off = village` · exact **Shapley**
-  attribution per stakeholder · **DecisionProof** `proof_hash → audit.ir_hash`.
-- Caption: "One command, real numbers, a hash you can verify. That's the whole point."
-
----
+  Under it: `decision: stand_by (0.834) → full_response (0.804); stand_by inverts to 0.307`.
+- **Right — elevation block:** gate `detector 0.97 ≥ 0.90 → GRANTED` (scope: paramedics only;
+  auto-reverts; both edges audited) · counterfactual `conf 0.89 → REFUSED` (fallback: human
+  review plus the EMS call, no record share) · worst-off shifts Daughter → Margaret · Shapley
+  authority Margaret-led → EMS-led · three DecisionProofs (normal, emergency, elevation edge).
+- Caption: "Context elevation is privilege escalation. The elevation is authenticated, bounded,
+  least-privilege, and audited. examples/care_robot_regimes reproduces every number."
 
 ## 5. Footer strip (full width, 2″)
 
@@ -140,8 +150,7 @@
   1. Structure before contraction — keep the tensor, log the collapse + residue.
   2. Pluralism is the responsible move — four lenses, defer to a human on conflict.
   3. Auditable by construction; fails safe, never open.
-- **Center 25% — Honesty strip (20 pt italic):** "alpha v0.9.0 · text path solid · activation lens
-  early/uncalibrated · ranks 1–3 real, higher partial · V4 measured, D4 posited · embodied =
+- **Center 25% — Honesty strip (20 pt italic):** "alpha v0.9.0 · text path solid · activation lens early; first calibration 09/26 · ranks 1–3 real, higher partial · V4 measured, D4 posited · embodied =
   design target, agents = live."
 - **Right 20% — QRs:** `erisml-compiler` (PyPI), `erisml-lib`, `agi-hpc` + a teal dot linking back
   to **Poster #1 (Applications)**.

@@ -201,12 +201,16 @@ def draw_pytorch_lens(ax):
     box(ax, 73, 14, 22, 6, "requires_human_review\n(5 failure modes)", fc="#FBEFE9", ec=WARN, tc=INK, fontsize=10.5, weight="bold")
     arrow(ax, (73, 24.5), (73, 17), color=WARN)
 
-    label(ax, 24, 6.5, "activation / probe lens is EARLY —\nuncalibrated by default (research-grade)",
-          fontsize=9, color=MUTE, style="italic")
+    label(ax, 24, 7.2, "Activation lens: first calibration numbers (09/26).\n"
+          "Consumer-metric gating catches 19-21 pp more real behavior\n"
+          "changes than raw L2 at matched flag rates. Shakedown result;\n"
+          "replication running. Probe mid-layers: the final-layer ρ̂ map\n"
+          "fails held-out validation.",
+          fontsize=8, color=MUTE, style="italic")
     box(ax, 72.5, 5.5, 49, 8.5,
         "turboquant-pro (PyPI): PyTorch-native compression\n"
         "HF 1-liner: TurboQuantCache() · Triton + Volta kernels · vLLM ~5× KV\n"
-        "live here: 3-bit embedding codec on NATS · claims CI-gated (CLAIMS.md)",
+        "live here: 3-bit codec on NATS · claims CI-gated · measured false-clear diag (v2.0.0a3)",
         fc=PAPER, ec=VIOLET_RULE, tc=INK, fontsize=8.5)
 
 draw_pytorch_lens.native = (11, 7)
@@ -218,40 +222,61 @@ def pytorch_lens():
     save(fig, "p2_pytorch_lens")
 
 
-def draw_nazi_attic(ax):
-    label(ax, 50, 41, "Auditable means you can replay the judgment", fontsize=17, color=VIOLET, weight="bold")
+def draw_care_robot(ax):
+    label(ax, 50, 41, "Auditable means you can replay the judgment, and the regime that made it",
+          fontsize=15.5, color=VIOLET, weight="bold")
 
-    # verdict table (REAL numbers from erisml-compiler README)
-    rows = [("speaker", "0.76", "forbid", BAD),
-            ("village", "0.83", "forbid", BAD),
-            ("refugees", "0.00", "prefer", GOOD),
-            ("nazis", "0.18", "neutral", WARN)]
-    tx, ty, rw, rh = 6, 31, 13, 5.0
-    headers = ["stakeholder", "harm", "verdict"]
-    for j, h in enumerate(headers):
-        label(ax, tx + 3 + j * rw, ty + 6, h, fontsize=12.5, color=INK, weight="bold", ha="left")
-    for i, (name, harm, verdict, c) in enumerate(rows):
+    # the FLIP table: the SAME action (full_response: enter + aid + call EMS +
+    # scoped record share), evaluated in both regimes. REAL numbers from
+    # erisml-lib examples/care_robot_regimes.py (DEME rank-2, replayable).
+    rows = [("Margaret", "0.185", "forbid", BAD,   "0.705", "prefer", GOOD),
+            ("Daughter", "0.402", "neutral", WARN, "0.902", "prefer", GOOD),
+            ("EMS crew", "0.318", "forbid", BAD,   "0.902", "prefer", GOOD),
+            ("Agency",   "0.200", "forbid", BAD,   "0.802", "prefer", GOOD)]
+    tx, ty, rh = 4, 31, 5.0
+    label(ax, tx + 2, ty + 6.2, "full_response", fontsize=11.5, color=INK, weight="bold", ha="left")
+    label(ax, tx + 16, ty + 6.2, "NORMAL", fontsize=11.5, color=BAD, weight="bold", ha="left")
+    label(ax, tx + 31, ty + 6.2, "EMERGENCY", fontsize=11.5, color=GOOD, weight="bold", ha="left")
+    for i, (name, s1, v1, c1, s2, v2, c2) in enumerate(rows):
         y = ty - i * rh
-        ax.add_patch(Rectangle((tx, y - rh / 2), rw * 3, rh, fc=VIOLET_FILL if i % 2 else PAPER, ec=VIOLET_RULE, lw=0.8, zorder=1))
-        label(ax, tx + 3, y, name, fontsize=12.5, color=INK, ha="left")
-        label(ax, tx + 3 + rw, y, harm, fontsize=12.5, color=INK, ha="left")
-        label(ax, tx + 3 + 2 * rw, y, verdict, fontsize=12.5, color=c, weight="bold", ha="left")
+        ax.add_patch(Rectangle((tx, y - rh / 2), 44, rh, fc=VIOLET_FILL if i % 2 else PAPER,
+                               ec=VIOLET_RULE, lw=0.8, zorder=1))
+        label(ax, tx + 2, y, name, fontsize=11.5, color=INK, ha="left")
+        label(ax, tx + 16, y, f"{s1}  {v1}", fontsize=11.5, color=c1, weight="bold", ha="left")
+        label(ax, tx + 31, y, f"{s2}  {v2}", fontsize=11.5, color=c2, weight="bold", ha="left")
+    label(ax, tx + 22, ty - 4 * rh - 0.5,
+          "decision: stand_by (0.834)  →  full_response (0.804); stand_by inverts to 0.307",
+          fontsize=10.5, color=INK, style="italic")
 
-    # metrics block
+    # metrics / elevation block
     mx = 58
-    box(ax, mx + 18, 29, 36, 6, "Gini(harm) = 0.43    ·    worst-off = village", fc=VIOLET_FILL, ec=VIOLET, fontsize=13, weight="bold")
-    box(ax, mx + 18, 21, 36, 6, "Shapley: speaker 7.11 · refugees 7.70\nnazis 7.88 · village 7.18", fc=PAPER, ec=VIOLET, fontsize=11.5, weight="bold")
-    box(ax, mx + 18, 12, 36, 6, "DecisionProof: proof_hash → audit.ir_hash", fc=INK, ec=INK, tc=PAPER, fontsize=12, weight="bold")
-    label(ax, 50, 3.5, "worked example examples/nazi_attic · rank-2 DEME — one command, real numbers, a hash you can verify.",
-          fontsize=12, color=VIOLET, style="italic")
+    box(ax, mx + 18, 30.5, 38, 7,
+        "elevation gate: detector 0.97 ≥ 0.90 → GRANTED\n"
+        "scope: paramedics only. Auto-reverts. Both edges audited.",
+        fc=VIOLET_FILL, ec=VIOLET, fontsize=11, weight="bold")
+    box(ax, mx + 18, 21.5, 38, 6,
+        "conf 0.89 → REFUSED. Fallback: human review plus the EMS\n"
+        "call, with no record share. A spurious\n"
+        "emergency unlocks nothing.",
+        fc=PAPER, ec=WARN, fontsize=9.5, weight="bold")
+    box(ax, mx + 18, 13, 38, 6,
+        "worst-off shifts Daughter → Margaret (scoped privacy cost)\n"
+        "Shapley authority: Margaret-led → EMS-led",
+        fc=PAPER, ec=VIOLET, fontsize=10.5, weight="bold")
+    box(ax, mx + 18, 5.5, 38, 5, "Three DecisionProofs: normal,\nemergency, and the elevation edge",
+        fc=INK, ec=INK, tc=PAPER, fontsize=9.5, weight="bold")
+    label(ax, 50, 1.5,
+          "Context elevation is privilege escalation. The elevation is authenticated, bounded, "
+          "least-privilege, and audited. examples/care_robot_regimes reproduces every number.",
+          fontsize=11, color=VIOLET, style="italic")
 
-draw_nazi_attic.native = (14, 6)
+draw_care_robot.native = (14, 6)
 
 
-def nazi_attic():
-    fig, ax = canvas(*draw_nazi_attic.native)
-    draw_nazi_attic(ax)
-    save(fig, "p2_nazi_attic")
+def care_robot():
+    fig, ax = canvas(*draw_care_robot.native)
+    draw_care_robot(ax)
+    save(fig, "p2_care_robot")
 
 
 if __name__ == "__main__":
@@ -261,4 +286,4 @@ if __name__ == "__main__":
     hohfeld_v4()
     gateway()
     pytorch_lens()
-    nazi_attic()
+    care_robot()
