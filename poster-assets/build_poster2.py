@@ -109,7 +109,7 @@ def draw_hohfeld_v4(ax):
     label(ax, cx, cy - 4.5, "r² = deontic negation", fontsize=10, color=VIOLET, weight="bold")
     label(ax, 28, cy - s - 8.5, "s and r² commute  →  V4 (Klein four-group, order 4) — measured",
           fontsize=11.5, color=INK, weight="bold")
-    label(ax, 28, cy - s - 12.5, "full D4 (order 8) posited — quarter-turns not yet observed",
+    label(ax, 28, cy - s - 12.5, "full D4 (order 8) posited, now tested: a 09/26 hunt in a small LM\nfound no quarter-turn (non-abelian signature absent). V4 stands.",
           fontsize=10.5, color=MUTE, style="italic")
 
     # Bond Index scale (right half)

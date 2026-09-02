@@ -92,7 +92,8 @@
   **correlative swap s** (horizontal, O↔C / L↔N — the agent↔patient swap the Bond Index tests)
   and **deontic negation r²** (vertical, O↔L / C↔N). Callout: **"s and r² commute → they
   generate V4 (Klein four-group, order 4) — measured."** Small epistemic tag beneath:
-  *"full D4 (order 8) posited — quarter-turns not yet observed."* Green badge line:
+  *"full D4 (order 8) posited, and now tested: a 09/26 hunt fitted the quarter-turn in a small
+  LM's learned representation. Not found (non-abelian signature absent). V4 stands."* Green badge line:
   **"V4 claim machine-checked: Lean 4 + Mathlib (`formal/HohfeldV4.lean`)"** — commuting
   involutions, 4-element closure ≅ V4, quarter-turn excluded, dihedral relations of the
   ambient machinery all verified. Great booth talking point: the correction is a *proof*.

@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="1008pt" height="648pt" viewBox="0 0 1008 648" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-06-19T00:15:26.711950</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.0, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 648 
+L 1008 648 
+L 1008 0 
+L 0 0 
+L 0 648 
+z
+" style="fill: none"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 221.76 322.397051 
+Q 221.76 350.637276 221.76 376.19422 
+" clip-path="url(#p4f9404b0c1)" style="fill: none; stroke: #0e7c86; stroke-width: 2.4; stroke-linecap: round"/>
+    <path d="M 225.36 368.99422 
+L 221.76 376.19422 
+L 218.16 368.99422 
+z
+" clip-path="url(#p4f9404b0c1)" style="fill: #0e7c86; stroke: #0e7c86; stroke-width: 2.4; stroke-linecap: round"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 221.76 378.882949 
+Q 221.76 350.642724 221.76 325.08578 
+" clip-path="url(#p4f9404b0c1)" style="fill: none; stroke: #0e7c86; stroke-width: 2.4; stroke-linecap: round"/>
+    <path d="M 218.16 332.28578 
+L 221.76 325.08578 
+L 225.36 332.28578 
+z
+" clip-path="url(#p4f9404b0c1)" style="fill: #0e7c86; stroke: #0e7c86; stroke-width: 2.4; stroke-linecap: round"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 604.8 322.397051 
+Q 604.8 350.637276 604.8 376.19422 
+" clip-path="url(#p4f9404b0c1)" style="fill: none; stroke: #0e7c86; stroke-width: 2.4; stroke-linecap: round"/>
+    <path d="M 608.4 368.99422 
+L 604.8 376.19422 
+L 601.2 368.99422 
+z
+" clip-path="url(#p4f9404b0c1)" style="fill: #0e7c86; stroke: #0e7c86; stroke-width: 2.4; stroke-linecap: round"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 604.8 378.882949 
+Q 604.8 350.642724 604.8 325.08578 
+" clip-path="url(#p4f9404b0c1)" style="fill: none; stroke: #0e7c86; stroke-width: 2.4; stroke-linecap: round"/>
+    <path d="M 601.2 332.28578 
+L 604.8 325.08578 
+L 608.4 332.28578 
+z
+" clip-path="url(#p4f9404b0c1)" style="fill: #0e7c86; stroke: #0e7c86; stroke-width: 2.4; stroke-linecap: round"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 504 435.966792 
+Q 504 464.043495 504 492.120198 
+" clip-path="url(#p4f9404b0c1)" style="fill: none; stroke: #0e7c86; stroke-width: 2.4; stroke-linecap: round"/>
+    <path d="M 500.4 443.166792 
+L 504 435.966792 
+L 507.6 443.166792 
+z
+" clip-path="url(#p4f9404b0c1)" style="fill: #0e7c86; stroke: #0e7c86; stroke-width: 2.4; stroke-linecap: round"/>
+    <path d="M 507.6 484.920198 
+L 504 492.120198 
+L 500.4 484.920198 
+z
+" clip-path="url(#p4f9404b0c1)" style="fill: #0e7c86; stroke: #0e7c86; stroke-width: 2.4; stroke-linecap: round"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 76.4064 219.8016 
+L 367.1136 219.8016 
+Q 373.1616 219.8016 373.1616 213.7536 
+L 373.1616 154.8864 
+Q 373.1616 148.8384 367.1136 148.8384 
+L 76.4064 148.8384 
+Q 70.3584 148.8384 70.3584 154.8864 
+L 70.3584 213.7536 
+Q 70.3584 219.8016 76.4064 219.8016 
+z
+" clip-path="url(#p4f9404b0c1)" style="fill: #f4f7f8; stroke: #0e7c86; stroke-width: 2.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 76.4064 320.6016 
+L 367.1136 320.6016 
+Q 373.1616 320.6016 373.1616 314.5536 
+L 373.1616 255.6864 
+Q 373.1616 249.6384 367.1136 249.6384 
+L 76.4064 249.6384 
+Q 70.3584 249.6384 70.3584 255.6864 
+L 70.3584 314.5536 
+Q 70.3584 320.6016 76.4064 320.6016 
+z
+" clip-path="url(#p4f9404b0c1)" style="fill: #f4f7f8; stroke: #0e7c86; stroke-width: 2.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 459.4464 219.8016 
+L 750.1536 219.8016 
+Q 756.2016 219.8016 756.2016 213.7536 
+L 756.2016 154.8864 
+Q 756.2016 148.8384 750.1536 148.8384 
+L 459.4464 148.8384 
+Q 453.3984 148.8384 453.3984 154.8864 
+L 453.3984 213.7536 
+Q 453.3984 219.8016 459.4464 219.8016 
+z
+" clip-path="url(#p4f9404b0c1)" style="fill: #ffffff; stroke-dasharray: 8.14,3.52; stroke-dashoffset: 0; stroke: #6b6b6b; stroke-width: 2.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 459.4464 320.6016 
+L 750.1536 320.6016 
+Q 756.2016 320.6016 756.2016 314.5536 
+L 756.2016 255.6864 
+Q 756.2016 249.6384 750.1536 249.6384 
+L 459.4464 249.6384 
+Q 453.3984 249.6384 453.3984 255.6864 
+L 453.3984 314.5536 
+Q 453.3984 320.6016 459.4464 320.6016 
+z
+" clip-path="url(#p4f9404b0c1)" style="fill: #f4f7f8; stroke: #0e7c86; stroke-width: 2.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 120.7584 431.4816 
+L 887.2416 431.4816 
+Q 897.3216 431.4816 897.3216 421.4016 
+L 897.3216 390.7584 
+Q 897.3216 380.6784 887.2416 380.6784 
+L 120.7584 380.6784 
+Q 110.6784 380.6784 110.6784 390.7584 
+L 110.6784 421.4016 
+Q 110.6784 431.4816 120.7584 431.4816 
+z
+" clip-path="url(#p4f9404b0c1)" style="fill: #1a1a1a; stroke: #1a1a1a; stroke-width: 2.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_12">
+    <path d="M 257.8464 557.4816 
+L 750.1536 557.4816 
+Q 756.2016 557.4816 756.2016 551.4336 
+L 756.2016 502.6464 
+Q 756.2016 496.5984 750.1536 496.5984 
+L 257.8464 496.5984 
+Q 251.7984 496.5984 251.7984 502.6464 
+L 251.7984 551.4336 
+Q 251.7984 557.4816 257.8464 557.4816 
+z
+" clip-path="url(#p4f9404b0c1)" style="fill: #ffffff; stroke: #0e7c86; stroke-width: 2.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 12px; font-family: 'DejaVu Sans'; fill: #1a1a1a" transform="translate(158.265938 179.978438)">GPU 0  ·  Superego</text>
+    <text style="font-weight: 700; font-size: 12px; font-family: 'DejaVu Sans'; fill: #1a1a1a" transform="translate(94.977187 195.084375)">Gemma 4 31B  (logic / ethics / safety)</text>
+   </g>
+   <g id="text_2">
+    <text style="font-weight: 700; font-size: 12px; font-family: 'DejaVu Sans'; fill: #1a1a1a" transform="translate(178.152187 280.778438)">GPU 1  ·  Ego</text>
+    <text style="font-weight: 700; font-size: 12px; font-family: 'DejaVu Sans'; fill: #1a1a1a" transform="translate(115.538438 296.303438)">Qwen 3 32B  (decides &amp; learns)</text>
+   </g>
+   <g id="text_3">
+    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; fill: #6b6b6b" transform="translate(553.480352 180.74332)">Id  (subcortical)</text>
+    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; fill: #6b6b6b" transform="translate(495.242734 194.579258)">pattern-nets + A*  —  NOT an LLM</text>
+   </g>
+   <g id="text_4">
+    <text style="font-weight: 700; font-size: 12px; font-family: 'DejaVu Sans'; fill: #1a1a1a" transform="translate(518.440313 282.09375)">Divine Council  ·  7 voices</text>
+    <text style="font-weight: 700; font-size: 12px; font-family: 'DejaVu Sans'; fill: #1a1a1a" transform="translate(526.255312 296.387813)">Kimi K2.5 1T  (via NRP)</text>
+   </g>
+   <g id="text_5">
+    <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #ffffff" x="504" y="411.299375" transform="rotate(-0 504 411.299375)">NATS event fabric</text>
+   </g>
+   <g id="text_6">
+    <text style="font-weight: 700; font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #0e7c86" x="504" y="530.901328" transform="rotate(-0 504 530.901328)">NRP Nautilus  (Kubernetes, ns: ssu-atlas-ai)</text>
+   </g>
+   <g id="text_7">
+    <text style="font-weight: 700; font-size: 16px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #0e7c86" x="504" y="88.4625" transform="rotate(-0 504 88.4625)">The stack — one NATS bus, local + cloud</text>
+   </g>
+   <g id="text_8">
+    <text style="font-size: 9.5px; font-family: 'DejaVu Sans'; fill: #6b6b6b" transform="translate(653.170078 462.148219)">leaf node</text>
+    <text style="font-size: 9.5px; font-family: 'DejaVu Sans'; fill: #6b6b6b" transform="translate(659.338398 473.464352)">(burst)</text>
+   </g>
+   <g id="text_9">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #6b6b6b" x="504" y="606.110156" transform="rotate(-0 504 606.110156)">2× Quadro GV100 32 GB · not NVLinked · HP Z840 · 48 threads</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p4f9404b0c1">
+   <rect x="0" y="0" width="1008" height="648"/>
+  </clipPath>
+ </defs>
+</svg>

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="504pt" height="504pt" viewBox="0 0 504 504" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-06-19T00:15:28.208880</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.0, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 504 
+L 504 504 
+L 504 0 
+L 0 0 
+L 0 504 
+z
+" style="fill: none"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 85.68 443.52 
+L 196.56 443.52 
+L 196.56 161.28 
+L 85.68 161.28 
+z
+" clip-path="url(#p5015dad3eb)" style="fill: #b3261e; opacity: 0.85; stroke: #b3261e; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 307.44 443.52 
+L 418.32 443.52 
+L 418.32 372.96 
+L 307.44 372.96 
+z
+" clip-path="url(#p5015dad3eb)" style="fill: #1b7f4b; opacity: 0.85; stroke: #1b7f4b; stroke-linejoin: miter"/>
+   </g>
+   <g id="line2d_1">
+    <path d="M 50.4 161.28 
+L 453.6 161.28 
+" clip-path="url(#p5015dad3eb)" style="fill: none; stroke-dasharray: 7.4,3.2; stroke-dashoffset: 0; stroke: #1a1a1a; stroke-width: 2"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 15px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #0e7c86" x="252" y="29.804297" transform="rotate(-0 252 29.804297)">TurboQuant — fit 31–32B in 64 GB</text>
+   </g>
+   <g id="text_2">
+    <text style="font-weight: 700; font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #b3261e" x="141.12" y="145.851797" transform="rotate(-0 141.12 145.851797)">~64 GB</text>
+   </g>
+   <g id="text_3">
+    <text style="font-weight: 700; font-size: 12px; font-family: 'DejaVu Sans'; fill: #1a1a1a" transform="translate(124.274063 473.142187)">FP16</text>
+    <text style="font-weight: 700; font-size: 12px; font-family: 'DejaVu Sans'; fill: #1a1a1a" transform="translate(93.7875 487.044375)">weights alone</text>
+   </g>
+   <g id="text_4">
+    <text style="font-weight: 700; font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #1b7f4b" x="362.88" y="357.531797" transform="rotate(-0 362.88 357.531797)">~16 GB</text>
+   </g>
+   <g id="text_5">
+    <text style="font-weight: 700; font-size: 12px; font-family: 'DejaVu Sans'; fill: #1a1a1a" transform="translate(340.2225 473.25375)">3–4 bit</text>
+    <text style="font-weight: 700; font-size: 12px; font-family: 'DejaVu Sans'; fill: #1a1a1a" transform="translate(303.621562 487.09125)">+ compressed KV</text>
+   </g>
+   <g id="text_6">
+    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #1a1a1a" x="453.6" y="149.152344" transform="rotate(-0 453.6 149.152344)">64 GB budget</text>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 8.5px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #6b6b6b" x="252" y="500.297469" transform="rotate(-0 252 500.297469)">illustrative · weights-based estimate (32B params); KV cache also compressed</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p5015dad3eb">
+   <rect x="0" y="0" width="504" height="504"/>
+  </clipPath>
+ </defs>
+</svg>

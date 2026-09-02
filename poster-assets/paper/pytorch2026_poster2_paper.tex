@@ -90,7 +90,8 @@ rule table.)
   \centering
   \includegraphics[width=\columnwidth]{p2_hohfeld_v4.pdf}
   \caption{The Hohfeld square with the two measured involutions. They commute and
-  generate $V_4$; the quarter-turns are posited, not measured. The $V_4$ claim is
+  generate $V_4$; the quarter-turns are posited, and a September 2026 hunt in a small
+  language model's learned representation did not find them. The $V_4$ claim is
   machine-checked in Lean~4 with Mathlib.}
   \label{fig:hohfeld}
 \end{figure}
@@ -112,7 +113,14 @@ the full $D_4$ machinery so the hypothesis stays testable, with a regression tes
 asserting that the implemented operations generate exactly $V_4$, and a
 machine-checked Lean~4/Mathlib proof (\texttt{formal/HohfeldV4.lean}) verifying the
 commuting involutions, the 4-element closure $\cong V_4$, and that the quarter-turn
-lies outside it. This is the second
+lies outside it. The posited quarter-turn now has its first empirical test
+(September 2026): ridge-fitted representation maps for the swap, the negation,
+and the four-cycle in a small language model's hidden states, graded on held-out
+scenarios in a held-out surface-template family. The quarter-turn is not found.
+The fitted cycle map's square does match the measured negation, but the
+non-abelian signature is absent, and even the measured swap generalizes weakly
+across templates, which bounds the instrument's power. $V_4$ stands, now with
+one empirical test behind it. This is the second
 self-correction in the program's history: an earlier $SU(2)\times U(1)$ gauge
 hypothesis was falsified by CHSH-style tests on human moral judgments ($N{=}600$,
 all $|S|\le 2$). We consider the corrections a feature of the method; the
