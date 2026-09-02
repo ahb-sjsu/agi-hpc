@@ -24,6 +24,8 @@ TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 DAY_OF_WEEK=$(date +%u)  # 1=Monday, 7=Sunday
 BACKUP_DIR="$BACKUP_ROOT/daily/$TIMESTAMP"
 DRY_RUN=false
+# Set true only once the dump has been written AND verified readable.
+DB_OK=false
 
 if [ "${1:-}" = "--dry-run" ]; then
     DRY_RUN=true
@@ -48,15 +50,29 @@ fi
 # ─── 1. PostgreSQL dump ──────────────────────────────────────────────
 log "Backing up PostgreSQL..."
 if [ "$DRY_RUN" = false ]; then
-    pg_dump -U claude atlas \
-        --format=custom \
-        --compress=6 \
-        --file="$BACKUP_DIR/atlas_db.dump" \
-        2>/dev/null || log "WARNING: pg_dump failed (database may be offline)"
+    DUMP="$BACKUP_DIR/atlas_db.dump"
 
-    if [ -f "$BACKUP_DIR/atlas_db.dump" ]; then
-        SIZE=$(du -h "$BACKUP_DIR/atlas_db.dump" | cut -f1)
-        log "  Database: $SIZE"
+    # stderr is deliberately NOT discarded: the unit sets
+    # StandardError=journal, so a failure reason lands in the journal
+    # instead of vanishing into /dev/null.
+    if pg_dump -U claude atlas \
+            --format=custom \
+            --compress=6 \
+            --file="$DUMP"; then
+        # A custom-format dump carries a table of contents. pg_restore
+        # --list fails on a truncated or corrupt file; test -f does not.
+        if pg_restore --list "$DUMP" >/dev/null 2>&1; then
+            DB_OK=true
+            SIZE=$(du -h "$DUMP" | cut -f1)
+            log "  Database: $SIZE (verified: table of contents readable)"
+        else
+            log "ERROR: dump written but unreadable (pg_restore --list failed)"
+            log "ERROR: removing $DUMP so it cannot pass as a good backup"
+            rm -f "$DUMP"
+        fi
+    else
+        log "ERROR: pg_dump failed; see the journal for the reason"
+        rm -f "$DUMP"
     fi
 fi
 
@@ -88,7 +104,7 @@ if [ -d "$TRAIN_LOG_DIR" ] && [ "$DRY_RUN" = false ]; then
 fi
 
 # ─── 5. Weekly promotion (Sunday) ────────────────────────────────────
-if [ "$DAY_OF_WEEK" = "7" ] && [ "$DRY_RUN" = false ]; then
+if [ "$DAY_OF_WEEK" = "7" ] && [ "$DRY_RUN" = false ] && [ "$DB_OK" = true ]; then
     WEEKLY_DIR="$BACKUP_ROOT/weekly"
     mkdir -p "$WEEKLY_DIR"
     cp -r "$BACKUP_DIR" "$WEEKLY_DIR/$TIMESTAMP"
@@ -121,13 +137,20 @@ if [ "$DRY_RUN" = false ]; then
 fi
 
 # ─── Summary ─────────────────────────────────────────────────────────
-if [ "$DRY_RUN" = false ] && [ -d "$BACKUP_DIR" ]; then
+if [ "$DRY_RUN" = true ]; then
+    log ""
+    log "=== Dry Run Complete ==="
+elif [ "$DB_OK" = false ]; then
+    log ""
+    log "=== Backup INCOMPLETE: database dump failed or unverified ==="
+    log "Location: $BACKUP_DIR"
+    log "Other components may have been captured, but this run is NOT a"
+    log "usable restore point. Exiting non-zero so systemd reports it."
+    exit 1
+elif [ -d "$BACKUP_DIR" ]; then
     TOTAL_SIZE=$(du -sh "$BACKUP_DIR" | cut -f1)
     log ""
     log "=== Backup Complete ==="
     log "Location: $BACKUP_DIR"
     log "Total size: $TOTAL_SIZE"
-else
-    log ""
-    log "=== Dry Run Complete ==="
 fi
