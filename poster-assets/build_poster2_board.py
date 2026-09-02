@@ -218,7 +218,7 @@ def build_board():
     for k, t in enumerate(takeaways):
         board.text(X0, fy1 - 0.42 - k * 0.60, t, fontsize=24, color=INK, va="center", zorder=5)
     board.text(X0 + 26.2, fy1 - 1.0,
-               "alpha v0.9.0 · text path solid · activation lens early; first calibration 09/26 (consumer-metric)\n"
+               "alpha v0.9.0 · text path solid · activation lens early; first calibration 09/26 (consumer-metric, replicated 2/2)\n"
                "ranks 1–3 real, higher partial · V4 measured, D4 posited (Lean + Mathlib verified)\n"
                "embodied = design target · conversational agents = live",
                fontsize=16, color=MUTE, style="italic", va="center", zorder=5)

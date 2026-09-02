@@ -160,12 +160,13 @@ The activation probe now has its first calibration numbers (September 2026).
 Grading the internal residual in the consumer metric, the read the downstream
 network itself applies, catches 19--21 percentage points more real behavioral
 changes than the raw L2 norm at matched flag rates (Qwen2.5-0.5B, held-out in
-both scenario and surface form). This is a shakedown result; replication on a
-second model and a second transform family is running. Two calibration caveats
-stand: probe mid-layers, because the final-layer representation map fails
-held-out validation, and require held-out validation of the map itself. The
-lens remains early: a promising extension with its first measurement, not a
-finished detector.
+both scenario and surface form). Replications on a second model
+(TinyLlama-1.1B) and a second transform family (French backtranslation) both
+confirm the mid-layer result. Two calibration caveats stand: probe mid-layers,
+because the final-layer representation map fails held-out validation in all
+three runs, and require held-out validation of the map itself. The lens
+remains early: a promising extension with a measurement that has now
+replicated, not a finished detector.
 
 \section{Worked example: a regime transition}
 \begin{figure*}[t]

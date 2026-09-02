@@ -203,9 +203,9 @@ def draw_pytorch_lens(ax):
 
     label(ax, 24, 7.2, "Activation lens: first calibration numbers (09/26).\n"
           "Consumer-metric gating catches 19-21 pp more real behavior\n"
-          "changes than raw L2 at matched flag rates. Shakedown result;\n"
-          "replication running. Probe mid-layers: the final-layer ρ̂ map\n"
-          "fails held-out validation.",
+          "changes than raw L2 at matched flag rates. Replicated 2/2:\n"
+          "second model + second transform. Probe mid-layers: the\n"
+          "final-layer ρ̂ map fails held-out validation in all three runs.",
           fontsize=8, color=MUTE, style="italic")
     box(ax, 72.5, 5.5, 49, 8.5,
         "turboquant-pro (PyPI): PyTorch-native compression\n"
