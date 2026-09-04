@@ -8,21 +8,39 @@ Atlas's NATS bus.
 Superseded the Zoom-Meeting-SDK approach on 2026-04-22. See
 `docs/ARTEMIS.md` §11 Phase 3 and §13 decision #6 for rationale.
 
-## Build
+## Images (built by CI)
+
+Production images are built and pushed by
+[`.github/workflows/build-images.yaml`](../../../.github/workflows/build-images.yaml)
+to `ghcr.io/ahb-sjsu/artemis-livekit-agent`. Pull a specific build:
+
+```bash
+# Pin to an immutable git SHA (recommended for production manifests)
+docker pull ghcr.io/ahb-sjsu/artemis-livekit-agent:sha-<7char>
+
+# Or a semver release
+docker pull ghcr.io/ahb-sjsu/artemis-livekit-agent:v0.1.0
+```
+
+See [`docs/HPC_DEPLOYMENT.md`](../../../docs/HPC_DEPLOYMENT.md#container-image-publishing)
+for the full tag scheme and which tag to use in which environment.
+
+### Local build (dev only)
+
+If you need to build locally for a smoke test before pushing, build is
+straightforward CUDA + Python — no C++ SDK, no xvfb, no display:
 
 ```bash
 # From repo root:
 docker buildx build \
   --platform linux/amd64 \
-  -t ghcr.io/ahb-sjsu/artemis-livekit-agent:$(git describe --tags --always) \
+  -t artemis-livekit-agent:dev \
   -f deploy/docker/artemis-livekit-agent/Dockerfile \
   .
-
-docker push ghcr.io/ahb-sjsu/artemis-livekit-agent:<tag>
 ```
 
-Build is straightforward CUDA + Python — no C++ SDK, no xvfb, no
-display. One pip install and we're done.
+Do not push manually-built images to GHCR — let CI own the published
+tags so the registry stays in sync with git.
 
 ## Run (local smoke, against Atlas LiveKit)
 
