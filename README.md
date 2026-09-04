@@ -243,6 +243,43 @@ An always-on teaching daemon that meets Erebus at his current confusion and writ
 
 Runs as `atlas-primer.service`.
 
+### ARTEMIS (`src/agi/primer/artemis/`)
+
+A **live AI non-player character** for tabletop RPG sessions, sitting on the
+Primer stack. ARTEMIS joins a LiveKit meeting as a participant, speaks with
+an XTTS-v2 voice clone (streaming synth, GPU-accelerated via a NATS-burst
+worker pool), listens for player speech, and routes replies through the
+same handle_turn + ErisML-gated path the rest of Primer uses. Character
+stats come from a published-to-web Google Sheet, chat traffic is persisted
+in a Keeper-searchable SQLite transcript, and handouts are rendered from
+repo-committed Markdown via pandoc.
+
+Subsystems:
+
+- `mode.py` / `nats_handler.py` — offline handle_turn + NATS service loop
+  (`atlas-artemis.service`)
+- `livekit_agent/` — avatar bot that joins the meeting, publishes HUD
+  video + XTTS audio, bridges sheet + chat + direct-say over NATS
+  (`atlas-artemis-avatar.service`)
+- `livekit_agent/tts/` — pluggable TTS backends (Piper / in-process XTTS
+  / `nats_burst` to the worker pool) with per-sentence streaming
+  (`atlas-artemis-tts-worker.service`)
+- `livekit_agent/avatar3d/` — Three.js + headless-Chromium 3D avatar
+  scaffolding (S3, feature-gated)
+- `sheets/` — Google-Sheet CSV poller → HUD stat diffs over NATS
+  (`atlas-artemis-sheets.service`)
+- `chat/` — chat routing service + SQLite+FTS transcript
+  (`atlas-artemis-chat.service`)
+- `portal/` — Keeper cockpit web service aggregating crew sheets,
+  chat search, scene controls, narration, and wiki lookup
+  (`atlas-artemis-portal.service`)
+- `artifacts/` — session handouts (Session 0 briefing + 5 pregen
+  character sheets) rendered from Markdown to PDF via pandoc.
+
+See [`docs/ARTEMIS.md`](docs/ARTEMIS.md) and
+[`docs/ARTEMIS_SPRINT_PLAN.md`](docs/ARTEMIS_SPRINT_PLAN.md) for full
+plan-of-record.
+
 ## Unified Knowledge Graph
 
 A single append-only JSONL (`/archive/neurogolf/knowledge_graph.jsonl`) where **filled** sensei notes and **gap** open-questions are both first-class nodes. The dreaming and curiosity subsystems will traverse one graph rather than two separate stores.

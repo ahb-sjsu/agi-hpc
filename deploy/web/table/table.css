@@ -1,18 +1,48 @@
-/* ARTEMIS table UI — amber-on-black terminal.
-   Kept deliberately dense and angular; matches the handheld-device
-   aesthetic of the in-fiction ARTEMIS. */
+/* ═══════════════════════════════════════════════════════════════
+   ARTEMIS TABLE UI — Expanse-style tactical display
+   MKS Halyard · Nithon expedition · session console
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Techno typefaces — loaded from Google Fonts with a local fallback
+   chain so the page still reads if the font CDN is unreachable. */
+@import url("https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap");
 
 :root {
-  --bg: #06060a;
-  --card-bg: #0c0c14;
-  --amber: #ffb030;
-  --amber-dim: #804518;
-  --amber-deep: #3c2404;
-  --cyan: #50dcf0;
-  --cyan-dim: #1e6e82;
-  --white-dim: #b4b4c8;
-  --grid: #1a1a26;
-  --danger: #c84830;
+  /* Base — slate-blue-black, not pure black. More Expanse-ship,
+     less Unix terminal. */
+  --bg-deep:      #050914;
+  --bg:           #0a1122;
+  --bg-card:      #0f1932;
+  --bg-card-lit:  #14223f;
+
+  /* Primary accent — MCRN-adjacent cyan for "active" / "nominal". */
+  --cyan:         #50dcf0;
+  --cyan-dim:     #1e6e82;
+  --cyan-deep:    #0a3540;
+
+  /* Secondary — corporate gold for Mao-Kwikowski branding cues. */
+  --gold:         #d8b968;
+  --gold-dim:     #7c672f;
+
+  /* Alert/warn — amber → red spectrum. */
+  --amber:        #ffb030;
+  --amber-dim:    #804518;
+  --warn:         #ff6c1c;
+  --critical:     #e83838;
+
+  /* Neutrals */
+  --ink:          #cfe2ef;
+  --ink-dim:      #6e85a1;
+  --ink-deeper:   #3a4960;
+
+  /* Structural */
+  --rule:         rgba(80, 220, 240, 0.18);
+  --rule-dim:     rgba(80, 220, 240, 0.08);
+  --glow:         rgba(80, 220, 240, 0.35);
+
+  /* Typography */
+  --font-display: "Rajdhani", "Inter", system-ui, sans-serif;
+  --font-mono:    "Share Tech Mono", "JetBrains Mono", ui-monospace, monospace;
 }
 
 * {
@@ -23,299 +53,563 @@
 
 html, body {
   height: 100%;
-  font-family: "SF Mono", "Consolas", "DejaVu Sans Mono", ui-monospace, monospace;
-  background: var(--bg);
-  color: var(--amber);
-  font-size: 13px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  background: var(--bg-deep);
+  color: var(--ink);
   overflow: hidden;
-  /* Faint grid */
-  background-image:
-    linear-gradient(var(--grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-  background-size: 32px 32px;
 }
 
+/* Corp/hex texture on the body — barely visible, gives depth. */
+body {
+  background-image:
+    radial-gradient(ellipse at 30% 20%, rgba(30, 110, 130, 0.15) 0%, transparent 55%),
+    radial-gradient(ellipse at 70% 80%, rgba(216, 185, 104, 0.06) 0%, transparent 50%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='104'><path d='M30 0 L60 17.3 L60 52 L30 69.3 L0 52 L0 17.3 Z' fill='none' stroke='%2312233d' stroke-width='1'/></svg>");
+  background-size: 100% 100%, 100% 100%, 60px 104px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   App grid
+   ───────────────────────────────────────────────────────────── */
+
+/* HUD-only sidecar layout. ARTEMIS's video track is her meeting tile;
+   this page is just the dashboard. Cards auto-fit the viewport — on a
+   wide desktop you get 3 columns, on a laptop 2, on a phone 1. */
 #app {
   display: grid;
-  grid-template-columns: 1.3fr 1fr;
-  gap: 12px;
-  padding: 12px;
-  height: 100vh;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 14px;
+  padding: 48px 14px 14px 14px;  /* 48 top clears the fixed scene strip */
+  align-content: start;
+  min-height: 100vh;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
-.right-column {
-  display: grid;
-  grid-template-rows: 1.4fr 1fr;
-  gap: 12px;
-  min-height: 0;
-}
+/* ─────────────────────────────────────────────────────────────
+   Scene strip — in-fiction header (visible above everything)
+   ───────────────────────────────────────────────────────────── */
 
-.card {
-  background: var(--card-bg);
-  border: 1px solid var(--amber-dim);
-  border-radius: 4px;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  box-shadow: inset 0 0 0 1px rgba(255, 176, 48, 0.06);
-}
-
-.card-header {
+#scene-strip {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 14px;
-  background: rgba(255, 176, 48, 0.05);
-  border-bottom: 1px solid var(--amber-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
+  padding: 6px 16px;
+  background: linear-gradient(90deg, var(--bg-card-lit), var(--bg-card), var(--bg-card-lit));
+  border-bottom: 1px solid var(--cyan-dim);
+  font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--amber);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 10;
+}
+
+#scene-name  { color: var(--gold); font-weight: bold; }
+#scene-flags { color: var(--cyan); }
+
+#scene-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-strip {
+  padding: 3px 10px !important;
+  font-size: 9px !important;
+  letter-spacing: 0.22em !important;
+  line-height: 1.4 !important;
+}
+.btn-strip.danger {
+  padding: 3px 8px !important;
+  letter-spacing: 0 !important;
+  font-size: 14px !important;
+  line-height: 1 !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Card — angular clip-path frame, cyan edge glow
+   ───────────────────────────────────────────────────────────── */
+
+.card {
+  position: relative;
+  background: var(--bg-card);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  clip-path: polygon(
+    0 0,
+    calc(100% - 16px) 0,
+    100% 16px,
+    100% 100%,
+    16px 100%,
+    0 calc(100% - 16px)
+  );
+  border: 1px solid transparent;
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 16px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.card-header {
+  padding: 10px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(90deg, var(--bg-card-lit) 0%, var(--bg-card) 80%);
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.25em;
 }
 
 .card-label {
+  color: var(--cyan);
   font-weight: bold;
+  text-shadow: 0 0 8px var(--glow);
 }
 
-.card-status {
-  color: var(--amber-dim);
+.card-label::before {
+  content: "▸ ";
+  color: var(--gold);
+  margin-right: 4px;
 }
 
-/* ── Avatar card ─────────────────────────────────────────────── */
+.card-status { color: var(--ink-dim); font-size: 10px; }
+.card-status.alert { color: var(--amber); text-shadow: 0 0 6px rgba(255, 176, 48, 0.4); }
+.card-status.critical { color: var(--critical); text-shadow: 0 0 6px rgba(232, 56, 56, 0.6); }
 
-#card-avatar {
-  position: relative;
-}
-
-#avatar-stage {
-  flex: 1;
-  position: relative;
-  overflow: hidden;
-  background: #000;
-}
-
-#artemis-video {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  background: #000;
-}
-
-#artemis-video:not([data-connected="true"]) {
-  display: none;
-}
-
-.avatar-placeholder {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-  color: var(--amber-dim);
-}
-
-.avatar-placeholder[hidden] {
-  display: none;
-}
-
-.pulse {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  border: 2px solid var(--amber);
-  animation: pulse 2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 0.4; }
-  50% { transform: scale(1.2); opacity: 0.8; }
-}
-
-.placeholder-text {
-  letter-spacing: 0.3em;
-  font-size: 12px;
-  text-transform: uppercase;
-}
-
-.avatar-controls {
-  display: flex;
-  gap: 8px;
-  padding: 10px 14px;
-  border-top: 1px solid var(--amber-dim);
-}
+/* ─────────────────────────────────────────────────────────────
+   Buttons (used in scene-strip for MIC / leave)
+   ───────────────────────────────────────────────────────────── */
 
 .btn {
+  flex: 0 1 auto;
+  padding: 7px 16px;
   background: transparent;
-  border: 1px solid var(--amber-dim);
-  color: var(--amber);
-  padding: 6px 14px;
-  font-family: inherit;
+  border: 1px solid var(--cyan-dim);
+  color: var(--cyan);
+  font-family: var(--font-mono);
   font-size: 11px;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
   cursor: pointer;
   transition: all 0.15s;
+  clip-path: polygon(
+    0 0, calc(100% - 8px) 0, 100% 8px,
+    100% 100%, 8px 100%, 0 calc(100% - 8px)
+  );
 }
 
-.btn:hover {
-  border-color: var(--amber);
-  background: rgba(255, 176, 48, 0.08);
-}
+.btn:hover { border-color: var(--cyan); background: var(--cyan-deep); text-shadow: 0 0 8px var(--glow); }
+.btn.active { background: var(--cyan-deep); border-color: var(--cyan); text-shadow: 0 0 8px var(--glow); }
+.btn.danger { border-color: var(--critical); color: var(--critical); }
+.btn.danger:hover { background: rgba(232, 56, 56, 0.12); }
 
-.btn.danger {
-  border-color: var(--danger);
-  color: var(--danger);
-}
-
-.btn.danger:hover {
-  background: rgba(200, 72, 48, 0.12);
-}
-
-.btn.active {
-  background: rgba(80, 220, 240, 0.12);
-  border-color: var(--cyan);
-  color: var(--cyan);
-}
-
-/* ── Info card ───────────────────────────────────────────────── */
-
-#clock {
-  color: var(--amber-dim);
-  font-variant-numeric: tabular-nums;
-}
+/* ─────────────────────────────────────────────────────────────
+   Info card
+   ───────────────────────────────────────────────────────────── */
 
 .info-block {
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--grid);
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--rule-dim);
+  font-family: var(--font-mono);
   font-size: 12px;
 }
 
 .info-row {
   display: flex;
   justify-content: space-between;
-  padding: 3px 0;
+  padding: 4px 0;
 }
 
 .info-k {
-  color: var(--amber-dim);
-  letter-spacing: 0.1em;
+  color: var(--ink-dim);
+  letter-spacing: 0.18em;
+  font-size: 10px;
+  text-transform: uppercase;
 }
 
-.info-v {
-  color: var(--amber);
-  font-weight: bold;
-}
+.info-v { color: var(--cyan); font-weight: bold; }
+.info-v.warn { color: var(--amber); }
+.info-v.critical { color: var(--critical); }
 
-.participants-block,
-.log-block {
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--grid);
+.participants-block, .log-block {
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--rule-dim);
   overflow: hidden;
   min-height: 0;
 }
 
-.log-block {
-  flex: 1;
-  overflow-y: auto;
-}
+.log-block { flex: 1; overflow-y: auto; }
 
 .block-title {
+  font-family: var(--font-mono);
   font-size: 10px;
-  letter-spacing: 0.3em;
-  color: var(--amber-dim);
-  margin-bottom: 6px;
+  letter-spacing: 0.35em;
+  color: var(--ink-dim);
+  margin-bottom: 8px;
+  text-transform: uppercase;
 }
 
-.list {
-  list-style: none;
-  font-size: 12px;
+.block-title::before {
+  content: "◈ ";
+  color: var(--cyan-dim);
 }
+
+.list { list-style: none; font-size: 12px; }
 
 .list li {
   padding: 3px 0;
-  color: var(--white-dim);
+  color: var(--ink);
+  font-family: var(--font-mono);
 }
 
-.list li.you {
-  color: var(--cyan);
+.list li.you { color: var(--cyan); font-weight: bold; }
+.list li.artemis { color: var(--gold); font-weight: bold; }
+.list li.active { color: var(--amber); text-shadow: 0 0 4px rgba(255, 176, 48, 0.35); }
+
+.list.log li { font-size: 11px; color: var(--ink-dim); }
+.list.log li:last-child { color: var(--cyan); }
+
+/* ─────────────────────────────────────────────────────────────
+   PC Stats card — S1a
+   ───────────────────────────────────────────────────────────── */
+
+#card-stats { padding: 0; }
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  padding: 12px 16px;
+  overflow-y: auto;
+  min-height: 0;
 }
 
-.list li.active {
-  color: var(--amber);
+.pc-card {
+  background: var(--bg-card-lit);
+  border-left: 2px solid var(--cyan-dim);
+  padding: 10px 12px;
+  position: relative;
+}
+
+.pc-card[data-status="ok"]        { border-left-color: var(--cyan); }
+.pc-card[data-status="shaken"]    { border-left-color: var(--amber); }
+.pc-card[data-status="injured"]   { border-left-color: var(--warn); }
+.pc-card[data-status="critical"]  { border-left-color: var(--critical); }
+.pc-card[data-status="dead"]      { border-left-color: var(--ink-deeper); opacity: 0.6; }
+
+.pc-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.pc-name {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+}
+
+.pc-role {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.25em;
+  color: var(--ink-dim);
+  text-transform: uppercase;
+}
+
+.pc-bars {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 4px 8px;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-dim);
+}
+
+.pc-bars .bar-label {
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+/* Bars are on an absolute scale per stat (SAN/Luck 0..100, HP/MP 0..20).
+   Three visible regions in each track:
+     bar-fill    (bright) current value  — 0 → pctActual
+     bar-reserve (dim)    capacity room  — pctActual → pctMax
+     (empty track)        beyond PC's max — pctMax → 100% */
+
+.pc-bars .bar-track {
+  height: 8px;
+  /* Track itself is invisible — only the filled segments (bar-fill +
+     bar-reserve) are drawn. Keeps the absolute-scale positioning for
+     per-PC comparison while making the bar visibly end at THIS PC's
+     max. The unused portion past max just shows the card behind it. */
+  background: transparent;
+  position: relative;
+  /* A faint 1 px bottom edge traces the full scale so the reference
+     is still visible for comparison at a glance. */
+  border-bottom: 1px solid rgba(80, 220, 240, 0.08);
+  overflow: hidden;
+}
+
+.pc-bars .bar-fill {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  background: var(--cyan);
+  box-shadow: 0 0 6px var(--glow);
+  transition: width 0.4s cubic-bezier(.3, 1, .4, 1);
+}
+
+.pc-bars .bar-fill.san    { background: var(--gold); box-shadow: 0 0 6px rgba(216,185,104,0.45); }
+.pc-bars .bar-fill.hp     { background: var(--cyan); }
+.pc-bars .bar-fill.luck   { background: var(--amber); box-shadow: 0 0 6px rgba(255,176,48,0.45); }
+.pc-bars .bar-fill.mp     { background: var(--critical); box-shadow: 0 0 6px rgba(232,56,56,0.5); }
+
+/* Dim reserve segment — represents "capacity you have but haven't
+   used". Same color as fill at ~25 % alpha. */
+.pc-bars .bar-reserve {
+  position: absolute;
+  top: 0; bottom: 0;
+  transition: left 0.4s cubic-bezier(.3, 1, .4, 1), width 0.4s cubic-bezier(.3, 1, .4, 1);
+}
+.pc-bars .bar-reserve.san  { background: rgba(216, 185, 104, 0.28); }
+.pc-bars .bar-reserve.hp   { background: rgba(80,  220, 240, 0.28); }
+.pc-bars .bar-reserve.luck { background: rgba(255, 176, 48,  0.28); }
+.pc-bars .bar-reserve.mp   { background: rgba(232, 56,  56,  0.32); }
+
+.pc-bars .bar-val {
+  color: var(--ink);
   font-weight: bold;
+  min-width: 48px;
+  text-align: right;
 }
 
-.list li.artemis {
-  color: var(--amber);
+/* ─────────────────────────────────────────────────────────────
+   Identity-gated views — S1a
+   body[data-view] is set from LiveKit identity at connect time:
+     "keeper" · "player" · "guest"
+   ───────────────────────────────────────────────────────────── */
+
+/* Guests — crew card hidden entirely. Spectators hear audio and
+   see ARTEMIS but don't see party stats (per review decision). */
+body[data-view="guest"] #card-stats {
+  display: none;
 }
 
-.list.log li {
+/* Keeper — label says "CREW STATUS · KEEPER" (all crew visible). */
+body[data-view="keeper"] #card-stats .card-label::after {
+  content: " · KEEPER";
+  color: var(--gold);
+  margin-left: 6px;
+  text-shadow: 0 0 6px rgba(216, 185, 104, 0.4);
+}
+
+/* Player — sheet is private; label replaced with "YOUR CHARACTER".
+   Hide the default CREW STATUS text and inject the player label. */
+body[data-view="player"] #card-stats .card-label {
+  font-size: 0;
+}
+body[data-view="player"] #card-stats .card-label::after {
+  content: "YOUR CHARACTER";
   font-size: 11px;
-  color: var(--amber-dim);
-  font-variant-numeric: tabular-nums;
+  color: var(--cyan);
+  text-shadow: 0 0 6px var(--glow);
+}
+body[data-view="player"] #card-stats .card-status {
+  display: none;
 }
 
-.list.log li:last-child {
-  color: var(--amber);
+/* Player view has exactly one card — no YOU badge needed; subtle
+   emphasis on it so it reads as "your sheet". */
+body[data-view="player"] .pc-card {
+  border-left-width: 3px;
+  background: linear-gradient(90deg, var(--cyan-deep) 0%, var(--bg-card-lit) 60%);
 }
 
-/* ── Artifacts card ──────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────
+   Artifacts
+   ───────────────────────────────────────────────────────────── */
 
 #card-artifacts .list {
-  padding: 8px 14px;
+  padding: 8px 18px 12px;
   overflow-y: auto;
 }
 
 .list li.artifact {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  padding: 6px 0;
-  border-bottom: 1px dotted var(--grid);
-  color: var(--amber);
+  align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px dashed var(--rule-dim);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
 }
 
 .list li.artifact a {
   color: var(--cyan);
   text-decoration: none;
-  padding: 2px 10px;
+  padding: 3px 12px;
   border: 1px solid var(--cyan-dim);
-  font-size: 10px;
-  letter-spacing: 0.15em;
+  font-size: 9px;
+  letter-spacing: 0.25em;
   text-transform: uppercase;
+  clip-path: polygon(
+    0 0, calc(100% - 5px) 0, 100% 5px,
+    100% 100%, 5px 100%, 0 calc(100% - 5px)
+  );
 }
 
 .list li.artifact a:hover {
   color: var(--cyan);
-  border-color: var(--cyan);
-  background: rgba(80, 220, 240, 0.08);
+  background: var(--cyan-deep);
+  text-shadow: 0 0 6px var(--glow);
 }
 
 .list li.loading {
-  color: var(--amber-dim);
+  color: var(--ink-dim);
+  font-style: italic;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Chat card — S1e
+   ───────────────────────────────────────────────────────────── */
+
+#card-chat {
+  min-height: 280px;
+}
+
+.chat-log {
+  list-style: none;
+  flex: 1;
+  min-height: 160px;
+  max-height: 340px;
+  overflow-y: auto;
+  padding: 10px 14px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  border-bottom: 1px solid var(--rule-dim);
+}
+
+.chat-log li {
+  padding: 3px 0;
+  color: var(--ink);
+  word-wrap: break-word;
+}
+
+.chat-log li .chat-who {
+  display: inline-block;
+  min-width: 60px;
+  margin-right: 8px;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+/* Color-code by kind — same palette as the scene strip. */
+.chat-log li.kind-player_to_artemis { color: var(--cyan); }
+.chat-log li.kind-player_to_artemis .chat-who { color: var(--cyan-dim); }
+
+.chat-log li.kind-artemis_to_player { color: var(--gold); }
+.chat-log li.kind-artemis_to_player .chat-who { color: var(--gold-dim); }
+
+.chat-log li.kind-keeper_to_player {
+  color: var(--amber);
+  background: rgba(255, 176, 48, 0.06);
+  padding-left: 6px; padding-right: 6px;
+  border-left: 2px solid var(--amber);
+}
+.chat-log li.kind-keeper_to_player .chat-who { color: var(--amber-dim); }
+
+.chat-log li.kind-keeper_to_all,
+.chat-log li.kind-artemis_to_all {
+  color: var(--ink);
+  background: rgba(80, 220, 240, 0.06);
+  padding-left: 6px; padding-right: 6px;
+  border-left: 2px solid var(--cyan-dim);
+}
+
+.chat-log li.chat-hint {
+  color: var(--ink-deeper);
   font-style: italic;
 }
 
-/* ── Scrollbar styling ───────────────────────────────────────── */
-
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+.chat-form {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--bg-deep);
+  align-items: stretch;
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
+.chat-mode {
+  background: var(--bg-card-lit);
+  color: var(--cyan);
+  border: 1px solid var(--cyan-dim);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 0 8px;
+  max-width: 110px;
 }
 
-::-webkit-scrollbar-thumb {
-  background: var(--amber-dim);
-  border-radius: 3px;
+.chat-input {
+  flex: 1;
+  background: var(--bg-card-lit);
+  color: var(--ink);
+  border: 1px solid var(--cyan-dim);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 6px 10px;
+  outline: none;
+}
+.chat-input:focus { border-color: var(--cyan); box-shadow: 0 0 6px var(--glow); }
+
+.chat-send {
+  flex: 0 0 auto;
+  padding: 4px 12px;
+  font-size: 10px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: var(--amber);
+/* Guests get no chat (CoC whisper convention; no stats, no chat). */
+body[data-view="guest"] #card-chat {
+  display: none;
 }
+
+/* Player view: hide the mode dropdown — players only have one route
+   (ask ARTEMIS). Keepers get the full dropdown. */
+body[data-view="player"] .chat-mode {
+  display: none;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Scrollbar
+   ───────────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--cyan-dim); }
+::-webkit-scrollbar-thumb:hover { background: var(--cyan); }

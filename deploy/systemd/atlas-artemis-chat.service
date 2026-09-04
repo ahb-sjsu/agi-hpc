@@ -1,0 +1,36 @@
+[Unit]
+Description=Atlas ARTEMIS — chat routing + persistent FTS transcript
+Documentation=file:///home/claude/agi-hpc/docs/ARTEMIS.md
+After=network-online.target atlas-nats.service
+Wants=network-online.target
+Requires=atlas-nats.service
+
+[Service]
+Type=simple
+User=claude
+WorkingDirectory=/home/claude/agi-hpc
+Environment=PYTHONPATH=/home/claude/agi-hpc/src
+Environment=PYTHONUNBUFFERED=1
+Environment=ARTEMIS_CHAT_DB=/var/lib/atlas-artemis/chat.sqlite3
+EnvironmentFile=-/home/claude/.artemis.env
+ExecStartPre=+/bin/mkdir -p /var/lib/atlas-artemis
+ExecStartPre=+/bin/chown claude:claude /var/lib/atlas-artemis
+ExecStart=/home/claude/env/bin/python3 -m agi.primer.artemis.chat
+
+Restart=always
+RestartSec=10
+StartLimitIntervalSec=600
+StartLimitBurst=5
+RandomizedDelaySec=15
+
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+StandardOutput=journal
+StandardError=journal
+
+MemoryMax=512M
+CPUQuota=50%
+
+[Install]
+WantedBy=multi-user.target
