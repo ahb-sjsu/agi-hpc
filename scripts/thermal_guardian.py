@@ -67,6 +67,43 @@ INTERACTIVE_CPUS = PACKAGE_CPUS[1]
 BATCH_CPUS = PACKAGE_CPUS[0]
 ALL_CPUS = PACKAGE_CPUS[0] | PACKAGE_CPUS[1]
 
+# Package maintenance (2026-09-30). A package whose cores were taken offline on purpose, e.g.
+#   for c in 1-11 24-35: echo 0 > /sys/devices/system/cpu/cpu$c/online
+# because its cooling is impaired, keeps fewer than MAINT_MIN_ONLINE CPUs online (CPU 0 cannot
+# go offline). While it is in maintenance both classes are placed on the other package, nothing
+# is pinned onto it, and its TARGET_TEMP pause is skipped, since no batch work can run on its
+# offline cores. CRITICAL_TEMP still applies to every package, unchanged.
+MAINT_MIN_ONLINE = 4
+
+
+def online_cpus():
+    """The CPUs the kernel has online now (from /sys/devices/system/cpu/online)."""
+    try:
+        with open("/sys/devices/system/cpu/online") as f:
+            spec = f.read().strip()
+    except OSError:
+        return set(ALL_CPUS)
+    out = set()
+    for part in spec.split(","):
+        if "-" in part:
+            a, b = part.split("-")
+            out |= set(range(int(a), int(b) + 1))
+        elif part:
+            out.add(int(part))
+    return out
+
+
+def placement():
+    """(interactive_cpus, batch_cpus, packages_in_maintenance) for the CPUs online now."""
+    on = online_cpus()
+    live = {k: v & on for k, v in PACKAGE_CPUS.items()}
+    maint = {k for k, v in live.items() if len(v) < MAINT_MIN_ONLINE}
+    if maint == {0}:
+        return live[1], live[1], maint
+    if maint == {1}:
+        return live[0], live[0], maint
+    return INTERACTIVE_CPUS, BATCH_CPUS, maint
+
 # Never paused, never re-pinned (matched against the executable name).
 SERVICE = {
     "llama-server", "caddy", "oauth2-proxy", "nats-server", "python3", "postgres",
@@ -238,6 +275,15 @@ def resume_package(pkg):
             resume(pid)
 
 
+def resume_all_and_exit(signum, _frame):
+    """On stop or restart, resume every process this guardian paused before exiting.
+    Without this a restart left them stopped for good: the new instance does not know them."""
+    log.warning("signal %d: resuming %d paused processes before exit", signum, len(paused))
+    for pid in list(paused):
+        resume(pid)
+    sys.exit(0)
+
+
 def gpu_advisory(gaming):
     """Warn (at most once a minute) when a game shares a GPU with llama-server."""
     global _gpu_warned_at
@@ -284,16 +330,32 @@ def tick(state):
             set_affinity(pid, orig, "gaming mode ended")
             del pinned_batch[pid]
     state["gaming"] = gaming
+    interactive_cpus, batch_cpus, maint = placement()
+    if maint != state.get("maint", set()):
+        log.warning("package maintenance now %s: interactive=%s batch=%s",
+                    sorted(maint) or "none", cpuset_str(interactive_cpus), cpuset_str(batch_cpus))
+        state["maint"] = maint
+    # A process whose mask lies inside a package in maintenance (pinned there by anti-affinity,
+    # possibly by an earlier run of this guardian) is left by the kernel on that package's one
+    # online CPU; move it to the healthy package.
+    for m in maint:
+        for pid, uid, comm, args, cpu, cls in procs:
+            if cls == "SERVICE":
+                continue
+            cur = affinity(pid)
+            if cur is not None and cur <= PACKAGE_CPUS[m] and batch_cpus != cur:
+                set_affinity(pid, batch_cpus, f"package {m} in maintenance")
     if gaming:
         for pid, uid, comm, args, cpu, cls in procs:
             if cls == "INTERACTIVE" and cpu >= INTERACTIVE_MIN_CPU:
                 cur = affinity(pid)
-                if cur is not None and not cur <= INTERACTIVE_CPUS:
-                    set_affinity(pid, INTERACTIVE_CPUS, "interactive placement")
-            elif cls == "BATCH" and cpu >= HOT_CPU_PCT and pid not in pinned_batch:
+                if cur is not None and not cur <= interactive_cpus:
+                    set_affinity(pid, interactive_cpus, "interactive placement")
+            elif (cls == "BATCH" and cpu >= HOT_CPU_PCT and pid not in pinned_batch
+                  and batch_cpus != interactive_cpus):  # no anti-affinity with one package
                 cur = affinity(pid)
-                if cur is not None and cur & INTERACTIVE_CPUS:
-                    if set_affinity(pid, BATCH_CPUS, f"anti-affinity, {cpu:.0f}% cpu"):
+                if cur is not None and cur & interactive_cpus:
+                    if set_affinity(pid, batch_cpus, f"anti-affinity, {cpu:.0f}% cpu"):
                         pinned_batch[pid] = cur
     for pid in list(pinned_batch):
         if not os.path.exists(f"/proc/{pid}"):
@@ -313,6 +375,13 @@ def tick(state):
                     aff = affinity(pid)
                     if aff is None or aff & cpus:
                         pause(pid, pkg, cls, comm, f"package {pkg} at {temp:.0f}°C (critical)")
+            state["hot"][pkg] = True
+        elif temp >= TARGET_TEMP and pkg in maint:
+            # Its cores are offline, so no batch work runs there; pausing work on the other
+            # package for this package's heat would only stop healthy work.
+            if not was_hot:
+                log.warning("package %d at %.0f°C in maintenance — not pausing", pkg, temp)
+            throttle_raid("target")
             state["hot"][pkg] = True
         elif temp >= TARGET_TEMP:
             if not was_hot:
@@ -356,6 +425,8 @@ def main():
              TARGET_TEMP, CRITICAL_TEMP, COOLDOWN_TEMP, cpuset_str(INTERACTIVE_CPUS),
              cpuset_str(BATCH_CPUS), " DRY-RUN" if DRY else "")
     state = {"gaming": False, "hot": {}, "crit": {}, "ticks": 0}
+    signal.signal(signal.SIGTERM, resume_all_and_exit)
+    signal.signal(signal.SIGINT, resume_all_and_exit)
     list_processes()            # prime the CPU sampler
     time.sleep(1.0)
     while True:
