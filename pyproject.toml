@@ -35,6 +35,8 @@ dependencies = [
     "pyyaml>=6.0",
     "requests>=2.31",
     "sentence-transformers>=2.6",
+    # the Hohfeldian structure (V4) comes from erisml-lib, pinned to the commit that has it
+    "erisml-lib @ git+https://github.com/ahb-sjsu/erisml-lib@2d584e835691b88a069584d7e48604134912fb2f",
 ]
 
 [project.optional-dependencies]

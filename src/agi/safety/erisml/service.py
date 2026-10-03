@@ -33,7 +33,7 @@ from typing import Dict, List, Optional, Tuple
 import grpc
 
 from agi.proto_gen import erisml_pb2, erisml_pb2_grpc
-from agi.safety.erisml.hohfeld import (
+from erisml.ethics.hohfeld import (
     HohfeldianState,
     HohfeldianVerdict,
     compute_bond_index,
@@ -358,7 +358,7 @@ class ErisMLServicer(erisml_pb2_grpc.ErisMLServiceServicer):
                     f"expected {expected.value}"
                 )
 
-        # Compute Bond Index using D4 correlative symmetry
+        # Compute Bond Index using the correlative symmetry (s in V4)
         bond_idx = compute_bond_index(verdicts_a, verdicts_b, tau=1.0)
 
         result = erisml_pb2.BondIndexResultProto(
