@@ -20,20 +20,20 @@ from agi.safety.erisml.integration import (
     SafetyDecision,
     EvaluationSource,
 )
-from agi.safety.erisml.hohfeld import (
+
+# The Hohfeldian structure is erisml-lib's (V4: the correlative s and negation n), not a copy.
+from erisml.ethics.hohfeld import (
     HohfeldianState,
-    D4Element,
+    V4Element,
     HohfeldianVerdict,
     compute_bond_index,
     correlative,
     negation,
-    d4_multiply,
-    d4_inverse,
-    d4_apply_to_state,
+    v4_multiply,
+    v4_inverse,
+    v4_apply_to_state,
+    v4_between,
     compute_wilson_observable,
-    get_klein_four_subgroup,
-    is_in_klein_four,
-    requires_nonabelian_structure,
 )
 
 try:
@@ -60,20 +60,18 @@ __all__ = [
     "PlanEvaluation",
     "SafetyDecision",
     "EvaluationSource",
-    # Hohfeldian D4 gauge structure
+    # Hohfeldian V4 gauge structure (erisml-lib)
     "HohfeldianState",
-    "D4Element",
+    "V4Element",
     "HohfeldianVerdict",
     "compute_bond_index",
     "correlative",
     "negation",
-    "d4_multiply",
-    "d4_inverse",
-    "d4_apply_to_state",
+    "v4_multiply",
+    "v4_inverse",
+    "v4_apply_to_state",
+    "v4_between",
     "compute_wilson_observable",
-    "get_klein_four_subgroup",
-    "is_in_klein_four",
-    "requires_nonabelian_structure",
     # MoralTensor (requires numpy)
     "MoralTensor",
     "SparseCOO",

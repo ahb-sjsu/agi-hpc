@@ -43,7 +43,6 @@ jobs:
             --ignore=tests/unit/test_safety_proto.py \
             --ignore=tests/unit/test_erisml_proto.py \
             --ignore=tests/unit/test_safety_gateway.py \
-            --ignore=tests/unit/test_hohfeld.py \
             --ignore=tests/unit/test_moral_tensor.py \
             --ignore=tests/unit/test_safety_adapter.py \
             --ignore=tests/unit/test_safety_learning.py \
