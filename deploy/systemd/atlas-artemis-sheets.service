@@ -1,0 +1,38 @@
+[Unit]
+Description=Atlas ARTEMIS — sheets poller (Keeper CSV → NATS diff stream)
+Documentation=file:///home/claude/agi-hpc/docs/ARTEMIS.md
+After=network-online.target atlas-nats.service
+Wants=network-online.target
+Requires=atlas-nats.service
+
+[Service]
+Type=simple
+User=claude
+WorkingDirectory=/home/claude/agi-hpc
+Environment=PYTHONPATH=/home/claude/agi-hpc/src
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=-/home/claude/.artemis.env
+ExecStart=/home/claude/env/bin/python3 -m agi.primer.artemis.sheets
+
+# Poll loop: a clean exit means the loop broke — restart. Back off a
+# bit since the source is an external URL and hammering Google on a
+# transient failure is impolite.
+Restart=always
+RestartSec=30
+StartLimitIntervalSec=600
+StartLimitBurst=5
+RandomizedDelaySec=15
+
+KillSignal=SIGTERM
+TimeoutStopSec=15
+
+StandardOutput=journal
+StandardError=journal
+
+# Tiny service: CSV parse + NATS publish. Cap generously to catch
+# any runaway sheet-size accident.
+MemoryMax=256M
+CPUQuota=25%
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>MKS HALYARD · KEEPER CONSOLE</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="./gm.css" />
+</head>
+<body>
+  <header id="gm-strip">
+    <span id="gm-title">MKS HALYARD · KEEPER CONSOLE</span>
+    <span id="gm-scene"></span>
+    <span id="gm-who">—</span>
+  </header>
+
+  <main id="gm-grid">
+    <!-- CREW panel — full rows from the sheets cache -->
+    <section id="p-crew" class="panel">
+      <header class="panel-hd">
+        <span class="panel-label">CREW</span>
+        <span class="panel-status" id="crew-count">0</span>
+      </header>
+      <div id="crew-body" class="panel-body"></div>
+    </section>
+
+    <!-- CHAT panel — all threads, with FTS search + compose row -->
+    <section id="p-chat" class="panel">
+      <header class="panel-hd">
+        <span class="panel-label">CHAT</span>
+        <span class="panel-status" id="chat-count">0</span>
+      </header>
+      <form id="search-form" class="search-row">
+        <input id="search-q" type="search" placeholder="search transcript…" />
+        <button type="submit" class="btn small">FIND</button>
+      </form>
+      <ul id="chat-list" class="panel-body chat-list"></ul>
+      <form id="compose-form" class="compose-row">
+        <select id="compose-mode">
+          <option value="broadcast">→ ALL</option>
+          <option value="whisper">→ WHISPER</option>
+        </select>
+        <input id="compose-to" type="text" placeholder="target (e.g. imogen)" />
+        <input id="compose-body" type="text" placeholder="message…" required />
+        <button type="submit" class="btn small">SEND</button>
+      </form>
+    </section>
+
+    <!-- WIKI panel — memory-wiki free-text search -->
+    <section id="p-wiki" class="panel">
+      <header class="panel-hd">
+        <span class="panel-label">WIKI</span>
+        <span class="panel-status" id="wiki-hint">memory</span>
+      </header>
+      <form id="wiki-form" class="search-row">
+        <input id="wiki-q" type="search" placeholder="NPC, location, handout…" />
+        <button type="submit" class="btn small">LOOK UP</button>
+      </form>
+      <ul id="wiki-list" class="panel-body wiki-list"></ul>
+    </section>
+
+    <!-- SCENE + broadcast quick-control panel -->
+    <section id="p-scene" class="panel">
+      <header class="panel-hd">
+        <span class="panel-label">SCENE</span>
+      </header>
+      <form id="scene-form" class="scene-form">
+        <label>name<input id="scene-name" type="text" /></label>
+        <label>flags<input id="scene-flags" type="text" /></label>
+        <button type="submit" class="btn small">SET + BROADCAST</button>
+      </form>
+      <div class="panel-footer">
+        session:
+        <input id="session-id" type="text" class="inline" placeholder="session id" />
+      </div>
+    </section>
+  </main>
+
+  <script src="./gm.js"></script>
+</body>
+</html>

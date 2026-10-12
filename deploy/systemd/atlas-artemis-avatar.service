@@ -9,13 +9,30 @@ Type=simple
 User=claude
 WorkingDirectory=/home/claude
 Environment=PYTHONUNBUFFERED=1
+# Module path — avatar_hud now lives under src/agi/primer/artemis/...
+# and imports the pluggable TTS loader.
+Environment=PYTHONPATH=/home/claude/agi-hpc/src
 EnvironmentFile=-/home/claude/.artemis-avatar.env
 Environment=LIVEKIT_URL=ws://127.0.0.1:7880
 Environment=LIVEKIT_API_KEY=devkey
 Environment=LIVEKIT_API_SECRET=secret
 Environment=ARTEMIS_ROOM=smoke-test
 Environment=ARTEMIS_IDENTITY=artemis
+# Piper fallback voice — only used when the burst worker is silent.
 Environment=ARTEMIS_VOICE=/home/claude/piper-voices/en_US-amy-medium.onnx
+# XTTS-v2 reference: used by the burst worker (same ref across clients).
+Environment=ARTEMIS_VOICE_REF=/home/claude/artemis-voice-refs/artemis_ref.wav
+# Backend selection:
+#   auto  = burst-if-heartbeating / local-xtts / piper (fallback chain)
+#   nats_burst = pin to burst (still carries fallback)
+# Pinned to nats_burst here because the 1 s heartbeat probe in auto
+# mode is flakey under cold start — the worker may take >1 s from
+# connect to first heartbeat emit.
+Environment=ARTEMIS_TTS_BACKEND=nats_burst
+# NATS bridges — both opt-in, both gracefully disabled if not available.
+Environment=NATS_URL=nats://localhost:4222
+Environment=ARTEMIS_CHAT_NATS=1
+Environment=ARTEMIS_SHEETS_NATS=1
 ExecStart=/home/claude/venvs/artemis-avatar/bin/python3 -m agi.primer.artemis.livekit_agent.avatar_hud
 
 Restart=on-failure
