@@ -225,8 +225,8 @@ def pytorch_lens():
 
 
 def draw_care_robot(ax):
-    label(ax, 50, 41, "Auditable means you can replay the judgment, and the regime that made it",
-          fontsize=15.5, color=VIOLET, weight="bold")
+    label(ax, 50, 40.6, "Replay the judgment, and the regime that made it",
+          fontsize=19, color=VIOLET, weight="bold")
 
     # the FLIP table: the SAME action (full_response: enter + aid + call EMS +
     # scoped record share), evaluated in both regimes. REAL numbers from
@@ -235,56 +235,48 @@ def draw_care_robot(ax):
             ("Daughter", "0.402", "neutral", WARN, "0.902", "prefer", GOOD),
             ("EMS crew", "0.318", "forbid", BAD,   "0.902", "prefer", GOOD),
             ("Agency",   "0.200", "forbid", BAD,   "0.802", "prefer", GOOD)]
-    tx, ty, rh = 4, 31, 5.0
-    label(ax, tx + 2, ty + 6.2, "full_response", fontsize=11.5, color=INK, weight="bold", ha="left")
-    label(ax, tx + 16, ty + 6.2, "NORMAL", fontsize=11.5, color=BAD, weight="bold", ha="left")
-    label(ax, tx + 31, ty + 6.2, "EMERGENCY", fontsize=11.5, color=GOOD, weight="bold", ha="left")
+    tx, ty, rh = 1.5, 29, 5.6
+    label(ax, tx + 1, ty + 5.4, "full_response", fontsize=14, color=INK, weight="bold", ha="left")
+    label(ax, tx + 19, ty + 5.4, "NORMAL", fontsize=14, color=BAD, weight="bold", ha="left")
+    label(ax, tx + 35, ty + 5.4, "EMERGENCY", fontsize=14, color=GOOD, weight="bold", ha="left")
     for i, (name, s1, v1, c1, s2, v2, c2) in enumerate(rows):
         y = ty - i * rh
-        ax.add_patch(Rectangle((tx, y - rh / 2), 44, rh, fc=VIOLET_FILL if i % 2 else PAPER,
+        ax.add_patch(Rectangle((tx, y - rh / 2), 51, rh, fc=VIOLET_FILL if i % 2 else PAPER,
                                ec=VIOLET_RULE, lw=0.8, zorder=1))
-        label(ax, tx + 2, y, name, fontsize=11.5, color=INK, ha="left")
-        label(ax, tx + 16, y, f"{s1}  {v1}", fontsize=11.5, color=c1, weight="bold", ha="left")
-        label(ax, tx + 31, y, f"{s2}  {v2}", fontsize=11.5, color=c2, weight="bold", ha="left")
-    label(ax, tx + 22, ty - 4 * rh - 0.5,
-          "DEME's scores: stand_by 0.834 → full_response 0.804; stand_by inverts to 0.307",
-          fontsize=10.5, color=INK, style="italic")
+        label(ax, tx + 1, y, name, fontsize=14, color=INK, ha="left")
+        label(ax, tx + 19, y, f"{s1} {v1}", fontsize=14, color=c1, weight="bold", ha="left")
+        label(ax, tx + 35, y, f"{s2} {v2}", fontsize=14, color=c2, weight="bold", ha="left")
+    label(ax, tx + 25.5, ty - 4 * rh - 1.0,
+          "DEME's scores: stand_by 0.834 → full_response 0.804,\nand stand_by inverts to 0.307",
+          fontsize=12.5, color=INK, style="italic")
 
     # metrics / elevation block
-    mx = 58
-    box(ax, mx + 18, 30.5, 38, 7,
-        "elevation gate: detector 0.97 ≥ 0.90 → GRANTED\n"
-        "scope: paramedics only. Auto-reverts. Both edges audited.",
-        fc=VIOLET_FILL, ec=VIOLET, fontsize=11, weight="bold")
-    box(ax, mx + 18, 21.5, 38, 6,
-        "conf 0.89 → REFUSED. Fallback: human review plus the EMS\n"
-        "call, with no record share. A spurious\n"
-        "emergency unlocks nothing.",
-        fc=PAPER, ec=WARN, fontsize=9.5, weight="bold")
-    box(ax, mx + 18, 13, 38, 6,
-        "worst-off shifts Daughter → Margaret (scoped privacy cost)\n"
-        "Shapley authority: Margaret-led → EMS-led",
-        fc=PAPER, ec=VIOLET, fontsize=10.5, weight="bold")
-    box(ax, mx + 18, 5.5, 38, 5, "Three DecisionProofs: normal,\nemergency, and the elevation edge",
-        fc=INK, ec=INK, tc=PAPER, fontsize=9.5, weight="bold")
-    label(ax, 50, 1.5,
-          "Elevation is authenticated, bounded and audited.  "
-          "$ python -m erisml.examples.care_robot_regimes  reproduces every number.",
-          fontsize=11, color=VIOLET, style="italic")
+    mx = 78
+    box(ax, mx, 33.2, 43, 8.6,
+        "elevation: detector 0.97 ≥ 0.90\n→ GRANTED, paramedics only,\nauto-reverts, both edges audited",
+        fc=VIOLET_FILL, ec=VIOLET, fontsize=13, weight="bold")
+    box(ax, mx, 23.6, 43, 6.8,
+        "conf 0.89 → REFUSED: human review\nand the EMS call, no record share",
+        fc=PAPER, ec=WARN, fontsize=13, weight="bold")
+    box(ax, mx, 15.4, 43, 6.8,
+        "worst-off: Daughter → Margaret\nShapley authority: Margaret → EMS",
+        fc=PAPER, ec=VIOLET, fontsize=13, weight="bold")
+    box(ax, mx, 7.6, 43, 6.2, "Three DecisionProofs: normal,\nemergency, the elevation edge",
+        fc=INK, ec=INK, tc=PAPER, fontsize=13, weight="bold")
+    label(ax, 50, 1.6, "$ python -m erisml.examples.care_robot_regimes   reproduces every number",
+          fontsize=12.5, color=VIOLET, style="italic")
 
 draw_care_robot.native = (14, 6)
 
 
 # gtc-prototype twin/records/counterfactual-2026-10-18 (gtc 8073212): the one-input pairs after the
-# lift fix. The poster shows five of the nine; the verdicts are read from the record, not typed.
+# lift fix. The poster shows three of the nine; the verdicts are read from the record, not typed.
 GTC = os.environ.get("GTC_PROTOTYPE", r"C:\source\gtc-prototype")
 CF_RECORD = os.path.join(GTC, "twin", "records", "counterfactual-2026-10-18")
 CF_ROWS = [  # (record file, case id, what the one changed input is, as the poster says it)
-    ("results.json", "sensor", "one of two fire detectors silent"),
-    ("results.json", "forged", "one detector's signature forged"),
-    ("results.json", "refusal", "her refusal of an ambulance heard / not"),
-    ("results_c.json", "film-undeclared", "filming her in the fire, harms declared / none"),
-    ("results_followup.json", "request-fall", "after her fall, she asked to be helped up / did not"),
+    ("results.json", "sensor", "fire call: one of two detectors silent"),
+    ("results.json", "refusal", "ambulance: her refusal heard / not"),
+    ("results_followup.json", "request-fall", "help her up: she asked / did not"),
 ]
 CF_SHORT = {"passed": ("passed", GOOD), "stopped:governor": ("stopped: governor", BAD),
             "stopped:authority": ("stopped: constitution", BAD), "stopped:deme": ("stopped: DEME", BAD)}
@@ -297,55 +289,54 @@ def cf_rows():
     pairs = [r for f in rec.values() for r in f.values()]
     wrong = sum(not r[s]["as_expected"] for r in pairs for s in ("base", "variant"))
     assert len(pairs) == 9 and wrong == 2, (len(pairs), wrong)
-    assert [o[1:] for o in out] == [("passed", "stopped:governor"), ("passed", "stopped:governor"),
-                                    ("stopped:deme", "passed"), ("stopped:deme", "stopped:deme"),
+    assert [o[1:] for o in out] == [("passed", "stopped:governor"), ("stopped:deme", "passed"),
                                     ("passed", "stopped:deme")], out
     return out, len(pairs), wrong
 
 
 def draw_robot_gate(ax):
-    label(ax, 50, 28.6, "In the robot, DEME is a firewall: it vets each proposed act and never picks one",
-          fontsize=15.5, color=VIOLET, weight="bold")
+    K = (100 * draw_robot_gate.native[1] / draw_robot_gate.native[0]) / 30  # laid out on a 100 x 30 grid
+    label(ax, 50, 28.4 * K, "In the robot, DEME is a firewall: it vets each proposed act, never picks one",
+          fontsize=22, color=VIOLET, weight="bold")
     # the gate, in order (gtc-prototype twin/stack/brain.py StackBrain.propose)
-    steps = [("proposed act", PAPER, INK), ("governor\nattested sensors", VIOLET_FILL, INK),
+    steps = [("proposed\nact", PAPER, INK), ("governor\nattested sensors", VIOLET_FILL, INK),
              ("constitution\nsigned rules", VIOLET_FILL, INK), ("DEME\ncan veto", VIOLET, PAPER),
              ("signed manifest\n+ body lock", VIOLET_FILL, INK), ("act", GOOD, PAPER)]
-    xs = [7, 23, 39, 55, 71, 86]
-    for i, ((t, fc, tc), x) in enumerate(zip(steps, xs)):
-        box(ax, x, 22.6, 13 if i not in (0, 5) else 10, 4.6, t, fc=fc, ec=VIOLET, tc=tc,
-            fontsize=10.5, weight="bold", round_size=0.6)
+    xs = [5, 20, 36, 51.5, 67, 81]
+    ws = [8, 13, 12, 9, 13, 6]
+    for i, ((t, fc, tc), x, w) in enumerate(zip(steps, xs, ws)):
+        box(ax, x, 22.4 * K, w, 5.0 * K, t, fc=fc, ec=VIOLET, tc=tc, fontsize=16, weight="bold", round_size=0.6)
         if i < len(xs) - 1:
-            arrow(ax, (x + (6.5 if i else 5), 22.6), (xs[i + 1] - (6.5 if i + 1 < 5 else 5), 22.6),
-                  color=VIOLET, lw=1.8)
-    label(ax, 96.5, 22.6, "any stop:\nthe robot\nholds", fontsize=9.5, color=BAD, weight="bold")
+            arrow(ax, (x + w / 2, 22.4 * K), (xs[i + 1] - ws[i + 1] / 2, 22.4 * K), color=VIOLET, lw=2.4)
+    label(ax, 92, 22.4 * K, "any stop:\nrobot holds", fontsize=16, color=BAD, weight="bold")
 
     rows, n, wrong = cf_rows()
-    tx, ty, rh = 3, 15.2, 2.75
-    label(ax, tx, ty + 2.6, "Change one input, nothing else. Does the verdict follow?", fontsize=11.5,
+    tx, ty, rh = 1.5, 13.4 * K, 3.6 * K
+    label(ax, tx, ty + 3.3 * K, "Change one input, nothing else:", fontsize=17,
           color=INK, weight="bold", ha="left")
-    label(ax, tx + 39, ty + 2.6, "base", fontsize=10.5, color=MUTE, weight="bold", ha="left")
-    label(ax, tx + 52, ty + 2.6, "one input changed", fontsize=10.5, color=MUTE, weight="bold", ha="left")
+    label(ax, tx + 30, ty + 3.3 * K, "base", fontsize=16, color=MUTE, weight="bold", ha="left")
+    label(ax, tx + 42, ty + 3.3 * K, "one changed", fontsize=16, color=MUTE, weight="bold", ha="left")
     for k, (text, b, v) in enumerate(rows):
         y = ty - k * rh
-        ax.add_patch(Rectangle((tx - 0.5, y - rh / 2), 67, rh, fc=VIOLET_FILL if k % 2 else PAPER,
+        ax.add_patch(Rectangle((tx - 0.5, y - rh / 2), 55, rh, fc=VIOLET_FILL if k % 2 else PAPER,
                                ec=VIOLET_RULE, lw=0.8, zorder=1))
-        label(ax, tx, y, text, fontsize=11, color=INK, ha="left")
-        for x, verdict in ((tx + 39, b), (tx + 52, v)):
+        label(ax, tx, y, text, fontsize=17, color=INK, ha="left")
+        for x, verdict in ((tx + 30, b), (tx + 42, v)):
             t, c = CF_SHORT[verdict]
-            label(ax, x, y, t, fontsize=11, color=c, weight="bold", ha="left")
-    label(ax, tx + 33, ty - 5 * rh + 0.3,
-          f"{n} pairs through the robot's gate, each prediction committed before its run; {wrong} of {2 * n} "
-          "predictions wrong, both explained in the record.",
-          fontsize=8.5, color=MUTE, style="italic")
+            label(ax, x, y, t, fontsize=17, color=c, weight="bold", ha="left")
+    label(ax, tx + 27, ty - 3 * rh + 0.9 * K,
+          f"{n} pairs, each prediction committed before its run; {wrong} of {2 * n} wrong, "
+          "both explained in the record",
+          fontsize=13.5, color=MUTE, style="italic")
 
-    box(ax, 85, 11.2, 27, 9.6,
-        "Found by this test, then fixed.\nThe lift she had not asked for\npassed DEME until 18 Oct. Now the\n"
-        "scene's no-lift rule reaches DEME\nas a fact. Rerun: only that\nverdict changed.",
-        fc="#FBEFE9", ec=BAD, tc=INK, fontsize=10.5, weight="bold")
-    label(ax, 85, 3.4, "Simulated home (3D twin), scripted proposals,\nno hardware. gtc-prototype records.",
-          fontsize=8.5, color=MUTE, style="italic")
+    box(ax, 80.5, 10.6 * K, 31, 11.6 * K,
+        "Found by this test, then fixed:\nthe lift she had not asked for\npassed DEME until 18 Oct.\n"
+        "Rerun: only that verdict changed.",
+        fc="#FBEFE9", ec=BAD, tc=INK, fontsize=16, weight="bold")
+    label(ax, 80.5, 2.0 * K, "Simulated 3D home, scripted proposals, no hardware",
+          fontsize=13.5, color=MUTE, style="italic")
 
-draw_robot_gate.native = (21, 6.3)
+draw_robot_gate.native = (27.6, 6.4)
 
 
 def robot_gate():
