@@ -19,7 +19,7 @@ from matplotlib.patches import FancyBboxPatch, FancyArrowPatch, Rectangle
 from poster_common import (INK, PAPER, VIOLET, VIOLET_FILL, VIOLET_RULE,
                            GOOD, BAD, WARN, MUTE, OUT, label)
 from build_poster2 import (draw_compiler_pipeline, draw_pluralism, draw_hohfeld_v4,
-                           draw_gateway, draw_pytorch_lens, draw_care_robot)
+                           draw_gateway, draw_pytorch_lens, draw_care_robot, draw_robot_gate)
 import os
 
 BOARD_W, BOARD_H = 48.0, 36.0
@@ -192,20 +192,16 @@ def build_board():
     # -------------------------------------------------------------- hero band
     hero_y = 3.7
     panel_bg(board, X0, hero_y, X1 - X0, hero_top - hero_y)
-    # diagram on the left 2/3, caption block on the right
-    s = place_diagram(fig, draw_care_robot, X0, hero_y, 26.0, hero_top - hero_y, pad=0.25)
+    # left: DEME's judgment replayed (erisml-lib example); right: the same DEME as the firewall in
+    # the robot, tested by changing one input (gtc-prototype records), with a rule between them
+    LW = 16.6
+    s = place_diagram(fig, draw_care_robot, X0, hero_y, LW, hero_top - hero_y, pad=0.25)
     board.text(X0 + 0.25, hero_y + (hero_top - hero_y) - 0.18, "7", fontsize=20,
                color=VIOLET_RULE, weight="bold", va="top", zorder=6)
     print(f"  panel 7: draw_care_robot at scale {s:.2f}")
-    cxr = X0 + 26.0 + (X1 - X0 - 26.0) / 2
-    board.text(cxr, hero_y + 5.5, "One command. Real numbers.\nA hash you can verify.",
-               fontsize=33, color=VIOLET, weight="bold", ha="center", va="center", zorder=5)
-    board.text(cxr, hero_y + 3.4, "$ python -m erisml.examples.care_robot_regimes",
-               fontsize=19, color=INK, ha="center", va="center", zorder=5,
-               family="DejaVu Sans Mono")
-    board.text(cxr, hero_y + 1.9,
-               "Same action, two regimes: forbid → obligated. Exact Shapley.\nAuthenticated elevation, audited on both edges. Replay the judgment.",
-               fontsize=18, color=INK, ha="center", va="center", zorder=5)
+    board.plot([X0 + LW, X0 + LW], [hero_y + 0.4, hero_top - 0.4], color=VIOLET_RULE, lw=2.0, zorder=5)
+    s = place_diagram(fig, draw_robot_gate, X0 + LW, hero_y, X1 - X0 - LW, hero_top - hero_y, pad=0.25)
+    print(f"  panel 7: draw_robot_gate at scale {s:.2f}")
 
     # ---------------------------------------------------------------- footer
     fy0, fy1 = Y0, 3.5
@@ -218,9 +214,10 @@ def build_board():
     for k, t in enumerate(takeaways):
         board.text(X0, fy1 - 0.42 - k * 0.60, t, fontsize=24, color=INK, va="center", zorder=5)
     board.text(X0 + 26.2, fy1 - 1.0,
-               "alpha v0.9.0 · text path solid · activation lens early; first calibration 09/26 (consumer-metric, replicated 2/2)\n"
-               "ranks 1–3 real, higher partial · V4 measured, D4 posited (Lean + Mathlib verified)\n"
-               "embodied = design target · conversational agents = live",
+               "alpha v0.9.0 · text path solid · activation lens early; first calibration 09/26\n"
+               "(consumer-metric, replicated 2/2) · ranks 1–3 real, higher partial\n"
+               "V4 measured, D4 posited (Lean + Mathlib verified)\n"
+               "embodied = simulated 3D home, scripted, no hardware · agents = live",
                fontsize=16, color=MUTE, style="italic", va="center", zorder=5)
     qy = (fy0 + fy1) / 2 + 0.22
     draw_qr(board, X1 - 8.6, qy, 1.45, "https://pypi.org/project/erisml-compiler/", "erisml-compiler")

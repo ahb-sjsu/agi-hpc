@@ -173,7 +173,7 @@ replicated, not a finished detector.
   \centering
   \includegraphics[width=0.92\textwidth]{p2_care_robot.pdf}
   \caption{The regime transition, computed. The same action flips from forbid to
-  prefer per party; the decision inverts; the elevation is authenticated, scoped,
+  prefer per party; DEME's ranking inverts; the elevation is authenticated, scoped,
   reversible, and audited on both edges, with a refusal counterfactual.}
   \label{fig:carerobot}
 \end{figure*}
@@ -186,7 +186,7 @@ private bedroom, render aid, call EMS, share records scoped to the paramedics)
 scores, per party, 0.185/0.402/0.318/0.200 in the normal regime (forbid,
 neutral, forbid, forbid for Margaret, her daughter, the EMS crew, and the care
 agency) and 0.705/0.902/0.902/0.802 in the emergency regime (prefer, four
-times). The decision inverts from \texttt{stand\_by} (0.834 expert-weighted) to
+times). DEME's ranking inverts from \texttt{stand\_by} (0.834 expert-weighted) to
 \texttt{full\_response} (0.804), and \texttt{stand\_by} falls to 0.307. The
 computed details carry the governance story: the worst-off party shifts from
 the daughter to Margaret, who bears the scoped privacy cost, and the Shapley
@@ -205,8 +205,17 @@ the compiler.)
 \section{Deployment}
 The layer gates a live multi-agent stack (Qwen3/Gemma models on dual-GPU hardware)
 and two governed AI NPCs (ARTEMIS and SIGMA-4 in the Halyard RPG), each behind the
-validator, DecisionProofs, and a human keeper kill switch. Embodied robotics is the
-design target; conversational agents are the live deployment.
+validator, DecisionProofs, and a human keeper kill switch. Embodied, the same DEME
+runs in a simulated home-care robot (a 3D twin, scripted proposals, no hardware).
+There DEME chooses nothing: each proposed act must pass the governor (attested
+sensors), the signed constitution, DEME (which can veto), and the signed
+manifest locked in the body, and any stop leaves the robot holding. We test it by
+changing one input the brain reads and nothing else. In nine such pairs, each
+prediction committed before its run, a silent or forged detector stopped the
+fire call and her refusal heard or not decided the ambulance. The test also found
+that a lift she had not asked for passed DEME. That was fixed by giving DEME the
+scene's no-lift rule as a fact, and on rerun only that verdict changed
+(\texttt{gtc-prototype}, \texttt{twin/records/counterfactual-2026-10-18}).
 
 A second PyTorch-native piece serves the stack's memory layer:
 \texttt{turboquant-pro} (PyPI, MIT), consumer-aware compression with a one-line

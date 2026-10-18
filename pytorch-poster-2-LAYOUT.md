@@ -1,6 +1,8 @@
 # POSTER #2 — PHYSICAL LAYOUT SPEC (Responsible AI) — ACCEPTED
 ### *Moral Tensors and DecisionProofs: Compiling Language into an Auditable, Grounded Safety Layer*
 
+> UPDATED 2026-10-18: Panel 7 split. The right side shows DEME as the robot's firewall (gate chain +
+> one-input pairs from the gtc-prototype records). Footer "embodied" is now a simulated 3D home.
 > UPDATED 2026-09-01: Panel 7 hero swapped to the GTC care-robot regime-transition demo
 > (real numbers from erisml-lib examples/care_robot_regimes; nazi_attic retired from the board).
 > Panel 6 activation-lens note upgraded from "uncalibrated" to first measured calibration.
@@ -144,6 +146,17 @@
   authority Margaret-led → EMS-led · three DecisionProofs (normal, emergency, elevation edge).
 - Caption: "Context elevation is privilege escalation. The elevation is authenticated, bounded,
   least-privilege, and audited. examples/care_robot_regimes reproduces every number."
+- **UPDATED 2026-10-18: the hero is split.** The regime example (above) takes the left 16.6″, its
+  "decision:" line now reads "DEME's scores:" and its caption carries the command. The right
+  28.4″ is `p2_robot_gate`: "In the robot, DEME is a firewall: it vets each proposed act and never
+  picks one". It shows the gate chain (proposed act → governor (attested sensors) → constitution
+  (signed rules) → DEME (can veto) → signed manifest + body lock → act; any stop, the robot holds)
+  and five of the nine one-input pairs from gtc-prototype `twin/records/counterfactual-2026-10-18`:
+  one detector silent, one signature forged, her ambulance refusal, filming her with or without
+  declared harms, and the lift with or without her request. It also carries the "found by this
+  test, then fixed" note and "simulated home, scripted proposals, no hardware". The verdicts are
+  read from the record at build time, with asserts. Why: since 14 October DEME in the robot vets
+  and never selects, and the old hero read as DEME choosing.
 
 ## 5. Footer strip (full width, 2″)
 
@@ -152,7 +165,8 @@
   2. Pluralism is the responsible move — four lenses, defer to a human on conflict.
   3. Auditable by construction; fails safe, never open.
 - **Center 25% — Honesty strip (20 pt italic):** "alpha v0.9.0 · text path solid · activation lens early; first calibration 09/26 · ranks 1–3 real, higher partial · V4 measured, D4 posited · embodied =
-  design target, agents = live."
+  simulated 3D home, scripted proposals, no hardware · agents = live." (embodied wording updated
+  2026-10-18; it read "design target")
 - **Right 20% — QRs:** `erisml-compiler` (PyPI), `erisml-lib`, `agi-hpc` + a teal dot linking back
   to **Poster #1 (Applications)**.
 
