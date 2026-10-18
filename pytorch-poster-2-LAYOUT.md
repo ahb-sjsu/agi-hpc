@@ -151,9 +151,9 @@
   28.4″ is `p2_robot_gate`: "In the robot, DEME is a firewall: it vets each proposed act and never
   picks one". It shows the gate chain (proposed act → governor (attested sensors) → constitution
   (signed rules) → DEME (can veto) → signed manifest + body lock → act; any stop, the robot holds)
-  and five of the nine one-input pairs from gtc-prototype `twin/records/counterfactual-2026-10-18`:
-  one detector silent, one signature forged, her ambulance refusal, filming her with or without
-  declared harms, and the lift with or without her request. It also carries the "found by this
+  and three of the nine one-input pairs from gtc-prototype `twin/records/counterfactual-2026-10-18`:
+  one fire detector silent, her ambulance refusal, and the lift with or without her request (cut from
+  five to three so the band's type could grow to 14 pt left, 16-17 pt right). It also carries the "found by this
   test, then fixed" note and "simulated home, scripted proposals, no hardware". The verdicts are
   read from the record at build time, with asserts. Why: since 14 October DEME in the robot vets
   and never selects, and the old hero read as DEME choosing.
