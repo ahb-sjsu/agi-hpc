@@ -18,10 +18,29 @@ Output lands in `out/`. Requires `matplotlib` + `numpy` (+ `qrcode` for the boar
 
 `out/p2_board_48x36.pdf` is the assembled Poster #2 board (vector, landscape
 48"x36", per `pytorch-poster-2-LAYOUT.md`): title bar, six panels, the
-nazi_attic hero band, footer takeaways + honesty strip + QR codes. Panels are
-drawn live from `build_poster2.py`'s `draw_*` functions (fonts/arrows rescaled
-with each panel), so editing a panel updates both the standalone asset and the
-board. Proof a letter-size tile at 100% before sending to print.
+hero band (care-robot regime transition + robot firewall), footer takeaways +
+honesty strip + four QR codes (companion paper, erisml-compiler, erisml-lib,
+agi-hpc). Panels are drawn live from `build_poster2.py`'s `draw_*` functions
+(fonts/arrows rescaled with each panel, per-panel `TEXT_BOOST`), so editing a
+panel updates both the standalone asset and the board. `check_text_fit` runs
+before save and reports any text that overlaps or spills out of its box. Proof
+a letter-size tile at 100% before sending to print.
+
+The companion-paper QR code points at the PDF under the tag
+`pytorch-conf-2026`, so the link outlives the branch. Move the tag (force-push)
+whenever the paper changes, and check that the served PDF matches the local one.
+
+## Companion paper, brochure, talk — `paper/`
+
+| File | What it is | Build |
+|---|---|---|
+| `pytorch2026_poster2_paper.tex/.pdf` | 4-page companion paper (rev. 4); the poster's QR target | `pdflatex` ×2 |
+| `pytorch2026_poster2_brochure.tex/.pdf` | one letter sheet, double-sided (flip on long edge), two columns, 11 pt, five QR codes | `pdflatex` ×2 |
+| `pytorch2026_poster2_talk_script.md` | talk script: 30 s opener, panel-by-panel walkthrough, short versions, likely questions | — |
+| `pytorch2026_poster2_cuecard.tex/.pdf` | one-page 12 pt cue card condensed from the script | `pdflatex` |
+
+Every number in the brochure, script and cue card comes from the companion
+paper; change the paper first, then these.
 
 ## What maps where
 
@@ -44,7 +63,11 @@ Match these to the panel numbers in the `*-LAYOUT.md` specs.
 | `p2_hohfeld_v4` | 4 | Hohfeld square + V4 (s, r² commuting involutions) + Bond Index scale. Replaces `p2_hohfeld_d4` — V4 measured, D4 posited (2026-08 correction) |
 | `p2_gateway` | 5 | 3-layer Safety Gateway + DecisionProof chain |
 | `p2_pytorch_lens` | 6 | forward hooks: text vs activation vs delta lens |
-| `p2_nazi_attic` | 7 (hero) | worked example — **real numbers** from the compiler README |
+| `p2_care_robot` | 7 (hero, left) | regime transition worked example — **real numbers** from `erisml-lib` `care_robot_regimes` |
+| `p2_robot_gate` | 7 (hero, right) | the same DEME as a firewall in the simulated robot; one-input test results |
+
+`out/p2_nazi_attic.*` is a stale output from the earlier hero; `build_poster2.py`
+no longer draws it (the case stays bundled with the compiler).
 
 ## Honesty notes (don't break these)
 
@@ -56,9 +79,12 @@ Match these to the panel numbers in the `*-LAYOUT.md` specs.
   rebuild — the watermark disappears automatically.
 - **`p1_turboquant`** numbers are a weights-based arithmetic estimate (32B params),
   labeled as illustrative on the figure — not a measured benchmark.
-- **`p2_nazi_attic`** numbers ARE real — they come from the `erisml-compiler`
-  README's end-to-end `nazi_attic` run (per-party verdicts, Gini 0.43, Shapley,
-  DecisionProof). Safe to present as a worked result.
+- **`p2_care_robot`** numbers ARE real — they come from
+  `python -m erisml.examples.care_robot_regimes` in `erisml-lib` (per-party
+  scores, DEME ranking, elevation confidence 0.97 vs 0.90, refusal at 0.89).
+  Safe to present as a worked result.
+- **`p2_robot_gate`** describes a simulated 3D home with scripted proposals and
+  no hardware; say so whenever it is presented.
 
 ## Palette (matched pair)
 
