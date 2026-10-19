@@ -66,9 +66,6 @@ Match these to the panel numbers in the `*-LAYOUT.md` specs.
 | `p2_care_robot` | 7 (hero, left) | regime transition worked example — **real numbers** from `erisml-lib` `care_robot_regimes` |
 | `p2_robot_gate` | 7 (hero, right) | the same DEME as a firewall in the simulated robot; one-input test results |
 
-`out/p2_nazi_attic.*` is a stale output from the earlier hero; `build_poster2.py`
-no longer draws it (the case stays bundled with the compiler).
-
 ## Honesty notes (don't break these)
 
 - **`p1_thermal` is a TEMPLATE** until real data exists. It looks for a CSV

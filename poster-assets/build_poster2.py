@@ -9,7 +9,8 @@ Diagrams:
                          (V4 measured; D4 posited — corrected 2026-08 per erisml-lib ea7ee82)
   p2_gateway           - 3-layer Safety Gateway + DecisionProof hash chain
   p2_pytorch_lens      - text lens / activation lens (forward hooks) / delta lens
-  p2_nazi_attic        - the worked-example verdict table + metrics (REAL numbers from README)
+  p2_care_robot        - regime-transition worked example (REAL numbers, erisml-lib care_robot_regimes)
+  p2_robot_gate        - the same DEME as the simulated robot's firewall; one-input test results
 """
 from __future__ import annotations
 import json
