@@ -3,9 +3,9 @@
 % per side, folded down the middle along the 11 in axis. The fold falls in the column gap,
 % which is widened so no text sits on the crease.
 % Every number is the companion paper's (pytorch2026_poster2_paper.tex, rev. 4).
-\documentclass[9pt,twocolumn]{extarticle}
-\usepackage[letterpaper,margin=0.45in,top=0.42in,bottom=0.42in]{geometry}
-\setlength{\columnsep}{0.7in}
+\documentclass[11pt,twocolumn]{extarticle}
+\usepackage[letterpaper,margin=0.36in,top=0.34in,bottom=0.34in]{geometry}
+\setlength{\columnsep}{0.6in}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage{amsmath,amssymb}
@@ -16,17 +16,18 @@
 \usepackage{qrcode}
 \usepackage{titlesec}
 \usepackage{enumitem}
+\usepackage{array}
 \graphicspath{{../out/}}
 \pagestyle{empty}
 \definecolor{violet}{HTML}{6B4C9A}
 \titleformat{\section}{\normalfont\bfseries\color{violet}}{}{0pt}{}
 \titlespacing*{\section}{0pt}{5pt}{1.5pt}
 \setlength{\parindent}{0pt}
-\setlength{\parskip}{3pt}
+\setlength{\parskip}{2pt}
 \setlist{nosep,leftmargin=1.3em}
 \newcommand{\paperurl}{https://github.com/ahb-sjsu/agi-hpc/blob/pytorch-conf-2026/poster-assets/paper/pytorch2026_poster2_paper.pdf}
-\newcommand{\qrbox}[2]{\begin{minipage}[t]{0.23\linewidth}\centering
-  \qrcode[height=0.62in]{#1}\\[2pt]{\tiny\bfseries #2}\end{minipage}}
+\newcommand{\qrbox}[2]{\begin{minipage}[t]{0.19\linewidth}\centering
+  \qrcode[height=0.6in]{#1}\\[2pt]\makebox[0pt]{\tiny\bfseries #2}\end{minipage}}
 
 \begin{document}
 
@@ -37,7 +38,7 @@
 \end{center}
 {\color{violet}\fontsize{17}{20}\selectfont\bfseries Moral Tensors and\\ DecisionProofs\par}
 \vspace{3pt}
-{\bfseries Compiling Language into an Auditable, Grounded Safety Layer\par}
+{\raggedright\bfseries Compiling Language into an Auditable,\\ Grounded Safety Layer\par}
 \vspace{4pt}
 {\small Andrew H.\ Bond, San Jos\'e State University \& independent researcher.
 ORCID 0009-0003-2599-6158.\\
@@ -92,9 +93,6 @@ Hohfeld's normative positions~[1] (Obligation, Claim, Liberty, No-claim) carry t
 the correlative swap $s$ (agent$\leftrightarrow$patient) and deontic negation $r^2$. They
 are commuting involutions, so they generate the Klein four-group $V_4$. That is the
 \textbf{measured} structure, machine-checked in Lean~4 with Mathlib.
-\begin{center}
-\includegraphics[width=0.92\linewidth]{p2_hohfeld_v4.pdf}
-\end{center}
 Our earlier claim of the full dihedral group $D_4$ was an overclaim, corrected in July
 2026: $D_4$ is \textbf{posited}. The library implements the full $D_4$ machinery so the
 hypothesis stays testable, with a regression test asserting that the implemented
@@ -166,8 +164,9 @@ sensors), the signed constitution, DEME (which can veto) and the signed manifest
 in the body. Any stop leaves the robot holding.
 
 \begin{center}\footnotesize
-\setlength{\fboxsep}{2pt}\fbox{act}\,$\to$\,\fbox{governor}\,$\to$\,\fbox{constitution}%
-\,$\to$\,\colorbox{violet}{\textcolor{white}{DEME veto}}\,$\to$\,\fbox{manifest}\,$\to$\,body
+\parbox{\linewidth}{\centering\setlength{\fboxsep}{2pt}%
+\fbox{act}\,$\to$\,\fbox{governor}\,$\to$\,\fbox{constitution}\,$\to$\\[3pt]
+\colorbox{violet}{\textcolor{white}{DEME veto}}\,$\to$\,\fbox{manifest}\,$\to$\,body}
 \end{center}
 
 We test it by changing one input and nothing else. In nine such pairs, each prediction
@@ -175,7 +174,7 @@ committed before its run, a silent or forged detector stopped the fire call, and
 refusal heard or not decided the ambulance.
 
 \begin{center}\footnotesize\setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}lll@{}}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.4in}ll@{}}
 \textbf{One input changed} & \textbf{base} & \textbf{changed}\\\hline
 fire call: a detector silent & passed & stopped: governor\\
 ambulance: refusal heard / not & stopped: DEME & passed\\
@@ -215,13 +214,9 @@ an auditability claim.
 (compiler), 10.5281/zenodo.20660087 (turboquant-pro), 10.5281/zenodo.21310251
 (COMPAS/LBI archive).\par}
 
-\vspace{6pt}
-\begin{center}
-\qrcode[height=1.0in]{\paperurl}\\[3pt]
-{\small\bfseries The full companion paper (4 pages)}
-\end{center}
 \vspace{4pt}
 \noindent
+\qrbox{\paperurl}{full paper}\hfill
 \qrbox{https://pypi.org/project/erisml-compiler/}{erisml-compiler}\hfill
 \qrbox{https://github.com/ahb-sjsu/erisml-lib}{erisml-lib}\hfill
 \qrbox{https://github.com/ahb-sjsu/agi-hpc}{agi-hpc}\hfill
