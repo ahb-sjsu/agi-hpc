@@ -1,0 +1,12 @@
+% PyTorch Conference NA 2026, poster #2: the brochure, imposed for printing.
+% One US Letter sheet, landscape, printed on both sides and folded in half at 5.5 in.
+% Sheet side 1 (outside): panel 4 (back cover) on the left, panel 1 (front cover) on the right.
+% Sheet side 2 (inside):  panel 2 on the left, panel 3 on the right.
+% Print double-sided, flip on the SHORT edge. Build pytorch2026_poster2_brochure_panels.tex first.
+\documentclass{article}
+\usepackage[paperwidth=11in,paperheight=8.5in,margin=0in]{geometry}
+\usepackage{pdfpages}
+\begin{document}
+\includepdf[pages={4,1,2,3},nup=2x1,landscape=false,delta=0 0,
+  frame=false]{pytorch2026_poster2_brochure_panels.pdf}
+\end{document}
