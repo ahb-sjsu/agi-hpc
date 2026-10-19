@@ -1,0 +1,105 @@
+\documentclass[12pt]{extarticle}
+\usepackage[letterpaper,margin=0.4in,top=0.35in,bottom=0.35in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{multicol}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{microtype}
+\definecolor{violet}{HTML}{5B3E96}
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{2pt}
+\setlength{\columnsep}{0.25in}
+\setlist{nosep,leftmargin=1.1em}
+\newcommand{\hd}[1]{\par\vspace{4pt}{\color{violet}\bfseries\large #1}\par\vspace{1pt}}
+\newcommand{\pn}[1]{{\color{violet}\bfseries #1}\enspace}
+\begin{document}
+
+{\color{violet}\bfseries\LARGE Poster cue card}\hfill{\small Moral Tensors and DecisionProofs \textperiodcentered{} PyTorch NA 2026}
+
+\vspace{2pt}
+\fbox{\parbox{\dimexpr\textwidth-2\fboxsep-2\fboxrule}{\small
+\textbf{Opener (30 s).} Most AI safety is one number at the output. We keep the structure:
+who's affected, what's owed, who consented, who carries the risk. We collapse to a decision
+only at the end, and record how. Every decision is sealed in a hash-chained proof you can
+replay. Open source, on PyPI, running today.\\[2pt]
+\textbf{Then ask:} ``Model side or agent side?''\quad Model $\to$ \textbf{6}.\quad Agent $\to$ \textbf{5} then \textbf{7}.\quad
+\textbf{10 s version:} a safety layer that seals every decision in a replayable proof, and compares what a model says with what its activations show.}}
+
+\begin{multicols}{2}
+\hd{Walkthrough (point at the number)}
+\pn{1 Thesis} Structure before the scalar. Log the weights, who lost, the residue. Not ``knows
+what's good'', but every collapse is replayable.
+
+\pn{2 Compiler} Text $\to$ MoralGraph $\to$ tensor $\to$ DecisionProof. 12 passes, hashed at every
+stage. Rules, LLM + critic, LaBSE probe.
+
+\pn{3 Pluralism} Four lenses: consequences, duties (Z3), virtue, care. Never averaged. When they
+disagree, defer to a human.
+
+\pn{4 Geometry} Swap and negation commute $\to$ Klein four-group $V_4$, proved in Lean. $D_4$ was
+our overclaim, now corrected. The quarter-turn was not found in an LM.
+\textbf{Bond Index:} how often the verdict changes under the agent/patient swap. Human baseline
+\textbf{0.155} ($\approx$20k letters). Warns at 0.25, blocks at 0.30.
+
+\pn{5 Gateway} Planner $\to$ Reflex / Tactical (10--100\,ms) / Strategic $\to$ allow, revise, block.
+SHA-256 chained proofs. Service down $\to$ rules. \textbf{Fails safe, never open.}
+
+\pn{6 PyTorch lens} Forward hooks: activation lens vs.\ text lens $\to$ requires-human-review.
+Mid-layer, read in the consumer metric: \textbf{+19--21 pts} vs.\ raw L2 at a matched flag rate
+(Qwen2.5-0.5B). Replicated on TinyLlama and on French backtranslation. The final layer fails, so
+probe mid-layers. Early.
+
+\pn{7 Left} Margaret collapsed. Normal mode: forbid. Emergency: prefer $\times$4, and the ranking
+flips from stand-by to full response. Elevation = privilege escalation: confidence \textbf{0.97}
+vs.\ 0.90, scoped to the paramedics, reversible, audited. At \textbf{0.89} it's refused: EMS is
+still called, the records are not shared. A false alarm unlocks nothing, and aid is never blocked.
+
+\pn{7 Right} In the robot, DEME chooses nothing. Governor $\to$ constitution $\to$ DEME $\to$
+manifest; any stop means hold. Change one input, prediction written first. \textbf{9 pairs}: a
+forged detector stopped the fire call, and her refusal decided the ambulance. Caught a lift bug:
+fixed, and only the lift's verdict changed.
+
+\pn{Close} Keep the structure \textperiodcentered{} defer on conflict \textperiodcentered{} fail
+safe. QR codes $\to$ paper + code. Hand them a brochure.
+
+\columnbreak
+\hd{Questions}
+\textbf{Whose ethics?} It isn't claimed to be right. Four lenses, no averaging, a human decides
+conflicts. The claim is auditability.
+
+\textbf{Real robot?} No. Simulated 3D home, scripted proposals, no hardware. The agent stack and
+the two NPCs are live.
+
+\textbf{Speed?} Tactical 10--100\,ms, reflex faster.
+
+\textbf{Service crashes?} Rule fallback. Fails closed.
+
+\textbf{Lens works?} Early. Mid-layer result replicated 2 of 2. Final layer fails validation.
+Not a finished detector.
+
+\textbf{Why group theory?} It's a symmetry test you can run. We claim only $V_4$. Corrected $D_4$
+ourselves. Earlier gauge model falsified by CHSH tests on human judgments ($N{=}600$, all $|S|\le 2$).
+
+\textbf{COMPAS?} LBI \textbf{1.049} [1.027, 1.072], $z=4.9$. $\approx$1.00--1.02 under
+matching parity. A screening signal, not a regulatory audit.
+
+\textbf{Install?} \texttt{pip install erisml-compiler} (alpha 0.9.0, MIT). erisml-lib 3.1.0 on
+PyPI. The worked example needs the source tree.
+
+\textbf{Not done?} Ranks 1--3 real, higher partial, action axis a stub. Hohfeld/Bond Index in
+erisml-lib, not the compiler yet. $D_4$ posited.
+
+\textbf{PyTorch engineer extra:} turboquant-pro on PyPI. One-line HF KV cache drop-in, Triton
+kernels, vLLM plugin, $\approx$5$\times$ less KV memory.
+
+\hd{Panel map}
+\begin{tabular}{|c|c|c|}\hline
+1 Thesis & 3 Pluralism & 5 Gateway\\\hline
+2 Compiler & 4 Geometry & 6 PyTorch lens\\\hline
+\multicolumn{3}{|c|}{7 Care-robot example $\mid$ robot firewall}\\\hline
+\multicolumn{3}{|c|}{takeaways \textperiodcentered{} limits \textperiodcentered{} QR codes}\\\hline
+\end{tabular}
+\end{multicols}
+\end{document}
