@@ -25,21 +25,21 @@ def draw_compiler_pipeline(ax):
     label(ax, 50, 44, "pip install erisml-compiler  —  structure before the scalar",
           fontsize=17, color=VIOLET, weight="bold")
 
-    stages = ["text", "segment", "extract", "canonicalize", "MoralGraph", "tensorize", "DEME", "DecisionProof"]
-    n = len(stages); x0, x1 = 8, 92; xs = np.linspace(x0, x1, n)
+    stages = ["text", "segment", "extract", "canonical-\nize", "Moral-\nGraph", "tensorize", "DEME", "Decision-\nProof"]
+    n = len(stages); x0, x1 = 6.5, 93.5; xs = np.linspace(x0, x1, n)
     for i, (x, s) in enumerate(zip(xs, stages)):
-        hero = s in ("MoralGraph", "DecisionProof")
-        box(ax, x, 32, 10.2, 6, s, fc=VIOLET if hero else VIOLET_FILL,
+        hero = s in ("Moral-\nGraph", "Decision-\nProof")
+        box(ax, x, 33, 11, 8, s, fc=VIOLET if hero else VIOLET_FILL,
             ec=VIOLET, tc=PAPER if hero else INK, fontsize=10.5, weight="bold", round_size=0.8)
         if i < n - 1:
-            arrow(ax, (x + 5.1, 32), (xs[i + 1] - 5.1, 32), color=VIOLET, lw=2)
+            arrow(ax, (x + 5.5, 33), (xs[i + 1] - 5.5, 33), color=VIOLET, lw=2)
 
-    label(ax, 50, 23, "MoralGraph nodes:  stakeholder · act · maxim · commitment · fact · norm    "
-                      "—  carries a canonical SHA-256 hash", fontsize=12, color=INK, weight="bold")
-    box(ax, 50, 13, 80, 6,
-        "extractor tiers:   rule (deterministic, silicon-castable)   ·   LLM (NRP / vLLM + critic)   ·   probe (LaBSE head)",
+    label(ax, 50, 22.5, "MoralGraph nodes:  stakeholder · act · maxim · commitment · fact · norm\n"
+                        "carries a canonical SHA-256 hash", fontsize=12, color=INK, weight="bold")
+    box(ax, 50, 11.5, 92, 8.5,
+        "extractor tiers:  rule (deterministic, silicon-castable)\nLLM (NRP / vLLM + critic)  ·  probe (LaBSE head)",
         fc=VIOLET_FILL, ec=VIOLET_RULE, fontsize=12)
-    label(ax, 50, 5, "alpha v0.9.0 · 477 tests · MIT · Zenodo DOI 10.5281/zenodo.20659432",
+    label(ax, 50, 3.2, "alpha v0.9.0 · 477 tests · MIT · Zenodo DOI 10.5281/zenodo.20659432",
           fontsize=11, color=MUTE)
 
 draw_compiler_pipeline.native = (14, 7)
@@ -56,21 +56,21 @@ def draw_pluralism(ax):
 
     box(ax, 50, 43, 24, 5.5, "one MoralGraph", fc=VIOLET, ec=VIOLET, tc=PAPER, fontsize=13, weight="bold")
     lenses = [
-        ("Consequentialist", "harm/care tensor\nGini · worst-off · Shapley", 13.5),
-        ("Deontic (Kantian)", "gates · universalizability\nvia Z3 SMT", 37.5),
-        ("Virtue", "Aristotelian\nhabit-consistency", 61.5),
-        ("Care ethics", "Gilligan · Noddings\n· Tronto", 85.5),
+        ("Consequentialist", "harm/care tensor\nGini · worst-off\nShapley", 12.5),
+        ("Deontic\n(Kantian)", "universalizability\nvia Z3 SMT", 37.5),
+        ("Virtue", "Aristotelian\nhabit-consistency", 62.5),
+        ("Care ethics", "Gilligan · Noddings\n· Tronto", 87.5),
     ]
     for name, sub, x in lenses:
-        box(ax, x, 30, 22.5, 9, f"{name}\n{sub}", fc=VIOLET_FILL, ec=VIOLET, fontsize=11.5, weight="bold")
-        arrow(ax, (50, 40), (x, 35), color=VIOLET, lw=1.8)
+        box(ax, x, 29.5, 24, 12.5, f"{name}\n{sub}", fc=VIOLET_FILL, ec=VIOLET, fontsize=11.5, weight="bold")
+        arrow(ax, (50, 40), (x, 35.9), color=VIOLET, lw=1.8)
 
-    box(ax, 50, 16, 62, 5.5, "verdicts disagree?  →  cross_projection_disagreement",
+    box(ax, 50, 15.5, 66, 7.5, "verdicts disagree?  →\ncross_projection_disagreement",
         fc="#FBEFE9", ec=WARN, tc=INK, fontsize=13, weight="bold")
-    for x in (13.5, 37.5, 61.5, 85.5):
-        arrow(ax, (x, 25.3), (50, 19), color=MUTE, lw=1.4)
-    box(ax, 50, 7.5, 34, 5.5, "defers to a human", fc=INK, ec=INK, tc=PAPER, fontsize=14, weight="bold")
-    arrow(ax, (50, 13), (50, 10.5), color=INK)
+    for x in (12.5, 37.5, 62.5, 87.5):
+        arrow(ax, (x, 23.2), (50, 19.4), color=MUTE, lw=1.4)
+    box(ax, 50, 6.8, 34, 5.5, "defers to a human", fc=INK, ec=INK, tc=PAPER, fontsize=14, weight="bold")
+    arrow(ax, (50, 11.7), (50, 9.6), color=INK)
     label(ax, 50, 1.8, "\"We run four and show you where they conflict — we don't pick one and hide it.\"",
           fontsize=11.5, color=VIOLET, style="italic")
 
@@ -109,10 +109,8 @@ def draw_hohfeld_v4(ax):
     label(ax, cx - s - 4.0, cy, "r²", fontsize=13, color=VIOLET, weight="bold", style="italic")
     label(ax, cx, cy + 2.5, "s = correlative swap\n(agent ↔ patient)", fontsize=10, color=BAD, weight="bold")
     label(ax, cx, cy - 4.5, "r² = deontic negation", fontsize=10, color=VIOLET, weight="bold")
-    label(ax, 28, cy - s - 8.5, "s and r² commute  →  V4 (Klein four-group, order 4) — measured",
+    label(ax, cx, cy - s - 11, "s and r² commute  →  V4\n(Klein four-group, order 4): measured",
           fontsize=11.5, color=INK, weight="bold")
-    label(ax, 28, cy - s - 12.5, "full D4 (order 8) posited, now tested: a 09/26 hunt in a small LM\nfound no quarter-turn (non-abelian signature absent). V4 stands.",
-          fontsize=10.5, color=MUTE, style="italic")
 
     # Bond Index scale (right half)
     bx0, bx1, by = 52, 92, 30
@@ -124,12 +122,12 @@ def draw_hohfeld_v4(ax):
         x = bx0 + (val / 0.35) * (bx1 - bx0)
         ax.plot([x, x], [by - 1.6, by + 1.6], color=c, lw=3, zorder=3)
         label(ax, x, by + 6.5, txt, fontsize=10.5, color=c, weight="bold")
-    label(ax, cxm, by - 7.5, "Bond Index: does the judgment survive the swap?",
+    label(ax, cxm, by - 6.5, "Bond Index: does the\njudgment survive the swap?",
           fontsize=12, color=INK, weight="bold")
-    label(ax, cxm, by - 13, "multi-rank tensors: party × time × action × coalition",
-          fontsize=10.5, color=MUTE)
-    label(ax, cxm, by - 20, "V4 claim machine-checked: Lean 4 + Mathlib (formal/HohfeldV4.lean)",
+    label(ax, cxm, by - 13.5, "V4 machine-checked:\nLean 4 + Mathlib",
           fontsize=10.5, color=GOOD, weight="bold")
+    label(ax, cxm, by - 21.5, "full D4 (order 8) posited, now tested:\na 09/26 hunt in a small LM found\nno quarter-turn. V4 stands.",
+          fontsize=10.5, color=MUTE, style="italic")
 
 draw_hohfeld_v4.native = (12, 6.5)
 
@@ -184,36 +182,39 @@ def gateway():
 
 
 def draw_pytorch_lens(ax):
-    label(ax, 50, 47, "What the model says  vs  what it exhibits", fontsize=16.5, color=VIOLET, weight="bold")
+    label(ax, 50, 58.5, "What the model says  vs  what it exhibits", fontsize=16.5, color=VIOLET, weight="bold")
 
-    # transformer with forward hooks
-    box(ax, 16, 28, 16, 22, "transformer\n(Qwen2.5-7B,\nLLaMA, Mistral)", fc=VIOLET_FILL, ec=VIOLET, fontsize=11, weight="bold")
+    # transformer with forward hooks (diagram raised 10 units into the panel's free top)
+    Y = 10
+    box(ax, 13.5, 28 + Y, 21, 22, "transformer\n(Qwen2.5-7B,\nLLaMA,\nMistral)", fc=VIOLET_FILL, ec=VIOLET, fontsize=11, weight="bold")
     for dy in (-6, 0, 6):
-        ax.plot([24, 30], [28 + dy, 28 + dy], color=BAD, lw=2, zorder=4)
-    label(ax, 27, 41, "forward hooks", fontsize=10.5, color=BAD, weight="bold")
+        ax.plot([24, 30], [28 + Y + dy, 28 + Y + dy], color=BAD, lw=2, zorder=4)
+    label(ax, 27, 41.5 + Y, "forward hooks", fontsize=10.5, color=BAD, weight="bold")
 
-    box(ax, 46, 36, 20, 6, "text lens\n(what it says)", fc=PAPER, ec=INK, fontsize=11, weight="bold")
-    box(ax, 46, 20, 20, 6, "activation lens\n(what it exhibits)", fc=PAPER, ec=VIOLET, tc=VIOLET, fontsize=11, weight="bold")
-    arrow(ax, (24, 30), (36, 36), color=INK, lw=1.6)
-    arrow(ax, (30, 26), (36, 22), color=VIOLET, lw=1.6)
+    box(ax, 46, 37 + Y, 22, 7.5, "text lens\n(what it says)", fc=PAPER, ec=INK, fontsize=11, weight="bold")
+    box(ax, 46, 19 + Y, 22, 7.5, "activation lens\n(what it exhibits)", fc=PAPER, ec=VIOLET, tc=VIOLET, fontsize=11, weight="bold")
+    arrow(ax, (24, 30 + Y), (35, 36 + Y), color=INK, lw=1.6)
+    arrow(ax, (30, 26 + Y), (35, 21 + Y), color=VIOLET, lw=1.6)
 
-    box(ax, 73, 28, 18, 7, "delta lens\ncompare", fc=VIOLET, ec=VIOLET, tc=PAPER, fontsize=12, weight="bold")
-    arrow(ax, (56, 35), (65, 30), color=INK, lw=1.6)
-    arrow(ax, (56, 21), (65, 26), color=VIOLET, lw=1.6)
-    box(ax, 73, 14, 22, 6, "requires_human_review\n(5 failure modes)", fc="#FBEFE9", ec=WARN, tc=INK, fontsize=10.5, weight="bold")
-    arrow(ax, (73, 24.5), (73, 17), color=WARN)
+    box(ax, 74, 28 + Y, 18, 8, "delta lens\ncompare", fc=VIOLET, ec=VIOLET, tc=PAPER, fontsize=12, weight="bold")
+    arrow(ax, (57, 36 + Y), (65, 30 + Y), color=INK, lw=1.6)
+    arrow(ax, (57, 20 + Y), (65, 26 + Y), color=VIOLET, lw=1.6)
+    box(ax, 74, 13 + Y, 34, 8, "requires_human_review\n(5 failure modes)", fc="#FBEFE9", ec=WARN, tc=INK, fontsize=10.5, weight="bold")
+    arrow(ax, (74, 24 + Y), (74, 17 + Y), color=WARN)
 
-    label(ax, 24, 7.2, "Activation lens: first calibration numbers (09/26).\n"
-          "Consumer-metric gating catches 19-21 pp more real behavior\n"
-          "changes than raw L2 at matched flag rates. Replicated 2/2:\n"
-          "second model + second transform. Probe mid-layers: the\n"
-          "final-layer ρ̂ map fails held-out validation in all three runs.",
-          fontsize=8, color=MUTE, style="italic")
-    box(ax, 72.5, 5.5, 49, 8.5,
-        "turboquant-pro (PyPI): PyTorch-native compression\n"
-        "HF 1-liner: TurboQuantCache() · Triton + Volta kernels · vLLM ~5× KV\n"
-        "live here: 3-bit codec on NATS · claims CI-gated · measured false-clear diag (v2.0.0a3)",
-        fc=PAPER, ec=VIOLET_RULE, tc=INK, fontsize=8.5)
+    label(ax, 24, 9.5, "Activation lens: first calibration (09/26).\n"
+          "Consumer-metric gating catches 19-21 pp\n"
+          "more real behavior changes than raw L2 at\n"
+          "matched flag rates. Replicated 2/2: second\n"
+          "model + second transform. Probe mid-layers:\n"
+          "the final-layer ρ̂ map fails held-out\n"
+          "validation in all three runs.",
+          fontsize=10, color=MUTE, style="italic")
+    box(ax, 74, 9.5, 50, 16,
+        "turboquant-pro (PyPI):\nPyTorch-native compression\n"
+        "HF 1-liner: TurboQuantCache()\nTriton + Volta kernels · vLLM ~5× KV\n"
+        "live here: 3-bit codec on NATS\nclaims CI-gated · false-clear diag (v2.0.0a3)",
+        fc=PAPER, ec=VIOLET_RULE, tc=INK, fontsize=10)
 
 draw_pytorch_lens.native = (11, 7)
 

@@ -40,7 +40,7 @@ def draw_thesis(ax):
         ["#1B7F4B", "#1B7F4B", "#1B7F4B", "#C77800", "#1B7F4B"],
         ["#C77800", "#6A4C93", "#C77800", "#C77800", "#6A4C93"],
     ]
-    gx, gy, cw, ch = 9, 36, 5.4, 5.4
+    gx, gy, cw, ch = 9, 36, 6.2, 5.4
     for j, c in enumerate(cols):
         label(ax, gx + j * cw + cw / 2, gy + 3.6, c, fontsize=9, color=MUTE)
     for i, rname in enumerate(rows):
@@ -49,23 +49,23 @@ def draw_thesis(ax):
         for j in range(len(cols)):
             ax.add_patch(Rectangle((gx + j * cw, y - ch / 2), cw - 0.5, ch - 0.5,
                                    fc=cell_colors[i][j], ec=PAPER, lw=0.8, alpha=0.75, zorder=2))
-    label(ax, gx + 13.5, gy - 4 * ch - 1.4, "the moral tensor (who × what is owed)",
+    label(ax, gx + 15.5, gy - 4 * ch - 1.4, "the moral tensor\n(who × what is owed)",
           fontsize=11, color=VIOLET, weight="bold")
 
     # collapse arrow -> crossed-out scalar
-    ax.add_patch(FancyArrowPatch((38, 25), (48, 25), arrowstyle="-|>", mutation_scale=20,
+    ax.add_patch(FancyArrowPatch((41, 25), (49, 25), arrowstyle="-|>", mutation_scale=20,
                                  color=BAD, lw=2.6, zorder=3))
-    label(ax, 55, 25, "★ 0.42", fontsize=20, color=BAD, weight="bold")
-    ax.plot([50.5, 59.5], [21.5, 28.5], color=BAD, lw=3, zorder=4)
-    label(ax, 55, 18, "one scalar —\nstructure lost", fontsize=11, color=BAD, weight="bold")
+    label(ax, 56, 25, "★ 0.42", fontsize=20, color=BAD, weight="bold")
+    ax.plot([51.5, 60.5], [21.5, 28.5], color=BAD, lw=3, zorder=4)
+    label(ax, 56, 16.5, "one scalar:\nstructure\nlost", fontsize=11, color=BAD, weight="bold")
 
     # the kept-structure alternative
-    label(ax, 79, 38, "✓ keep the structure", fontsize=14, color=GOOD, weight="bold")
-    label(ax, 79, 27.5,
-          "who is affected · what is owed\nwho consented · who bears imposed risk",
+    label(ax, 82, 40, "✓ keep the structure", fontsize=14, color=GOOD, weight="bold")
+    label(ax, 82, 30,
+          "who is affected\nwhat is owed\nwho consented\nwho bears imposed risk",
           fontsize=11, color=INK)
-    label(ax, 79, 15.5,
-          "contract to a decision only at the end,\nand log the contraction:\nweights · who lost · what residue remains",
+    label(ax, 82, 13,
+          "contract to a decision\nonly at the end, and\nlog the contraction:\nweights · who lost ·\nwhat residue remains",
           fontsize=11, color=VIOLET, weight="bold")
 
 
@@ -73,11 +73,61 @@ draw_thesis.native = (13, 7.4)
 
 
 # ------------------------------------------------------------------- utilities
-def scale_points(ax, s):
+# Text drawn larger than the diagram's own scale (owner 2026-10-19: "plenty of room, bigger
+# fonts"). The boxes keep their size; check_text_fit() reports any text that then collides.
+TEXT_BOOST = {
+    "draw_thesis": 1.45, "draw_compiler_pipeline": 1.45, "draw_pluralism": 1.45,
+    "draw_hohfeld_v4": 1.45, "draw_gateway": 1.45, "draw_pytorch_lens": 1.45,
+    "draw_care_robot": 1.3, "draw_robot_gate": 1.3,
+}
+DIAGRAM_AXES = []
+LAST_FIT = {}
+
+
+def check_text_fit(fig):
+    """Report text that overlaps other text in its panel or runs outside the panel box."""
+    fig.canvas.draw()
+    r = fig.canvas.get_renderer()
+    dpi = fig.dpi
+    problems = 0
+    per = {}
+    for name, ax, (bx, by, bw, bh) in DIAGRAM_AXES:
+        before = problems
+        boxes = [(t, t.get_window_extent(r)) for t in ax.texts if t.get_text().strip()]
+        for t, e in boxes:
+            if e.x0 < bx * dpi or e.x1 > (bx + bw) * dpi or e.y0 < by * dpi or e.y1 > (by + bh) * dpi:
+                problems += 1
+                print(f"  FIT {name}: outside its panel: {t.get_text()[:50]!r}")
+        # text centred in a box must stay inside the smallest box around its centre
+        pboxes = [p.get_window_extent(r) for p in ax.patches if not isinstance(p, FancyArrowPatch)]
+        for t, e in boxes:
+            cx, cy = (e.x0 + e.x1) / 2, (e.y0 + e.y1) / 2
+            holders = [q for q in pboxes if q.x0 <= cx <= q.x1 and q.y0 <= cy <= q.y1]
+            if holders:
+                q = min(holders, key=lambda q: q.width * q.height)
+                if e.x0 < q.x0 - 1 or e.x1 > q.x1 + 1 or e.y0 < q.y0 - 1 or e.y1 > q.y1 + 1:
+                    problems += 1
+                    print(f"  FIT {name}: spills out of its box: {t.get_text()[:40]!r}")
+        for i in range(len(boxes)):
+            for j in range(i + 1, len(boxes)):
+                a, b = boxes[i][1], boxes[j][1]
+                ox = min(a.x1, b.x1) - max(a.x0, b.x0)
+                oy = min(a.y1, b.y1) - max(a.y0, b.y0)
+                if ox > 2 and oy > 2:
+                    problems += 1
+                    print(f"  FIT {name}: {boxes[i][0].get_text()[:30]!r} overlaps {boxes[j][0].get_text()[:30]!r}")
+        per[name] = per.get(name, 0) + problems - before
+    print(f"  text fit: {problems} problem(s)")
+    LAST_FIT.clear()
+    LAST_FIT.update(per)
+    return problems
+
+
+def scale_points(ax, s, text_boost=1.0):
     """Scale all point-sized elements (fonts, linewidths, arrowheads) by s so a
     diagram placed at s x its native size keeps its designed proportions."""
     for t in ax.texts:
-        t.set_fontsize(t.get_fontsize() * s)
+        t.set_fontsize(t.get_fontsize() * s * text_boost)
     for p in ax.patches:
         p.set_linewidth(p.get_linewidth() * s)
         if isinstance(p, FancyArrowPatch):
@@ -86,7 +136,7 @@ def scale_points(ax, s):
         ln.set_linewidth(ln.get_linewidth() * s)
 
 
-def place_diagram(fig, draw_fn, box_x, box_y, box_w, box_h, pad=0.30):
+def place_diagram(fig, draw_fn, box_x, box_y, box_w, box_h, pad=0.30, text_boost=1.0):
     """Fit draw_fn's native canvas into the given box (inches), centered."""
     nw, nh = draw_fn.native
     avail_w, avail_h = box_w - 2 * pad, box_h - 2 * pad
@@ -100,7 +150,8 @@ def place_diagram(fig, draw_fn, box_x, box_y, box_w, box_h, pad=0.30):
     ax.set_aspect("equal")
     ax.axis("off")
     draw_fn(ax)
-    scale_points(ax, s)
+    scale_points(ax, s, text_boost)
+    DIAGRAM_AXES.append((draw_fn.__name__, ax, (box_x, box_y, box_w, box_h)))
     return s
 
 
@@ -188,7 +239,7 @@ def build_board():
     ]
     for i, (fn, px, py) in enumerate(panels, start=1):
         panel_bg(board, px, py, col_w, p_h)
-        s = place_diagram(fig, fn, px, py, col_w, p_h)
+        s = place_diagram(fig, fn, px, py, col_w, p_h, text_boost=TEXT_BOOST[fn.__name__])
         board.text(px + 0.25, py + p_h - 0.18, str(i), fontsize=20, color=VIOLET_RULE,
                    weight="bold", va="top", zorder=6)
         print(f"  panel {i}: {fn.__name__} at scale {s:.2f}")
@@ -199,12 +250,14 @@ def build_board():
     # left: DEME's judgment replayed (erisml-lib example); right: the same DEME as the firewall in
     # the robot, tested by changing one input (gtc-prototype records), with a rule between them
     LW = 16.6
-    s = place_diagram(fig, draw_care_robot, X0, hero_y, LW, hero_top - hero_y, pad=0.25)
+    s = place_diagram(fig, draw_care_robot, X0, hero_y, LW, hero_top - hero_y, pad=0.25,
+                      text_boost=TEXT_BOOST["draw_care_robot"])
     board.text(X0 + 0.25, hero_y + (hero_top - hero_y) - 0.18, "7", fontsize=20,
                color=VIOLET_RULE, weight="bold", va="top", zorder=6)
     print(f"  panel 7: draw_care_robot at scale {s:.2f}")
     board.plot([X0 + LW, X0 + LW], [hero_y + 0.4, hero_top - 0.4], color=VIOLET_RULE, lw=2.0, zorder=5)
-    s = place_diagram(fig, draw_robot_gate, X0 + LW, hero_y, X1 - X0 - LW, hero_top - hero_y, pad=0.25)
+    s = place_diagram(fig, draw_robot_gate, X0 + LW, hero_y, X1 - X0 - LW, hero_top - hero_y, pad=0.25,
+                      text_boost=TEXT_BOOST["draw_robot_gate"])
     print(f"  panel 7: draw_robot_gate at scale {s:.2f}")
 
     # ---------------------------------------------------------------- footer
@@ -234,6 +287,7 @@ def build_board():
     os.makedirs(OUT, exist_ok=True)
     pdf = os.path.join(OUT, "p2_board_48x36.pdf")
     png = os.path.join(OUT, "p2_board_preview.png")
+    check_text_fit(fig)
     fig.savefig(pdf)
     fig.savefig(png, dpi=40, facecolor=PAPER)
     plt.close(fig)
