@@ -109,6 +109,10 @@ def panel_bg(board, x, y, w, h):
                                    fc=VIOLET_FILL, ec=VIOLET_RULE, lw=2.0, zorder=1))
 
 
+PAPER_URL = ("https://github.com/ahb-sjsu/agi-hpc/blob/pytorch-conf-2026/"
+             "poster-assets/paper/pytorch2026_poster2_paper.pdf")
+
+
 def draw_qr(board, cx, cy, size, url, caption):
     qr = qrcode.QRCode(border=1, error_correction=qrcode.constants.ERROR_CORRECT_M)
     qr.add_data(url)
@@ -213,13 +217,15 @@ def build_board():
     ]
     for k, t in enumerate(takeaways):
         board.text(X0, fy1 - 0.42 - k * 0.60, t, fontsize=24, color=INK, va="center", zorder=5)
-    board.text(X0 + 26.2, fy1 - 1.0,
+    board.text(X0 + 17.6, fy1 - 1.0,
                "alpha v0.9.0 · text path solid · activation lens early; first calibration 09/26\n"
                "(consumer-metric, replicated 2/2) · ranks 1–3 real, higher partial\n"
                "V4 measured, D4 posited (Lean + Mathlib verified)\n"
                "embodied = simulated 3D home, scripted, no hardware · agents = live",
                fontsize=16, color=MUTE, style="italic", va="center", zorder=5)
     qy = (fy0 + fy1) / 2 + 0.22
+    # the companion paper, pinned by the tag pytorch-conf-2026 so the link outlives the branch
+    draw_qr(board, X1 - 12.1, qy, 1.45, PAPER_URL, "companion paper")
     draw_qr(board, X1 - 8.6, qy, 1.45, "https://pypi.org/project/erisml-compiler/", "erisml-compiler")
     draw_qr(board, X1 - 5.1, qy, 1.45, "https://github.com/ahb-sjsu/erisml-lib", "erisml-lib")
     draw_qr(board, X1 - 1.6, qy, 1.45, "https://github.com/ahb-sjsu/agi-hpc", "agi-hpc")

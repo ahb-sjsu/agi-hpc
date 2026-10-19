@@ -15,7 +15,7 @@
 \author{Andrew H.\ Bond\\
 \small San Jos\'e State University \& independent researcher \quad ORCID 0009-0003-2599-6158\\
 \small PyTorch Conference North America 2026, Poster Session (Responsible AI)}
-\date{\small September 2026 (rev.\ 3: regime-transition worked example; first activation-lens calibration)}
+\date{\small October 2026 (rev.\ 4: the simulated robot's gate and its one-input test; erisml-lib on PyPI)}
 
 \begin{document}
 \maketitle
@@ -36,14 +36,15 @@ remains a posited, testable extension, a correction of our own earlier claim,
 documented here. A Bond Index tests whether a judgment survives
 the agent$\leftrightarrow$patient swap. The PyTorch hook is literal: forward hooks on
 transformer layers compare what a model \emph{says} with what it internally
-\emph{exhibits}. Running today on a Qwen/Gemma agent stack and two governed AI NPCs.
+\emph{exhibits}. Running today on a Qwen/Gemma agent stack, two governed AI NPCs,
+and a simulated home-care robot.
 \end{abstract}
 
 \section{Structure before the scalar}
 A single good/bad score discards exactly the information an audit needs: which
 stakeholders are affected, what is owed to each, who consented, and who bears imposed
 risk. ErisML keeps that structure as a typed object through the whole evaluation and
-performs \emph{decision contraction} only at the end, logging the weights used, who
+performs \emph{decision contraction}~[2] only at the end, logging the weights used, who
 lost, and what moral residue remains. The claim is not that the system knows what is
 good; it is that every collapse from structure to verdict is recorded and replayable.
 
@@ -57,7 +58,7 @@ good; it is that every collapse from structure to verdict is recorded and replay
 \end{figure*}
 
 \texttt{erisml-compiler} (alpha v0.9.0, PyPI, MIT, 477 tests, Zenodo DOI
-10.5281/zenodo.20659432) runs a 12-pass pipeline:
+10.5281/zenodo.20659432) runs a 12-pass pipeline, in outline:
 \texttt{text} $\to$ \texttt{segment} $\to$ \texttt{extract} $\to$
 \texttt{canonicalize} $\to$ \texttt{MoralGraph} $\to$ \texttt{tensorize} $\to$
 \texttt{DEME} $\to$ \texttt{DecisionProof}. The MoralGraph is typed (stakeholder,
@@ -74,7 +75,7 @@ is deferred to a human. We treat this as the responsible default: the compiler d
 not pick a moral theory and hide the choice.
 
 \section{The runtime}
-\texttt{erisml-lib} (v3.0.0, source install) provides the three-layer runtime
+\texttt{erisml-lib} (v3.1.0 on PyPI; the worked example below needs the source tree) provides the three-layer runtime
 pipeline between an agent's planner and its actuators: \emph{Reflex} (fast hard
 stops), \emph{Tactical} (full MoralVector reasoning, 10--100\,ms), \emph{Strategic}
 (policy recording and human oversight), emitting \texttt{ALLOW} / \texttt{REVISE} /
@@ -96,7 +97,7 @@ rule table.)
   \label{fig:hohfeld}
 \end{figure}
 
-Hohfeld's first-order normative positions (Obligation, Claim, Liberty, No-claim)
+Hohfeld's first-order normative positions~[1] (Obligation, Claim, Liberty, No-claim)
 sit on a square with two semantically motivated operations: the
 \emph{correlative swap} $s$ (agent$\leftrightarrow$patient: O$\leftrightarrow$C,
 L$\leftrightarrow$N) and \emph{deontic negation} $r^2$ (O$\leftrightarrow$L,
@@ -122,7 +123,7 @@ non-abelian signature is absent, and even the measured swap generalizes weakly
 across templates, which bounds the instrument's power. $V_4$ stands, now with
 one empirical test behind it. This is the second
 self-correction in the program's history: an earlier $SU(2)\times U(1)$ gauge
-hypothesis was falsified by CHSH-style tests on human moral judgments ($N{=}600$,
+hypothesis was falsified by CHSH-style tests on human moral judgments~[3] ($N{=}600$,
 all $|S|\le 2$). We consider the corrections a feature of the method; the
 framework makes claims sharp enough to be wrong.
 
@@ -134,7 +135,7 @@ the runtime warns at 0.25 and blocks at 0.30. The Bond Index depends only on the
 generator $s$, the one operation that is fully confirmed, so it is unaffected
 by the $D_4\to V_4$ correction.
 
-The same swap-based audit logic, generalized to a matched-neighbourhood disparity
+The same swap-based audit logic, generalized to a matched-neighborhood disparity
 diagnostic (the Legal Bond Index), detects excess cross-race score divergence in the
 COMPAS data: $\mathrm{LBI}=1.049$ [1.027, 1.072] at $k{=}20$ (binary high-risk cut:
 1.092), with a conditional randomization test rejecting at $z=4.9$
@@ -179,8 +180,8 @@ replicated, not a finished detector.
 \end{figure*}
 
 The board's hero is the domestic-robot medical emergency
-(\texttt{erisml-lib}, \texttt{examples/care\_robot\_regimes}; DEME rank 2,
-replayable). Norms are context-indexed: the same action carries opposite
+(\texttt{erisml-lib}, \texttt{python -m erisml.examples.care\_robot\_regimes}; DEME
+rank 2, replayable). Norms are context-indexed: the same action carries opposite
 verdicts in different regimes. The action \texttt{full\_response} (enter the
 private bedroom, render aid, call EMS, share records scoped to the paramedics)
 scores, per party, 0.185/0.402/0.318/0.200 in the normal regime (forbid,
@@ -214,12 +215,13 @@ changing one input the brain reads and nothing else. In nine such pairs, each
 prediction committed before its run, a silent or forged detector stopped the
 fire call and her refusal heard or not decided the ambulance. The test also found
 that a lift she had not asked for passed DEME. That was fixed by giving DEME the
-scene's no-lift rule as a fact, and on rerun only that verdict changed
-(\texttt{gtc-prototype}, \texttt{twin/records/counterfactual-2026-10-18}).
+scene's no-lift rule as a fact, and on rerun only the lift's verdict changed, in
+both pairs that test it (counterfactual records of 17 and 18 October 2026, kept
+with the prototype and available on request).
 
 A second PyTorch-native piece serves the stack's memory layer:
 \texttt{turboquant-pro} (PyPI, MIT), consumer-aware compression with a one-line
-HuggingFace KV drop-in (\texttt{past\_key\_values=TurboQuantCache(...)}), Triton
+Hugging Face KV drop-in (\texttt{past\_key\_values=TurboQuantCache(...)}), Triton
 and Volta \texttt{sm\_70} attention-on-codes kernels, and a vLLM plugin
 ($\approx$5$\times$ KV memory). It runs here today as the 3-bit embedding codec on
 the NATS memory bus; its headline numbers are CI-gated and replayable
@@ -233,7 +235,7 @@ Hohfeld/$V_4$ module and Bond Index live in \texttt{erisml-lib}, not yet in the
 compiler. None of this is a solved-ethics claim. It is an auditability claim.
 
 \section*{Availability}
-\texttt{pip install erisml-compiler} $\cdot$ \texttt{turboquant-pro}. Source:
+\texttt{pip install erisml-compiler} $\cdot$ \texttt{erisml-lib} $\cdot$ \texttt{turboquant-pro}. Source:
 \texttt{github.com/ahb-sjsu}. Zenodo: 10.5281/zenodo.20659432 (compiler),
 .20660087 (turboquant-pro), .21310251 (COMPAS/LBI archive).
 
