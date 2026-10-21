@@ -133,8 +133,7 @@ class TestWatchdogScript:
 
     def test_monitors_all_services(self) -> None:
         content = Path("scripts/watchdog.sh").read_text()
-        assert "8080" in content  # Superego
-        assert "8082" in content  # Id
+        assert "8082" in content  # Id (NRP LLM proxy; Superego 8080 is off)
         assert "8084" in content  # Ego
         assert "8081" in content  # RAG
         assert "8222" in content  # NATS
