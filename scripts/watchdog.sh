@@ -12,10 +12,13 @@ set -uo pipefail
 INTERVAL=60
 LOG_PREFIX="[watchdog]"
 
-# Services to monitor (name:port:endpoint)
+# Services to monitor (name:port:endpoint[:ok_codes]); ok_codes defaults to 200.
+#
+# Superego (atlas-superego, Gemma 31B on GPU 0) is intentionally off; it is
+# not checked. Id on 8082 is served by nrp_llm_proxy.py (NRP-hosted model),
+# not atlas-id: the proxy answers only POST, so a 501 to GET means it is up.
 SERVICES=(
-    "Superego:8080:/health"
-    "Id:8082:/health"
+    "Id:8082:/health:200,501"
     "Ego:8084:/health"
     "RAG:8081:/api/search-status"
     "NATS:8222:/varz"
@@ -23,8 +26,6 @@ SERVICES=(
 )
 
 SYSTEMD_SERVICES=(
-    "atlas-superego"
-    "atlas-id"
     "atlas-ego"
     "atlas-rag-server"
     "atlas-nats"
@@ -38,12 +39,12 @@ log() {
 }
 
 check_http() {
-    local name="$1" port="$2" endpoint="$3"
+    local name="$1" port="$2" endpoint="$3" ok_codes="${4:-200}"
     local status
     status=$(curl -s -o /dev/null -w "%{http_code}" \
         "http://localhost:${port}${endpoint}" \
         --connect-timeout 3 --max-time 5 2>/dev/null || echo "000")
-    if [ "$status" = "200" ]; then
+    if [[ ",$ok_codes," == *",$status,"* ]]; then
         echo "online"
     else
         echo "offline($status)"
@@ -66,8 +67,8 @@ while true; do
 
     # HTTP health checks
     for entry in "${SERVICES[@]}"; do
-        IFS=: read -r name port endpoint <<< "$entry"
-        result=$(check_http "$name" "$port" "$endpoint")
+        IFS=: read -r name port endpoint ok_codes <<< "$entry"
+        result=$(check_http "$name" "$port" "$endpoint" "$ok_codes")
         if [ "$result" = "online" ]; then
             ONLINE=$((ONLINE + 1))
         else
