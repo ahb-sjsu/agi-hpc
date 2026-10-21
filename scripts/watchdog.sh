@@ -22,7 +22,7 @@ SERVICES=(
     "Ego:8084:/health"
     "RAG:8081:/api/search-status"
     "NATS:8222:/varz"
-    "Telemetry:8085:/health"
+    "Telemetry:8085:/api/health"
 )
 
 SYSTEMD_SERVICES=(
@@ -108,7 +108,9 @@ while true; do
     fi
 
     # CPU thermal check
-    CPU_TEMP=$(sensors 2>/dev/null | grep "Package id" | head -1 | grep -oP '\+\K[0-9.]+' || echo "0")
+    # Hottest package's current reading only (each line also carries high/crit).
+    CPU_TEMP=$(sensors 2>/dev/null | grep -oP '^Package id \d+:\s+\+\K[0-9.]+' | sort -rn | head -1)
+    CPU_TEMP=${CPU_TEMP:-0}
     CPU_INT=${CPU_TEMP%.*}
     if [ -n "$CPU_INT" ] && [ "$CPU_INT" -gt 90 ]; then
         log "THERMAL WARNING: CPU at ${CPU_TEMP}°C (threshold: 90°C)"
