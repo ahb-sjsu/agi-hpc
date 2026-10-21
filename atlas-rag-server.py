@@ -12,6 +12,7 @@ import json
 import os
 import pickle
 import re
+import shutil
 import time
 
 import numpy as np
@@ -79,6 +80,45 @@ _safety_stats = {
 # Initialise Episodic Memory (Hippocampal Replay — feeds dreaming)
 _episodic_memory = None
 _episode_stats = {"stored": 0, "errors": 0}
+
+# /api/telemetry is polled every few seconds; the row counts behind it barely
+# move but cost ~0.4 s per poll (COUNT(*) over 2.4M ethics_chunks, 824k
+# publications), so they are read at most once a minute.
+_TELEMETRY_COUNTS_TTL = 60.0
+_telemetry_counts = {"at": 0.0, "memory": {}, "publications": None}
+
+
+def _db_counts():
+    """Row counts for the telemetry page, cached for _TELEMETRY_COUNTS_TTL s."""
+    if time.time() - _telemetry_counts["at"] < _TELEMETRY_COUNTS_TTL:
+        return _telemetry_counts
+    memory, publications = {}, None
+    try:
+        conn = psycopg2.connect(DB_DSN)
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM chunks")
+            memory["semantic_chunks"] = cur.fetchone()[0]
+            cur.execute("SELECT COUNT(DISTINCT repo) FROM chunks")
+            memory["repos"] = cur.fetchone()[0]
+            for key, table in (
+                ("episodic_episodes", "episodes"),
+                ("ethics_chunks", "ethics_chunks"),
+            ):
+                try:
+                    cur.execute(f"SELECT COUNT(*) FROM {table}")
+                    memory[key] = cur.fetchone()[0]
+                except Exception:
+                    conn.rollback()
+            try:
+                cur.execute("SELECT COUNT(*) FROM publications")
+                publications = cur.fetchone()[0]
+            except Exception:
+                conn.rollback()
+        conn.close()
+    except Exception:
+        return _telemetry_counts  # keep the last good counts
+    _telemetry_counts.update(at=time.time(), memory=memory, publications=publications)
+    return _telemetry_counts
 try:
     _episodic_memory = EpisodicMemory(
         EpisodicMemoryConfig(db_dsn=DB_DSN, auto_create_table=True)
@@ -107,8 +147,157 @@ _executive_stats = {
 }
 
 # Initialise Divine Council (Minsky — Society of Mind)
-_divine_council = DivineCouncil()
-print("Divine Council initialised (7 agents, 1 server, --parallel 8)")
+# Hardened: primary Gemma 4 (port 8084) with Spock/Qwen 72B (port 8080)
+# as automatic fallback when the primary is unhealthy.
+_divine_council = DivineCouncil.default()
+print("Divine Council initialised (hardened backend, primary+fallback)")
+
+
+# ---------------------------------------------------------------------------
+# Council recorder: wrap deliberate() so every council run is captured for
+# the dashboards. Last 200 kept in memory; all are appended to JSONL on disk.
+# ---------------------------------------------------------------------------
+
+import threading as _council_threading
+import uuid as _council_uuid
+from collections import deque as _council_deque
+
+_COUNCIL_LOG_DIR = Path("/home/claude/.cache/atlas/council")
+_COUNCIL_LOG_DIR.mkdir(parents=True, exist_ok=True)
+_COUNCIL_LOG_FILE = _COUNCIL_LOG_DIR / "deliberations.jsonl"
+_COUNCIL_RECENT = _council_deque(maxlen=200)
+_COUNCIL_LOCK = _council_threading.Lock()
+
+
+def _council_summarize(trace_id, query, verdict, started_ts, total_ms):
+    """Build a compact summary dict for /api/council/recent."""
+    abstain = getattr(verdict, "abstain_count", None)
+    if abstain is None:
+        abstain = max(0, 7 - verdict.approval_count - verdict.challenge_count)
+    return {
+        "trace_id": trace_id,
+        "started_ts": started_ts,
+        "completed_ts": started_ts + (total_ms / 1000.0),
+        "query_preview": (query or "")[:160],
+        "consensus": bool(verdict.consensus),
+        "approval_count": int(verdict.approval_count),
+        "challenge_count": int(verdict.challenge_count),
+        "abstain_count": int(abstain),
+        "ethical_veto": bool(verdict.ethical_flags),
+        "ethical_flags": list(verdict.ethical_flags or []),
+        "total_latency_ms": int(total_ms),
+        "synthesis_preview": (verdict.synthesis or "")[:240],
+    }
+
+
+def _council_full_record(trace_id, query, verdict, started_ts, total_ms, context=""):
+    """Build the full detail record (members + responses) for replay."""
+    summary = _council_summarize(trace_id, query, verdict, started_ts, total_ms)
+    members = []
+    # Stagger member offsets across the deliberation window so the
+    # swim-lane viz has something to paint until per-member start
+    # timestamps are wired through divine_council itself.
+    n = max(1, len(verdict.votes))
+    step = total_ms / n
+    for i, (mid, vote) in enumerate(verdict.votes.items()):
+        # Prefer the vote's own outcome (hardened council); otherwise derive.
+        outcome_raw = getattr(vote, "outcome", None)
+        if outcome_raw is not None:
+            outcome = str(getattr(outcome_raw, "value", outcome_raw)).lower()
+        elif mid == "advocate":
+            outcome = "challenge"
+        elif vote.flags:
+            outcome = "challenge"
+        elif vote.score < 4:
+            outcome = "challenge"
+        else:
+            outcome = "approve"
+        members.append({
+            "member": mid,
+            "outcome": outcome,
+            "score": float(vote.score),
+            "flags": list(vote.flags or []),
+            "latency_ms": int((vote.latency_s or 0) * 1000),
+            "t_offset_ms": int((i + 1) * step),
+            "response_preview": (vote.response or "")[:400],
+        })
+    summary["query"] = query or ""
+    summary["context_preview"] = (context or "")[:400]
+    summary["synthesis"] = verdict.synthesis or ""
+    summary["members"] = members
+    summary["phase_markers"] = {
+        "council_start": 0,
+        "council_end": int(total_ms),
+    }
+    return summary
+
+
+def _council_persist(record):
+    try:
+        with _COUNCIL_LOCK:
+            with _COUNCIL_LOG_FILE.open("a", encoding="utf-8") as fh:
+                fh.write(json.dumps(record, default=str) + "\n")
+            _COUNCIL_RECENT.appendleft(record)
+    except Exception as e:
+        print(f"[council-recorder] persist failed: {e}")
+
+
+def _council_load_recent():
+    """Hydrate the in-memory deque from the tail of the JSONL on startup."""
+    if not _COUNCIL_LOG_FILE.exists():
+        return
+    try:
+        # Read up to the last ~64KB; that's plenty for 200 records.
+        size = _COUNCIL_LOG_FILE.stat().st_size
+        with _COUNCIL_LOG_FILE.open("rb") as fh:
+            fh.seek(max(0, size - 64 * 1024))
+            tail = fh.read().decode("utf-8", errors="replace")
+        lines = tail.splitlines()[-200:]
+        records = []
+        for ln in lines:
+            ln = ln.strip()
+            if not ln:
+                continue
+            try:
+                records.append(json.loads(ln))
+            except Exception:
+                continue
+        # newest-first
+        for r in records:
+            _COUNCIL_RECENT.appendleft(r)
+        print(f"[council-recorder] hydrated {len(records)} record(s) from {_COUNCIL_LOG_FILE}")
+    except Exception as e:
+        print(f"[council-recorder] hydrate failed: {e}")
+
+
+def _wrap_council_for_recording(council):
+    """Monkey-patch council.deliberate() to record every result."""
+    orig = council.deliberate
+
+    def deliberate(query, superego_response="", id_response="", context=""):
+        trace_id = _council_uuid.uuid4().hex[:12]
+        started = time.time()
+        t0 = time.monotonic()
+        verdict = orig(
+            query=query,
+            superego_response=superego_response,
+            id_response=id_response,
+            context=context,
+        )
+        total_ms = (time.monotonic() - t0) * 1000.0
+        try:
+            rec = _council_full_record(trace_id, query, verdict, started, total_ms, context)
+            _council_persist(rec)
+        except Exception as e:
+            print(f"[council-recorder] record failed: {e}")
+        return verdict
+
+    council.deliberate = deliberate
+
+
+_council_load_recent()
+_wrap_council_for_recording(_divine_council)
+print(f"Council recorder armed: {_COUNCIL_LOG_FILE} ({len(_COUNCIL_RECENT)} loaded)")
 print("Executive Function loaded")
 
 # Initialise Attention Filter (Posner — distractor detection)
@@ -1642,29 +1831,9 @@ def telemetry():
     except Exception:
         pass
 
-    # Memory (pgvector stats)
-    try:
-        conn = psycopg2.connect(DB_DSN)
-        with conn.cursor() as cur:
-            cur.execute("SELECT COUNT(*) FROM chunks")
-            data["memory"]["semantic_chunks"] = cur.fetchone()[0]
-            cur.execute("SELECT COUNT(DISTINCT repo) FROM chunks")
-            data["memory"]["repos"] = cur.fetchone()[0]
-            # Episodic (if table exists)
-            try:
-                cur.execute("SELECT COUNT(*) FROM episodes")
-                data["memory"]["episodic_episodes"] = cur.fetchone()[0]
-            except Exception:
-                conn.rollback()
-            # Ethics chunks
-            try:
-                cur.execute("SELECT COUNT(*) FROM ethics_chunks")
-                data["memory"]["ethics_chunks"] = cur.fetchone()[0]
-            except Exception:
-                conn.rollback()
-        conn.close()
-    except Exception:
-        pass
+    # Memory (pgvector stats), cached for a minute
+    counts = _db_counts()
+    data["memory"].update(counts["memory"])
 
     # GPU stats
     try:
@@ -1829,29 +1998,16 @@ def telemetry():
     except Exception:
         pass
 
-    # Publications count
-    try:
-        conn = psycopg2.connect(DB_DSN)
-        with conn.cursor() as cur:
-            try:
-                cur.execute("SELECT COUNT(*) FROM publications")
-                data["memory"]["publications"] = cur.fetchone()[0]
-            except Exception:
-                conn.rollback()
-        conn.close()
-    except Exception:
-        pass
+    # Publications count (cached with the memory counts)
+    if counts["publications"] is not None:
+        data["memory"]["publications"] = counts["publications"]
 
-    # Disk usage for archive
+    # Disk usage for archive. /archive is its own filesystem (md5 RAID), so the
+    # filesystem's used space is the answer. This was `du -s /archive/` with a
+    # 10 s timeout: on 15 TB it never finished, so every poll burned 10 s of a
+    # CPU and archive_gb was never filled in (2026-10-21).
     try:
-        result = subprocess.run(
-            ["du", "-s", "--block-size=1G", "/archive/"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        if result.stdout:
-            data["environment"]["archive_gb"] = int(result.stdout.split()[0])
+        data["environment"]["archive_gb"] = shutil.disk_usage("/archive").used // 2**30
     except Exception:
         pass
 
@@ -2056,6 +2212,47 @@ def visitors():
         )
     except Exception:
         return jsonify({"unique_visitors": 0, "total_visits": 0, "recent": []})
+
+
+@app.route("/api/council/recent")
+def council_recent():
+    """List recent council deliberations (newest first).
+
+    Query params:
+        limit: max records to return (default 50, capped at 200).
+    """
+    try:
+        limit = min(int(request.args.get("limit", "50")), 200)
+    except (TypeError, ValueError):
+        limit = 50
+    with _COUNCIL_LOCK:
+        items = list(_COUNCIL_RECENT)[:limit]
+    # Strip the heavy fields for the listing endpoint.
+    summaries = []
+    for r in items:
+        summaries.append({
+            "trace_id": r.get("trace_id"),
+            "started_ts": r.get("started_ts"),
+            "completed_ts": r.get("completed_ts"),
+            "query_preview": r.get("query_preview"),
+            "consensus": r.get("consensus"),
+            "approval_count": r.get("approval_count"),
+            "challenge_count": r.get("challenge_count"),
+            "abstain_count": r.get("abstain_count"),
+            "ethical_veto": r.get("ethical_veto"),
+            "total_latency_ms": r.get("total_latency_ms"),
+        })
+    return jsonify({"items": summaries, "count": len(summaries)})
+
+
+@app.route("/api/council/deliberations/<trace_id>")
+def council_deliberation(trace_id):
+    """Full detail for one deliberation, suitable for replay/animation."""
+    with _COUNCIL_LOCK:
+        for r in _COUNCIL_RECENT:
+            if r.get("trace_id") == trace_id:
+                return jsonify(r)
+    return jsonify({"error": "not_found", "trace_id": trace_id}), 404
 
 
 @app.route("/api/events")
