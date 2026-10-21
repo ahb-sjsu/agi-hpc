@@ -107,8 +107,157 @@ _executive_stats = {
 }
 
 # Initialise Divine Council (Minsky — Society of Mind)
-_divine_council = DivineCouncil()
-print("Divine Council initialised (7 agents, 1 server, --parallel 8)")
+# Hardened: primary Gemma 4 (port 8084) with Spock/Qwen 72B (port 8080)
+# as automatic fallback when the primary is unhealthy.
+_divine_council = DivineCouncil.default()
+print("Divine Council initialised (hardened backend, primary+fallback)")
+
+
+# ---------------------------------------------------------------------------
+# Council recorder: wrap deliberate() so every council run is captured for
+# the dashboards. Last 200 kept in memory; all are appended to JSONL on disk.
+# ---------------------------------------------------------------------------
+
+import threading as _council_threading
+import uuid as _council_uuid
+from collections import deque as _council_deque
+
+_COUNCIL_LOG_DIR = Path("/home/claude/.cache/atlas/council")
+_COUNCIL_LOG_DIR.mkdir(parents=True, exist_ok=True)
+_COUNCIL_LOG_FILE = _COUNCIL_LOG_DIR / "deliberations.jsonl"
+_COUNCIL_RECENT = _council_deque(maxlen=200)
+_COUNCIL_LOCK = _council_threading.Lock()
+
+
+def _council_summarize(trace_id, query, verdict, started_ts, total_ms):
+    """Build a compact summary dict for /api/council/recent."""
+    abstain = getattr(verdict, "abstain_count", None)
+    if abstain is None:
+        abstain = max(0, 7 - verdict.approval_count - verdict.challenge_count)
+    return {
+        "trace_id": trace_id,
+        "started_ts": started_ts,
+        "completed_ts": started_ts + (total_ms / 1000.0),
+        "query_preview": (query or "")[:160],
+        "consensus": bool(verdict.consensus),
+        "approval_count": int(verdict.approval_count),
+        "challenge_count": int(verdict.challenge_count),
+        "abstain_count": int(abstain),
+        "ethical_veto": bool(verdict.ethical_flags),
+        "ethical_flags": list(verdict.ethical_flags or []),
+        "total_latency_ms": int(total_ms),
+        "synthesis_preview": (verdict.synthesis or "")[:240],
+    }
+
+
+def _council_full_record(trace_id, query, verdict, started_ts, total_ms, context=""):
+    """Build the full detail record (members + responses) for replay."""
+    summary = _council_summarize(trace_id, query, verdict, started_ts, total_ms)
+    members = []
+    # Stagger member offsets across the deliberation window so the
+    # swim-lane viz has something to paint until per-member start
+    # timestamps are wired through divine_council itself.
+    n = max(1, len(verdict.votes))
+    step = total_ms / n
+    for i, (mid, vote) in enumerate(verdict.votes.items()):
+        # Prefer the vote's own outcome (hardened council); otherwise derive.
+        outcome_raw = getattr(vote, "outcome", None)
+        if outcome_raw is not None:
+            outcome = str(getattr(outcome_raw, "value", outcome_raw)).lower()
+        elif mid == "advocate":
+            outcome = "challenge"
+        elif vote.flags:
+            outcome = "challenge"
+        elif vote.score < 4:
+            outcome = "challenge"
+        else:
+            outcome = "approve"
+        members.append({
+            "member": mid,
+            "outcome": outcome,
+            "score": float(vote.score),
+            "flags": list(vote.flags or []),
+            "latency_ms": int((vote.latency_s or 0) * 1000),
+            "t_offset_ms": int((i + 1) * step),
+            "response_preview": (vote.response or "")[:400],
+        })
+    summary["query"] = query or ""
+    summary["context_preview"] = (context or "")[:400]
+    summary["synthesis"] = verdict.synthesis or ""
+    summary["members"] = members
+    summary["phase_markers"] = {
+        "council_start": 0,
+        "council_end": int(total_ms),
+    }
+    return summary
+
+
+def _council_persist(record):
+    try:
+        with _COUNCIL_LOCK:
+            with _COUNCIL_LOG_FILE.open("a", encoding="utf-8") as fh:
+                fh.write(json.dumps(record, default=str) + "\n")
+            _COUNCIL_RECENT.appendleft(record)
+    except Exception as e:
+        print(f"[council-recorder] persist failed: {e}")
+
+
+def _council_load_recent():
+    """Hydrate the in-memory deque from the tail of the JSONL on startup."""
+    if not _COUNCIL_LOG_FILE.exists():
+        return
+    try:
+        # Read up to the last ~64KB; that's plenty for 200 records.
+        size = _COUNCIL_LOG_FILE.stat().st_size
+        with _COUNCIL_LOG_FILE.open("rb") as fh:
+            fh.seek(max(0, size - 64 * 1024))
+            tail = fh.read().decode("utf-8", errors="replace")
+        lines = tail.splitlines()[-200:]
+        records = []
+        for ln in lines:
+            ln = ln.strip()
+            if not ln:
+                continue
+            try:
+                records.append(json.loads(ln))
+            except Exception:
+                continue
+        # newest-first
+        for r in records:
+            _COUNCIL_RECENT.appendleft(r)
+        print(f"[council-recorder] hydrated {len(records)} record(s) from {_COUNCIL_LOG_FILE}")
+    except Exception as e:
+        print(f"[council-recorder] hydrate failed: {e}")
+
+
+def _wrap_council_for_recording(council):
+    """Monkey-patch council.deliberate() to record every result."""
+    orig = council.deliberate
+
+    def deliberate(query, superego_response="", id_response="", context=""):
+        trace_id = _council_uuid.uuid4().hex[:12]
+        started = time.time()
+        t0 = time.monotonic()
+        verdict = orig(
+            query=query,
+            superego_response=superego_response,
+            id_response=id_response,
+            context=context,
+        )
+        total_ms = (time.monotonic() - t0) * 1000.0
+        try:
+            rec = _council_full_record(trace_id, query, verdict, started, total_ms, context)
+            _council_persist(rec)
+        except Exception as e:
+            print(f"[council-recorder] record failed: {e}")
+        return verdict
+
+    council.deliberate = deliberate
+
+
+_council_load_recent()
+_wrap_council_for_recording(_divine_council)
+print(f"Council recorder armed: {_COUNCIL_LOG_FILE} ({len(_COUNCIL_RECENT)} loaded)")
 print("Executive Function loaded")
 
 # Initialise Attention Filter (Posner — distractor detection)
@@ -2056,6 +2205,47 @@ def visitors():
         )
     except Exception:
         return jsonify({"unique_visitors": 0, "total_visits": 0, "recent": []})
+
+
+@app.route("/api/council/recent")
+def council_recent():
+    """List recent council deliberations (newest first).
+
+    Query params:
+        limit: max records to return (default 50, capped at 200).
+    """
+    try:
+        limit = min(int(request.args.get("limit", "50")), 200)
+    except (TypeError, ValueError):
+        limit = 50
+    with _COUNCIL_LOCK:
+        items = list(_COUNCIL_RECENT)[:limit]
+    # Strip the heavy fields for the listing endpoint.
+    summaries = []
+    for r in items:
+        summaries.append({
+            "trace_id": r.get("trace_id"),
+            "started_ts": r.get("started_ts"),
+            "completed_ts": r.get("completed_ts"),
+            "query_preview": r.get("query_preview"),
+            "consensus": r.get("consensus"),
+            "approval_count": r.get("approval_count"),
+            "challenge_count": r.get("challenge_count"),
+            "abstain_count": r.get("abstain_count"),
+            "ethical_veto": r.get("ethical_veto"),
+            "total_latency_ms": r.get("total_latency_ms"),
+        })
+    return jsonify({"items": summaries, "count": len(summaries)})
+
+
+@app.route("/api/council/deliberations/<trace_id>")
+def council_deliberation(trace_id):
+    """Full detail for one deliberation, suitable for replay/animation."""
+    with _COUNCIL_LOCK:
+        for r in _COUNCIL_RECENT:
+            if r.get("trace_id") == trace_id:
+                return jsonify(r)
+    return jsonify({"error": "not_found", "trace_id": trace_id}), 404
 
 
 @app.route("/api/events")
