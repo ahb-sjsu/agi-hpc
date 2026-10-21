@@ -66,6 +66,12 @@ PACKAGE_CPUS = {
 INTERACTIVE_CPUS = PACKAGE_CPUS[1]
 BATCH_CPUS = PACKAGE_CPUS[0]
 ALL_CPUS = PACKAGE_CPUS[0] | PACKAGE_CPUS[1]
+# The kernel keeps only the overlap of any mask we set with the CPUs the process may
+# use (online, and its cgroup cpuset). With CPUs 1-11 and 24-35 offline, "package 0"
+# was core 0 alone, and every hot batch process stacked on it (2026-10-21). Below
+# this many CPUs in the overlap, leave the process where it is; the thermal pause
+# still covers it.
+MIN_PIN_CPUS = 4
 
 # Never paused, never re-pinned (matched against the executable name).
 SERVICE = {
@@ -85,6 +91,7 @@ RAID_THROTTLE_KB = {"target": 5000, "critical": 1000, "normal": 200000}
 # ----------------------------------------------------------------------------- state
 paused = {}          # pid -> (package, class, comm)
 pinned_batch = {}    # pid -> original cpu set, to restore after gaming mode
+unpinnable = set()   # pids that could use < MIN_PIN_CPUS of BATCH_CPUS (logged once)
 _prev_cpu = {}       # pid -> (cputime_ticks, wall)
 _gpu_warned_at = 0.0
 CLK = os.sysconf("SC_CLK_TCK")
@@ -162,6 +169,45 @@ def affinity(pid):
         return os.sched_getaffinity(pid)
     except OSError:
         return None
+
+
+def parse_cpulist(text):
+    """'0,12-23,36-47' -> {0, 12, ..., 47}."""
+    cpus = set()
+    for part in text.strip().split(","):
+        if "-" in part:
+            a, b = part.split("-")
+            cpus |= set(range(int(a), int(b) + 1))
+        elif part:
+            cpus.add(int(part))
+    return cpus
+
+
+def online_cpus():
+    """CPUs online now (2026-10-21: 1-11 and 24-35 were offline, leaving package 0 = core 0)."""
+    try:
+        return parse_cpulist(_read("/sys/devices/system/cpu/online") or "") or ALL_CPUS
+    except ValueError:
+        return ALL_CPUS
+
+
+def cgroup_cpus(pid):
+    """CPUs the process may run on: its nearest cgroup v2 cpuset, and online."""
+    cpus = online_cpus()
+    cg = _read(f"/proc/{pid}/cgroup") or ""
+    m = re.search(r"^0::(\S*)$", cg, re.M)
+    path = m.group(1).rstrip("/") if m else ""
+    while m:   # the cpuset file exists only where the controller is enabled; walk up
+        eff = _read(f"/sys/fs/cgroup{path}/cpuset.cpus.effective")
+        if eff and eff.strip():
+            try:
+                return cpus & parse_cpulist(eff)
+            except ValueError:
+                break
+        if not path:
+            break
+        path = path.rsplit("/", 1)[0]
+    return cpus
 
 
 def set_affinity(pid, cpus, why):
@@ -290,14 +336,23 @@ def tick(state):
                 cur = affinity(pid)
                 if cur is not None and not cur <= INTERACTIVE_CPUS:
                     set_affinity(pid, INTERACTIVE_CPUS, "interactive placement")
-            elif cls == "BATCH" and cpu >= HOT_CPU_PCT and pid not in pinned_batch:
+            elif cls == "BATCH" and cpu >= HOT_CPU_PCT and pid not in pinned_batch \
+                    and pid not in unpinnable:
                 cur = affinity(pid)
-                if cur is not None and cur & INTERACTIVE_CPUS:
+                usable = BATCH_CPUS & cgroup_cpus(pid)
+                if cur is not None and len(usable) < MIN_PIN_CPUS:
+                    unpinnable.add(pid)
+                    log.info("NOT pinning pid %d %s: only %s of package0 is usable",
+                             pid, comm, cpuset_str(usable) or "none")
+                elif cur is not None and cur & INTERACTIVE_CPUS:
                     if set_affinity(pid, BATCH_CPUS, f"anti-affinity, {cpu:.0f}% cpu"):
                         pinned_batch[pid] = cur
     for pid in list(pinned_batch):
         if not os.path.exists(f"/proc/{pid}"):
             del pinned_batch[pid]
+    for pid in list(unpinnable):
+        if not os.path.exists(f"/proc/{pid}"):
+            unpinnable.discard(pid)
 
     # --- thermal, per package ------------------------------------------------
     for pkg, temp in sorted(temps.items()):
