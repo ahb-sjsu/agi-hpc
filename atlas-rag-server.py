@@ -12,6 +12,7 @@ import json
 import os
 import pickle
 import re
+import shutil
 import time
 
 import numpy as np
@@ -79,6 +80,45 @@ _safety_stats = {
 # Initialise Episodic Memory (Hippocampal Replay — feeds dreaming)
 _episodic_memory = None
 _episode_stats = {"stored": 0, "errors": 0}
+
+# /api/telemetry is polled every few seconds; the row counts behind it barely
+# move but cost ~0.4 s per poll (COUNT(*) over 2.4M ethics_chunks, 824k
+# publications), so they are read at most once a minute.
+_TELEMETRY_COUNTS_TTL = 60.0
+_telemetry_counts = {"at": 0.0, "memory": {}, "publications": None}
+
+
+def _db_counts():
+    """Row counts for the telemetry page, cached for _TELEMETRY_COUNTS_TTL s."""
+    if time.time() - _telemetry_counts["at"] < _TELEMETRY_COUNTS_TTL:
+        return _telemetry_counts
+    memory, publications = {}, None
+    try:
+        conn = psycopg2.connect(DB_DSN)
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM chunks")
+            memory["semantic_chunks"] = cur.fetchone()[0]
+            cur.execute("SELECT COUNT(DISTINCT repo) FROM chunks")
+            memory["repos"] = cur.fetchone()[0]
+            for key, table in (
+                ("episodic_episodes", "episodes"),
+                ("ethics_chunks", "ethics_chunks"),
+            ):
+                try:
+                    cur.execute(f"SELECT COUNT(*) FROM {table}")
+                    memory[key] = cur.fetchone()[0]
+                except Exception:
+                    conn.rollback()
+            try:
+                cur.execute("SELECT COUNT(*) FROM publications")
+                publications = cur.fetchone()[0]
+            except Exception:
+                conn.rollback()
+        conn.close()
+    except Exception:
+        return _telemetry_counts  # keep the last good counts
+    _telemetry_counts.update(at=time.time(), memory=memory, publications=publications)
+    return _telemetry_counts
 try:
     _episodic_memory = EpisodicMemory(
         EpisodicMemoryConfig(db_dsn=DB_DSN, auto_create_table=True)
@@ -1791,29 +1831,9 @@ def telemetry():
     except Exception:
         pass
 
-    # Memory (pgvector stats)
-    try:
-        conn = psycopg2.connect(DB_DSN)
-        with conn.cursor() as cur:
-            cur.execute("SELECT COUNT(*) FROM chunks")
-            data["memory"]["semantic_chunks"] = cur.fetchone()[0]
-            cur.execute("SELECT COUNT(DISTINCT repo) FROM chunks")
-            data["memory"]["repos"] = cur.fetchone()[0]
-            # Episodic (if table exists)
-            try:
-                cur.execute("SELECT COUNT(*) FROM episodes")
-                data["memory"]["episodic_episodes"] = cur.fetchone()[0]
-            except Exception:
-                conn.rollback()
-            # Ethics chunks
-            try:
-                cur.execute("SELECT COUNT(*) FROM ethics_chunks")
-                data["memory"]["ethics_chunks"] = cur.fetchone()[0]
-            except Exception:
-                conn.rollback()
-        conn.close()
-    except Exception:
-        pass
+    # Memory (pgvector stats), cached for a minute
+    counts = _db_counts()
+    data["memory"].update(counts["memory"])
 
     # GPU stats
     try:
@@ -1978,29 +1998,16 @@ def telemetry():
     except Exception:
         pass
 
-    # Publications count
-    try:
-        conn = psycopg2.connect(DB_DSN)
-        with conn.cursor() as cur:
-            try:
-                cur.execute("SELECT COUNT(*) FROM publications")
-                data["memory"]["publications"] = cur.fetchone()[0]
-            except Exception:
-                conn.rollback()
-        conn.close()
-    except Exception:
-        pass
+    # Publications count (cached with the memory counts)
+    if counts["publications"] is not None:
+        data["memory"]["publications"] = counts["publications"]
 
-    # Disk usage for archive
+    # Disk usage for archive. /archive is its own filesystem (md5 RAID), so the
+    # filesystem's used space is the answer. This was `du -s /archive/` with a
+    # 10 s timeout: on 15 TB it never finished, so every poll burned 10 s of a
+    # CPU and archive_gb was never filled in (2026-10-21).
     try:
-        result = subprocess.run(
-            ["du", "-s", "--block-size=1G", "/archive/"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        if result.stdout:
-            data["environment"]["archive_gb"] = int(result.stdout.split()[0])
+        data["environment"]["archive_gb"] = shutil.disk_usage("/archive").used // 2**30
     except Exception:
         pass
 
